@@ -172,7 +172,7 @@ func handleSourceOfMetric(s *Scraper, parameters map[string]interface{}, paramTy
 }
 
 func parseSSLMode(url string) string {
-	if util.GetEnv("PGSSLMODE", "disable") == "require" {
+	if util.GetEnv("PGSSLMODE", "prefer") == "require" {
 		return strings.Replace(url, "http", "https", -1)
 	}
 	return url

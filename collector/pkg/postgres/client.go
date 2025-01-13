@@ -34,7 +34,7 @@ var (
 	PgUser     = util.GetEnv("MONITORING_USER", "monitoring_role")
 	PgPass     = util.GetEnv("MONITORING_PASSWORD", "monitoring_password")
 	PgDatabase = util.GetEnv("POSTGRES_DATABASE", "postgres")
-	PgSsl      = util.GetEnv("PGSSLMODE", "disable")
+	PgSsl      = util.GetEnv("PGSSLMODE", "prefer")
 )
 
 type Row map[string]interface{}
@@ -57,7 +57,7 @@ func NewConnector() *PostgresConnector {
 func NewConnectorForUser(host string, port int, user, pass string) *PostgresConnector {
 
 	ssl := false
-	if PgSsl != "disable" {
+	if PgSsl == "require" {
 		ssl = true
 	}
 

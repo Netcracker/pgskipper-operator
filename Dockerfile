@@ -1,4 +1,4 @@
-FROM --platform=$BUILDPLATFORM golang:1.22.5-alpine3.20 as builder
+FROM --platform=$BUILDPLATFORM golang:1.22.5-alpine3.20 AS builder
 
 ENV GO111MODULE=on
 
@@ -12,8 +12,8 @@ RUN go mod tidy
 # Build
 RUN CGO_ENABLED=0 GOOS=$TARGETOS GOARCH=$TARGETARCH go build -o ./_output/bin/metrics ./collector/main.go
 
-FROM alpine:3.20 as base
-COPY --from=builder --chown=${USER_UID} /workspace/_output/bin/metrics /monitor/
+FROM alpine:3.20 AS base
+COPY --from=builder /workspace/_output/bin/metrics /monitor/
 
 RUN apk add --upgrade --no-cache curl
 
