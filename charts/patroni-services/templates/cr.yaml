@@ -109,10 +109,10 @@ spec:
     {{ if and .Values.tls .Values.tls.enabled }}
     sslMode: "require"
     {{ else }}
-    sslMode: "disable"
+    sslMode: "prefer"
     {{ end }}
     {{ else }}
-    sslMode: "disable"
+    sslMode: "prefer"
     {{ end }}
   {{ if .Values.backupDaemon.s3Storage }}
     s3Storage:
@@ -202,10 +202,10 @@ spec:
     {{ if and .Values.tls .Values.tls.enabled }}
     sslMode: "require"
     {{ else }}
-    sslMode: "disable"
+    sslMode: "prefer"
     {{ end }}
     {{ else }}
-    sslMode: "disable"
+    sslMode: "prefer"
     {{ end }}
     metricsProfile: {{ .Values.metricCollector.metricsProfile | default "dev" }}
     {{- if eq .Values.metricCollector.metricsProfile "dev" }}

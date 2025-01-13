@@ -54,7 +54,7 @@ func NewIntegrationTestsPod(cr *v1.PatroniServices, cluster *patroniv1.PatroniCl
 	}
 	dockerImage := testsSpec.DockerImage
 	name := "integration-robot-tests"
-	ssl_mode := "disable"
+	ssl_mode := "prefer"
 	if cr.Spec.Tls != nil && cr.Spec.Tls.Enabled {
 		ssl_mode = "require"
 	}
@@ -166,7 +166,7 @@ func NewCoreIntegrationTests(cr *patroniv1.PatroniCore, cluster *patroniv1.Patro
 	}
 	dockerImage := testsSpec.DockerImage
 	name := "patroni-robot-tests"
-	ssl_mode := "disable"
+	ssl_mode := "prefer"
 	if cr.Spec.Tls != nil && cr.Spec.Tls.Enabled {
 		ssl_mode = "require"
 	}
