@@ -187,3 +187,6 @@ Init container section for postgres-operator
 */}}
 {{- define "patroni-core-operator.init-container" -}}
 {{- end }}
+
+{{- define "patroni-tests.monitoredImages" -}}
+{{- end -}}
