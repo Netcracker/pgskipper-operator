@@ -546,7 +546,7 @@ class pgsLibrary(object):
         # """
         pod = self.get_pod(label='app:postgres-backup-daemon', status='Running')
         logging.info("Start backup through REST from pod {}".format(pod.metadata.name))
-        exec_command = 'expr $(expr $(date +%s) \* 1000)'
+        exec_command = 'expr $(expr $(date +%s) \\* 1000)'
         try:
             expr_date, error = self.pl_lib.execute_command_in_pod(pod.metadata.name, self._namespace, exec_command)
             health_json = requests.get(f"{self._scheme}://postgres-backup-daemon:8080/health", verify=False).json()

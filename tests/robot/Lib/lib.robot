@@ -99,7 +99,7 @@ Insert Test Record
     Log   random values ${RID} ${RSTRING}
     ${res}=  Execute Query   ${MASTERHOST}  create table IF NOT EXISTS test_insert_robot (id bigint primary key not null, value text not null)   dbname=${database}
     ${res}=  Execute Query   ${MASTERHOST}  insert into test_insert_robot values (${RID}, '${RSTRING}')   dbname=${database}
-    Run Keyword If   $res != None   Fail   msg=[insert test record] error in insert : ${res}
+    Run Keyword If   ${res} != None   Fail   msg=[insert test record] error in insert : ${res}
     ${res}=  Execute Query   ${MASTERHOST}  select * from test_insert_robot where id=${RID}   dbname=${database}
     Should Be True   """${EXPECTED}""" in """${res}"""   msg=[insert test record] Expected string ${EXPECTED} not found on ${MASTERHOST} : res: ${res}
     Log To Console  Test records found on ${MASTERHOST}
