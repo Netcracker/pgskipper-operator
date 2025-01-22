@@ -27,8 +27,8 @@ import (
 )
 
 const (
-	MigrationKey             = "isMigrationPerformed"
-	limitPool                = 10
+	MigrationKey = "isMigrationPerformed"
+	limitPool    = 10
 )
 
 var excludedDatabases = []string{"template0", "template1", "postgres", "powa", "rdsadmin", "cloudsqladmin", "azure_maintenance", "azure_sys"}
