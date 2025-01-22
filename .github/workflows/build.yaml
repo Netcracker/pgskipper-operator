@@ -16,7 +16,7 @@ on:
 env:
   TAG_NAME: ${{ github.event.release.tag_name || github.ref }}
   GH_ACCESS_TOKEN: ${{ secrets.GH_ACCESS_TOKEN }}
-  PUSH: ${{ github.event_name != 'workflow_dispatch' || inputs.publish_docker }}
+  PUSH: ${{ (github.event_name != 'workflow_dispatch' || inputs.publish_docker) && github.actor != 'dependabot[bot]' }}
 
 jobs:
   multiplatform_build:
