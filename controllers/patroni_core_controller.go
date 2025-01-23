@@ -165,6 +165,8 @@ func (pr *PatroniCoreReconciler) Reconcile(ctx context.Context, request ctrl.Req
 			return reconcile.Result{}, nil
 		}
 	}
+	pr.logger.Info("Reconcile will be started...")
+	time.Sleep(60 * time.Second)
 
 	if pr.errorCounter == 0 {
 		pr.reason = "StartPatroniCoreClusterReconcile"

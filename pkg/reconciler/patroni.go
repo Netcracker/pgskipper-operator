@@ -78,7 +78,6 @@ func (r *PatroniReconciler) Reconcile() error {
 	isStandbyClusterPresent := patroni.IsStandbyClusterConfigurationExist(cr)
 
 	if cr.Upgrade != nil && cr.Upgrade.Enabled {
-		time.Sleep(60 * time.Second)
 		logger.Info("Starting an upgrade procedure")
 		if err := r.upgrade.ProceedUpgrade(cr, r.cluster); err != nil {
 			logger.Error("Cannot upgrade patroni", zap.Error(err))
@@ -521,18 +520,18 @@ func (r *PatroniReconciler) fixCollationVersionForDB(pgClient *pgClient.Postgres
 	defer wg.Done()
 	logger.Info(fmt.Sprintf("fix locale for database: %s", db))
 	isPassed := true
-	_, err := pgClient.Query(fmt.Sprintf("REINDEX DATABASE \"%s\"", db))
+	err := pgClient.Execute(fmt.Sprintf("REINDEX DATABASE \"%s\"", db))
 	if err != nil {
 		isPassed = false
 		logger.Warn(fmt.Sprintf("Cannot reindex database for db: %s", db), zap.Error(err))
 	}
-	_, err = pgClient.Query(fmt.Sprintf("REINDEX SYSTEM \"%s\"", db))
+	err = pgClient.Execute(fmt.Sprintf("REINDEX SYSTEM \"%s\"", db))
 	if err != nil {
 		isPassed = false
 		logger.Warn(fmt.Sprintf("Cannot reindex system for db: %s", db), zap.Error(err))
 	}
 	if pgVersion >= 15 {
-		_, err = pgClient.Query(fmt.Sprintf("ALTER DATABASE \"%s\" REFRESH COLLATION VERSION", db))
+		err = pgClient.Execute(fmt.Sprintf("ALTER DATABASE \"%s\" REFRESH COLLATION VERSION", db))
 		if err != nil {
 			isPassed = false
 			logger.Warn(fmt.Sprintf("Cannot alter locale version for db: %s", db), zap.Error(err))
@@ -558,7 +557,7 @@ func (r *PatroniReconciler) refreshDependCollationsVersion(pgClient *pgClient.Po
 		return err
 	}
 	for _, collation := range cForRefresh {
-		_, err := pgClient.QueryForDB(db, fmt.Sprintf("ALTER COLLATION \"%s\" REFRESH VERSION", collation))
+		err := pgClient.ExecuteForDB(db, fmt.Sprintf("ALTER COLLATION \"%s\" REFRESH VERSION", collation))
 		if err != nil {
 			logger.Warn(fmt.Sprintf("Cannot alter collation %s version for db: %s", collation, db), zap.Error(err))
 			return err
