@@ -117,9 +117,65 @@ func (s *Scraper) CollectPerformanceMetrics() {
 
 	s.collectQueriesMetrics(ctx, pc)
 	s.collectMetricsPerDB(ctx, pc)
+	s.collectTempFileMetrics(ctx, pc)
 	s.collectCommonPerfMetrics(ctx, pc)
 	s.collectCountStatMetrics(ctx, pc)
 	logger.Info("Performance metrics collection finished")
+}
+
+func (s *Scraper) collectTempFileMetrics(ctx context.Context, pg *postgres.PostgresConnector) {
+	logger.Info("Temp file metrics collection started")
+
+	tempMetricsQueries := map[string]string{
+		"temp_file_size_by_db": ` SELECT now() AS time, datname, 
+		temp_bytes / 1024 / 1024 AS temp_size_mb FROM pg_stat_database
+		WHERE temp_bytes > 0 AND datname IS NOT NULL ORDER BY temp_size_mb DESC; 
+		`,
+		"temp_file_count_by_db": ` SELECT datname, temp_files AS temp_file_count
+		FROM pg_stat_database WHERE temp_files > 0 AND datname IS NOT NULL ORDER BY temp_file_count DESC;
+		`,
+		"temp_file_size_by_query": ` SELECT query, calls AS total_calls,
+		(temp_blks_read + temp_blks_written) * current_setting('block_size')::int / 1024 / 1024 AS temp_size_mb
+		FROM pg_stat_statements WHERE (temp_blks_read > 0 OR temp_blks_written > 0)
+		ORDER BY temp_size_mb DESC LIMIT 10;
+		`,
+		"active_temp_writes": ` SELECT pid, usename, datname, query, state FROM pg_stat_activity
+		WHERE state = 'active' AND datname IS NOT NULL;
+		`,
+	}
+
+	for metricName, query := range tempMetricsQueries {
+		columns, rows := getData(ctx, pg, query)
+		for _, row := range rows {
+			labels := gauges.DefaultLabels()
+			var value string
+
+			if metricName == "active_temp_writes" {
+				value = fmt.Sprintf("%d", len(rows))
+				for _, column := range columns {
+					labels[column] = fmt.Sprintf("%v", row[column])
+				}
+			} else {
+				for _, column := range columns {
+					rValue := fmt.Sprintf("%v", row[column])
+
+					if column == "temp_size_mb" || column == "temp_file_count" || column == "total_calls" {
+						value = rValue
+					} else {
+						labels[column] = rValue
+					}
+				}
+			}
+
+			if value != "" {
+				s.metrics = append(s.metrics, NewMetric(fmt.Sprintf("ma_pg_%s", metricName)).withLabels(labels).setValue(value))
+			} else {
+				logger.Warn(fmt.Sprintf("No numeric value found for metric '%s'", metricName))
+			}
+		}
+	}
+
+	logger.Info("Temp file metrics collection finished")
 }
 
 func (s *Scraper) collectQueriesMetrics(ctx context.Context, pc *postgres.PostgresConnector) {
