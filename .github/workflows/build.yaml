@@ -13,9 +13,12 @@ on:
         default: false
         required: false
 
+concurrency:
+  group: build-and-push-${{ github.ref }}
+  cancel-in-progress: true
+
 env:
   TAG_NAME: ${{ github.event.release.tag_name || github.ref }}
-  GH_ACCESS_TOKEN: ${{ secrets.GH_ACCESS_TOKEN }}
   PUSH: ${{ (github.event_name != 'workflow_dispatch' || inputs.publish_docker) && github.actor != 'dependabot[bot]' }}
 
 jobs:
@@ -73,8 +76,6 @@ jobs:
           push: ${{ env.PUSH }}
           tags: ghcr.io/netcracker/${{ matrix.component.name }}:${{ env.TAG_NAME }}
           provenance: false
-          secrets: |
-            GH_ACCESS_TOKEN=${{ secrets.GH_ACCESS_TOKEN }}
       - uses: actions/delete-package-versions@v5
         with: 
           package-name: ${{ matrix.component.name }}
