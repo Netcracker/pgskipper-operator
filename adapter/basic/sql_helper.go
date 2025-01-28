@@ -112,6 +112,10 @@ func alterOwnerForTable(schema, tableName, userName string) string {
 	return fmt.Sprintf("ALTER TABLE \"%s\".\"%s\" OWNER TO \"%s\"", schema, tableName, userName)
 }
 
+func alterOwnerForSequence(sequenceName, schema, newOwner string) string {
+	return fmt.Sprintf(`ALTER SEQUENCE "%s"."%s" OWNER TO "%s"`, schema, sequenceName, newOwner)
+}
+
 func alterOwnerForLargeObject(schema, oid, userName string) string {
 	return fmt.Sprintf("ALTER LARGE OBJECT %s OWNER TO \"%s\";", oid, userName) //TODO:
 }

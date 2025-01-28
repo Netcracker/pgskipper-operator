@@ -201,7 +201,7 @@ func (sa ServiceAdapter) GrantUsersAccordingRoles(ctx context.Context, dbName st
 			// altering owners for DB resources
 			alterOperations := map[string]func(string, string, string) string{
 				getTablesListQuery(schema, isExternalPg):      alterOwnerForTable,
-				getSequenceListQuery(schema, isExternalPg):    alterOwnerForTable,
+				getSequenceListQuery(schema, isExternalPg):    alterOwnerForSequence,
 				getLargeObjectsListQuery(isExternalPg):        alterOwnerForLargeObject,
 				getViewsListQuery(schema, isExternalPg):       alterViewOwnerQuery,
 				getFunctionsListQuery(schema, isExternalPg):   alterFunctionOwnerQuery,
