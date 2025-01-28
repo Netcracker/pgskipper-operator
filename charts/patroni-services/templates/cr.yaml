@@ -233,6 +233,7 @@ spec:
       failureRetriesLimit: {{ default 5 .Values.siteManager.standbyClusterHealthCheck.failureRetriesLimit }}
       retriesWaitTimeout: {{ default 30 .Values.siteManager.standbyClusterHealthCheck.retriesWaitTimeout }}
 {{ end }}
+{{- if .Values.postgresExporter }}
 {{- if .Values.postgresExporter.install }}
   postgresExporter:
     install: true
@@ -240,6 +241,7 @@ spec:
 {{- if .Values.postgresExporter.customQueries.enabled }}
     customQueries:
 {{ toYaml .Values.postgresExporter.customQueries | indent 6 }}
+{{- end }}
 {{- end }}
 {{- end }}
 {{- if .Values.powaUI.install }}
