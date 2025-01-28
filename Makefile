@@ -1,6 +1,4 @@
 DOCKER_FILE := build/Dockerfile
-export GOPRIVATE=github.com/Netcracker
-export GOSUMDB := off
 TARGET := target
 DISTR_NAME := postgres-operator
 CAPMDGEN_DIR := target/capmdgen

@@ -23,7 +23,6 @@ import (
 	qubershipv1 "github.com/Netcracker/pgskipper-operator/api/apps/v1"
 	patroniv1 "github.com/Netcracker/pgskipper-operator/api/patroni/v1"
 	"github.com/Netcracker/pgskipper-operator/pkg/credentials"
-	"github.com/Netcracker/pgskipper-operator/pkg/deployment"
 	"github.com/Netcracker/pgskipper-operator/pkg/helper"
 	opUtil "github.com/Netcracker/pgskipper-operator/pkg/util"
 	"github.com/Netcracker/pgskipper-operator/pkg/util/constants"
@@ -71,11 +70,8 @@ func (r *MetricCollectorReconciler) Reconcile() error {
 		}
 	}
 
-	// create secret for monitoring user
-	logger.Info(fmt.Sprintf("Checking for %s secret existence", "monitoring-user"))
-	pgSecret := deployment.PatroniSecret(cr.Namespace, "monitoring-user", r.cluster.PatroniLabels)
-	if err := r.helper.CreateSecretIfNotExists(pgSecret); err != nil {
-		logger.Error(fmt.Sprintf("Cannot create secret %s", pgSecret.Name), zap.Error(err))
+	pgSecret, err := r.helper.GetSecret(reconciler.MetricCollectorUserCredentials)
+	if err != nil {
 		return err
 	}
 
@@ -96,7 +92,7 @@ func (r *MetricCollectorReconciler) Reconcile() error {
 	}
 
 	// Add Secret Hash
-	err := manager.AddCredHashToPodTemplate(credentials.PostgresSecretNames, &monitoringDeployment.Spec.Template)
+	err = manager.AddCredHashToPodTemplate(credentials.PostgresSecretNames, &monitoringDeployment.Spec.Template)
 	if err != nil {
 		logger.Error(fmt.Sprintf("can't add secret HASH to annotations for %s", monitoringDeployment.Name), zap.Error(err))
 		return err

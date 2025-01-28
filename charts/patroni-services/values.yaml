@@ -120,6 +120,7 @@ metricCollector:
     limits:
       cpu: 300m
       memory: 256Mi
+  userPassword: "p@ssWOrD1"
   # InfluxDB section
   #  influxDb:
   #    # User for InfluxDB access
