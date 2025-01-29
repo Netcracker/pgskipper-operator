@@ -55,6 +55,13 @@ spec:
               readOnly: true
           {{ end }}
           {{ end }}
+          {{- if not .Values.externalDataBase }}
+          {{- if and .Values.tls .Values.tls.enabled }}
+          volumeMounts:
+            - name: tls-cert
+              mountPath: /certs/
+          {{- end }}
+          {{- end }}
           env:
             - name: WATCH_NAMESPACE
               valueFrom:
@@ -122,15 +129,23 @@ spec:
         - name: {{ $v.name }} 
       {{- end }}     
       {{- end }}
+      volumes:
       {{ if .Values.externalDataBase }}
       {{ if eq (lower .Values.externalDataBase.type) "cloudsql"}}
-      volumes:
         - name: cloudsql-instance-credentials
           secret:
             defaultMode: 420
             secretName: {{ default "cloudsql-instance-credentials" .Values.externalDataBase.authSecretName }}
       {{ end }}
       {{ end }}
+      {{- if not .Values.externalDataBase }}
+      {{- if and .Values.tls .Values.tls.enabled }}
+        - name: tls-cert
+          secret:
+            secretName: {{ .Values.tls.certificateSecretName }}
+            defaultMode: 416
+      {{- end }}
+      {{- end }}
       tolerations:
         {{- range $tKey, $t := .Values.policies.tolerations }}
         - key: {{ $t.key }}

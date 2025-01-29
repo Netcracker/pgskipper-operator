@@ -249,6 +249,15 @@ func getOperatorService(operatorName string, namespace string) *corev1.Service {
 					},
 					Name: "rotate",
 				},
+				{
+					Port:     8443,
+					Protocol: corev1.ProtocolTCP,
+					TargetPort: intstr.IntOrString{
+						Type:   intstr.Int,
+						IntVal: 8443,
+					},
+					Name: "web-tls",
+				},
 			},
 			Selector: label,
 		},

@@ -19,6 +19,7 @@ import (
 	"flag"
 
 	site "github.com/Netcracker/pgskipper-operator/pkg/disasterrecovery"
+	"github.com/Netcracker/pgskipper-operator/pkg/helper"
 	"github.com/Netcracker/pgskipper-operator/pkg/vault"
 
 	"net/http"
@@ -131,9 +132,21 @@ func main() {
 	}
 
 	go func() {
-		errServ := http.ListenAndServe(":8080", nil)
+		var tlsEnabled = false
+		if operatorRole != "patroni" {
+			cr, _ := helper.GetHelper().GetPostgresServiceCR()
+			if cr.Spec.Tls != nil && cr.Spec.Tls.Enabled {
+				tlsEnabled = true
+			}
+		}
+		var errServ error
+		if tlsEnabled {
+			errServ = http.ListenAndServeTLS(":8443", "/certs/tls.crt", "/certs/tls.key", nil)
+		} else {
+			errServ = http.ListenAndServe(":8080", nil)
+		}
 		if errServ != nil {
-			setupLog.Error(err, "problem with operator server")
+			setupLog.Error(errServ, "problem with operator server")
 		}
 	}()
 
