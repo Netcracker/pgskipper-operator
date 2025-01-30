@@ -165,8 +165,6 @@ func (pr *PatroniCoreReconciler) Reconcile(ctx context.Context, request ctrl.Req
 			return reconcile.Result{}, nil
 		}
 	}
-	pr.logger.Info("Reconcile will be started...")
-	time.Sleep(60 * time.Second)
 
 	if pr.errorCounter == 0 {
 		pr.reason = "StartPatroniCoreClusterReconcile"
@@ -193,6 +191,9 @@ func (pr *PatroniCoreReconciler) Reconcile(ctx context.Context, request ctrl.Req
 		pr.logger.Info("Skipping reconciliation retries due to major upgrade enabled")
 		maxReconcileAttempts = 1 // Set to 1 to skip retries
 	}
+
+	pr.logger.Info("Reconcile will be started...")
+	time.Sleep(60 * time.Second)
 
 	err := manager.ActualizeCreds(credentials.PostgresSecretName, credentials.ChangeCredsCore)
 	if err != nil {
