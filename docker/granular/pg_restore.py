@@ -630,8 +630,8 @@ class PostgreSQLRestoreWorker(Thread):
                     conn.autocommit = True
                     with conn.cursor() as cur:
                         cur.execute(
-                            "SELECT 'ALTER TABLE '||schemaname||'.'||tablename||' OWNER TO {};' FROM pg_tables "
-                            "WHERE NOT schemaname IN ('pg_catalog', 'information_schema')".format(role_name))
+                            "SELECT 'ALTER TABLE '||schemaname||'.'||tablename||' OWNER TO \"%(role)s\";' FROM pg_tables "
+                            "WHERE NOT schemaname IN ('pg_catalog', 'information_schema')", {"role": AsIs(role_name)})
                         alter_roles = [r[0] for r in cur.fetchall()]
                         for alter_role in alter_roles:
                             self.log.debug(self.log_msg("Try execute command: %s" % alter_role))
@@ -642,8 +642,8 @@ class PostgreSQLRestoreWorker(Thread):
                                                            "ERROR: {}".format(alter_role, e)))
 
                         cur.execute("SELECT 'ALTER SEQUENCE '||sequence_schema||'.'||sequence_name||' OWNER TO "
-                                    "{};' FROM information_schema.sequences WHERE NOT sequence_schema "
-                                    "IN ('pg_catalog', 'information_schema')".format(role_name))
+                                    "\"%(role)s\";' FROM information_schema.sequences WHERE NOT sequence_schema "
+                                    "IN ('pg_catalog', 'information_schema')", {"role": AsIs(role_name)})
                         alter_sequences = [r[0] for r in cur.fetchall()]
                         for alter_sequence in alter_sequences:
                             self.log.debug(self.log_msg("Try execute command: %s" % alter_sequence))
@@ -653,9 +653,9 @@ class PostgreSQLRestoreWorker(Thread):
                                 self.log.info(self.log_msg("ERROR ALTER SEQUENCE. Command: {} "
                                                            "ERROR: {}".format(alter_sequence, e)))
 
-                        cur.execute("SELECT 'ALTER VIEW '||table_schema||'.'||table_name ||' OWNER TO {};' "
+                        cur.execute("SELECT 'ALTER VIEW '||table_schema||'.'||table_name ||' OWNER TO \"%(role)s\";' "
                                     "FROM information_schema.views WHERE NOT table_schema "
-                                    "IN ('pg_catalog', 'information_schema')".format(role_name))
+                                    "IN ('pg_catalog', 'information_schema')", {"role": AsIs(role_name)})
                         alter_views = [r[0] for r in cur.fetchall()]
                         for alter_view in alter_views:
                             self.log.debug(self.log_msg("Try execute command: %s" % alter_view))
@@ -664,10 +664,11 @@ class PostgreSQLRestoreWorker(Thread):
                             except Exception as e:
                                 self.log.info(self.log_msg("ERROR ALTER VIEW. Command: {} "
                                                            "ERROR: {}".format(alter_view, e)))
-                        cur.execute("GRANT {} TO {};".format(role_name, configs.postgresql_user()))
+                        cur.execute("GRANT \"%(role)s\" TO \"%(admin)s\";", {"role": AsIs(role_name),
+                                                                             "admin": AsIs(configs.postgresql_user())})
                         try:
                             cur.execute(
-                                "ALTER ROLE {} WITH LOGIN;".format(role_name))
+                                "ALTER ROLE \"%(role)s\" WITH LOGIN;", {"role": AsIs(role_name)})
                         except Exception as e:
                             self.log.info(self.log_msg("ERROR ALTER ROLE {} WITH LOGIN "
                                                        "ERROR: {}".format(role_name, e)))

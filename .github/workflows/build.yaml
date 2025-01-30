@@ -15,7 +15,7 @@ on:
 
 env:
   TAG_NAME: ${{ github.event.release.tag_name || github.ref }}
-  PUSH: ${{ github.event_name != 'workflow_dispatch' || inputs.publish_docker }}
+  PUSH: ${{ (github.event_name != 'workflow_dispatch' || inputs.publish_docker) && github.actor != 'dependabot[bot]' }}
 
 jobs:
   multiplatform_build:
