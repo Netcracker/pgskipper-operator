@@ -11,8 +11,6 @@ jobs:
     runs-on: ubuntu-24.04
     steps:
       - uses: actions/checkout@v4
-        with:
-          token: ${{ secrets.GH_ACCESS_TOKEN }}
       - run: docker run -v "${PWD}:/src" -i ghcr.io/google/addlicense -v -c "${{ env.COPYRIGHT_COMPANY }}" -y "${{ env.COPYRIGHT_YEAR }}" $(find . -type f -name "*.go" -o -type f -name "*.sh" -o -type f -name "*.py" | xargs echo)
       - name: Create Pull Request
         uses: peter-evans/create-pull-request@v7

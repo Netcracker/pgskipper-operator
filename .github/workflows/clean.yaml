@@ -4,7 +4,6 @@ on: delete
 env:
   COMPONENT_NAME: pgskipper-dbaas-adapter
   TAG_NAME: ${{ github.event.ref }}
-  GH_ACCESS_TOKEN: ${{ secrets.GH_ACCESS_TOKEN }}
 
 jobs:
   delete:
@@ -25,7 +24,7 @@ jobs:
         with:
           component-name: ${{ env.COMPONENT_NAME }}
           component-tag: ${{ env.TAG_NAME }}
-          access-token: ${{ secrets.GH_ACCESS_TOKEN }}
+          access-token: ${{secrets.GITHUB_TOKEN}}
       - uses: actions/delete-package-versions@v5
         with: 
           package-name: pgskipper-dbaas-adapter
