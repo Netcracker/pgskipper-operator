@@ -195,15 +195,11 @@ func (pr *PatroniCoreReconciler) Reconcile(ctx context.Context, request ctrl.Req
 	pr.logger.Info("Reconcile will be started...")
 	time.Sleep(60 * time.Second)
 
-	err := manager.ActualizeCreds(credentials.PostgresSecretName, credentials.ChangeCredsCore)
-	if err != nil {
-		pr.logger.Error("cannot update Postgres creds", zap.Error(err))
-		return reconcile.Result{RequeueAfter: time.Minute}, nil
-	}
-	err = manager.SetOwnerRefForSecretCopies(credentials.PostgresSecretNames, pr.helper.GetOwnerReferences())
-	if err != nil {
-		pr.logger.Error("cannot update secrets Owner References", zap.Error(err))
-		return reconcile.Result{RequeueAfter: time.Minute}, nil
+	if err := credentials.ProcessCreds(pr.helper.GetOwnerReferences()); err != nil {
+		return pr.handleReconcileError(maxReconcileAttempts,
+			"CanNotActualizeCredsOnCluster",
+			newCrHash,
+			err)
 	}
 
 	if len(cr.RunTestsTime) > 0 {
@@ -216,28 +212,10 @@ func (pr *PatroniCoreReconciler) Reconcile(ctx context.Context, request ctrl.Req
 				}
 			case error:
 				{
-					pr.errorCounter++
-					maxReconcileAttempts, errStrConv := strconv.Atoi(util.GetEnv("PG_RECONCILE_RETRIES", "1"))
-					if errStrConv != nil {
-						maxReconcileAttempts = int(2)
-					}
-
-					if pr.errorCounter < maxReconcileAttempts {
-						pr.logger.Error(fmt.Sprintf("Error counter: %d, let's try to run the reconcile again", pr.errorCounter))
-						pr.reason = "ReconcilePostgresServiceClusterFailed"
-						pr.message = "Postgres-operator service reconcile cycle failed"
-						if err := pr.updateStatus(Failed, "ReconcilePostgresServiceClusterFailed",
-							fmt.Sprintf("Postgres service reconcile cycle failed. Error: %s", err.Error())); err != nil {
-							pr.logger.Error("Cannot update CR status", zap.Error(err))
-							return reconcile.Result{RequeueAfter: time.Minute}, err
-						}
-						return reconcile.Result{RequeueAfter: time.Minute}, err
-					}
-
-					pr.logger.Error(fmt.Sprintf("Failed reconcile attempts: %d, updating crHash, resVersions", pr.errorCounter))
-					pr.crHash = newCrHash
-					pr.errorCounter = 0
-					return reconcile.Result{RequeueAfter: time.Minute}, err
+					return pr.handleReconcileError(maxReconcileAttempts,
+						"ReconcilePostgresServiceClusterFailed",
+						newCrHash,
+						err)
 				}
 
 			default:
@@ -275,24 +253,10 @@ func (pr *PatroniCoreReconciler) Reconcile(ctx context.Context, request ctrl.Req
 			}
 		case error:
 			{
-				pr.errorCounter++
-
-				if pr.errorCounter < maxReconcileAttempts {
-					pr.logger.Error(fmt.Sprintf("Error counter: %d, let's try to run the reconcile again", pr.errorCounter))
-					pr.reason = "ReconcilePatroniCoreClusterFailed"
-					pr.message = "PatroniCore service reconcile cycle failed"
-					if err := pr.updateStatus(Failed, "ReconcilePatroniCoreClusterFailed",
-						fmt.Sprintf("Postgres service reconcile cycle failed. Error: %s", err.Error())); err != nil {
-						pr.logger.Error("Cannot update CR status", zap.Error(err))
-						return reconcile.Result{RequeueAfter: time.Minute}, err
-					}
-					return reconcile.Result{RequeueAfter: time.Minute}, err
-				}
-
-				pr.logger.Error(fmt.Sprintf("Failed reconcile attempts: %d, updating crHash, resVersions", pr.errorCounter))
-				pr.crHash = newCrHash
-				pr.errorCounter = 0
-				return reconcile.Result{RequeueAfter: time.Minute}, err
+				return pr.handleReconcileError(maxReconcileAttempts,
+					"ReconcilePatroniCoreClusterFailed",
+					newCrHash,
+					err)
 			}
 
 		default:
@@ -335,7 +299,7 @@ func (pr *PatroniCoreReconciler) Reconcile(ctx context.Context, request ctrl.Req
 		}
 	}
 
-	err = informer.Watch(credentials.PostgresSecretNames, reconcFunc)
+	err := informer.Watch(credentials.PostgresSecretNames, reconcFunc)
 	if err != nil {
 		pr.logger.Error("cannot start watcher", zap.Error(err))
 		return reconcile.Result{RequeueAfter: time.Minute}, err
@@ -374,12 +338,8 @@ func (pr *PatroniCoreReconciler) handleTestReconcileError(err error, errMsg stri
 		}
 		return reconcile.Result{}, err
 	}
-
-	pr.logger.Error(fmt.Sprintf("Failed reconcile attempts: %d, updating crHash, resVersions", pr.errorCounter))
 	pr.logger.Error("Reconciliation cycle failed due to test pod ended with error")
-	pr.crHash = newCrHash
-	pr.errorCounter = 0
-	return reconcile.Result{RequeueAfter: time.Minute}, err
+	return pr.stopReconcile(newCrHash, err)
 }
 
 func (pr *PatroniCoreReconciler) reconcilePatroniCoreCluster(cr *qubershipv1.PatroniCore) error {
@@ -522,4 +482,27 @@ func (pr *PatroniCoreReconciler) createTestsPods(cr *qubershipv1.PatroniCore) er
 		}
 	}
 	return nil
+}
+
+func (pr *PatroniCoreReconciler) stopReconcile(newCrHash string, err error) (ctrl.Result, error) {
+	pr.logger.Error(fmt.Sprintf("Failed reconcile attempts: %d, updating crHash, resVersions", pr.errorCounter))
+	pr.crHash = newCrHash
+	pr.errorCounter = 0
+	return reconcile.Result{RequeueAfter: time.Minute}, err
+}
+
+func (pr *PatroniCoreReconciler) handleReconcileError(maxAttempts int, reason, newCrHash string, err error) (ctrl.Result, error) {
+	pr.errorCounter++
+	if pr.errorCounter < maxAttempts {
+		pr.logger.Error(fmt.Sprintf("Error counter: %d, let's try to run the reconcile again", pr.errorCounter))
+		pr.reason = reason
+		pr.message = "PatroniCore service reconcile cycle failed"
+		if err := pr.updateStatus(Failed, reason,
+			fmt.Sprintf("Postgres service reconcile cycle failed. Error: %s", err.Error())); err != nil {
+			pr.logger.Error("Cannot update CR status", zap.Error(err))
+			return reconcile.Result{RequeueAfter: time.Minute}, err
+		}
+		return reconcile.Result{RequeueAfter: time.Minute}, err
+	}
+	return pr.stopReconcile(newCrHash, err)
 }

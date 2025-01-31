@@ -23,8 +23,10 @@ import (
 	"github.com/Netcracker/pgskipper-operator/pkg/helper"
 	"github.com/Netcracker/pgskipper-operator/pkg/util"
 	"github.com/Netcracker/qubership-credential-manager/pkg/manager"
+	"go.uber.org/zap"
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
 const (
@@ -137,6 +139,20 @@ func updateDeploymentWithHash(rm *helper.ResourceManager, annotationName string,
 		if err != nil {
 			return err
 		}
+	}
+	return nil
+}
+
+func ProcessCreds(ownerRef []metav1.OwnerReference) error {
+	err := manager.ActualizeCreds(PostgresSecretName, ChangeCredsCore)
+	if err != nil {
+		logger.Error("cannot update Postgres creds", zap.Error(err))
+		return err
+	}
+	err = manager.SetOwnerRefForSecretCopies(PostgresSecretNames, ownerRef)
+	if err != nil {
+		logger.Error("cannot update secrets Owner References", zap.Error(err))
+		return err
 	}
 	return nil
 }
