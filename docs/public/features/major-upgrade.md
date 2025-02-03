@@ -30,6 +30,9 @@ The prerequisites to upgrade the Major version of PostgreSQL are as follows:
     - First of all you have to upgrade `Patroni Core` from `postgres:1.32.0-delivery_pg14` -> `postgres:1.33.0-delivery_pg14`
     - Only after manifest upgrade ends with success, you may do the MajorUpgrade from pg14 to pg15 `postgres:1.33.0-delivery_pg14` -> `postgres:1.33.0-delivery_pg15`
 * Perform a full backup before the procedure.  
+
+## Deprecated abstime
+
 * In case of deprecated `abstime` data type for PostgreSQL 12 and above, you should check the database for the presence of such tables.
   Here is a script, that you may use to find all the databases includes `abstime`.
 
@@ -192,6 +195,28 @@ CREATE EXTENSION powa;
 ```
 
 All of the `CREATE`/`DROP` statements should be performed in `powa` PostgreSQL database.
+
+# Incompatible data type 'abstime'
+
+This error refers to [Deprecated abstime](#deprecated-abstime)
+
+```
+{"level":"warn","timestamp":"2025-01-28T07:16:20.629Z","msg":"Cannot check incompatible data type 'abstime' on database hvnes_dbaas_db","error":"failed to connect to `host=pg-patroni.plat-dev-1-pg.svc.cluster.local user=postgres database=hvnes_dbaas_db`: server error (FATAL: cannot connect to invalid database \"hvnes_dbaas_db\" (SQLSTATE 55000))"}
+``` 
+
+**Manual Steps Are:**
+
+It is necessary to check if database exists:
+
+```
+SELECT 1 FROM information_schema.columns WHERE data_type = 'abstime' AND table_schema <> 'pg_catalog';
+```
+
+If no rows was found then drop db and restart upgrade procedure:
+
+```
+drop database hvnes_dbaas_db;
+```
 
 # Breaking Changes
 
