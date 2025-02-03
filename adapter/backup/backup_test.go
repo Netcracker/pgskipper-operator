@@ -280,8 +280,10 @@ func TestTrackBackupTest(t *testing.T) {
 
 	backupAdapater := NewServiceAdapter(nil, aggAddress, "", false, "", "", "")
 
-	trackStatus := backupAdapater.TrackBackup(context.Background(), "20240105T0836")
-	backupStatus := backupAdapater.getBackupStatus(context.Background(), "20240105T0836")
+	trackStatus, found := backupAdapater.TrackBackup(context.Background(), "20240105T0836")
+	assert.Equal(t, found, true)
+	backupStatus, found := backupAdapater.getBackupStatus(context.Background(), "20240105T0836")
+	assert.Equal(t, found, true)
 	BackupActionTrack := newPostgresAdapterBackupActionTrack(backupStatus)
 
 	fmt.Printf("Backup new statysStatus: %v\n", trackStatus)
@@ -303,10 +305,10 @@ func TestTrackRestoreStatus(t *testing.T) {
 
 	backupAdapater := NewServiceAdapter(nil, aggAddress, "", false, "", "", "")
 
-	backupStatus := backupAdapater.TrackRestore(context.Background(), "20240105T0836")
-
-	backupRestoreStatus, err := backupAdapater.getRestoreStatus(context.Background(), "20240105T0836")
-	assert.Nil(t, err)
+	backupStatus, found := backupAdapater.TrackRestore(context.Background(), "20240105T0836")
+	assert.Equal(t, found, true)
+	backupRestoreStatus, found := backupAdapater.getRestoreStatus(context.Background(), "20240105T0836")
+	assert.Equal(t, found, true)
 	fmt.Printf("Backup restire Status small: %v\n", backupRestoreStatus)
 	RestoreActionTrack := newPostgresAdapterRestoreActionTrack(backupRestoreStatus)
 	fmt.Printf("Backup restire Status: %v\n", backupStatus)
@@ -394,7 +396,7 @@ func TestInvalidEndpointStatus(t *testing.T) {
 	ResponseStatus, err := backupAdapater.sendRequest(context.Background(), "POST", "/postgres/", statusRequestBody)
 	assert.Nil(t, err)
 
-	str := asciiToStr(ResponseStatus)
+	str := asciiToStr(ResponseStatus.Body)
 	assert.Equal(t, str, "Invalid Endpoint\n")
 
 }

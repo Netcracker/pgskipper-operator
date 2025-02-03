@@ -75,3 +75,8 @@ type PostgresBackupDeleteResponse struct {
 	Status   string `json:"status"`
 	Message  string `json:"message"`
 }
+
+type BackupDaemonResponse struct {
+	Status int
+	Body   []byte
+}

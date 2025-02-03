@@ -21,6 +21,7 @@ import (
 	"encoding/base64"
 	"encoding/json"
 	"fmt"
+	"net/http"
 	"os"
 	"strings"
 	"sync"
@@ -137,7 +138,7 @@ func setTLSConfig() *tls.Config {
 	}
 	return tlsConfig
 }
-func (ba BackupAdapter) sendRequest(ctx context.Context, method string, path string, body interface{}) ([]byte, error) {
+func (ba BackupAdapter) sendRequest(ctx context.Context, method string, path string, body interface{}) (*BackupDaemonResponse, error) {
 	logger := util.ContextLogger(ctx)
 	url := ba.getUrl(path)
 	req := fasthttp.AcquireRequest()
@@ -175,7 +176,7 @@ func (ba BackupAdapter) sendRequest(ctx context.Context, method string, path str
 	responseBodyCopy := make([]byte, len(responseBody))
 	copy(responseBodyCopy, responseBody)
 
-	return responseBodyCopy, nil
+	return &BackupDaemonResponse{Status: res.StatusCode(), Body: responseBodyCopy}, nil
 }
 
 func (ba BackupAdapter) CollectBackup(ctx context.Context, databases []string, keepFromRequest string, allowEviction bool) dao.DatabaseAdapterBaseTrack {
@@ -202,67 +203,76 @@ func (ba BackupAdapter) CollectBackup(ctx context.Context, databases []string, k
 	}
 
 	var postgresDaemonBackup PostgresDaemonBackup
-	err = json.Unmarshal(response, &postgresDaemonBackup)
+	err = json.Unmarshal(response.Body, &postgresDaemonBackup)
 	if err != nil {
 		logger.Error("Error during unmarshal response from /backup/request", zap.Error(err))
 		panic(err)
 	}
 
-	trackBackup := ba.TrackBackup(ctx, postgresDaemonBackup.BackupId)
+	trackBackup, _ := ba.TrackBackup(ctx, postgresDaemonBackup.BackupId)
 
 	return trackBackup
 }
 
-func (ba BackupAdapter) TrackRestore(ctx context.Context, trackId string) dao.DatabaseAdapterRestoreTrack {
+func (ba BackupAdapter) TrackRestore(ctx context.Context, trackId string) (dao.DatabaseAdapterRestoreTrack, bool) {
 	logger := util.ContextLogger(ctx)
 	logger.Info(fmt.Sprintf("Request status information for restore %s to daemon %s", trackId, ba.DaemonAddress))
-	status, err := ba.getRestoreStatus(ctx, trackId)
-	if err != nil {
-		panic(err)
+	status, found := ba.getRestoreStatus(ctx, trackId)
+	if !found {
+		return dao.DatabaseAdapterRestoreTrack{}, false
 	}
 
-	return newPostgresAdapterRestoreActionTrack(status)
+	return newPostgresAdapterRestoreActionTrack(status), true
 }
 
-func (ba BackupAdapter) TrackBackup(ctx context.Context, trackId string) dao.DatabaseAdapterBaseTrack {
+func (ba BackupAdapter) TrackBackup(ctx context.Context, trackId string) (dao.DatabaseAdapterBaseTrack, bool) {
 	logger := util.ContextLogger(ctx)
 	logger.Info(fmt.Sprintf("Request status information for backup %s to daemon %s", trackId, ba.DaemonAddress))
-	status := ba.getBackupStatus(ctx, trackId)
+	status, found := ba.getBackupStatus(ctx, trackId)
+	if !found {
+		return dao.DatabaseAdapterBaseTrack{}, false
+	}
 
-	return newPostgresAdapterBackupActionTrack(status)
+	return newPostgresAdapterBackupActionTrack(status), true
 }
 
-func (ba BackupAdapter) getBackupStatus(ctx context.Context, trackId string) *PostgresBackupStatus {
+func (ba BackupAdapter) getBackupStatus(ctx context.Context, trackId string) (*PostgresBackupStatus, bool) {
 	response, err := ba.sendRequest(ctx, Get, "/backup/status/"+trackId, nil)
 	if err != nil {
 		panic(err)
 	}
+	if response.Status == http.StatusNotFound {
+		return nil, false
+	}
 
 	var backupStatus PostgresBackupStatus
-	err = json.Unmarshal(response, &backupStatus)
+	err = json.Unmarshal(response.Body, &backupStatus)
 	if err != nil {
 		util.ContextLogger(ctx).Error("Error during unmarshal response from /backup/status", zap.Error(err))
 		panic(err)
 	}
 
-	return &backupStatus
+	return &backupStatus, true
 }
 
-func (ba BackupAdapter) getRestoreStatus(ctx context.Context, trackId string) (*PostgresRestoreStatus, error) {
+func (ba BackupAdapter) getRestoreStatus(ctx context.Context, trackId string) (*PostgresRestoreStatus, bool) {
 	logger := util.ContextLogger(ctx)
 	response, err := ba.sendRequest(ctx, Get, "/restore/status/"+trackId, nil)
 	if err != nil {
-		return nil, err
+		panic(err)
+	}
+	if response.Status == http.StatusNotFound {
+		return nil, false
 	}
 
 	var restoreStatus PostgresRestoreStatus
-	err = json.Unmarshal(response, &restoreStatus)
+	err = json.Unmarshal(response.Body, &restoreStatus)
 	if err != nil {
 		logger.Error("Error during unmarshal response from /restore/request", zap.Error(err))
-		return nil, err
+		panic(err)
 	}
 
-	return &restoreStatus, nil
+	return &restoreStatus, true
 }
 
 func (ba BackupAdapter) EvictBackup(ctx context.Context, backupId string) string {
@@ -273,7 +283,7 @@ func (ba BackupAdapter) EvictBackup(ctx context.Context, backupId string) string
 	}
 
 	var deleteResponse PostgresBackupDeleteResponse
-	err = json.Unmarshal(response, &deleteResponse)
+	err = json.Unmarshal(response.Body, &deleteResponse)
 	if err != nil {
 		logger.Error("Error during parse delete response", zap.Error(err))
 		panic(err)
@@ -327,7 +337,7 @@ func (ba BackupAdapter) RestoreBackup(ctx context.Context, backupId string, data
 	}
 
 	var postgresRestoreResponse PostgresRestoreResponse
-	err = json.Unmarshal(response, &postgresRestoreResponse)
+	err = json.Unmarshal(response.Body, &postgresRestoreResponse)
 	if err != nil {
 		logger.Error("Error during parse response from backupDaemon", zap.Error(err))
 		return nil, err
