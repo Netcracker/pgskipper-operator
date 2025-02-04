@@ -42,7 +42,7 @@ class StorageLocationAlreadyExistsException(Exception):
 VAULT_NAME_FORMAT = "%Y%m%dT%H%M"
 VAULT_DIRNAME_MATCHER = re.compile("\\d{8}T\\d{4}", re.IGNORECASE)
 # pg_{}_archive_{}
-ARCHIVE_NAME_MATCHER = re.compile("pg_(.*)_archive_(?P<name>[\da-f]+(\.\d+\.backup)?(\.partial)?(\.bk)?)$", re.IGNORECASE)
+ARCHIVE_NAME_MATCHER = re.compile("pg_(.*)_archive_(?P<name>[\da-f]+(\.[\da-f]+\.backup)?(\.partial)?(\.bk)?)$", re.IGNORECASE)
 # print(ARCHIVE_NAME_MATCHER.match("pg_common_archive_000000320000004600000066").group("name"))
 # print(ARCHIVE_NAME_MATCHER.match("pg_common_archive_0000001B000000100000003E.bk").group("name"))
 # print(ARCHIVE_NAME_MATCHER.match("pg_common_archive_0000003200000046000000A3.00000028.backup").group("name"))
