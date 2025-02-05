@@ -389,6 +389,7 @@ func (u *Upgrade) ProceedUpgrade(cr *v1.PatroniCore, cluster *v1.PatroniClusterS
 	// copy nodeSelector, Volumes, SecurityContext from Deployment
 	upgradePod.Spec.NodeSelector = patroniDeployment.Spec.Template.Spec.NodeSelector
 	upgradePod.Spec.Volumes = patroniDeployment.Spec.Template.Spec.Volumes
+	upgradePod.Spec.Containers[0].VolumeMounts = patroniDeployment.Spec.Template.Spec.Containers[0].VolumeMounts
 	upgradePod.Spec.SecurityContext = patroniDeployment.Spec.Template.Spec.SecurityContext
 
 	// create pod and wait till completed
