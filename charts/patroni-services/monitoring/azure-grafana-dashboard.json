@@ -1175,9 +1175,10 @@
       {
         "allValue": ".+",
         "current": {
+          "isNone": true,
           "selected": false,
-          "text": "pg-ssl-test-Flexible",
-          "value": "pg-ssl-test-Flexible"
+          "text": "None",
+          "value": ""
         },
         "datasource": {
           "type": "prometheus",
