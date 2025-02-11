@@ -46,7 +46,7 @@ var generatorMutex = sync.Mutex{}
 func newPostgresAdapterBackupActionTrack(task *PostgresBackupStatus) dao.DatabaseAdapterBaseTrack {
 	var details *dao.DatabasesBackupAdapt = nil
 
-	if "Successful" == task.Status {
+	if task.Status == "Successful" {
 		details = &dao.DatabasesBackupAdapt{
 			LocalId: task.BackupId,
 		}
@@ -275,13 +275,15 @@ func (ba BackupAdapter) getRestoreStatus(ctx context.Context, trackId string) (*
 	return &restoreStatus, true
 }
 
-func (ba BackupAdapter) EvictBackup(ctx context.Context, backupId string) string {
+func (ba BackupAdapter) EvictBackup(ctx context.Context, backupId string) (string, bool) {
 	logger := util.ContextLogger(ctx)
 	response, err := ba.sendRequest(ctx, Post, "/delete/"+backupId, nil)
 	if err != nil {
 		panic(err)
 	}
-
+	if response.Status == http.StatusNotFound {
+		return "", false
+	}
 	var deleteResponse PostgresBackupDeleteResponse
 	err = json.Unmarshal(response.Body, &deleteResponse)
 	if err != nil {
@@ -298,7 +300,7 @@ func (ba BackupAdapter) EvictBackup(ctx context.Context, backupId string) string
 		}
 	}
 	//todo
-	return status
+	return status, true
 
 }
 

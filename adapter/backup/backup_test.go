@@ -168,7 +168,7 @@ func startTestServer() {
 		}
 
 		//EVictBackup
-		EvictBackupPrefix := "/delete/"
+		EvictBackupPrefix := "/delete/20240105T0836"
 		if strings.HasPrefix(r.URL.Path, EvictBackupPrefix) {
 			trackId := strings.TrimPrefix(r.URL.Path, EvictBackupPrefix)
 
@@ -271,11 +271,6 @@ func TestTrackBackupTest(t *testing.T) {
 
 	statusRequestBody := PostgresBackupStatus{
 		BackupId: "20240105T0836",
-		Status:   "Successful",
-		Databases: map[string]PostgresDatabaseBackupStatus{
-			"db1": {Status: "Successful"},
-			"db2": {Status: "In progress"},
-		},
 	}
 
 	backupAdapater := NewServiceAdapter(nil, aggAddress, "", false, "", "", "")
@@ -300,7 +295,6 @@ func TestTrackRestoreStatus(t *testing.T) {
 
 	statusRequestBody := PostgresRestoreStatus{
 		TrackingId: "20240105T0836",
-		Status:     "SUCCESS",
 	}
 
 	backupAdapater := NewServiceAdapter(nil, aggAddress, "", false, "", "", "")
@@ -325,10 +319,25 @@ func TestEvictBackupStatus(t *testing.T) {
 
 	backupAdapater := NewServiceAdapter(nil, aggAddress, "", false, "", "", "")
 
-	backupStatus := backupAdapater.EvictBackup(context.Background(), "20240105T0836")
+	backupStatus, isFound := backupAdapater.EvictBackup(context.Background(), "20240105T0836")
 
-	fmt.Printf("Backup EVICT NEwStatus: %v\n", backupStatus)
+	fmt.Printf("Backup EVICT NewStatus: %v\n", backupStatus)
 	assert.Equal(t, backupStatus, "SUCCESS")
+	assert.Equal(t, true, isFound)
+
+}
+
+func TestEvictBackupIdNotFound(t *testing.T) {
+
+	aggAddress := "http://localhost:8080"
+
+	backupAdapater := NewServiceAdapter(nil, aggAddress, "", false, "", "", "")
+
+	backupStatus, isFound := backupAdapater.EvictBackup(context.Background(), "20240105T0833")
+
+	fmt.Printf("Backup EVICT NewStatus: %v\n", backupStatus)
+	assert.Equal(t, backupStatus, "")
+	assert.Equal(t, false, isFound)
 
 }
 
