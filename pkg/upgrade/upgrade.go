@@ -445,6 +445,7 @@ func (u *Upgrade) ProceedUpgrade(cr *v1.PatroniCore, cluster *v1.PatroniClusterS
 	}
 
 	if cr.Spec.PgBackRest != nil {
+		logger.Info("executing code to upgrade pgBackRest stanza")
 		stdout, stderr, err := u.helper.ExecCmdOnPod(masterPodName, namespace, backRestcontainer, backRestcommand)
 		if err != nil {
 			fmt.Printf("Failed to execute stanza-upgrade command: %v\nStderr: %s\n", err, stderr)
