@@ -283,28 +283,33 @@ func UpdatePreloadLibraries(cr *qubershipv1.PatroniCore, preloadLibraries []stri
 	//helper.UpdatePostgresService()
 }
 
+// new method for executing commnad in patroni pod terminal
 func (ph *PatroniHelper) ExecCmdOnPatroniPod(podName string, namespace string, command string) (string, string, error) {
+	container := util.GetContainerNameForPatroniPod(podName)
+	return ph.ExecCmdOnPod(podName, namespace, container, command)
+}
+
+func (ph *PatroniHelper) ExecCmdOnPod(podName string, namespace string, container string, command string) (string, string, error) {
 	client := ph.kubeClientSet
-	logger.Debug(fmt.Sprintf("Executing shell command: %s  on pod %s", command, podName))
+	logger.Debug(fmt.Sprintf("Executing shell command: %s on pod %s, container %s", command, podName, container))
+
 	config, err := rest.InClusterConfig()
 	if err != nil {
-		panic(err.Error())
+		return "", "", fmt.Errorf("error getting cluster config: %v", err)
 	}
 
 	execParams := &v1.PodExecOptions{
-		Command: []string{"/bin/sh", "-c", command},
-		Stdin:   false,
-		Stdout:  true,
-		Stderr:  true,
-		TTY:     true,
-	}
-
-	if strings.Contains(podName, "patroni") {
-		execParams.Container = util.GetContainerNameForPatroniPod(podName)
+		Command:   []string{"/bin/sh", "-c", command},
+		Container: container,
+		Stdin:     false,
+		Stdout:    true,
+		Stderr:    true,
+		TTY:       false,
 	}
 
 	buf := &bytes.Buffer{}
 	errBuf := &bytes.Buffer{}
+
 	request := client.CoreV1().RESTClient().
 		Post().
 		Namespace(namespace).
@@ -312,20 +317,67 @@ func (ph *PatroniHelper) ExecCmdOnPatroniPod(podName string, namespace string, c
 		Name(podName).
 		SubResource("exec").
 		VersionedParams(execParams, scheme.ParameterCodec)
+
 	exec, err := remotecommand.NewSPDYExecutor(config, "POST", request.URL())
 	if err != nil {
 		return "", "", fmt.Errorf("error creating SPDY executor: %v", err)
 	}
+
 	err = exec.StreamWithContext(context.Background(), remotecommand.StreamOptions{
 		Stdout: buf,
 		Stderr: errBuf,
 	})
+
 	if err != nil {
-		logger.Error(fmt.Sprintf("Executing shell command: Error: \n%v\nerrBuf: %v", err, errBuf))
-		return "", "", fmt.Errorf("%w Failed executing command %s on %v/%v", err, command, namespace, podName)
+		return buf.String(), errBuf.String(), fmt.Errorf("error executing command: %v, stderr: %s", err, errBuf.String())
 	}
+
 	return buf.String(), errBuf.String(), nil
 }
+
+// func (ph *PatroniHelper) ExecCmdOnPatroniPod(podName string, namespace string, command string) (string, string, error) {
+// 	client := ph.kubeClientSet
+// 	logger.Debug(fmt.Sprintf("Executing shell command: %s  on pod %s", command, podName))
+// 	config, err := rest.InClusterConfig()
+// 	if err != nil {
+// 		panic(err.Error())
+// 	}
+
+// 	execParams := &v1.PodExecOptions{
+// 		Command: []string{"/bin/sh", "-c", command},
+// 		Stdin:   false,
+// 		Stdout:  true,
+// 		Stderr:  true,
+// 		TTY:     true,
+// 	}
+
+// 	if strings.Contains(podName, "patroni") {
+// 		execParams.Container = util.GetContainerNameForPatroniPod(podName)
+// 	}
+
+// 	buf := &bytes.Buffer{}
+// 	errBuf := &bytes.Buffer{}
+// 	request := client.CoreV1().RESTClient().
+// 		Post().
+// 		Namespace(namespace).
+// 		Resource("pods").
+// 		Name(podName).
+// 		SubResource("exec").
+// 		VersionedParams(execParams, scheme.ParameterCodec)
+// 	exec, err := remotecommand.NewSPDYExecutor(config, "POST", request.URL())
+// 	if err != nil {
+// 		return "", "", fmt.Errorf("error creating SPDY executor: %v", err)
+// 	}
+// 	err = exec.StreamWithContext(context.Background(), remotecommand.StreamOptions{
+// 		Stdout: buf,
+// 		Stderr: errBuf,
+// 	})
+// 	if err != nil {
+// 		logger.Error(fmt.Sprintf("Executing shell command: Error: \n%v\nerrBuf: %v", err, errBuf))
+// 		return "", "", fmt.Errorf("%w Failed executing command %s on %v/%v", err, command, namespace, podName)
+// 	}
+// 	return buf.String(), errBuf.String(), nil
+// }
 
 func (ph *PatroniHelper) RevokeGrantOnPublicSchema(pgHost string) error {
 	const dbName = "template1"

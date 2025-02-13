@@ -311,6 +311,8 @@ func (u *Upgrade) ProceedUpgrade(cr *v1.PatroniCore, cluster *v1.PatroniClusterS
 	}
 	masterPodName := masterPod.Items[0].Name
 	namespace := util.GetNameSpace()
+	backRestcontainer := "pgbackrest-sidecar" // The sidecar container for pgBackRest
+	backRestcommand := "pgbackrest stanza-upgrade"
 	command := "pg_dumpall -v -U postgres -w --file=/tmp/test_db_dumpall.custom --schema-only"
 	_, _, err = u.helper.ExecCmdOnPatroniPod(masterPodName, namespace, command)
 	if err != nil {
@@ -440,6 +442,15 @@ func (u *Upgrade) ProceedUpgrade(cr *v1.PatroniCore, cluster *v1.PatroniClusterS
 	//Upgrade complete, scaling up powa-ui deployment
 	if err := u.ScalePowaDeployment(1); err != nil {
 		return err
+	}
+
+	if cr.Spec.PgBackRest != nil {
+		stdout, stderr, err := u.helper.ExecCmdOnPod(masterPodName, namespace, backRestcontainer, backRestcommand)
+		if err != nil {
+			fmt.Printf("Failed to execute stanza-upgrade command: %v\nStderr: %s\n", err, stderr)
+		} else {
+			fmt.Printf("stanza-upgrade command succeeded:\n%s\n", stdout)
+		}
 	}
 
 	if err := u.UpdateUpgradeToDone(); err != nil {
