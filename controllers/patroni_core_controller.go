@@ -53,6 +53,7 @@ import (
 // PatroniCoreReconciler reconciles a PatroniCore object
 
 var (
+	MasterLabel                   = map[string]string{"pgtype": "master"}
 	patroniCoreOperatorLockCmName = "patroni-core-operator-lock"
 	//pgHost                          = util.GetEnv("POSTGRES_HOST", "pg-patroni")
 )
@@ -308,6 +309,25 @@ func (pr *PatroniCoreReconciler) Reconcile(ctx context.Context, request ctrl.Req
 	if err := pr.AddExcludeLabelToCm(pr.Client, patroniCoreOperatorLockCmName); err != nil {
 		pr.logger.Error("Cannot update operator config map", zap.Error(err))
 		return reconcile.Result{RequeueAfter: time.Minute}, err
+	}
+
+	if cr.Spec.PgBackRest != nil {
+		masterPod, err := pr.helper.ResourceManager.GetPodsByLabel(MasterLabel)
+		if err != nil || len(masterPod.Items) == 0 {
+			pr.logger.Error("Can't get Patroni Leader for stanza upgrade execution", zap.Error(err))
+			return reconcile.Result{RequeueAfter: time.Minute}, err
+		}
+		masterPodName := masterPod.Items[0].Name
+		namespace := util.GetNameSpace()
+		backRestcontainer := "pgbackrest-sidecar"
+		backRestcommand := "pgbackrest stanza-upgrade"
+		pr.logger.Info("executing command to upgrade pgBackRest stanza")
+		stdout, stderr, err := pr.helper.ExecCmdOnPod(masterPodName, namespace, backRestcontainer, backRestcommand)
+		if err != nil {
+			fmt.Printf("Failed to execute stanza-upgrade command: %v\nStderr: %s\n", err, stderr)
+		} else {
+			fmt.Printf("stanza-upgrade command succeeded:\n%s\n", stdout)
+		}
 	}
 
 	if cr.Spec.Patroni != nil && cr.Spec.Patroni.IgnoreSlots {
