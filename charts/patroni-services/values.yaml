@@ -87,7 +87,7 @@ policies:
 
 tls:
   enabled: false
-  certificateSecretName: services-pg-cert
+  certificateSecretName: pg-cert
   generateCerts:
     clusterIssuerName: ""
     enabled: false
