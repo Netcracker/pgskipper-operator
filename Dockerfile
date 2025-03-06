@@ -40,7 +40,8 @@ RUN apt-get --no-install-recommends install -y comerr-dev \
                        libsasl2-dev libldap2-dev libssl-dev \
                        postgresql-13 postgresql-14 postgresql-15 postgresql-16 \
                        jq \
-                       openssl curl  
+                       openssl curl \
+                       vim
 RUN python3 -m pip install -U setuptools==70.0.0 
 RUN python3 -m pip install --no-cache-dir -r /root/requirements.txt \
       && python3 -m pip install --upgrade pip \
