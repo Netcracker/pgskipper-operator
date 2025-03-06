@@ -141,7 +141,24 @@ class pgsLibrary(object):
 
     @keyword('Execute In Pod')
     def execute_in_pod(self, pod_name, exec_command):
-        result, errors = self.pl_lib.execute_command_in_pod(name=pod_name, namespace=self._namespace, command=exec_command)
+        container_name = None
+
+        if 'pg-patroni' in pod_name:
+            container_name = pod_name.rsplit('-', 1)[0]
+
+            result, errors = self.pl_lib.execute_command_in_pod(
+                name=pod_name,
+                namespace=self._namespace,
+                command=exec_command,
+                container=container_name
+            )
+        else:
+            result, errors = self.pl_lib.execute_command_in_pod(
+                name=pod_name,
+                namespace=self._namespace,
+                command=exec_command
+            )
+
         if result:
             return result, errors
         else:
