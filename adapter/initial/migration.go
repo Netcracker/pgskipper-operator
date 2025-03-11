@@ -144,3 +144,7 @@ func performAlteringRoles(ctx context.Context, dbAdministration *basic.ServiceAd
 	}
 	return maps.Equal(roles, validRoles)
 }
+
+func IsRoleUpdateRequired() bool {
+	return util.GetEnvBool("IS_ROLE_UPDATE_REQUIRED", false)
+}
