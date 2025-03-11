@@ -125,6 +125,8 @@ spec:
               value: "False"
             - name: MULTI_USERS_ENABLED
               value: {{ default "false" .Values.dbaas.multiUsers | quote }}
+            - name: IS_ROLE_UPDATE_REQUIRED
+              value: {{ default "false" .Values.dbaas.updateRoles | quote }}
             - name: CLOUD_NAMESPACE
               valueFrom:
                 fieldRef:
