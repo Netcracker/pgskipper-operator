@@ -195,10 +195,21 @@ class BackRestVault(storage.Vault):
 
         return self.folder, self.metrics, self.console
 
+    
     def create_time(self):
         foldername = self.get_id()
-        d = datetime.strptime(foldername, VAULT_NAME_FORMAT)
-        return time.mktime(d.timetuple())
+
+        # If foldername has the 'backup-' prefix, return a default time
+        if foldername.startswith("backup-"):
+            return time.time()  # Returning the current timestamp as a fallback
+
+        try:
+            d = datetime.strptime(foldername, VAULT_NAME_FORMAT)
+            return time.mktime(d.timetuple())
+        except ValueError as e:
+            self.__log.error("Failed to parse datetime from foldername: %s, error: %s", foldername, str(e))
+            return time.time()  # Returning the current timestamp as a fallback
+    
     #
     # def __exit__(self, tpe, exception, tb):
     #     self.__log.info("Close vault")
