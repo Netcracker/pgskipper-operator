@@ -41,7 +41,8 @@ RUN apt-get --no-install-recommends install -y comerr-dev \
                        postgresql-13 postgresql-14 postgresql-15 postgresql-16 \
                        jq \
                        openssl curl \
-                       vim
+                       vim \
+                       locales
 RUN python3 -m pip install -U setuptools==70.0.0 
 RUN python3 -m pip install --no-cache-dir -r /root/requirements.txt \
       && python3 -m pip install --upgrade pip \
@@ -53,6 +54,7 @@ RUN python3 -m pip install --no-cache-dir -r /root/requirements.txt \
       && apt-get remove -y --purge python3-dev \
       && apt-get remove -y --purge libpq-dev \
       && apt-get remove -y --purge cython3 \
+      && locale-gen en_US.UTF-8 \
       && apt-get clean
 
 RUN ln -s /usr/bin/python3 /usr/bin/python
@@ -73,7 +75,10 @@ RUN mkdir -p /backup-storage/ && \
     chmod -R g+w /maintenance/recovery/ && \
     chmod +x /maintenance/recovery/*.sh && \
     chgrp -R 0 /backup-storage/ && \
-    chgrp -R 0 /external/
+    chgrp -R 0 /external/ && \
+    chmod g+w /etc && \
+    chgrp 0 /etc/passwd &&  \
+    chmod g+w /etc/passwd
 
 
 #VOLUME /backup-storage
