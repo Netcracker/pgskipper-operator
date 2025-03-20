@@ -1,7 +1,7 @@
 apiVersion: batch/v1
 kind: Job
 metadata:
-  name: "credentials-saver"
+  name: {{ printf "credentials-saver-%s" (lower (randAlphaNum 5)) }}
   labels:
 {{- if .Values.podLabels }}
 {{ .Values.podLabels | toYaml | nindent 4 }}

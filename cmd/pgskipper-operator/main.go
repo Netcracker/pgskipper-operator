@@ -21,6 +21,7 @@ import (
 	site "github.com/Netcracker/pgskipper-operator/pkg/disasterrecovery"
 	"github.com/Netcracker/pgskipper-operator/pkg/helper"
 	"github.com/Netcracker/pgskipper-operator/pkg/vault"
+	"github.com/Netcracker/qubership-credential-manager/pkg/hook"
 
 	"net/http"
 	"os"
@@ -150,6 +151,7 @@ func main() {
 		}
 	}()
 
+	_ = hook.ClearHooks()
 	setupLog.Info("Starting the Cmd.")
 
 	setupLog.Info("starting manager")
