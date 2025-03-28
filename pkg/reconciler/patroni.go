@@ -449,6 +449,11 @@ func (r *PatroniReconciler) processPatroniStatefulset(cr *v1.PatroniCore, deploy
 		}
 	}
 
+	if cr.Spec.Policies != nil {
+		logger.Info("Policies is not empty, setting them to Patroni Statefulset")
+		patroniDeployment.Spec.Template.Spec.Tolerations = cr.Spec.Policies.Tolerations
+	}
+
 	// Add Secret Hash
 	err = manager.AddCredHashToPodTemplate(credentials.PostgresSecretNames, &patroniDeployment.Spec.Template)
 	if err != nil {
