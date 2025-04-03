@@ -36,6 +36,7 @@ import (
 	"github.com/Netcracker/qubership-credential-manager/pkg/manager"
 	"go.uber.org/zap"
 	corev1 "k8s.io/api/core/v1"
+	"k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/runtime"
 )
 
@@ -144,10 +145,18 @@ func (r *PatroniReconciler) Reconcile() error {
 	// try to get master pod
 	masterPod, err := r.helper.ResourceManager.GetPodsByLabel(r.cluster.PatroniMasterSelectors)
 	if err != nil {
+		if !errors.IsNotFound(err) {
+			return err
+		}
 		logger.Info("Can not get master pod")
 	}
 
 	if len(masterPod.Items) != 0 {
+		// Ensure services
+		err := r.processPatroniServices(cr, patroniSpec)
+		if err != nil {
+			return err
+		}
 
 		isUpgrade := r.upgrade.CheckUpgrade(cr, r.cluster)
 		if isUpgrade {
@@ -280,51 +289,10 @@ func (r *PatroniReconciler) Reconcile() error {
 				return err
 			}
 		}
-	}
 
-	if (patroniSpec.Dcs.Type == "etcd") || (patroniSpec.Dcs.Type == "etcd3") {
-		logger.Info("Creating headless services")
-		if err := r.createServicesForEtcdAsDcs(); err != nil {
-			logger.Error("Failed to create headless service", zap.Error(err))
+		err := r.processPatroniServices(cr, patroniSpec)
+		if err != nil {
 			return err
-		}
-		logger.Info("Creating endpoints for headless services")
-		if patroniSpec.CreateEndpoint {
-			if err := r.createEndpointsForEtcdAsDcs(); err != nil {
-				logger.Error("Failed to create endpoints", zap.Error(err))
-				return err
-			}
-		}
-	} else {
-		pgService := reconcileService(r.cluster.PostgresServiceName, r.cluster.PatroniLabels,
-			r.cluster.PatroniMasterSelectors, deployment.GetPortsForPatroniService(r.cluster.ClusterName), false)
-		if err := r.helper.ResourceManager.CreateServiceIfNotExists(pgService); err != nil {
-			logger.Error(fmt.Sprintf("Cannot create service %s", pgService.Name), zap.Error(err))
-			return err
-		}
-		pgReadOnlyService := reconcileService(r.cluster.PostgresServiceName+"-ro", r.cluster.PatroniLabels,
-			r.cluster.PatroniReplicasSelector, deployment.GetPortsForPatroniService(r.cluster.ClusterName), false)
-		if err := r.helper.ResourceManager.CreateServiceIfNotExists(pgReadOnlyService); err != nil {
-			logger.Error(fmt.Sprintf("Cannot create service %s", pgReadOnlyService.Name), zap.Error(err))
-			return err
-		}
-		patroniApiService := reconcileService(r.cluster.PostgresServiceName+"-api", r.cluster.PatroniLabels,
-			r.cluster.PatroniCommonLabels, deployment.GetPortsForPatroniService(r.cluster.ClusterName), false)
-		if err := r.helper.ResourceManager.CreateServiceIfNotExists(patroniApiService); err != nil {
-			logger.Error(fmt.Sprintf("Cannot create service %s", pgService.Name), zap.Error(err))
-			return err
-		}
-		if cr.Spec.PgBackRest != nil {
-			pgBackRestService := deployment.GetPgBackRestService(r.cluster.PatroniMasterSelectors)
-			if err := r.helper.ResourceManager.CreateServiceIfNotExists(pgBackRestService); err != nil {
-				logger.Error(fmt.Sprintf("Cannot create service %s", pgService.Name), zap.Error(err))
-				return err
-			}
-			pgBackRestHeadless := deployment.GetBackrestHeadless()
-			if err := r.helper.ResourceManager.CreateServiceIfNotExists(pgBackRestHeadless); err != nil {
-				logger.Error(fmt.Sprintf("Cannot create service %s", pgBackRestHeadless.Name), zap.Error(err))
-				return err
-			}
 		}
 	}
 
@@ -403,6 +371,56 @@ func (r *PatroniReconciler) Reconcile() error {
 	if patroniSpec.Powa.Install {
 		if err := powa.SetUpPOWA(r.cluster.PgHost); err != nil {
 			return err
+		}
+	}
+	return nil
+}
+
+func (r *PatroniReconciler) processPatroniServices(cr *v1.PatroniCore, patroniSpec *v1.Patroni) error {
+	logger.Info("patroni services reconcile started...")
+	if (patroniSpec.Dcs.Type == "etcd") || (patroniSpec.Dcs.Type == "etcd3") {
+		logger.Info("Creating headless services")
+		if err := r.createServicesForEtcdAsDcs(); err != nil {
+			logger.Error("Failed to create headless service", zap.Error(err))
+			return err
+		}
+		logger.Info("Creating endpoints for headless services")
+		if patroniSpec.CreateEndpoint {
+			if err := r.createEndpointsForEtcdAsDcs(); err != nil {
+				logger.Error("Failed to create endpoints", zap.Error(err))
+				return err
+			}
+		}
+	} else {
+		pgService := reconcileService(r.cluster.PostgresServiceName, r.cluster.PatroniLabels,
+			r.cluster.PatroniMasterSelectors, deployment.GetPortsForPatroniService(r.cluster.ClusterName), false)
+		if err := r.helper.ResourceManager.CreateServiceIfNotExists(pgService); err != nil {
+			logger.Error(fmt.Sprintf("Cannot create service %s", pgService.Name), zap.Error(err))
+			return err
+		}
+		pgReadOnlyService := reconcileService(r.cluster.PostgresServiceName+"-ro", r.cluster.PatroniLabels,
+			r.cluster.PatroniReplicasSelector, deployment.GetPortsForPatroniService(r.cluster.ClusterName), false)
+		if err := r.helper.ResourceManager.CreateServiceIfNotExists(pgReadOnlyService); err != nil {
+			logger.Error(fmt.Sprintf("Cannot create service %s", pgReadOnlyService.Name), zap.Error(err))
+			return err
+		}
+		patroniApiService := reconcileService(r.cluster.PostgresServiceName+"-api", r.cluster.PatroniLabels,
+			r.cluster.PatroniCommonLabels, deployment.GetPortsForPatroniService(r.cluster.ClusterName), false)
+		if err := r.helper.ResourceManager.CreateServiceIfNotExists(patroniApiService); err != nil {
+			logger.Error(fmt.Sprintf("Cannot create service %s", pgService.Name), zap.Error(err))
+			return err
+		}
+		if cr.Spec.PgBackRest != nil {
+			pgBackRestService := deployment.GetPgBackRestService(r.cluster.PatroniMasterSelectors)
+			if err := r.helper.ResourceManager.CreateServiceIfNotExists(pgBackRestService); err != nil {
+				logger.Error(fmt.Sprintf("Cannot create service %s", pgService.Name), zap.Error(err))
+				return err
+			}
+			pgBackRestHeadless := deployment.GetBackrestHeadless()
+			if err := r.helper.ResourceManager.CreateServiceIfNotExists(pgBackRestHeadless); err != nil {
+				logger.Error(fmt.Sprintf("Cannot create service %s", pgBackRestHeadless.Name), zap.Error(err))
+				return err
+			}
 		}
 	}
 	return nil
