@@ -28,7 +28,7 @@ serviceAccount:
   name: "postgres-sa"
 
 operatorInit:
-  image: ghcr.io/netcracker/credential-manager:main
+  image: ghcr.io/netcracker/qubership-credential-manager:main
 
 ##  This section describes values for patroni-services deployment
 operator:

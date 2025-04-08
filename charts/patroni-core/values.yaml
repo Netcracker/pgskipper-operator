@@ -226,7 +226,7 @@ patroni:
   majorUpgrade:
     enabled: false
     #    initDbParams: "--encoding=UTF8 --data-checksums --lc-collate=C --lc-ctype=C"
-    dockerUpgradeImage: ghcr.io/netcracker/pgskipper-upgrade:main
+    dockerUpgradeImage: ghcr.io/netcracker/qubership-pgskipper-upgrade:main
   securityContext: {}
     #    fsGroupChangePolicy: OnRootMismatch
     #  pgWalStorageAutoManage: false
