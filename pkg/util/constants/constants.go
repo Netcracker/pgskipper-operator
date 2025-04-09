@@ -19,6 +19,7 @@ const (
 	ArchiveModeOn            = "on"
 	PasswordEncryption       = "md5"
 	ArchiveCommand           = `/opt/scripts/archive_wal.sh "%p" "%f"`
+	ArchiveCleanupCommand    = `/opt/scripts/cleanup.sh "%r"`
 	PgBackRestArchiveCommand = `pgbackrest --stanza=patroni archive-push "%p"`
 	PgBackRestRestoreCommand = `pgbackrest --stanza=patroni archive-get "%f" "%p"`
 	RestoreCommand           = `curl -u postgres:"\${PG_ROOT_PASSWORD}" -v -S -f --connect-timeout 3 --speed-time 30 --speed-limit 100 postgres-backup-daemon:8082/archive/get?filename=%f -o %p`
