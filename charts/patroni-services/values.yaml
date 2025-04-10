@@ -185,6 +185,7 @@ backupDaemon:
   evictionPolicy: "7d/delete"
   granularEviction: "3600"
   # jobFlag: "2"
+  # connectTimeout: "30"
   allowPrefix: false
   useEvictionPolicyFirst: false
   evictionBinaryPolicy: "7d/delete"
