@@ -1001,6 +1001,8 @@ spec:
                     type: string
                   jobFlag:
                     type: string
+                  connectTimeout:
+                    type: string                    
                   pgHost:
                     type: string
                   podLabels:
