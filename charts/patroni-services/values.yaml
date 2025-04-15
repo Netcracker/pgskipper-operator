@@ -359,7 +359,7 @@ queryExporter:
 
 powaUI:
   install: false
-  dockerImage: powateam/powa-web:5.0.0
+  dockerImage: powateam/powa-web:5.0.1
   #  podLabels: {}
 
   ingress:
