@@ -1,13 +1,13 @@
-FROM --platform=$BUILDPLATFORM golang:1.22.5-alpine3.20 AS builder
-
-ENV GOSUMDB=off GOPRIVATE=github.com/Netcracker
-
-RUN apk add --no-cache git
-RUN --mount=type=secret,id=GH_ACCESS_TOKEN git config --global url."https://$(cat /run/secrets/GH_ACCESS_TOKEN)@github.com/".insteadOf "https://github.com/"
-
-COPY . /workspace
+FROM --platform=$BUILDPLATFORM golang:1.23-alpine3.20 AS builder
 
 WORKDIR /workspace
+
+COPY go.mod .
+COPY go.sum .
+
+RUN go mod download
+
+COPY . /workspace
 
 RUN go mod tidy
 
