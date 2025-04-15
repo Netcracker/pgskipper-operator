@@ -140,7 +140,7 @@ def connection_properties(username = postgresql_user(), password = postgres_pass
         'user': username,
         'password': password,
         'database': database,
-        'connect_timeout': 5
+        'connect_timeout': int(os.getenv("CONNECT_TIMEOUT", "5"))
     }
 
 

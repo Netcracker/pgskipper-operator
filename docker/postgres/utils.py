@@ -38,7 +38,7 @@ def get_version_of_pgsql_server():
         'user': os.getenv('POSTGRES_USER') or 'postgres',
         'password': os.getenv('POSTGRES_PASSWORD'),
         'database': 'postgres',
-        'connect_timeout': 5,
+        'connect_timeout': int(os.getenv("CONNECT_TIMEOUT", "5")),
     }
     try:
         server_version = execute_query(conn_properties, 'SHOW SERVER_VERSION;')
