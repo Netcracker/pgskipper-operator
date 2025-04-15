@@ -118,7 +118,7 @@ spec:
       imagePullSecrets:
       {{- range $i, $v := .Values.privateRegistry.secrets }}
         - name: {{ $v.name }} 
-      {{- end }}     
+      {{- end }}
       {{- end }}
       {{ if .Values.externalDataBase }}
       {{ if eq (lower .Values.externalDataBase.type) "cloudsql"}}

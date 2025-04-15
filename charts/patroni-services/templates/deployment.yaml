@@ -130,7 +130,7 @@ spec:
       imagePullSecrets:
       {{- range $i, $v := .Values.privateRegistry.secrets }}
         - name: {{ $v.name }} 
-      {{- end }}     
+      {{- end }}
       {{- end }}
       volumes:
       {{ if .Values.externalDataBase }}
