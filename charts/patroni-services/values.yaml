@@ -71,7 +71,7 @@ vaultRegistration:
   enabled: false
   #  path: /postgres
   #  url: http://localhost:8200
-  #  token: s.0il9o9kHeVmzgEhkBP6KqZBq
+  #  token: vaultToken
   #  paasPlatform: "kubernetes"
   #  paasVersion: "1.14"
   dbEngine:
