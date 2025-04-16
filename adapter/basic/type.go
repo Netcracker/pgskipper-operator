@@ -56,3 +56,8 @@ type SettingUpdateResult struct {
 type DbInfo struct {
 	Owner string `json:"owner"`
 }
+
+type DbResource struct {
+	SelectQuery        string
+	AlterQueryFunction func(string, string, string) string
+}

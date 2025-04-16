@@ -199,18 +199,18 @@ func (sa ServiceAdapter) GrantUsersAccordingRoles(ctx context.Context, dbName st
 		}
 		if isOwnerChanged {
 			// altering owners for DB resources
-			alterOperations := map[string]func(string, string, string) string{
-				getTablesListQuery(schema, isExternalPg):      alterOwnerForTable,
-				getSequenceListQuery(schema, isExternalPg):    alterOwnerForSequence,
-				getLargeObjectsListQuery(isExternalPg):        alterOwnerForLargeObject,
-				getViewsListQuery(schema, isExternalPg):       alterViewOwnerQuery,
-				getFunctionsListQuery(schema, isExternalPg):   alterFunctionOwnerQuery,
-				getProceduresListQuery(schema, isExternalPg):  alterProcedureOwnerQuery,
-				getCustomTypesListQuery(schema, isExternalPg): alterTypeOwnerQuery,
+			alterOperations := []DbResource{
+				{getTablesListQuery(schema, isExternalPg), alterOwnerForTable},
+				{getSequenceListQuery(schema, isExternalPg), alterOwnerForSequence},
+				{getLargeObjectsListQuery(isExternalPg), alterOwnerForLargeObject},
+				{getViewsListQuery(schema, isExternalPg), alterViewOwnerQuery},
+				{getFunctionsListQuery(schema, isExternalPg), alterFunctionOwnerQuery},
+				{getProceduresListQuery(schema, isExternalPg), alterProcedureOwnerQuery},
+				{getCustomTypesListQuery(schema, isExternalPg), alterTypeOwnerQuery},
 			}
 
-			for resourceQuery, alterQuery := range alterOperations {
-				alterOwnerQueries, errCh := sa.executeForResourceQueries(ctx, schema, dbName, metadataOwner, resourceQuery, alterQuery)
+			for _, dbResource := range alterOperations {
+				alterOwnerQueries, errCh := sa.executeForResourceQueries(ctx, schema, dbName, metadataOwner, dbResource.SelectQuery, dbResource.AlterQueryFunction)
 				if errCh != nil {
 					return errCh
 				}
