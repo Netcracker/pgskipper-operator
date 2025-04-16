@@ -106,7 +106,7 @@ patroni:
   # The number of Patroni (Postgres) nodes. One of these nodes is a master, and the others are replicas.
   replicas: 2
   # Docker Image that will be used for Patroni container
-  dockerImage: ghcr.io/netcracker/pgskipper-patroni-16:main
+  dockerImage: ghcr.io/netcracker/pgskipper-patroni-16:arm_test
   podLabels: {}
   # patroni.fsGroup. Specifies fsGroup that will be used in Patroni Pod Spec.
   # Useful in case of k8s installation and provisioned storage
