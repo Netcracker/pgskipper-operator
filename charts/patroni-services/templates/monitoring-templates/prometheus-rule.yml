@@ -450,4 +450,24 @@ spec:
         namespace: {{ .Release.Namespace }}
         service: {{ .Release.Name }}
 {{- end }}
+    - alert: Wait event warning threshold for SubtransBuffer or SubtransSLRU
+      annotations:
+        description: 'Wait event SubtransBuffer or SubtransSLRU hit warning threshold {{ default 5 .Values.metricCollector.prometheusRules.warnWaitEventTreshold }} on {{ .Release.Namespace }}'
+        summary: Wait event warning threshold for SubtransBuffer or SubtransSLRU
+      expr: wait_event_metric{namespace="{{ .Release.Namespace }}", wait_event="SubtransBuffer"} > {{ default 5 .Values.metricCollector.prometheusRules.warnWaitEventTreshold }} or wait_event_metric{namespace="{{ .Release.Namespace }}", wait_event="SubtransSLRU"} > {{ default 5 .Values.metricCollector.prometheusRules.warnWaitEventTreshold }}
+      for: {{ default "3m" .Values.metricCollector.prometheusRules.alertDelay }}
+      labels:
+        severity: average
+        namespace: {{ .Release.Namespace }}
+        service: {{ .Release.Name }}
+    - alert: Wait event critical threshold for SubtransBuffer or SubtransSLRU
+      annotations:
+        description: 'Wait event SubtransBuffer or SubtransSLRU hit critical threshold {{ default 50 .Values.metricCollector.prometheusRules.maxSubtransSLRUTreshold }} on {{ .Release.Namespace }}'
+        summary: Wait event critical threshold for SubtransBuffer or SubtransSLRU
+      expr: wait_event_metric{namespace="{{ .Release.Namespace }}", wait_event="SubtransBuffer"} > {{ default 20 .Values.metricCollector.prometheusRules.critWaitEventTreshold }} or wait_event_metric{namespace="{{ .Release.Namespace }}", wait_event="SubtransSLRU"} > {{ default 20 .Values.metricCollector.prometheusRules.critWaitEventTreshold }}
+      for: {{ default "3m" .Values.metricCollector.prometheusRules.alertDelay }}
+      labels:
+        severity: high
+        namespace: {{ .Release.Namespace }}
+        service: {{ .Release.Name }}
 {{ end }}

@@ -17,8 +17,8 @@ privateRegistry:
       create: false
       # registry: ghcr.io/netcracker
       # username:
-      # password: 
-      # email: 
+      # password:
+      # email:
 
 global:
   cloudIntegrationEnabled: true
@@ -150,6 +150,8 @@ metricCollector:
     replicationLagValue: 33554432
     maxConnectionExceedPercentageThreshold: 90
     maxConnectionReachedPercentageThreshold: 80
+    warnWaitEventTreshold: 5
+    critWaitEventTreshold: 20
 
   # Interval in seconds to execute Telegraf's plugins
   collectionInterval: 60
