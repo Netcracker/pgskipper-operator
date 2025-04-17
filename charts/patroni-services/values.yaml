@@ -387,7 +387,7 @@ replicationController:
       cpu: 200m
       memory: 64Mi
   securityContext:
-    runAsUser: 1001
+    runAsUser: 101
   apiUser: replicator
   apiPassword: paSsW0rdForReplicat!oN
 
