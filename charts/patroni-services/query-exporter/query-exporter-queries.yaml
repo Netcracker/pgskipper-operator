@@ -275,7 +275,7 @@ metrics:
     sum: pg_stat_activity_idle_process_seconds_sum
     count: pg_stat_activity_idle_process_seconds_count
     summarize: false
-    buckets: 
+    buckets:
       value1: 1
       value2: 2
       value3: 5
@@ -753,6 +753,11 @@ metrics:
     labels:
     - datname
     description: Number of sequential scans initiated on this table
+  wait_event_metric:
+    type: gauge
+    labels:
+    - wait_event
+    description: Quantity of wait_event group by wait_event
   pg_stat_vacuum_rownum:
     type: gauge
     labels:
@@ -1213,7 +1218,7 @@ queries:
     - pg_stat_bgwriter_buffers_backend_fsync
     sql: SELECT  current_database() as datname, checkpoints_timed as pg_stat_bgwriter_checkpoints_timed, checkpoints_req as pg_stat_bgwriter_checkpoints_req,
       checkpoint_write_time as pg_stat_bgwriter_checkpoint_write_time, checkpoint_sync_time as pg_stat_bgwriter_checkpoint_sync_time, buffers_checkpoint as pg_stat_bgwriter_buffers_checkpoint, buffers_clean as pg_stat_bgwriter_buffers_clean,
-      maxwritten_clean as pg_stat_bgwriter_maxwritten_clean, buffers_backend as pg_stat_bgwriter_buffers_backend, buffers_backend_fsync as pg_stat_bgwriter_buffers_backend_fsync, buffers_alloc as pg_stat_bgwriter_buffers_alloc, stats_reset as pg_stat_bgwriter_stats_reset 
+      maxwritten_clean as pg_stat_bgwriter_maxwritten_clean, buffers_backend as pg_stat_bgwriter_buffers_backend, buffers_backend_fsync as pg_stat_bgwriter_buffers_backend_fsync, buffers_alloc as pg_stat_bgwriter_buffers_alloc, stats_reset as pg_stat_bgwriter_stats_reset
       FROM  pg_stat_bgwriter
   pg_stat_calls_query:
     databases:
@@ -1341,6 +1346,13 @@ queries:
       state, query, row_number() over (order by xact_start) as pg_stat_vacuum_rownum FROM pg_stat_activity
       WHERE datname = current_database() and  query LIKE '%autovacuum:%' AND query
       NOT LIKE '%pg_stat_activity%' ORDER BY xact_start
+  wait_event_query:
+    databases:
+    - master
+    master: true
+    metrics:
+    - wait_event_metric
+    sql: select wait_event, count(wait_event) as wait_event_metric from pg_stat_activity where wait_event != '' group by wait_event order by count(wait_event) desc
   pg_txid_wraparound_query:
     databases:
     - master
@@ -1393,7 +1405,6 @@ queries:
   pg_wait_per_backend_query:
     databases:
     - master
-    
     master: true
     metrics:
     - pg_wait_per_backend_count
@@ -1403,7 +1414,6 @@ queries:
   pg_wait_type_query:
     databases:
     - master
-    
     master: true
     metrics:
     - pg_wait_type_count
