@@ -17,8 +17,8 @@ privateRegistry:
       create: false
       # registry: ghcr.io/netcracker
       # username:
-      # password: 
-      # email: 
+      # password:
+      # email:
 
 global:
   cloudIntegrationEnabled: true

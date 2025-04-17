@@ -419,3 +419,14 @@ Service Name for dbaas adapter
 {{- define "dbaas.serviceName" -}}
 {{ printf "dbaas-postgres-adapter" }}
 {{- end -}}
+
+{{/*
+Return securityContext for powaUI
+*/}}
+{{- define "powaUI.securityContext" -}}
+  {{- if .Values.powaUI.securityContext -}}
+    {{- if not (.Capabilities.APIVersions.Has "security.openshift.io/v1/SecurityContextConstraints") -}}
+      {{- toYaml .Values.powaUI.securityContext | nindent 6 }}
+    {{- end -}}
+  {{- end -}}
+{{- end -}}

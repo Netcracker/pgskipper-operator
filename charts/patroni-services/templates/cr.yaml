@@ -271,9 +271,7 @@ spec:
 {{ toYaml .Values.powaUI.resources | indent 6 }}
     securityContext:
       {{- include "restricted.globalPodSecurityContext" . | nindent 6 }}
-      {{- with .Values.powaUI.securityContext }}
-      {{- toYaml . | nindent 6 -}}
-      {{- end }}
+      {{- include "powaUI.securityContext" . }}
 {{- end }}
 {{- if .Values.queryExporter.install }}
   queryExporter:
