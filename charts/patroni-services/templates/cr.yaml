@@ -11,8 +11,8 @@ spec:
     enabled: true
     names:
     {{- range $i, $v := .Values.privateRegistry.secrets }}
-      - {{ $v.name }} 
-    {{- end }}     
+      - {{ $v.name }}
+    {{- end }}
   {{- end }}
   installationTimestamp: {{ now | unixEpoch | quote }}
   {{ if .Values.serviceAccount.create }}
@@ -159,7 +159,7 @@ spec:
     connectionName: "{{ .Values.externalDataBase.connectionName }}"
     authSecretName: "{{ .Values.externalDataBase.authSecretName }}"
     {{- if .Values.externalDataBase.restoreConfig }}
-    restoreConfig: 
+    restoreConfig:
       {{ .Values.externalDataBase.restoreConfig | toYaml | nindent 6 }}
     {{- end }}
 {{ end }}
