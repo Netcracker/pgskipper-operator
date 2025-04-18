@@ -134,7 +134,7 @@ spec:
       {{- if .Values.privateRegistry.enabled }}
       imagePullSecrets:
       {{- range $i, $v := .Values.privateRegistry.secrets }}
-        - name: {{ $v.name }} 
+        - name: {{ $v.name }}
       {{- end }}
       {{- end }}
       {{ if .Values.externalDataBase }}
