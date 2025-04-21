@@ -462,12 +462,22 @@ spec:
         service: {{ .Release.Name }}
     - alert: Wait event critical threshold for SubtransBuffer or SubtransSLRU
       annotations:
-        description: 'Wait event SubtransBuffer or SubtransSLRU hit critical threshold {{ default 50 .Values.metricCollector.prometheusRules.maxSubtransSLRUTreshold }} on {{ .Release.Namespace }}'
+        description: 'Wait event SubtransBuffer or SubtransSLRU hit critical threshold {{ default 20 .Values.metricCollector.prometheusRules.critWaitEventTreshold }} on {{ .Release.Namespace }}'
         summary: Wait event critical threshold for SubtransBuffer or SubtransSLRU
       expr: wait_event_metric{namespace="{{ .Release.Namespace }}", wait_event="SubtransBuffer"} > {{ default 20 .Values.metricCollector.prometheusRules.critWaitEventTreshold }} or wait_event_metric{namespace="{{ .Release.Namespace }}", wait_event="SubtransSLRU"} > {{ default 20 .Values.metricCollector.prometheusRules.critWaitEventTreshold }}
       for: {{ default "3m" .Values.metricCollector.prometheusRules.alertDelay }}
       labels:
         severity: high
+        namespace: {{ .Release.Namespace }}
+        service: {{ .Release.Name }}
+    - alert: Pct used warning threshold
+      annotations:
+        description: 'Pct used hit warning threshold {{ default 50 .Values.metricCollector.prometheusRules.warnpctUsedThreshold }} on {{ .Release.Namespace }}'
+        summary: Pct used warning threshold
+      expr: pct_used_metric{namespace="{{ .Release.Namespace }}"} > {{ default 50 .Values.metricCollector.prometheusRules.warnpctUsedThreshold }}
+      for: {{ default "3m" .Values.metricCollector.prometheusRules.alertDelay }}
+      labels:
+        severity: average
         namespace: {{ .Release.Namespace }}
         service: {{ .Release.Name }}
 {{ end }}

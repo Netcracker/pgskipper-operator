@@ -840,6 +840,12 @@ metrics:
     - event_type
     - event
     description: Wait events per query count
+  pct_used_metric:
+    type: gauge
+    labels:
+    - datname
+    - sequencename
+    description: Percentage of sequence usage in database
 queries:
   pg_database_query:
     databases:
@@ -1419,3 +1425,10 @@ queries:
     - pg_wait_type_count
     sql: select pp.event_type, pp.event, sum(pp.count) as pg_wait_type_count from pg_wait_sampling_profile
       pp group by event_type, event order by pg_wait_type_count desc fetch first 10 rows only
+  pct_used_query:
+    databases:
+    - master
+    metrics:
+    - pct_used_metric
+    sql: select current_database() as datname, sequencename, round(100-((max_value - coalesce(last_value,0)) * 100.0 / max_value),2) as pct_used_metric from pg_sequences
+      where round(100-((max_value - coalesce(last_value,0)) * 100.0 / max_value),2) > 0 order by pct_used_metric desc

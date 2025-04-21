@@ -152,6 +152,7 @@ metricCollector:
     maxConnectionReachedPercentageThreshold: 80
     warnWaitEventTreshold: 5
     critWaitEventTreshold: 20
+    warnpctUsedThreshold: 50
 
   # Interval in seconds to execute Telegraf's plugins
   collectionInterval: 60
