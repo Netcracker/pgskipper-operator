@@ -120,7 +120,7 @@ type PowaUI struct {
 	Install         bool                    `json:"install,omitempty"`
 	Image           string                  `json:"image,omitempty"`
 	Resources       v1.ResourceRequirements `json:"resources,omitempty"`
-	SecurityContext *v1.SecurityContext     `json:"securityContext,omitempty"`
+	SecurityContext *v1.PodSecurityContext  `json:"securityContext,omitempty"`
 	Affinity        v1.Affinity             `json:"affinity,omitempty"`
 	PodLabels       map[string]string       `json:"podLabels,omitempty"`
 	CookieSecret    string                  `json:"cookieSecret,omitempty"`
@@ -130,7 +130,7 @@ type ReplicationController struct {
 	Install         bool                    `json:"install,omitempty"`
 	Image           string                  `json:"image,omitempty"`
 	Resources       v1.ResourceRequirements `json:"resources,omitempty"`
-	SecurityContext *v1.SecurityContext     `json:"securityContext,omitempty"`
+	SecurityContext *v1.PodSecurityContext  `json:"securityContext,omitempty"`
 	Affinity        v1.Affinity             `json:"affinity,omitempty"`
 	PodLabels       map[string]string       `json:"podLabels,omitempty"`
 	SslMode         string                  `json:"sslMode,omitempty"`
@@ -140,7 +140,7 @@ type Pooler struct {
 	Install         bool                         `json:"install,omitempty"`
 	Image           string                       `json:"image,omitempty"`
 	Resources       v1.ResourceRequirements      `json:"resources,omitempty"`
-	SecurityContext *v1.SecurityContext          `json:"securityContext,omitempty"`
+	SecurityContext *v1.PodSecurityContext       `json:"securityContext,omitempty"`
 	Affinity        v1.Affinity                  `json:"affinity,omitempty"`
 	Replicas        *int32                       `json:"replicas,omitempty"`
 	PodLabels       map[string]string            `json:"podLabels,omitempty"`
@@ -178,7 +178,7 @@ type QueryExporter struct {
 	Install               bool                    `json:"install,omitempty"`
 	Image                 string                  `json:"image,omitempty"`
 	Resources             v1.ResourceRequirements `json:"resources,omitempty"`
-	SecurityContext       *v1.SecurityContext     `json:"securityContext,omitempty"`
+	SecurityContext       *v1.PodSecurityContext  `json:"securityContext,omitempty"`
 	Affinity              v1.Affinity             `json:"affinity,omitempty"`
 	PodLabels             map[string]string       `json:"podLabels,omitempty"`
 	PgHost                string                  `json:"pgHost,omitempty"`

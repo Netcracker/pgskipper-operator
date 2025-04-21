@@ -350,7 +350,7 @@ func (in *Pooler) DeepCopyInto(out *Pooler) {
 	in.Resources.DeepCopyInto(&out.Resources)
 	if in.SecurityContext != nil {
 		in, out := &in.SecurityContext, &out.SecurityContext
-		*out = new(corev1.SecurityContext)
+		*out = new(corev1.PodSecurityContext)
 		(*in).DeepCopyInto(*out)
 	}
 	in.Affinity.DeepCopyInto(&out.Affinity)
@@ -437,7 +437,7 @@ func (in *PowaUI) DeepCopyInto(out *PowaUI) {
 	in.Resources.DeepCopyInto(&out.Resources)
 	if in.SecurityContext != nil {
 		in, out := &in.SecurityContext, &out.SecurityContext
-		*out = new(corev1.SecurityContext)
+		*out = new(corev1.PodSecurityContext)
 		(*in).DeepCopyInto(*out)
 	}
 	in.Affinity.DeepCopyInto(&out.Affinity)
@@ -486,7 +486,7 @@ func (in *QueryExporter) DeepCopyInto(out *QueryExporter) {
 	in.Resources.DeepCopyInto(&out.Resources)
 	if in.SecurityContext != nil {
 		in, out := &in.SecurityContext, &out.SecurityContext
-		*out = new(corev1.SecurityContext)
+		*out = new(corev1.PodSecurityContext)
 		(*in).DeepCopyInto(*out)
 	}
 	in.Affinity.DeepCopyInto(&out.Affinity)
@@ -525,7 +525,7 @@ func (in *ReplicationController) DeepCopyInto(out *ReplicationController) {
 	in.Resources.DeepCopyInto(&out.Resources)
 	if in.SecurityContext != nil {
 		in, out := &in.SecurityContext, &out.SecurityContext
-		*out = new(corev1.SecurityContext)
+		*out = new(corev1.PodSecurityContext)
 		(*in).DeepCopyInto(*out)
 	}
 	in.Affinity.DeepCopyInto(&out.Affinity)
