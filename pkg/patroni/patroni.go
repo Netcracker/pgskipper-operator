@@ -80,7 +80,7 @@ func SetWalArchiving(spec qubershipv1.PatroniServicesSpec, patroniUrl string) er
 				"parameters":    postgreSQLParams,
 				"recovery_conf": recoveryParams,
 				"pgbackrest": map[string]string{
-					"command":   "pgbackrest --stanza=s3 --log-level-file=detail restore",
+					"command":   "pgbackrest --stanza=patroni --log-level-file=detail restore",
 					"keep_data": "true",
 					"no_params": "true",
 				},
