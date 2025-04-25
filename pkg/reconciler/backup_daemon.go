@@ -195,7 +195,7 @@ func (r *BackupDaemonReconciler) Reconcile() error {
 			},
 			{
 				Name:  "INCR_SCHEDULE",
-				Value: cr.Spec.PgBackRest.DiffSchedule,
+				Value: cr.Spec.PgBackRest.IncrSchedule,
 			},
 		}
 		logger.Info("Set storage type as pgbackrest")
