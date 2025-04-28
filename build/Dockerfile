@@ -1,4 +1,4 @@
-FROM --platform=$BUILDPLATFORM golang:1.23-alpine3.20 AS builder
+FROM --platform=$BUILDPLATFORM golang:1.23-alpine3.21 AS builder
 
 WORKDIR /workspace
 
@@ -16,7 +16,7 @@ ARG TARGETOS TARGETARCH
 RUN CGO_ENABLED=0 GOOS=$TARGETOS GOARCH=$TARGETARCH go build -o ./build/_output/bin/postgres-operator \
     -gcflags all=-trimpath=${GOPATH} -asmflags all=-trimpath=${GOPATH} ./cmd/pgskipper-operator
 
-FROM alpine:3.20.3
+FROM alpine:3.21
 
 ENV OPERATOR=/usr/local/bin/postgres-operator \
     USER_UID=1001 \
