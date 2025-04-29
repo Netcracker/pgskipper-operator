@@ -190,6 +190,7 @@ backupDaemon:
   # jobFlag: "2"
   # connectTimeout: "5"
   allowPrefix: false
+  #excludedExtensions: "pg_hint_plan,uuid-ossp"
   useEvictionPolicyFirst: false
   evictionBinaryPolicy: "7d/delete"
   archiveEvictionPolicy: "7d"

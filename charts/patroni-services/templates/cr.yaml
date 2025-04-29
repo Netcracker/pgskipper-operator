@@ -58,6 +58,9 @@ spec:
   {{- if .Values.backupDaemon.granularBackupSchedule }}
     granularBackupSchedule: {{ .Values.backupDaemon.granularBackupSchedule }}
   {{- end }}
+  {{- if .Values.backupDaemon.excludedExtensions }}
+    excludedExtensions: "{{ .Values.backupDaemon.excludedExtensions }}"
+  {{- end }}
   {{- if .Values.backupDaemon.databasesToSchedule }}
     databasesToSchedule: {{ .Values.backupDaemon.databasesToSchedule }}
   {{- end }}

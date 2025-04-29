@@ -138,6 +138,7 @@ require (
 )
 
 replace (
+	github.com/Netcracker/pgskipper-operator-core => github.com/Netcracker/pgskipper-operator-core fix/ExtensionVariable
 	github.com/operator-framework/operator-lib => github.com/operator-framework/operator-lib v0.1.0
 	github.com/operator-framework/operator-sdk => github.com/operator-framework/operator-sdk v1.15.0
 )
