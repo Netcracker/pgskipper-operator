@@ -982,6 +982,8 @@ spec:
                     type: string
                   databasesToSchedule:
                     type: string
+                  excludedExtensions:
+                    type: string
                   evictionBinaryPolicy:
                     type: string
                   evictionPolicy:
