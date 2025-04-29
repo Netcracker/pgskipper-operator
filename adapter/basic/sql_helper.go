@@ -210,7 +210,7 @@ func setReadOnlyRoleSequencesGrants(schema string, userName string) string {
 }
 
 func setAdminGrants(schema string, userName string) string {
-	return fmt.Sprintf("GRANT ALL ON ALL TABLES IN SCHEMA \"%s\" TO %s;", schema, userName)
+	return fmt.Sprintf("GRANT ALL ON ALL TABLES IN SCHEMA \"%s\" TO \"%s\";", schema, userName)
 }
 
 func setReadOnlyRoleDefaultGrants(owner, userName string) string {
@@ -238,7 +238,7 @@ func setGrantAsForRole(owner, userName string) string {
 }
 
 func grantConnectionToDB(dbName, userName string) string {
-	return fmt.Sprintf("GRANT CONNECT ON DATABASE \"%s\" TO %s;", dbName, userName)
+	return fmt.Sprintf("GRANT CONNECT ON DATABASE \"%s\" TO \"%s\";", dbName, userName)
 }
 
 func AllowReplicationForUser(userName string) string {
