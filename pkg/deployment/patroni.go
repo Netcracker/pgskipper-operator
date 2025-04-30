@@ -86,12 +86,40 @@ func getMaxPreparedTransactions(cr *patroniv1.PatroniCore) string {
 	return ExtractParamsFromCRByName(cr, "max_prepared_transactions")
 }
 
+func getDefaultPatroniAffinity() *corev1.Affinity {
+	return &corev1.Affinity{
+		PodAntiAffinity: &corev1.PodAntiAffinity{
+			RequiredDuringSchedulingIgnoredDuringExecution: []corev1.PodAffinityTerm{
+				{
+					LabelSelector: &metav1.LabelSelector{
+						MatchExpressions: []metav1.LabelSelectorRequirement{
+							{
+								Key:      "app.kubernetes.io/name",
+								Operator: metav1.LabelSelectorOpIn,
+								Values:   []string{"patroni"},
+							},
+						},
+					},
+					TopologyKey: "kubernetes.io/hostname",
+				},
+			},
+		},
+	}
+}
+
 func NewPatroniStatefulset(cr *patroniv1.PatroniCore, deploymentIdx int, clusterName string, patroniTemplate string, postgreSQLUserConf string, patroniLabels map[string]string) *appsv1.StatefulSet {
 	logger := util.GetLogger()
 	patroniSpec := cr.Spec.Patroni
 	statefulsetName := fmt.Sprintf("pg-%s-node%v", clusterName, deploymentIdx)
 	dockerImage := patroniSpec.DockerImage
 	nodes := patroniSpec.Storage.Nodes
+
+	// Create default affinity if not specified in CR
+	affinity := patroniSpec.Affinity.DeepCopy()
+	if affinity == nil {
+		affinity = getDefaultPatroniAffinity()
+	}
+
 	stSet := &appsv1.StatefulSet{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      statefulsetName,
@@ -135,7 +163,7 @@ func NewPatroniStatefulset(cr *patroniv1.PatroniCore, deploymentIdx int, cluster
 						},
 					},
 					ServiceAccountName: cr.Spec.ServiceAccountName,
-					Affinity:           &patroniSpec.Affinity,
+					Affinity:           affinity,
 					InitContainers:     []corev1.Container{},
 					Containers: []corev1.Container{
 						{
