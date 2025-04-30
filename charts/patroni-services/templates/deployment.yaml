@@ -123,26 +123,6 @@ spec:
               {{ end }}
               {{ end }}
               {{- template "postgres-operator.smEnvs" . }}
-          livenessProbe:
-            httpGet:
-              path: /healthz
-              port: 8081
-              scheme: HTTP
-            initialDelaySeconds: 10
-            timeoutSeconds: 5
-            periodSeconds: 10
-            successThreshold: 1
-            failureThreshold: 10
-          readinessProbe:
-            httpGet:
-              path: /readyz
-              port: 8081
-              scheme: HTTP
-            initialDelaySeconds: 10
-            timeoutSeconds: 5
-            periodSeconds: 10
-            successThreshold: 1
-            failureThreshold: 10
       {{- if .Values.privateRegistry.enabled }}
       imagePullSecrets:
       {{- range $i, $v := .Values.privateRegistry.secrets }}
