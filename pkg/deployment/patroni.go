@@ -114,9 +114,9 @@ func NewPatroniStatefulset(cr *patroniv1.PatroniCore, deploymentIdx int, cluster
 	dockerImage := patroniSpec.DockerImage
 	nodes := patroniSpec.Storage.Nodes
 
-	// Create default affinity if not specified in CR
 	affinity := patroniSpec.Affinity.DeepCopy()
-	if affinity == nil {
+	if affinity == nil || (affinity.NodeAffinity == nil && affinity.PodAffinity == nil && affinity.PodAntiAffinity == nil) {
+		logger.Info("applying default affinity for patroni")
 		affinity = getDefaultPatroniAffinity()
 	}
 
