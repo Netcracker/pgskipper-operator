@@ -137,6 +137,38 @@ class PostgreSQLDumpWorker(Thread):
             if conn:
                 conn.close()
 
+    def get_included_extensions(self, database):
+        connection_properties = configs.connection_properties()
+        connection_properties['database'] = database
+        conn = None
+        try:
+            conn = psycopg2.connect(**connection_properties)
+            with conn.cursor() as cur:
+                excluded_env = os.getenv("EXCLUDED_EXTENSIONS", "")
+                excluded_extensions = [e.strip() for e in excluded_env.split(',') if e.strip()]
+
+                # Always exclude pg_hint_plan
+                if "pg_hint_plan" not in excluded_extensions:
+                    excluded_extensions.append("pg_hint_plan")
+
+                self.log.info(self.log_msg(f"Excluded extensions: {excluded_extensions}"))
+
+                if not excluded_extensions:
+                    self.log.warning(self.log_msg("No excluded extensions configured; all extensions will be included."))
+
+                placeholders = ','.join(['%s'] * len(excluded_extensions))
+                query = f"SELECT extname FROM pg_extension WHERE extname NOT IN ({placeholders})"
+                cur.execute(query, excluded_extensions)
+
+                included_extensions = [row[0] for row in cur]
+                self.log.info(self.log_msg(f"Fetched included extensions for '{database}': {included_extensions}"))
+                return included_extensions
+        except Exception as e:
+            raise backups.BackupFailedException(database, f"Failed to fetch included extensions: {e}")
+        finally:
+            if conn:
+                conn.close()
+
     def backup_single_database(self, database):
         self.log.info(self.log_msg("Start processing database '{}'.".format(database)))
         self.log.info(self.log_msg("Will use binaries: '{}' for backup.".format(self.bin_path)))
@@ -160,6 +192,16 @@ class PostgreSQLDumpWorker(Thread):
         if configs.postgres_password():
          os.environ['PGPASSWORD'] = configs.postgres_password()
 
+        #fix to exclude pg_hint_plan for azure pg
+        #for pg17 use --exclude-extension with pg_dump
+        extension_flags = []
+        if configs.is_external_pg():
+            included_exts = self.get_included_extensions(database)
+            if included_exts:
+            # Add each extension as a separate --extension flag
+                for ext in included_exts:
+                    extension_flags.extend(['--extension', ext])
+
         if int(self.parallel_jobs) > 1:
             command = ['{}/pg_dump'.format(self.bin_path),
                     '--format=directory',
@@ -174,9 +216,13 @@ class PostgreSQLDumpWorker(Thread):
 
             command.extend(['-j', self.parallel_jobs])
 
+            if configs.is_external_pg():
+                command.extend(extension_flags)
+
             # Zero is corner-case in Python :(
             if self.compression_level or self.compression_level == 0:
                 command.extend(['-Z', str(self.compression_level)])
+
 
             with open(self.stderr_file(database), "w+") as stderr:
                 start = time.time()
@@ -213,9 +259,11 @@ class PostgreSQLDumpWorker(Thread):
             if self.compression_level or self.compression_level == 0:
                 command.extend(['-Z', str(self.compression_level)])
 
+            if configs.is_external_pg():
+                command.extend(extension_flags)
+
             database_backup_path = backups.build_database_backup_path(self.backup_id, database,
                                                                   self.namespace, self.external_backup_root)
-
 
             with open(database_backup_path, 'w+') as dump, \
                     open(self.stderr_file(database), "w+") as stderr:
