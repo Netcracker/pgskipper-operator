@@ -96,7 +96,7 @@ func getDefaultPatroniAffinity() *corev1.Affinity {
 							{
 								Key:      "app.kubernetes.io/name",
 								Operator: metav1.LabelSelectorOpIn,
-								Values:   []string{"patroni"},
+								Values:   []string{"patroni-core"},
 							},
 						},
 					},
