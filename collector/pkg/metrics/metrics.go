@@ -52,7 +52,7 @@ var (
 	}
 
 	ArchiveDataQuery = "SELECT (select setting from pg_settings where name='archive_mode'), " +
-		"EXTRACT(EPOCH FROM (now()-last_archived_time)), archived_count, failed_count FROM pg_stat_archiver"
+		"COALESCE(EXTRACT(EPOCH FROM (now() - last_archived_time)), 0.0), archived_count, failed_count FROM pg_stat_archiver"
 )
 
 func GetMetricsTypeByVersion(name string, version int) string {

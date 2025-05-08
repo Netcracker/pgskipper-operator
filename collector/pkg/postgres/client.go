@@ -31,7 +31,7 @@ var logger = util.GetLogger()
 var (
 	PgHost     = util.GetEnv("POSTGRES_HOST", "pg-patroni")
 	PgPort     = util.GetEnvInt("POSTGRES_PORT", 5432)
-	PgUser     = util.GetEnv("MONITORING_USER", "monitoring_role")
+	PgUser     = util.GetEnv("MONITORING_USER", "monitoring-user")
 	PgPass     = util.GetEnv("MONITORING_PASSWORD", "monitoring_password")
 	PgDatabase = util.GetEnv("POSTGRES_DATABASE", "postgres")
 	PgSsl      = util.GetEnv("PGSSLMODE", "prefer")

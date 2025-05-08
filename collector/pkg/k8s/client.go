@@ -99,10 +99,9 @@ func GetPatroniNodes(ctx context.Context, pgCluster string) []PatroniNode {
 		for _, env := range pod.Spec.Containers[0].Env {
 			if env.Name == "POD_IDENTITY" {
 				nodeName = env.Value
-				break
+				result = append(result, PatroniNode{Name: nodeName, IP: pod.Status.PodIP})
 			}
 		}
-		result = append(result, PatroniNode{Name: nodeName, IP: pod.Status.PodIP})
 	}
 	return result
 }

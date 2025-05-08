@@ -521,8 +521,8 @@ func (s *Scraper) collectArchiveData() {
 				s.metrics = append(s.metrics, NewMetric(fmt.Sprintf("%s_%s", baseName, "mode_prom")).withLabels(gauges.DefaultLabels()).setValue(1))
 				s.metrics = append(s.metrics, NewMetric(fmt.Sprintf("%s_%s", baseName, "archived_count")).withLabels(gauges.DefaultLabels()).setValue(row["archived_count"]))
 				s.metrics = append(s.metrics, NewMetric(fmt.Sprintf("%s_%s", baseName, "failed_count")).withLabels(gauges.DefaultLabels()).setValue(row["failed_count"]))
-				delay := postgres.GetStringValue(row, "extract", "")
-				if delay != "" {
+				delay := postgres.GetFloatValue(row, "extract", 0.0)
+				if delay != 0.0 {
 					s.metrics = append(s.metrics, NewMetric(fmt.Sprintf("%s_%s", baseName, "delay")).withLabels(gauges.DefaultLabels()).setValue(delay))
 				}
 			} else {

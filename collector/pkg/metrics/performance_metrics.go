@@ -209,7 +209,7 @@ func (s *Scraper) collectMetricsPerDB(ctx context.Context, pg *postgres.Postgres
 		return
 	}
 	defer func() {
-		_ = pg.EstablishConnForDB(ctx, pg.GetDatabase())
+		_ = pg.EstablishConnForDB(ctx, postgres.PgDatabase)
 	}()
 	logger.Debug(fmt.Sprintf("Will Collect Table Stats for next dbs %v", databases))
 	for _, db := range databases {

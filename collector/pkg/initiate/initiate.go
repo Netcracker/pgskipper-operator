@@ -36,14 +36,14 @@ func InitMetricCollector() {
 	logger.Info("Will run preparation scripts")
 
 	clusterName := util.GetEnv("PGCLUSTER", "patroni")
-	monitoringRole := util.GetEnv("MONITORING_USER", "monitoring_role")
+	monitoringRole := util.GetEnv("MONITORING_USER", "monitoring-user")
 	monitoringPassword := util.GetEnv("MONITORING_PASSWORD", "monitoring_password")
 	pgHost := util.GetEnv("POSTGRES_HOST", "pg-patroni")
 	pgPort := util.GetEnvInt("POSTGRES_PORT", 5432)
 
 	queries := append(make([]string, 0),
 		"DROP TABLE if exists monitor_test",
-		fmt.Sprintf("CREATE ROLE \"%s\" with login password '%s' ", monitoringRole, monitoringPassword),
+		fmt.Sprintf("DO $$BEGIN IF NOT EXISTS (SELECT FROM pg_roles WHERE rolname = '%s') THEN CREATE ROLE \"%s\" WITH LOGIN PASSWORD '%s'; END IF; END$$", monitoringRole, monitoringRole, monitoringPassword),
 		fmt.Sprintf("ALTER ROLE \"%s\" with login password '%s'", monitoringRole, monitoringPassword),
 		fmt.Sprintf("GRANT pg_monitor to \"%s\"", monitoringRole),
 		fmt.Sprintf("GRANT pg_read_all_data to \"%s\"", monitoringRole),
@@ -92,7 +92,7 @@ func getPGCredentials(clusterName string) (user, password string) {
 		panic("Error while init metric collector. Can not create k8s client")
 	}
 
-	secretName := util.GetEnv("NAMESPACE", fmt.Sprintf("%s-pg-root-credentials", clusterName))
+	secretName := "postgres-credentials"
 	foundSrv := &corev1.Secret{}
 	err = k8sClient.Get(context.TODO(), types.NamespacedName{
 		Name: secretName, Namespace: namespace,
