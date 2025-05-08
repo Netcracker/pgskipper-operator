@@ -20,6 +20,7 @@ import (
 	"fmt"
 	"reflect"
 	"strconv"
+	"strings"
 	"time"
 
 	"github.com/Netcracker/pgskipper-operator-core/pkg/util"
@@ -311,7 +312,20 @@ func (u *Upgrade) ProceedUpgrade(cr *v1.PatroniCore, cluster *v1.PatroniClusterS
 	}
 	masterPodName := masterPod.Items[0].Name
 	namespace := util.GetNameSpace()
-	command := "pg_dumpall -v -U postgres -w --file=/tmp/test_db_dumpall.custom --schema-only"
+
+	command := "grep \"shared_preload_libraries\" /var/lib/pgsql/data/postgresql_${POD_IDENTITY}/postgresql.conf || echo \"not found\""
+	result, _, err := u.helper.ExecCmdOnPatroniPod(masterPodName, namespace, command)
+	if err != nil {
+		logger.Error("Can't execute grep command, failing major upgrade", zap.Error(err))
+		return err
+	}
+	if !strings.Contains(result, "shared_preload_libraries") {
+		errMsg := "shared_preload_libraries is not found in PostgreSQL config, please check PostgreSQL params, failing major upgrade"
+		logger.Error(errMsg, zap.Error(err))
+		return errors.New(errMsg)
+	}
+
+	command = "pg_dumpall -v -U postgres -w --file=/tmp/test_db_dumpall.custom --schema-only"
 	_, _, err = u.helper.ExecCmdOnPatroniPod(masterPodName, namespace, command)
 	if err != nil {
 		logger.Error("Can't execute pg_dumpall command, failing major upgrade", zap.Error(err))
