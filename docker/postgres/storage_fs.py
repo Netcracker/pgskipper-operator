@@ -287,4 +287,4 @@ class FSVault(storage.Vault):
         return "Vault(%s)" % os.path.basename(self.folder)
 
     def fail(self):
-        open(self.folder + self.__failed_filepath(), "w").close()
+        open(self.__failed_filepath(), "w").close()
