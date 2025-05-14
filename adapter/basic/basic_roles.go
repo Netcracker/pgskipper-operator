@@ -265,7 +265,7 @@ func (sa ServiceAdapter) executeQueries(ctx context.Context, dbName string, quer
 	if err != nil {
 		return err
 	}
-	defer connDb.Close(ctx)
+	defer connDb.Close()
 	for _, query := range queries {
 		log.Debug(fmt.Sprintf("[%s] Query for exec: %s", dbName, query))
 		if _, err = connDb.Exec(ctx, query); err != nil {
@@ -310,7 +310,7 @@ func (sa ServiceAdapter) grantCreateOnSchema(ctx context.Context, dbName, schema
 	if err != nil {
 		return err
 	}
-	defer connDb.Close(ctx)
+	defer connDb.Close()
 	_, err = connDb.Exec(ctx, grantSchemaCreate(schema, username))
 	if err != nil {
 		return err
@@ -324,7 +324,7 @@ func (sa ServiceAdapter) GrantAllOnSchemaToUser(ctx context.Context, dbName, sch
 	if err != nil {
 		return err
 	}
-	defer connDb.Close(ctx)
+	defer connDb.Close()
 	_, err = connDb.Exec(ctx, grantUserSQL)
 	if err != nil {
 		return err
@@ -370,7 +370,7 @@ func (sa ServiceAdapter) getStringsFromQuery(ctx context.Context, dbName, query 
 	if err != nil {
 		return nil, err
 	}
-	defer conn.Close(ctx)
+	defer conn.Close()
 
 	log.Debug(fmt.Sprintf("[%s] Resource query for exec: %s", dbName, query))
 	rows, err := conn.Query(ctx, query)
@@ -437,7 +437,7 @@ func (sa *ServiceAdapter) grantRightsToPostgres(ctx context.Context, user string
 	if err != nil {
 		return err
 	}
-	defer conn.Close(ctx)
+	defer conn.Close()
 
 	_, err = conn.Exec(ctx, grantUserToAdmin(user, sa.GetUser()))
 

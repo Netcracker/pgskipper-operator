@@ -41,7 +41,7 @@ var (
 type Conn interface {
 	Query(ctx context.Context, sql string, args ...interface{}) (pgx.Rows, error)
 	Exec(ctx context.Context, sql string, arguments ...interface{}) (pgconn.CommandTag, error)
-	Close(ctx context.Context) error
+	Close()
 	QueryRow(ctx context.Context, sql string, args ...interface{}) pgx.Row
 }
 
@@ -137,7 +137,7 @@ func (ca ClusterAdapterImpl) GetConnectionToDbWithUser(ctx context.Context, data
 }
 
 func (ca ClusterAdapterImpl) getConnectionToDbWithUser(ctx context.Context, database string, username string, password string) (Conn, error) {
-	conn, err := pgx.Connect(ctx, ca.getConnectionUrl(username, password, database))
+	conn, err := pgxpool.Connect(ctx, ca.getConnectionUrl(username, password, database))
 	if err != nil {
 		log.Error("Error occurred during connect to DB", zap.Error(err))
 		return nil, err
@@ -171,7 +171,7 @@ func (ca ClusterAdapterImpl) executeHealthQuery() error {
 	if err != nil {
 		return err
 	}
-	defer conn.Close(ctx)
+	defer conn.Close()
 
 	_, err = conn.Exec(ctx, "SELECT * FROM pg_catalog.pg_tables")
 	return err

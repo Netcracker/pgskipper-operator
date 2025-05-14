@@ -57,7 +57,7 @@ func createDatabaseExt(adapter *basic.ServiceAdapter, ctx context.Context, datab
 		log.Warn(fmt.Sprintf("Database %s has been skipped for extensions update", database))
 		return
 	}
-	defer conn.Close(ctx)
+	defer conn.Close()
 	log.Info(fmt.Sprintf("Create extensions for \"%s\" database", database))
 
 	username := ""

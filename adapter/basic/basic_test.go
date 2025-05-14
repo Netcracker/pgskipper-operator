@@ -180,9 +180,7 @@ func (m *MockConn) Databases(ctx context.Context) ([]sql.DB, error) {
 	return nil, args.Error(1)
 }
 
-func (m *MockConn) Close(ctx context.Context) error {
-	args := m.Called(ctx)
-	return args.Error(0)
+func (m *MockConn) Close() {
 }
 
 func TestGetDatabases(t *testing.T) {

@@ -121,7 +121,7 @@ func (sa ServiceAdapter) getPostgresAvailableExtensions(ctx context.Context) ([]
 		return nil, err
 	}
 
-	defer conn.Close(ctx)
+	defer conn.Close()
 
 	rows, _ := conn.Query(ctx, selectPostgresAvailableExtensions)
 
@@ -146,7 +146,7 @@ func (sa ServiceAdapter) dropDatabase(ctx context.Context, dbName string) {
 		return
 	}
 
-	defer conn.Close(ctx)
+	defer conn.Close()
 
 	_, err = conn.Exec(ctx, dropDatabase(dbName))
 	if err != nil {
@@ -168,7 +168,7 @@ func (sa ServiceAdapter) dropUser(ctx context.Context, username string) {
 		return
 	}
 
-	defer conn.Close(ctx)
+	defer conn.Close()
 
 	_, err = conn.Exec(ctx, dropUser(username))
 
@@ -230,7 +230,7 @@ func (sa ServiceAdapter) CreateDatabase(ctx context.Context, requestOnCreateDb d
 	if err != nil {
 		panic(err)
 	}
-	defer conn.Close(ctx)
+	defer conn.Close()
 
 	pgSettings, err := sa.getPgSettings(ctx, requestOnCreateDb.Settings)
 	if err != nil {
@@ -392,7 +392,7 @@ func (sa ServiceAdapter) enableDatabase(ctx context.Context, dbName string) {
 		return
 	}
 
-	defer conn.Close(context.Background())
+	defer conn.Close()
 	extDB := util.GetEnv("EXTERNAL_POSTGRESQL", "")
 	if extDB != "" {
 		logger.Debug(fmt.Sprintf("Enable database for external DB: %s", extDB))
@@ -454,7 +454,7 @@ func (sa ServiceAdapter) CreateUser(ctx context.Context, username string, postgr
 		panic(err)
 	}
 
-	defer conn.Close(ctx)
+	defer conn.Close()
 
 	isUserExist, err := sa.isUserExist(ctx, conn, username)
 	if err != nil {
@@ -566,7 +566,7 @@ func (sa ServiceAdapter) createExtensions(dbName string, username string, extens
 		return
 	}
 
-	defer conn.Close(context.Background())
+	defer conn.Close()
 
 	if len(extensions) > 0 {
 		sa.log.Debug(fmt.Sprintf("Create extensions %s", extensions))
@@ -589,7 +589,7 @@ func (sa ServiceAdapter) createMetadata(ctx context.Context, dbName string, user
 		return err
 	}
 
-	defer conn.Close(ctx)
+	defer conn.Close()
 
 	_, err = conn.Exec(ctx, createMetaTable)
 	if err != nil {
@@ -669,7 +669,7 @@ func (sa ServiceAdapter) UpdateMetadataInternal(ctx context.Context, metadata ma
 	if err != nil {
 		return err
 	}
-	defer conn.Close(ctx)
+	defer conn.Close()
 
 	if _, ok := metadata[RolesVersionKey]; !ok {
 		metadata[RolesVersionKey] = util.GetRolesVersion()
@@ -726,7 +726,7 @@ func (sa ServiceAdapter) GetValidRolesFromMetadata(ctx context.Context, dbName s
 	if err != nil {
 		return nil, err
 	}
-	defer conn.Close(ctx)
+	defer conn.Close()
 
 	roles := sa.GetRolesFromMetadata(metadata)
 	logger.Debug(fmt.Sprintf("Roles from metadata: %s", roles))
@@ -779,7 +779,7 @@ func (sa ServiceAdapter) GetMetadataInternal(ctx context.Context, logicalDatabas
 	if err != nil {
 		return nil, err
 	}
-	defer conn.Close(ctx)
+	defer conn.Close()
 
 	rows, err := conn.Query(ctx, getMetadata, "metadata")
 	if err != nil {
@@ -798,7 +798,7 @@ func (sa ServiceAdapter) GetMetadataInternal(ctx context.Context, logicalDatabas
 
 	if len(metadata) == 0 {
 		rows.Close()
-		conn.Close(ctx)
+		conn.Close()
 
 		metadata, err = sa.getOldFormatMetadata(ctx, logicalDatabase)
 		if err != nil {
@@ -817,7 +817,7 @@ func (sa ServiceAdapter) getOldFormatMetadata(ctx context.Context, logicalDataba
 	if err != nil {
 		return nil, err
 	}
-	defer conn.Close(ctx)
+	defer conn.Close()
 
 	rows, err := conn.Query(ctx, getAllMetadata)
 	if err != nil {
@@ -905,7 +905,7 @@ func (sa ServiceAdapter) rollbackPrepared(ctx context.Context, conn cluster.Conn
 			logger.Error("taking connection failed while rollback prepared transactions")
 			return err
 		}
-		defer connDb.Close(ctx)
+		defer connDb.Close()
 
 		rows, err := connDb.Query(ctx, selectPreparedTransactions, dbName)
 		if err != nil {
@@ -942,7 +942,7 @@ func (sa ServiceAdapter) disableUser(ctx context.Context, dbName string, resourc
 		return err
 	}
 
-	defer connDb.Close(context.Background())
+	defer connDb.Close()
 
 	_, err = connDb.Exec(context.Background(), reassignGrants(getUsernameWithoutHost(resource.Name), sa.GetUser()))
 	if err != nil {
@@ -1130,7 +1130,7 @@ func (sa ServiceAdapter) DropResources(ctx context.Context, resources []dao.DbRe
 		panic(err)
 	}
 
-	defer conn.Close(context.Background())
+	defer conn.Close()
 
 	users := sa.dropResourceByKind(ctx, resources, UserKind, conn)
 	droppedResources = append(droppedResources, users...)
@@ -1150,7 +1150,7 @@ func (sa ServiceAdapter) GetDatabases(ctx context.Context) []string {
 		panic(err)
 	}
 
-	defer conn.Close(ctx)
+	defer conn.Close()
 
 	rows, err := conn.Query(ctx, getDatabases)
 	if err != nil {
@@ -1325,7 +1325,7 @@ func (sa ServiceAdapter) updateSettings(dbName string, request PostgresUpdateSet
 	if err != nil {
 		return nil, err
 	}
-	defer conn.Close(ctx)
+	defer conn.Close()
 
 	currentSettings, err := sa.getPgSettings(ctx, request.CurrentSettings)
 	if err != nil {
@@ -1375,7 +1375,7 @@ func (sa ServiceAdapter) reassignGrantsToNewUserForDb(ctx context.Context, dbNam
 	if err != nil {
 		return err
 	}
-	defer connDb.Close(context.Background())
+	defer connDb.Close()
 
 	_, err = connDb.Exec(context.Background(), reassignGrants(currentUserName, newUserName))
 	if err != nil {
@@ -1393,7 +1393,7 @@ func (sa ServiceAdapter) getCurrentUserForDb(ctx context.Context, dbName string)
 	if err != nil {
 		return "", err
 	}
-	defer connDb.Close(context.Background())
+	defer connDb.Close()
 	rows, err := connDb.Query(context.Background(), getOwnerForMetaData)
 
 	if err != nil {
@@ -1498,7 +1498,7 @@ func (sa ServiceAdapter) getConnectionLimitFromTemplate1Db(ctx context.Context) 
 	if err != nil {
 		return "-1"
 	}
-	defer connDb.Close(context.Background())
+	defer connDb.Close()
 	rows, err := connDb.Query(context.Background(), getConnectionLimitFromTemplate1)
 	if err != nil {
 		logger.Error("Couldn't get connection limit from template1", zap.Error(err))
@@ -1537,7 +1537,7 @@ func (sa ServiceAdapter) getSchemasFromDB(dbName string) ([]string, error) {
 	if err != nil {
 		return result, nil
 	}
-	defer conn.Close(ctx)
+	defer conn.Close()
 
 	rows, err := conn.Query(ctx, getSchemasQuery())
 	if err != nil {
