@@ -1,5 +1,5 @@
 apiVersion: v2
-name: patroni-services-chart
+name: patroni-services
 description: A Helm chart for patroni-services
 
 # A chart can be either an 'application' or a 'library' chart.
