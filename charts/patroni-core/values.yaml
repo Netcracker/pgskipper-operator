@@ -28,7 +28,7 @@ serviceAccount:
   name: "patroni-sa"
 
 operatorInit:
-  image: ghcr.io/netcracker/credential-manager:main
+  image: ghcr.io/netcracker/qubership-credential-manager:main
   resources:
     limits:
       cpu: 50m
