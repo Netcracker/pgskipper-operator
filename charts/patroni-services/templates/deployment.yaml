@@ -125,6 +125,8 @@ spec:
               {{ end }}
               {{ end }}
               {{- template "postgres-operator.smEnvs" . }}
+            - name: INTERNAL_TLS_ENABLED
+              value: {{ default "false" .Values.INTERNAL_TLS_ENABLED | quote }}
           livenessProbe:
             httpGet:
               path: /healthz

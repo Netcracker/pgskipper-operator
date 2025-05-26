@@ -16,12 +16,13 @@ package deployment
 
 import (
 	"fmt"
-	"github.com/Netcracker/pgskipper-operator/api/apps/v1"
-	patroniv1 "github.com/Netcracker/pgskipper-operator/api/patroni/v1"
-	"github.com/Netcracker/pgskipper-operator/pkg/util"
 	"regexp"
 	"strconv"
 	"strings"
+
+	v1 "github.com/Netcracker/pgskipper-operator/api/apps/v1"
+	patroniv1 "github.com/Netcracker/pgskipper-operator/api/patroni/v1"
+	"github.com/Netcracker/pgskipper-operator/pkg/util"
 
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -112,6 +113,10 @@ func NewIntegrationTestsPod(cr *v1.PatroniServices, cluster *patroniv1.PatroniCl
 						{
 							Name:  "PGSSLMODE",
 							Value: ssl_mode,
+						},
+						{
+							Name:  "INTERNAL_TLS_ENABLED",
+							Value: util.InternalTlsEnabled(),
 						},
 						{
 							Name: "POD_NAMESPACE",

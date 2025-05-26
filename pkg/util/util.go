@@ -171,6 +171,10 @@ func IsHttpAuthEnabled() bool {
 	return strings.ToLower(util.GetEnv("SM_HTTP_AUTH", "false")) == "true"
 }
 
+func InternalTlsEnabled() string {
+	return strings.ToLower(util.GetEnv("INTERNAL_TLS_ENABLED", "false"))
+}
+
 func GetKubeClient() *kubernetes.Clientset {
 	k8sConfig, err := rest.InClusterConfig()
 	if err != nil {
