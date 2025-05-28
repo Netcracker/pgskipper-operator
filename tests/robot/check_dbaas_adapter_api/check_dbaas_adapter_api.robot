@@ -100,3 +100,4 @@ Check Deleting User By Dbaas Adapter
     ${resp}=  POST On Session  dbaassession  /api/${api_version}/dbaas/adapter/postgresql/resources/bulk-drop  data=${data}
     Should Be Equal As Strings  ${resp.status_code}  200
     [Teardown]  Delete User And Database  ${db_name}  ${resp_username}
+    
