@@ -294,6 +294,16 @@ spec:
         severity: average
         namespace: {{ .Release.Namespace }}
         service: {{ .Release.Name }}
+    - alert: PostgreSql Large Object Size High
+      annotations:
+        summary: PostgreSQL Large Object Size High
+        description: 'Large object total size has exceeded the warning threshold in namespace {{ .Release.Namespace }}.'
+      expr: ma_pg_large_object_total_size_bytes{namespace="{{ .Release.Namespace }}"} > {{ default "104857600" .Values.metricCollector.prometheusRules.largeObjectSizeThreshold }}
+      for: {{ default "3m" .Values.metricCollector.prometheusRules.alertDelay }}
+      labels:
+        severity: average
+        namespace: {{ .Release.Namespace }}
+        service: {{ .Release.Name }}
     - alert: There are long running queries on Third Node
       annotations:
         description: 'There are long running queries Third Node. Execution time is more than {{ default 3600 .Values.metricCollector.prometheusRules.queryMaxTimeThreshold }} second(s) on {{ .Release.Namespace }}'

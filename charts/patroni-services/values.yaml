@@ -148,6 +148,7 @@ metricCollector:
     # the value of replication lag after which alert should be triggered
     # should be specified in bytes, default is set to 32MB
     replicationLagValue: 33554432
+    largeObjectSizeThreshold: 104857600  # 100MB
     maxConnectionExceedPercentageThreshold: 90
     maxConnectionReachedPercentageThreshold: 80
     warnWaitEventTreshold: 5
