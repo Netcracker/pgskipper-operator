@@ -120,7 +120,7 @@ def granular_cron_pattern():
 def diff_cron_pattern():
     return os.getenv("DIFF_SCHEDULE", "none")
 
-def diff_cron_pattern():
+def incr_cron_pattern():
     return os.getenv("INCR_SCHEDULE", "none")
 
 

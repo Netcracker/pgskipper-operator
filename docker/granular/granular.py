@@ -186,6 +186,26 @@ def schedule_diff_backup(scheduler):
             month=month,
             day_of_week=day_of_week)
 
+def schedule_incr_backup(scheduler):
+    cron_pattern = configs.incr_cron_pattern()
+    logging.info(f'INCR SHEDULE {os.getenv("INCR_SCHEDULE")}')
+    if cron_pattern.lower() != 'none' and os.getenv("INCR_SCHEDULE") is not None:
+        logging.info('Start schedule incr backup')
+        items = cron_pattern.split(' ', 5)
+        logging.info(f"{items} cron items")
+        minute, hour, day, month, day_of_week = items[0], items[1], items[2], items[3], items[4]
+
+        incr_backup_request = IncrBackupRequestEndpoint()
+
+        return scheduler.add_job(
+            incr_backup_request.perform_incr_backup,
+            'cron',
+            minute=minute,
+            hour=hour,
+            day=day,
+            month=month,
+            day_of_week=day_of_week)
+
 class GranularBackupsListEndpoint(flask_restful.Resource):
 
     def __init__(self):
@@ -934,6 +954,30 @@ class DiffBackupRequestEndpoint(flask_restful.Resource):
 
         return self.perform_diff_backup()
 
+class IncrBackupRequestEndpoint(flask_restful.Resource):
+
+    def __init__(self):
+        self.log = logging.getLogger('IncrementalBackup')
+        self.allowed_fields = ['timestamp']
+
+    def perform_incr_backup(self):
+
+        self.log.info('Perform incremental backup')
+
+        backup_id = backups.generate_backup_id()
+        payload = {'timestamp':backup_id}
+        r = requests.post("http://pgbackrest:3000/backup/incr", payload)
+        if r.status_code == 200:
+            return {
+                'backupId': backup_id
+            }, http.client.ACCEPTED
+        else:
+            return r.status_code
+
+
+    def post(self):
+        return self.perform_incr_backup()
+
 class GranularBackupStatusInfoEndpoint(flask_restful.Resource):
 
     def __init__(self):
@@ -1025,6 +1069,7 @@ api.add_resource(GranularBackupDeleteEndpoint, '/delete/<backup_id>')
 api.add_resource(GranularBackupHealthEndpoint, '/health')
 api.add_resource(GranularBackupDownloadEndpoint, '/backup/download/<backup_id>')
 api.add_resource(DiffBackupRequestEndpoint, '/backup/diff')
+api.add_resource(IncrBackupRequestEndpoint, '/backup/incr')
 api.add_resource(GranularBackupStatusInfoEndpoint, '/backup/info')
 
 scheduler = BackgroundScheduler()
@@ -1032,8 +1077,8 @@ scheduler.start()
 scheduler.add_job(backups.sweep_manager, 'interval', seconds=configs.eviction_interval())
 schedule_granular_backup(scheduler)
 
-# Add diff scheduler
-
+# Add pgbackrest scheduler
 backrest_scheduler = BackgroundScheduler()
 backrest_scheduler.start()
-schedule_diff_backup(scheduler)
+schedule_diff_backup(backrest_scheduler)
+schedule_incr_backup(backrest_scheduler)
