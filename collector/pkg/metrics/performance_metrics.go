@@ -93,6 +93,10 @@ var (
 			`,
 	}
 
+	largeObjectQuery = `SELECT count(distinct loid) AS object_count,
+    count(*) AS total_chunks, sum(octet_length(data)) AS total_size_bytes
+	FROM pg_largeobject;`
+
 	countStatQuery = `SELECT max_connections, used, res_for_super as reserved_for_superuser,
 	(max_connections - used-res_for_super) reserved_for_reg_users
 	FROM (SELECT count(*) used FROM pg_stat_activity) t1,
@@ -118,9 +122,53 @@ func (s *Scraper) CollectPerformanceMetrics() {
 	s.collectQueriesMetrics(ctx, pc)
 	s.collectMetricsPerDB(ctx, pc)
 	s.collectTempFileMetrics(ctx, pc)
+	s.collectLargeObjectMetrics(ctx, pc)
 	s.collectCommonPerfMetrics(ctx, pc)
 	s.collectCountStatMetrics(ctx, pc)
 	logger.Info("Performance metrics collection finished")
+}
+
+func (s *Scraper) collectLargeObjectMetrics(ctx context.Context, pg *postgres.PostgresConnector) {
+	logger.Info("Large object metrics per DB collection started")
+
+	databases, err := getDatabasesList(ctx, pg)
+	if err != nil {
+		logger.Error("Failed to retrieve databases list for large object metrics")
+		return
+	}
+
+	defer func() {
+		_ = pg.EstablishConnForDB(ctx, postgres.PgDatabase)
+	}()
+
+	logger.Debug(fmt.Sprintf("Will Collect large object Stats for next dbs %v", databases))
+	for _, db := range databases {
+		logger.Debug(fmt.Sprintf("Collecting large object metrics for DB: %s", db))
+		err = pg.EstablishConnForDB(ctx, db)
+		if err != nil {
+			logger.Warn(fmt.Sprintf("Skipping DB %s due to connection issue", db))
+			continue
+		}
+
+		columns, rows := getData(ctx, pg, largeObjectQuery)
+		if len(rows) == 0 {
+			logger.Info(fmt.Sprintf("No large objects found in DB: %s", db))
+			continue
+		}
+
+		for _, row := range rows {
+			labels := gauges.DefaultLabels()
+			labels["datname"] = db
+
+			for _, column := range columns {
+				value := fmt.Sprintf("%v", row[column])
+				metricName := fmt.Sprintf("ma_pg_large_object_%s", column)
+				s.metrics = append(s.metrics, NewMetric(metricName).withLabels(labels).setValue(value))
+			}
+		}
+	}
+
+	logger.Info("Large object metrics per DB collection finished")
 }
 
 func (s *Scraper) collectTempFileMetrics(ctx context.Context, pg *postgres.PostgresConnector) {
