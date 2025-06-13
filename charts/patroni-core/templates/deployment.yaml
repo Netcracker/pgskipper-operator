@@ -111,6 +111,8 @@ spec:
               value: /secrets/cloudsql/credentials.json
               {{ end }}
               {{ end }}
+            - name: INTERNAL_TLS_ENABLED
+              value: {{ default "false" .Values.INTERNAL_TLS_ENABLED | quote }}
           livenessProbe:
             httpGet:
               path: /healthz

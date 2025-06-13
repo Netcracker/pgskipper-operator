@@ -235,6 +235,10 @@ func NewCoreIntegrationTests(cr *patroniv1.PatroniCore, cluster *patroniv1.Patro
 							Value: ssl_mode,
 						},
 						{
+							Name:  "INTERNAL_TLS_ENABLED",
+							Value: util.InternalTlsEnabled(),
+						},
+						{
 							Name: "POD_NAMESPACE",
 							ValueFrom: &corev1.EnvVarSource{
 								FieldRef: &corev1.ObjectFieldSelector{
