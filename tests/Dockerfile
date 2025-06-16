@@ -1,4 +1,4 @@
-FROM ghcr.io/netcracker/qubership-docker-integration-tests:0.2.1
+FROM ghcr.io/netcracker/qubership-docker-integration-tests:0.2.2
 
 ENV LC_ALL=en_US.UTF-8 \
     LANG=en_US.UTF-8
