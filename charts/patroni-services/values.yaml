@@ -28,12 +28,12 @@ serviceAccount:
   name: "postgres-sa"
 
 operatorInit:
-  image: ghcr.io/netcracker/qubership-credential-manager:main
+  image: ghcr.io/netcracker/qubership-credential-manager:v0.0.6
 
 ##  This section describes values for patroni-services deployment
 operator:
   # Docker Image that will be used to Postgres Operator deployment
-  image: ghcr.io/netcracker/pgskipper-operator:main
+  image: ghcr.io/netcracker/pgskipper-operator:2025.3-1.49.0
   podLabels: {}
   securityContext: {}
   waitTimeout: 10
@@ -109,7 +109,7 @@ metricCollector:
   # Optional flag for Monitoring Agent deployment
   install: true
   # Docker Image that will be used for PostgreSQL Monitoring Agent container
-  dockerImage: ghcr.io/netcracker/pgskipper-monitoring-agent:main
+  dockerImage: ghcr.io/netcracker/pgskipper-monitoring-agent:2025.3-1.49.0
   podLabels: {}
   databaseConnectionLimits: 250
   securityContext: {}
@@ -176,7 +176,7 @@ backupDaemon:
   # Optional flag for PostgreSQL Backup Daemon deployment
   install: true
   # Docker Image that will be used for PostgreSQL Backup Daemon container
-  dockerImage: ghcr.io/netcracker/pgskipper-backup-daemon:main
+  dockerImage: ghcr.io/netcracker/pgskipper-backup-daemon:2025.3-1.49.0
   podLabels: {}
   # If the flag is set as true, the installation procedure will configure Postgres to use the WAL archive and use the backup daemon as storage.
   # This setting can cause major disk usage impact, because each postgres WAL file size is 16MB.
@@ -233,7 +233,7 @@ backupDaemon:
 #      - db-backup-node1
 
 # pgBackRest:
-#   dockerImage: ghcr.io/netcracker/pgbackrest-sidecar:main
+#   dockerImage: ghcr.io/netcracker/pgbackrest-sidecar:2025.3-1.49.0
 #   repoType: "s3"
 #   repoPath: "/var/lib/pgbackrest"
 #   diffSchedule: "30 0/1 * * *"
@@ -279,7 +279,7 @@ dbaas:
   install: false
   multiUsers: true
   # Docker Image that will be used for PostgreSQL DBaaS Adapter container
-  dockerImage: ghcr.io/netcracker/pgskipper-dbaas-adapter:main
+  dockerImage: ghcr.io/netcracker/pgskipper-dbaas-adapter:2025.3-1.49.0
   podLabels: {}
   securityContext: {}
   # PostgreSQL cluster entry point.
@@ -341,7 +341,7 @@ siteManager:
 
 # This section describes Query Exporter parameters.
 queryExporter:
-  dockerImage: ghcr.io/netcracker/qubership-query-exporter:main
+  dockerImage: ghcr.io/netcracker/qubership-query-exporter:2025.3-1.49.0
   install: false
   resources:
     requests:
@@ -383,7 +383,7 @@ powaUI:
 
 replicationController:
   install: false
-  dockerImage: ghcr.io/netcracker/pgskipper-replication-controller:main
+  dockerImage: ghcr.io/netcracker/pgskipper-replication-controller:2025.3-1.49.0
   resources:
     limits:
       cpu: 200m
@@ -420,7 +420,7 @@ tracing:
 
 tests:
   install: true
-  dockerImage: ghcr.io/netcracker/pgskipper-operator-tests:main
+  dockerImage: ghcr.io/netcracker/pgskipper-operator-tests:2025.3-1.49.0
   podLabels: {}
   # One of "full", "basic"or one from testScenarios
   runTestScenarios: "basic"
