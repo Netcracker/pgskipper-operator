@@ -43,7 +43,7 @@ RUN apt-get --no-install-recommends install -y comerr-dev \
                        openssl curl \
                        vim \
                        locales
-RUN python3 -m pip install -U setuptools==70.0.0 wheel==0.38.0
+RUN python3 -m pip install -U setuptools==78.1.1 wheel==0.38.0
 RUN python3 -m pip install --no-cache-dir -r /root/requirements.txt \
       && python3 -m pip install --upgrade pip \
       && python3 -m pip install grpcio \
