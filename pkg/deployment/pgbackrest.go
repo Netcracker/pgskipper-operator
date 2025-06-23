@@ -100,7 +100,7 @@ func getPgBackRestContainer(deploymentIdx int, patroniCoreSpec *v1.PatroniCoreSp
 				Name:      "pgbackrest-conf",
 			},
 		},
-		Resources: *patroniCoreSpec.Patroni.Resources,
+		Resources: getPgbackRestResources(patroniCoreSpec),
 	}
 	if strings.ToLower(patroniCoreSpec.PgBackRest.RepoType) == "rwx" {
 		backrestVolumeMount := corev1.VolumeMount{
@@ -110,6 +110,13 @@ func getPgBackRestContainer(deploymentIdx int, patroniCoreSpec *v1.PatroniCoreSp
 		pgBackRestContainer.VolumeMounts = append(pgBackRestContainer.VolumeMounts, backrestVolumeMount)
 	}
 	return pgBackRestContainer
+}
+
+func getPgbackRestResources(patroniCoreSpec *v1.PatroniCoreSpec) corev1.ResourceRequirements {
+	if patroniCoreSpec.PgBackRest.Resources == nil {
+		return *patroniCoreSpec.Patroni.Resources
+	}
+	return *patroniCoreSpec.PgBackRest.Resources
 }
 
 func GetPgBackRestCM(pgBackrestSpec *v1.PgBackRest) *corev1.ConfigMap {

@@ -204,6 +204,10 @@ spec:
 {{ toYaml .Values.pgBackRest.s3 | indent 6 }}
   {{ end }}
 {{ end }}
+{{- if .Values.pgBackRest.resources }}
+    resources:
+{{ toYaml .Values.pgBackRest.resources | indent 6 }}
+{{- end }}
 
 {{ if .Values.ldap.enabled }}
   ldap:
