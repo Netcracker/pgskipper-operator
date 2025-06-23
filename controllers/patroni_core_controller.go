@@ -317,19 +317,8 @@ func (pr *PatroniCoreReconciler) Reconcile(ctx context.Context, request ctrl.Req
 		if patroni.IsStandbyClusterConfigurationExist(cr) {
 			pr.logger.Info("It's standby cluster, stanza upgrade will be skipped...")
 		} else {
-			masterPod, err := pr.helper.ResourceManager.GetPodsByLabel(MasterLabel)
-			if err != nil || len(masterPod.Items) == 0 {
-				pr.logger.Error("Can't get Patroni Leader for stanza upgrade execution", zap.Error(err))
+			if err := pr.stanzaUpgrade(); err != nil {
 				return reconcile.Result{RequeueAfter: time.Minute}, err
-			}
-			masterPodName := masterPod.Items[0].Name
-			namespace := util.GetNameSpace()
-			pr.logger.Info("executing command to upgrade pgBackRest stanza")
-			stdout, stderr, err := pr.helper.ExecCmdOnPod(masterPodName, namespace, backRestcontainerName, stanzaUpgradeCommand)
-			if err != nil {
-				fmt.Printf("Failed to execute stanza-upgrade command: %v\nStderr: %s\n", err, stderr)
-			} else {
-				fmt.Printf("stanza-upgrade command succeeded:\n%s\n", stdout)
 			}
 		}
 	}
@@ -347,6 +336,24 @@ func (pr *PatroniCoreReconciler) Reconcile(ctx context.Context, request ctrl.Req
 	}
 	pr.resVersions[cr.Name] = newResVersion
 	return reconcile.Result{}, nil
+}
+
+func (pr *PatroniCoreReconciler) stanzaUpgrade() error {
+	masterPod, err := pr.helper.ResourceManager.GetPodsByLabel(MasterLabel)
+	if err != nil || len(masterPod.Items) == 0 {
+		pr.logger.Error("Can't get Patroni Leader for stanza upgrade execution", zap.Error(err))
+		return err
+	}
+	masterPodName := masterPod.Items[0].Name
+	namespace := util.GetNameSpace()
+	pr.logger.Info("executing command to upgrade pgBackRest stanza")
+	stdout, stderr, err := pr.helper.ExecCmdOnPod(masterPodName, namespace, backRestcontainerName, stanzaUpgradeCommand)
+	if err != nil {
+		fmt.Printf("Failed to execute stanza-upgrade command: %v\nStderr: %s\n", err, stderr)
+	} else {
+		fmt.Printf("stanza-upgrade command succeeded:\n%s\n", stdout)
+	}
+	return nil
 }
 
 func (pr *PatroniCoreReconciler) handleTestReconcileError(err error, errMsg string, maxReconcileAttempts int, newCrHash string) (ctrl.Result, error) {
