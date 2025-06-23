@@ -148,7 +148,11 @@ function main() {
 
   log "version of pgsql server is: ${version}"
 
-  if python -c "import sys; sys.exit(0 if float("${version}") >= 16.0 else 1)"; then
+  if python -c "import sys; sys.exit(0 if float("${version}") >= 17.0 else 1)"; then
+    log "Using pgsql 17 bins for pg_basebackup"
+    PG_BASEBACKUP="/usr/lib/postgresql/17/bin/pg_basebackup"
+    BACKUP_NAME="pg_backup_$(basename ${BACKUP_ID}).tar.gz"
+  elif python -c "import sys; sys.exit(0 if 16.0 <= float("${version}") < 17.0 else 1)"; then
     log "Using pgsql 16 bins for pg_basebackup"
     PG_BASEBACKUP="/usr/lib/postgresql/16/bin/pg_basebackup"
     BACKUP_NAME="pg_backup_$(basename ${BACKUP_ID}).tar.gz"

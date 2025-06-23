@@ -38,7 +38,7 @@ RUN apt-get --no-install-recommends install -y comerr-dev \
                        manpages-dev \
                        libkrb5-dev \
                        libsasl2-dev libldap2-dev libssl-dev \
-                       postgresql-13 postgresql-14 postgresql-15 postgresql-16 \
+                       postgresql-13 postgresql-14 postgresql-15 postgresql-16 postgresql-17 \
                        jq \
                        openssl curl \
                        vim \
