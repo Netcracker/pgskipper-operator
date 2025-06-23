@@ -314,19 +314,23 @@ func (pr *PatroniCoreReconciler) Reconcile(ctx context.Context, request ctrl.Req
 	}
 
 	if cr.Spec.PgBackRest != nil && cr.Spec.Patroni != nil {
-		masterPod, err := pr.helper.ResourceManager.GetPodsByLabel(MasterLabel)
-		if err != nil || len(masterPod.Items) == 0 {
-			pr.logger.Error("Can't get Patroni Leader for stanza upgrade execution", zap.Error(err))
-			return reconcile.Result{RequeueAfter: time.Minute}, err
-		}
-		masterPodName := masterPod.Items[0].Name
-		namespace := util.GetNameSpace()
-		pr.logger.Info("executing command to upgrade pgBackRest stanza")
-		stdout, stderr, err := pr.helper.ExecCmdOnPod(masterPodName, namespace, backRestcontainerName, stanzaUpgradeCommand)
-		if err != nil {
-			fmt.Printf("Failed to execute stanza-upgrade command: %v\nStderr: %s\n", err, stderr)
+		if patroni.IsStandbyClusterConfigurationExist(cr) {
+			pr.logger.Info("It's standby cluster, stanza upgrade will be skipped...")
 		} else {
-			fmt.Printf("stanza-upgrade command succeeded:\n%s\n", stdout)
+			masterPod, err := pr.helper.ResourceManager.GetPodsByLabel(MasterLabel)
+			if err != nil || len(masterPod.Items) == 0 {
+				pr.logger.Error("Can't get Patroni Leader for stanza upgrade execution", zap.Error(err))
+				return reconcile.Result{RequeueAfter: time.Minute}, err
+			}
+			masterPodName := masterPod.Items[0].Name
+			namespace := util.GetNameSpace()
+			pr.logger.Info("executing command to upgrade pgBackRest stanza")
+			stdout, stderr, err := pr.helper.ExecCmdOnPod(masterPodName, namespace, backRestcontainerName, stanzaUpgradeCommand)
+			if err != nil {
+				fmt.Printf("Failed to execute stanza-upgrade command: %v\nStderr: %s\n", err, stderr)
+			} else {
+				fmt.Printf("stanza-upgrade command succeeded:\n%s\n", stdout)
+			}
 		}
 	}
 

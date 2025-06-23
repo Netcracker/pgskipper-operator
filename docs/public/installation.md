@@ -719,6 +719,8 @@ Patroni Core Operator allows configuration of TLS for PostgreSQL. By default, re
 | pgBackRest.repoPath          | string   | yes       | /var/lib/pgbackrest | Specifies folder to store backups.                                                                                            |
 | pgBackRest.diffSchedule      | string   | yes       | 30 0/1 * * *        | Specifies schedule of the differential backups in cron format.                                                                |
 | pgBackRest.incrSchedule      | string   | yes       | 30 0/1 * * *        | Specifies schedule of the incremental backups in cron format.                                                                 |
+| pgBackRest.fullRetention      | string   | yes       | 5        | Specifies retention for the full backups.                                                                |
+| pgBackRest.diffRetention      | string   | yes       | 3        | Specifies retention for the differential backups.                                                                 |
 | pgBackRest.rwx.type          | string   | no        | n/a                 | Specifies the storage type. The possible values are `pv` and `provisioned`.                                                   |
 | pgBackRest.rwx.size          | string   | no        | n/a                 | Specifies size of pgBackRest PVCs.                                                                                            |
 | pgBackRest.rwx.storageClass  | string   | no        | n/a                 | Specifies storageClass that will be used for pgBackRest PVCs. Should be specified only in case of `provisioned` storageClass. |

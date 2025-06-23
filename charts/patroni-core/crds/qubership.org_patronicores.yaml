@@ -1557,10 +1557,14 @@ spec:
                 type: object
               pgBackRest:
                 properties:
+                  diffRetention:
+                    type: integer
                   diffSchedule:
                     type: string
                   dockerImage:
                     type: string
+                  fullRetention:
+                    type: integer
                   incrSchedule:
                     type: string
                   repoPath:
