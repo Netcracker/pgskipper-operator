@@ -40,7 +40,7 @@ var (
 	MasterLabel         = map[string]string{"pgtype": "master"}
 	ReplicasLabel       = map[string]string{"pgtype": "replica"}
 	authHeaders         = map[string]AuthPair{}
-	patroniRunningState = []string{"running", "streaming"}
+	patroniRunningState = []string{"running", "streaming", "in archive recovery"}
 
 	helper *Helper = nil
 )
