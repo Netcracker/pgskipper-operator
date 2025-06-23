@@ -1557,6 +1557,10 @@ spec:
                 type: object
               pgBackRest:
                 properties:
+                  configParams:
+                    items:
+                      type: string
+                    type: array
                   diffRetention:
                     type: integer
                   diffSchedule:

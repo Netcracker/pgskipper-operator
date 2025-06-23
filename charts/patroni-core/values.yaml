@@ -273,6 +273,9 @@ patroni:
 #     secret: "minio123"
 #     region: "us-east-1"
 #     verifySsl: false
+#   configParams:
+#     - "log-level-file=detail"
+#     - "log-level-console=info"
 
 tests:
   install: true

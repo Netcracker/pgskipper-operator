@@ -329,6 +329,7 @@ Patroni Core Operator allows configuration of TLS for PostgreSQL. By default, re
 | pgBackRest.s3.secret         | string   | no        | n/a                 | Specifies secret of the s3 storage to login.                                                                                  |
 | pgBackRest.s3.region         | string   | no        | n/a                 | Specifies region of the s3 storage.                                                                                           |
 | pgBackRest.s3.verifySsl      | bool     | no        | n/a                 | Specifies do the pgBackRest verify secure connection to the s3, or not. Possible value true or false.                         |
+| pgBackRest.configParams      | []string | no        | n/a                 | Specifies config parameters for pgBackRest.                         |
 
 
 

@@ -403,6 +403,7 @@ spec:
     incrSchedule: {{ .Values.pgBackRest.incrSchedule | default "0 0/1 * * *" }}
     fullRetention: {{ .Values.pgBackRest.fullRetention | default 5 }}
     diffRetention: {{ .Values.pgBackRest.diffRetention | default 3 }}
+    configParams: {{ .Values.pgBackRest.configParams | default (list) | toJson }}
   {{ if .Values.pgBackRest.rwx }}
     rwx:
 {{ toYaml .Values.pgBackRest.rwx | indent 6 }}

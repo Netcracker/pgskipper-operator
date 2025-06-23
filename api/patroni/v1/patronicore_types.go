@@ -211,6 +211,7 @@ type PgBackRest struct {
 	Resources     *v1.ResourceRequirements `json:"resources,omitempty"`
 	FullRetention int                      `json:"fullRetention,omitempty"`
 	DiffRetention int                      `json:"diffRetention,omitempty"`
+	ConfigParams  []string                 `json:"configParams,omitempty"`
 }
 
 type S3 struct {

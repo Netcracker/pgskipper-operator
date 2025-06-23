@@ -172,8 +172,6 @@ func GetBackrestHeadless() *corev1.Service {
 func getPgBackRestSettings(pgBackrestSpec *v1.PgBackRest) string {
 	var listSettings []string
 	listSettings = append(listSettings, "[global]")
-	listSettings = append(listSettings, fmt.Sprintf("log-level-file=%s", "detail"))
-	listSettings = append(listSettings, fmt.Sprintf("log-level-console=%s", "info"))
 
 	listSettings = append(listSettings, fmt.Sprintf("repo1-retention-full=%d", pgBackrestSpec.FullRetention))
 	listSettings = append(listSettings, fmt.Sprintf("repo1-retention-diff=%d", pgBackrestSpec.DiffRetention))
@@ -194,6 +192,7 @@ func getPgBackRestSettings(pgBackrestSpec *v1.PgBackRest) string {
 	if pgBackrestSpec.RepoType == "rwx" {
 		listSettings = append(listSettings, "repo1-path=/var/lib/pgbackrest")
 	}
+	listSettings = append(listSettings, pgBackrestSpec.ConfigParams...)
 	settings := strings.Join(listSettings[:], "\n")
 	return settings
 }
