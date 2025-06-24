@@ -543,16 +543,19 @@ func (r *PatroniReconciler) fixCollationVersionForDB(pgClient *pgClient.Postgres
 	defer wg.Done()
 	logger.Info(fmt.Sprintf("fix locale for database: %s", db))
 	isPassed := true
-	err := pgClient.Execute(fmt.Sprintf("REINDEX DATABASE \"%s\"", db))
+
+	err := pgClient.ExecuteForDB(db, "REINDEX DATABASE;")
 	if err != nil {
 		isPassed = false
 		logger.Warn(fmt.Sprintf("Cannot reindex database for db: %s", db), zap.Error(err))
 	}
-	err = pgClient.Execute(fmt.Sprintf("REINDEX SYSTEM \"%s\"", db))
+
+	err = pgClient.ExecuteForDB(db, "REINDEX SYSTEM;")
 	if err != nil {
 		isPassed = false
 		logger.Warn(fmt.Sprintf("Cannot reindex system for db: %s", db), zap.Error(err))
 	}
+
 	if pgVersion >= 15 {
 		err = pgClient.Execute(fmt.Sprintf("ALTER DATABASE \"%s\" REFRESH COLLATION VERSION", db))
 		if err != nil {
