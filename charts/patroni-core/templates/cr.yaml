@@ -222,6 +222,11 @@ spec:
 
 {{ if .Values.tests.install }}
   integrationTests:
+    {{ if .Values.tests.affinity }}
+    affinity: {{ .Values.tests.affinity | toJson }}
+    {{ else if .Values.affinity }}
+    affinity: {{ .Values.affinity | toJson }}
+    {{ end }}
     {{- if .Values.tests.podLabels }}
     podLabels:
       {{ toYaml .Values.tests.podLabels | nindent 6 }}

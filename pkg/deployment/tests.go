@@ -67,6 +67,7 @@ func NewIntegrationTestsPod(cr *v1.PatroniServices, cluster *patroniv1.PatroniCl
 		},
 		Spec: corev1.PodSpec{
 			ServiceAccountName: cr.Spec.ServiceAccountName,
+			Affinity:           &testsSpec.Affinity,
 			InitContainers:     []corev1.Container{},
 			Containers: []corev1.Container{
 				{
@@ -183,6 +184,7 @@ func NewCoreIntegrationTests(cr *patroniv1.PatroniCore, cluster *patroniv1.Patro
 		},
 		Spec: corev1.PodSpec{
 			ServiceAccountName: cr.Spec.ServiceAccountName,
+			Affinity:           &testsSpec.Affinity,
 			InitContainers:     []corev1.Container{},
 			Containers: []corev1.Container{
 				{
