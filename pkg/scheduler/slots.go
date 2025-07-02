@@ -26,7 +26,7 @@ import (
 
 var (
 	ignoredSlots      = make([]Slot, 0)
-	ignoreSlotsPrefix = "ig_"
+	ignoreSlotsPrefix = "cdc_rs_"
 )
 
 type Slot struct {

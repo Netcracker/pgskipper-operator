@@ -155,7 +155,7 @@ spec:
     forceCollationVersionUpgrade: {{ default "false" .Values.patroni.forceCollationVersionUpgrade }}
 {{- if .Values.patroni.ignoreSlots }}
     ignoreSlots: true
-    ignoreSlotsPrefix: {{ default "ig_" .Values.patroni.ignoreSlotsPrefix }}
+    ignoreSlotsPrefix: {{ default "cdc_rs_" .Values.patroni.ignoreSlotsPrefix }}
 {{- end }}
 {{- if .Values.patroni.external }}
     external:
