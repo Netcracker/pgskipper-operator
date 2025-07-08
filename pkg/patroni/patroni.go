@@ -50,12 +50,15 @@ type Members map[string]interface{}
 func SetWalArchiving(spec qubershipv1.PatroniServicesSpec, patroniUrl string) error {
 	postgreSQLParams := map[string]interface{}{}
 	recoveryParams := map[string]string{}
+	patroniParams := map[string]interface{}{}
 	if spec.PgBackRest != nil {
 		logger.Info("pgBackRest feature is turned On, settings archive_command and restore_command for pgBackRest option")
 		postgreSQLParams["archive_mode"] = constants.ArchiveModeOn
 		postgreSQLParams["archive_command"] = constants.PgBackRestArchiveCommand
+
 		recoveryParams["restore_command"] = constants.PgBackRestRestoreCommand
 		postgreSQLParams["create_replica_methods"] = []string{"pgbackrest"}
+		recoveryParams["recovery_target_timeline"] = "latest"
 	} else if spec.BackupDaemon.WalArchiving {
 		logger.Info("WAL Archiving is turned On, settings archive_command and restore_command")
 		postgreSQLParams["archive_mode"] = constants.ArchiveModeOn
@@ -68,22 +71,17 @@ func SetWalArchiving(spec qubershipv1.PatroniServicesSpec, patroniUrl string) er
 		recoveryParams["restore_command"] = ""
 	}
 
+	patroniParams["parameters"] = postgreSQLParams
+	patroniParams["recovery_conf"] = recoveryParams
+
 	patchData := map[string]interface{}{
-		"postgresql": map[string]interface{}{
-			"parameters":    postgreSQLParams,
-			"recovery_conf": recoveryParams,
-		},
+		"postgresql": patroniParams,
 	}
 	if spec.PgBackRest != nil {
 		patchData = map[string]interface{}{
 			"postgresql": map[string]interface{}{
 				"parameters":    postgreSQLParams,
 				"recovery_conf": recoveryParams,
-				"pgbackrest": map[string]string{
-					"command":   "pgbackrest --stanza=patroni --log-level-file=detail restore",
-					"keep_data": "true",
-					"no_params": "true",
-				},
 			},
 		}
 	}
@@ -93,6 +91,48 @@ func SetWalArchiving(spec qubershipv1.PatroniServicesSpec, patroniUrl string) er
 		return err
 	}
 	return nil
+}
+
+func UpdatePgbackRestSettings(configMap *corev1.ConfigMap, settings interface{}, configMapKey string) (*corev1.ConfigMap, error) {
+	var config map[string]interface{}
+
+	if err := yaml.Unmarshal([]byte(configMap.Data[configMapKey]), &config); err != nil {
+		logger.Error("Could not unmarshal patroni config map", zap.Error(err))
+		return configMap, err
+	}
+
+	bootstrap, ok := config["bootstrap"].(map[interface{}]interface{})
+	if !ok {
+		err := fmt.Errorf("invalid bootstrap configuration")
+		logger.Error(err.Error())
+		return configMap, err
+	}
+
+	dcs, ok := bootstrap["dcs"].(map[interface{}]interface{})
+	if !ok {
+		err := fmt.Errorf("invalid dcs configuration")
+		logger.Error(err.Error())
+		return configMap, err
+	}
+
+	postgresql, ok := dcs["postgresql"].(map[interface{}]interface{})
+	if !ok {
+		err := fmt.Errorf("invalid postgresql configuration")
+		logger.Error(err.Error())
+		return configMap, err
+	}
+
+	postgresql["pgbackrest"] = settings
+	postgresql["create_replica_methods"] = []string{"pgbackrest", "basebackup"}
+
+	result, err := yaml.Marshal(config)
+	if err != nil {
+		logger.Error("Could not marshal patroni config map", zap.Error(err))
+		return configMap, err
+	}
+
+	configMap.Data[configMapKey] = string(result)
+	return configMap, nil
 }
 
 func AddStandbyClusterSettings(cr *patroniv1.PatroniCore, configMap *corev1.ConfigMap, configMapKey string) {
@@ -249,12 +289,23 @@ func IsPatroniHasDisabledStatus(cr *qubershipv1.PatroniServices) bool {
 
 func getStandbyClusterConfiguration(cr *patroniv1.PatroniCore) map[string]interface{} {
 	standbyCluster := cr.Spec.Patroni.StandbyCluster
+	return GetStandbyClusterConfigurationWithHost(cr, standbyCluster.Host, standbyCluster.Port)
+}
+
+func GetStandbyClusterConfigurationWithHost(cr *patroniv1.PatroniCore, host string, port int) map[string]interface{} {
+	standbyCluster := cr.Spec.Patroni.StandbyCluster
 	standbyClusterConfiguration := map[string]interface{}{
 		"host":                   standbyCluster.Host,
 		"port":                   standbyCluster.Port,
 		"primary_slot_name":      util.GetPatroniClusterName(cr.Spec.Patroni.ClusterName),
 		"create_replica_methods": []string{"basebackup"},
 	}
+
+	if cr.Spec.PgBackRest != nil {
+		standbyClusterConfiguration["create_replica_methods"] = []string{"pgbackrest", "basebackup"}
+		standbyClusterConfiguration["restore_command"] = "pgbackrest --stanza=patroni --delta --log-level-file=detail restore"
+	}
+
 	return standbyClusterConfiguration
 }
 
@@ -361,6 +412,7 @@ func UpdatePatroniConfig(values map[string]interface{}, patroniUrl string) error
 		return err
 	}
 	logger.Info(fmt.Sprintf("Patroni nodes %v", patroniHosts))
+	time.Sleep(10 * time.Second)
 	for _, host := range patroniHosts {
 		if err = restartIfPending(host); err != nil {
 			logger.Error("Check if restart is required failed", zap.Error(err))
@@ -406,7 +458,6 @@ func getPatroniHosts(patroniUrl string) ([]string, error) {
 }
 
 func restartIfPending(patroniUrl string) error {
-	time.Sleep(15 * time.Second)
 	return wait.PollUntilContextTimeout(context.Background(), 10*time.Second, 120*time.Minute, true, func(ctx context.Context) (done bool, err error) {
 		resp, err := http.Get(patroniUrl + "patroni")
 		if err != nil {

@@ -25,6 +25,8 @@ import (
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/util/intstr"
+	"k8s.io/utils/ptr"
 )
 
 func ConfigMapForPatroni(clusterName string, patroniCM string, configMapKey string) *corev1.ConfigMap {
@@ -59,6 +61,7 @@ func GetPortsForPatroniService(clusterName string) []corev1.ServicePort {
 	return []corev1.ServicePort{
 		{Name: "pg-" + clusterName, Port: 5432},
 		{Name: clusterName + "-api", Port: 8008},
+		{Name: clusterName + "-ssh", Port: 22, TargetPort: intstr.IntOrString{IntVal: 3022}}, //TODO: remove if not required
 	}
 }
 
@@ -127,6 +130,7 @@ func NewPatroniStatefulset(cr *patroniv1.PatroniCore, deploymentIdx int, cluster
 			Labels:    util.Merge(patroniLabels, patroniSpec.PodLabels),
 		},
 		Spec: appsv1.StatefulSetSpec{
+			Replicas: ptr.To[int32](1),
 			Selector: &metav1.LabelSelector{
 				MatchLabels: util.Merge(patroniLabels, patroniSpec.PodLabels),
 			},
@@ -140,6 +144,7 @@ func NewPatroniStatefulset(cr *patroniv1.PatroniCore, deploymentIdx int, cluster
 							Name: "patroni-config",
 							VolumeSource: corev1.VolumeSource{
 								ConfigMap: &corev1.ConfigMapVolumeSource{
+									DefaultMode:          ptr.To[int32](420),
 									LocalObjectReference: corev1.LocalObjectReference{Name: patroniTemplate},
 								},
 							},
@@ -157,14 +162,17 @@ func NewPatroniStatefulset(cr *patroniv1.PatroniCore, deploymentIdx int, cluster
 							Name: "postgresql-config",
 							VolumeSource: corev1.VolumeSource{
 								ConfigMap: &corev1.ConfigMapVolumeSource{
+									DefaultMode:          ptr.To[int32](420),
 									LocalObjectReference: corev1.LocalObjectReference{Name: postgreSQLUserConf},
 								},
 							},
 						},
 					},
-					ServiceAccountName: cr.Spec.ServiceAccountName,
-					Affinity:           affinity,
-					InitContainers:     []corev1.Container{},
+					ServiceAccountName:       cr.Spec.ServiceAccountName,
+					DeprecatedServiceAccount: cr.Spec.ServiceAccountName,
+					Affinity:                 &patroniSpec.Affinity,
+					SchedulerName:            corev1.DefaultSchedulerName,
+					InitContainers:           []corev1.Container{},
 					Containers: []corev1.Container{
 						{
 							Name:            statefulsetName,
@@ -211,7 +219,8 @@ func NewPatroniStatefulset(cr *patroniv1.PatroniCore, deploymentIdx int, cluster
 									Name: "POD_NAMESPACE",
 									ValueFrom: &corev1.EnvVarSource{
 										FieldRef: &corev1.ObjectFieldSelector{
-											FieldPath: "metadata.namespace",
+											APIVersion: "v1",
+											FieldPath:  "metadata.namespace",
 										},
 									},
 								},
@@ -219,7 +228,8 @@ func NewPatroniStatefulset(cr *patroniv1.PatroniCore, deploymentIdx int, cluster
 									Name: "POD_IP",
 									ValueFrom: &corev1.EnvVarSource{
 										FieldRef: &corev1.ObjectFieldSelector{
-											FieldPath: "status.podIP",
+											APIVersion: "v1",
+											FieldPath:  "status.podIP",
 										},
 									},
 								},
@@ -227,7 +237,8 @@ func NewPatroniStatefulset(cr *patroniv1.PatroniCore, deploymentIdx int, cluster
 									Name: "PATRONI_NAME",
 									ValueFrom: &corev1.EnvVarSource{
 										FieldRef: &corev1.ObjectFieldSelector{
-											FieldPath: "metadata.name",
+											APIVersion: "v1",
+											FieldPath:  "metadata.name",
 										},
 									},
 								},
@@ -272,6 +283,8 @@ func NewPatroniStatefulset(cr *patroniv1.PatroniCore, deploymentIdx int, cluster
 								{ContainerPort: 8008, Name: "patroni", Protocol: corev1.ProtocolTCP},
 								{ContainerPort: 5432, Name: "postgresql", Protocol: corev1.ProtocolTCP},
 							},
+							TerminationMessagePath:   corev1.TerminationMessagePathDefault,
+							TerminationMessagePolicy: corev1.TerminationMessageReadFile,
 							VolumeMounts: []corev1.VolumeMount{
 								{
 									MountPath: "/patroni-properties",
@@ -286,13 +299,21 @@ func NewPatroniStatefulset(cr *patroniv1.PatroniCore, deploymentIdx int, cluster
 									Name:      "postgresql-config",
 								},
 							},
-							Resources: *patroniSpec.Resources,
+							Resources:       *patroniSpec.Resources,
+							ImagePullPolicy: corev1.PullIfNotPresent,
 						},
 					},
-					SecurityContext: patroniSpec.SecurityContext,
+					RestartPolicy:                 corev1.RestartPolicyAlways,
+					SecurityContext:               patroniSpec.SecurityContext,
+					TerminationGracePeriodSeconds: ptr.To[int64](30),
+					DNSPolicy:                     corev1.DNSClusterFirst,
 				},
 			},
-			ServiceName: "backrest-headless",
+			ServiceName:                          "backrest-headless",
+			PodManagementPolicy:                  appsv1.OrderedReadyPodManagement,
+			UpdateStrategy:                       appsv1.StatefulSetUpdateStrategy{Type: appsv1.RollingUpdateStatefulSetStrategyType},
+			RevisionHistoryLimit:                 ptr.To[int32](10),
+			PersistentVolumeClaimRetentionPolicy: &appsv1.StatefulSetPersistentVolumeClaimRetentionPolicy{WhenDeleted: appsv1.RetainPersistentVolumeClaimRetentionPolicyType, WhenScaled: appsv1.RetainPersistentVolumeClaimRetentionPolicyType},
 		},
 	}
 	if nodes != nil {
@@ -332,14 +353,20 @@ func NewPatroniStatefulset(cr *patroniv1.PatroniCore, deploymentIdx int, cluster
 	}
 
 	if cr.Spec.PgBackRest != nil {
-		stSet.Spec.Template.Spec.Containers[0].Env = append(stSet.Spec.Template.Spec.Containers[0].Env, GetPgBackrestEvs(deploymentIdx)...)
-		stSet.Spec.Template.Spec.Containers = append(stSet.Spec.Template.Spec.Containers, getPgBackRestContainer(deploymentIdx, cr.Spec))
+		stSet.Spec.Template.Spec.Containers[0].Env = append(stSet.Spec.Template.Spec.Containers[0].Env, GetPgBackrestEvs(deploymentIdx, clusterName, *cr.Spec.PgBackRest)...)
+		stSet.Spec.Template.Spec.Containers = append(stSet.Spec.Template.Spec.Containers, getPgBackRestContainer(deploymentIdx, clusterName, cr.Spec))
 		stSet.Spec.Template.Spec.Volumes = append(stSet.Spec.Template.Spec.Volumes, GetPgBackRestConfVolume())
 		stSet.Spec.Template.Spec.Containers[0].VolumeMounts = append(stSet.Spec.Template.Spec.Containers[0].VolumeMounts, GetPgBackRestConfVolumeMount())
 		if strings.ToLower(cr.Spec.PgBackRest.RepoType) == "rwx" {
 			stSet.Spec.Template.Spec.Volumes = append(stSet.Spec.Template.Spec.Volumes, GetPgBackRestRWXVolume())
 			stSet.Spec.Template.Spec.Containers[0].VolumeMounts = append(stSet.Spec.Template.Spec.Containers[0].VolumeMounts, GetPgBackRestRWXVolumeMount())
 
+		}
+
+		if cr.Spec.PgBackRest.BackupFromStandby {
+			stSet.Spec.Template.Spec.Volumes = append(stSet.Spec.Template.Spec.Volumes, corev1.Volume{Name: SSHKeysSecret, VolumeSource: corev1.VolumeSource{Secret: &corev1.SecretVolumeSource{SecretName: SSHKeysSecret, DefaultMode: ptr.To[int32](420)}}})
+			stSet.Spec.Template.Spec.Containers[0].VolumeMounts = append(stSet.Spec.Template.Spec.Containers[0].VolumeMounts, corev1.VolumeMount{Name: SSHKeysSecret, MountPath: SSHKeysPath})
+			stSet.Spec.Template.Spec.Containers[1].VolumeMounts = append(stSet.Spec.Template.Spec.Containers[1].VolumeMounts, corev1.VolumeMount{Name: SSHKeysSecret, MountPath: SSHKeysPath})
 		}
 	}
 	return stSet
@@ -389,6 +416,7 @@ func GetPgBackRestConfVolume() corev1.Volume {
 		VolumeSource: corev1.VolumeSource{
 			ConfigMap: &corev1.ConfigMapVolumeSource{
 				LocalObjectReference: corev1.LocalObjectReference{Name: "pgbackrest-conf"},
+				DefaultMode:          ptr.To[int32](420),
 			},
 		},
 	}
@@ -417,18 +445,5 @@ func GetPgBackRestConfVolumeMount() corev1.VolumeMount {
 	return corev1.VolumeMount{
 		MountPath: "/etc/pgbackrest",
 		Name:      "pgbackrest-conf",
-	}
-}
-
-func GetPgBackrestEvs(deploymentIdx int) []corev1.EnvVar {
-	return []corev1.EnvVar{
-		{
-			Name:  "PGBACKREST_PG1_PATH",
-			Value: fmt.Sprintf("/var/lib/pgsql/data/postgresql_node%v/", deploymentIdx),
-		},
-		{
-			Name:  "PGBACKREST_STANZA",
-			Value: "patroni",
-		},
 	}
 }

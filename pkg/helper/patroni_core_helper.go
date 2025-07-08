@@ -430,16 +430,9 @@ func (ph *PatroniHelper) ClearStandbyClusterConfigurationConfigMap(patroniUrl st
 func (ph *PatroniHelper) getStandbyClusterConfigurationFromSiteManager() map[string]interface{} {
 	if cr, err := ph.GetPostgresServiceCR(); err == nil {
 		if coreCr, err := ph.GetPatroniCoreCR(); err == nil {
-
 			host := cr.Spec.SiteManager.ActiveClusterHost
 			port := cr.Spec.SiteManager.ActiveClusterPort
-			standbyClusterConfiguration := map[string]interface{}{
-				"host":                   host,
-				"port":                   port,
-				"primary_slot_name":      util.GetPatroniClusterName(coreCr.Spec.Patroni.ClusterName),
-				"create_replica_methods": []string{"basebackup"},
-			}
-			return standbyClusterConfiguration
+			return patroni.GetStandbyClusterConfigurationWithHost(coreCr, host, port)
 		}
 		return nil
 	}

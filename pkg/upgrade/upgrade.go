@@ -480,7 +480,7 @@ func (u *Upgrade) getUpgradePod(patroniSpec *v1.Patroni, leaderName string, init
 					Name:            "pg-upgrade",
 					Image:           upgradeImage,
 					SecurityContext: opUtil.GetDefaultSecurityContext(),
-					ImagePullPolicy: "Always",
+					ImagePullPolicy: "IfNotPresent",
 					VolumeMounts: []corev1.VolumeMount{
 						{
 							MountPath: "/var/lib/pgsql/data",
@@ -648,7 +648,7 @@ func (u *Upgrade) getUpgradeCheckPod(cr *v1.PatroniCore) *corev1.Pod {
 					Name:            "pg-upgrade-check",
 					Image:           patroniSpec.DockerImage,
 					SecurityContext: opUtil.GetDefaultSecurityContext(),
-					ImagePullPolicy: "Always",
+					ImagePullPolicy: "IfNotPresent",
 					Command:         []string{"sleep", "infinity"},
 					Resources: corev1.ResourceRequirements{
 						Requests: map[corev1.ResourceName]resource.Quantity{
