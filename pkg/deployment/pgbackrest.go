@@ -23,7 +23,10 @@ import (
 	"strings"
 )
 
-func getPgBackRestContainer(deploymentIdx int, patroniCoreSpec *v1.PatroniCoreSpec) corev1.Container {
+const SSHKeysSecret = "pgbackrest-keys"
+const SSHKeysPath = "/keys"
+
+func getPgBackRestContainer(deploymentIdx int, clustername string, patroniCoreSpec *v1.PatroniCoreSpec) corev1.Container {
 	pgBackRestContainer := corev1.Container{
 		Name:            "pgbackrest-sidecar",
 		Image:           patroniCoreSpec.PgBackRest.DockerImage,
@@ -31,7 +34,7 @@ func getPgBackRestContainer(deploymentIdx int, patroniCoreSpec *v1.PatroniCoreSp
 		SecurityContext: util.GetDefaultSecurityContext(),
 		Command:         []string{"sh"},
 		Args:            []string{"/opt/start.sh"},
-		Env: []corev1.EnvVar{
+		Env: append([]corev1.EnvVar{
 			{
 				Name: "PGPASSWORD",
 				ValueFrom: &corev1.EnvVarSource{
@@ -54,7 +57,8 @@ func getPgBackRestContainer(deploymentIdx int, patroniCoreSpec *v1.PatroniCoreSp
 				Name: "POD_NAMESPACE",
 				ValueFrom: &corev1.EnvVarSource{
 					FieldRef: &corev1.ObjectFieldSelector{
-						FieldPath: "metadata.namespace",
+						APIVersion: "v1",
+						FieldPath:  "metadata.namespace",
 					},
 				},
 			},
@@ -62,22 +66,25 @@ func getPgBackRestContainer(deploymentIdx int, patroniCoreSpec *v1.PatroniCoreSp
 				Name: "POD_IP",
 				ValueFrom: &corev1.EnvVarSource{
 					FieldRef: &corev1.ObjectFieldSelector{
-						FieldPath: "status.podIP",
+						APIVersion: "v1",
+						FieldPath:  "status.podIP",
 					},
 				},
 			},
 			{
 				Name:  "PGHOST",
-				Value: "pg-patroni",
+				Value: "localhost",
 			},
 			{
 				Name:  "POD_IDENTITY",
 				Value: fmt.Sprintf("node%v", deploymentIdx),
 			},
-		},
+		}, GetPgBackrestEvs(deploymentIdx, clustername, *patroniCoreSpec.PgBackRest)...),
 		Ports: []corev1.ContainerPort{
 			{ContainerPort: 3000, Name: "pgbackrest", Protocol: corev1.ProtocolTCP},
 		},
+		TerminationMessagePath:   corev1.TerminationMessagePathDefault,
+		TerminationMessagePolicy: corev1.TerminationMessageReadFile,
 		VolumeMounts: []corev1.VolumeMount{
 			{
 				MountPath: "/patroni-properties",
@@ -125,7 +132,11 @@ func GetPgBackRestCM(pgBackrestSpec *v1.PgBackRest) *corev1.ConfigMap {
 	return pgBackRestCM
 }
 
-func GetPgBackRestService(labels map[string]string) *corev1.Service {
+func GetPgBackRestService(labels map[string]string, standby bool) *corev1.Service {
+	serviceName := "pgbackrest"
+	if standby {
+		serviceName = "pgbackrest-standby"
+	}
 	ports := []corev1.ServicePort{
 		{Name: "pgbackrest", Port: 3000},
 	}
@@ -135,7 +146,7 @@ func GetPgBackRestService(labels map[string]string) *corev1.Service {
 			Kind:       "Service",
 		},
 		ObjectMeta: metav1.ObjectMeta{
-			Name:      "pgbackrest",
+			Name:      serviceName,
 			Namespace: util.GetNameSpace(),
 		},
 
@@ -195,4 +206,46 @@ func getPgBackRestSettings(pgBackrestSpec *v1.PgBackRest) string {
 	listSettings = append(listSettings, pgBackrestSpec.ConfigParams...)
 	settings := strings.Join(listSettings[:], "\n")
 	return settings
+}
+
+func GetPgBackrestEvs(deploymentIdx int, clusterName string, pgBackRest v1.PgBackRest) []corev1.EnvVar {
+	resultVars := []corev1.EnvVar{
+		{
+			Name:  "PGBACKREST_PG1_PATH",
+			Value: fmt.Sprintf("/var/lib/pgsql/data/postgresql_node%v/", deploymentIdx),
+		},
+		{
+			Name:  "PGBACKREST_STANZA",
+			Value: "patroni",
+		},
+	}
+
+	if pgBackRest.BackupFromStandby {
+		standbyVars := []corev1.EnvVar{
+			{
+				Name:  "PGBACKREST_PG2_PATH",
+				Value: fmt.Sprintf("/var/lib/pgsql/data/postgresql_node%v/", getOppositeIdx(deploymentIdx)),
+			},
+			{
+				Name:  "PGBACKREST_PG2_HOST",
+				Value: fmt.Sprintf("pg-%s", clusterName),
+			},
+			{
+				Name:  "PGBACKREST_BACKUP_STANDBY",
+				Value: "prefer",
+			},
+		}
+
+		resultVars = append(resultVars, standbyVars...)
+	}
+
+	return resultVars
+}
+
+func getOppositeIdx(idx int) int {
+	if idx == 1 {
+		return 2
+	} else {
+		return 1
+	}
 }

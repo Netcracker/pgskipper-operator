@@ -196,7 +196,7 @@ func (pr *PatroniCoreReconciler) Reconcile(ctx context.Context, request ctrl.Req
 	}
 
 	pr.logger.Info("Reconcile will be started...")
-	time.Sleep(60 * time.Second)
+	time.Sleep(30 * time.Second)
 
 	if err := credentials.ProcessCreds(pr.helper.GetOwnerReferences()); err != nil {
 		return pr.handleReconcileError(maxReconcileAttempts,

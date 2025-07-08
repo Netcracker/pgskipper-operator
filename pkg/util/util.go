@@ -16,6 +16,10 @@ package util
 
 import (
 	"context"
+	cRand "crypto/rand"
+	"crypto/rsa"
+	"crypto/x509"
+	"encoding/pem"
 	"fmt"
 	"math/rand"
 	"net/http"
@@ -30,6 +34,7 @@ import (
 	"github.com/Netcracker/pgskipper-operator-core/pkg/util"
 	qubershipv1 "github.com/Netcracker/pgskipper-operator/api/apps/v1"
 	patroniv1 "github.com/Netcracker/pgskipper-operator/api/patroni/v1"
+	"golang.org/x/crypto/ssh"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
@@ -394,4 +399,25 @@ func SliceContains[T comparable](slice []T, value T) bool {
 		}
 	}
 	return false
+}
+
+func GenerateSSHKeyPair(bits int) (privateKeyPEM string, publicKeyOpenSSH string, err error) {
+	privateKey, err := rsa.GenerateKey(cRand.Reader, bits)
+	if err != nil {
+		return "", "", fmt.Errorf("failed to generate private key: %v", err)
+	}
+
+	privDER := x509.MarshalPKCS1PrivateKey(privateKey)
+	privPEM := pem.EncodeToMemory(&pem.Block{
+		Type:  "RSA PRIVATE KEY",
+		Bytes: privDER,
+	})
+
+	pub, err := ssh.NewPublicKey(&privateKey.PublicKey)
+	if err != nil {
+		return "", "", fmt.Errorf("failed to generate public key: %v", err)
+	}
+	pubKeyStr := string(ssh.MarshalAuthorizedKey(pub))
+
+	return string(privPEM), pubKeyStr, nil
 }

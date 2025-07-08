@@ -205,6 +205,13 @@ func (r *BackupDaemonReconciler) Reconcile() error {
 				break
 			}
 		}
+		if cr.Spec.PgBackRest.BackupFromStandby {
+			logger.Info("Set backup from standby parameter for backup-daemon")
+			envValue = append(envValue, corev1.EnvVar{
+				Name:  "BACKUP_FROM_STANDBY",
+				Value: "true",
+			})
+		}
 		backupDaemonDeployment.Spec.Template.Spec.Containers[0].Env = append(backupDaemonDeployment.Spec.Template.Spec.Containers[0].Env, envValue...)
 	}
 

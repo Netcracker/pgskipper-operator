@@ -37,6 +37,7 @@ import (
 	"go.uber.org/zap"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 )
 
@@ -77,9 +78,11 @@ func (r *PatroniReconciler) Reconcile() error {
 	patroniSpec := cr.Spec.Patroni
 	patroniConfigMap := deployment.ConfigMapForPatroni(r.cluster.ClusterName, r.cluster.PatroniCM, r.cluster.ConfigMapKey)
 	isStandbyClusterPresent := patroni.IsStandbyClusterConfigurationExist(cr)
+	isPgbackrestUsed := cr.Spec.PgBackRest != nil
 
 	if cr.Upgrade != nil && cr.Upgrade.Enabled {
 		logger.Info("Starting an upgrade procedure")
+		time.Sleep(30 * time.Second)
 		if err := r.upgrade.ProceedUpgrade(cr, r.cluster); err != nil {
 			logger.Error("Cannot upgrade patroni", zap.Error(err))
 			return err
@@ -101,17 +104,16 @@ func (r *PatroniReconciler) Reconcile() error {
 		patroni.AddTagsSettings(cr, patroniConfigMap, r.cluster.ConfigMapKey)
 	}
 
+	if isPgbackrestUsed {
+		err := r.preparePgbackRest(cr, patroniConfigMap)
+		if err != nil {
+			return err
+		}
+	}
+
 	if _, err := r.helper.ResourceManager.CreateOrUpdateConfigMap(patroniConfigMap); err != nil {
 		logger.Error(fmt.Sprintf("Cannot create or update config map %s", patroniConfigMap.Name), zap.Error(err))
 		return err
-	}
-
-	if cr.Spec.PgBackRest != nil {
-		pgBackRestCm := deployment.GetPgBackRestCM(cr.Spec.PgBackRest)
-		if _, err := r.helper.ResourceManager.CreateOrUpdateConfigMap(pgBackRestCm); err != nil {
-			logger.Error(fmt.Sprintf("Cannot create or update config map %s", "pgbackrest-config"), zap.Error(err))
-			return err
-		}
 	}
 
 	pgParamsConfigMap := deployment.ConfigMapForPostgreSQL(r.cluster.ClusterName, r.cluster.PatroniPropertiesCM)
@@ -394,7 +396,7 @@ func (r *PatroniReconciler) processPatroniServices(cr *v1.PatroniCore, patroniSp
 	} else {
 		pgService := reconcileService(r.cluster.PostgresServiceName, r.cluster.PatroniLabels,
 			r.cluster.PatroniMasterSelectors, deployment.GetPortsForPatroniService(r.cluster.ClusterName), false)
-		if err := r.helper.ResourceManager.CreateServiceIfNotExists(pgService); err != nil {
+		if err := r.helper.ResourceManager.CreateOrUpdateService(pgService); err != nil {
 			logger.Error(fmt.Sprintf("Cannot create service %s", pgService.Name), zap.Error(err))
 			return err
 		}
@@ -411,10 +413,17 @@ func (r *PatroniReconciler) processPatroniServices(cr *v1.PatroniCore, patroniSp
 			return err
 		}
 		if cr.Spec.PgBackRest != nil {
-			pgBackRestService := deployment.GetPgBackRestService(r.cluster.PatroniMasterSelectors)
-			if err := r.helper.ResourceManager.CreateServiceIfNotExists(pgBackRestService); err != nil {
+			pgBackRestService := deployment.GetPgBackRestService(r.cluster.PatroniMasterSelectors, false)
+			if err := r.helper.ResourceManager.CreateOrUpdateService(pgBackRestService); err != nil {
 				logger.Error(fmt.Sprintf("Cannot create service %s", pgService.Name), zap.Error(err))
 				return err
+			}
+			if cr.Spec.PgBackRest.BackupFromStandby {
+				pgBackRestStandbyService := deployment.GetPgBackRestService(r.cluster.PatroniReplicasSelector, true)
+				if err := r.helper.ResourceManager.CreateOrUpdateService(pgBackRestStandbyService); err != nil {
+					logger.Error(fmt.Sprintf("Cannot create service %s", pgBackRestStandbyService.Name), zap.Error(err))
+					return err
+				}
 			}
 			pgBackRestHeadless := deployment.GetBackrestHeadless()
 			if err := r.helper.ResourceManager.CreateServiceIfNotExists(pgBackRestHeadless); err != nil {
@@ -679,4 +688,54 @@ func (r PatroniReconciler) checkSymlinkAlreadyExist(podName, podIdentity string)
 		return false
 	}
 	return strings.TrimSpace(result) == "true"
+}
+
+func (r *PatroniReconciler) preparePgbackRest(cr *v1.PatroniCore, patroniConfigMap *corev1.ConfigMap) error {
+	// Prepare pgbackrest configuration CM
+	pgBackRestCm := deployment.GetPgBackRestCM(cr.Spec.PgBackRest)
+	if _, err := r.helper.ResourceManager.CreateOrUpdateConfigMap(pgBackRestCm); err != nil {
+		logger.Error(fmt.Sprintf("Cannot create or update config map %s", "pgbackrest-config"), zap.Error(err))
+		return err
+	}
+
+	// Add pgbackrest section to patroni CM
+	pgbackrest := map[string]string{
+		"command":   "pgbackrest --stanza=patroni --delta --log-level-file=detail restore",
+		"keep_data": "true",
+		"no_params": "true",
+	}
+	_, err := patroni.UpdatePgbackRestSettings(patroniConfigMap, pgbackrest, r.cluster.ConfigMapKey)
+	if err != nil {
+		logger.Error("Failed to update pgbackrest settings", zap.Error(err))
+		return err
+	}
+
+	// Generate SSH keys for patroni ssh connection via pgbackrest
+	if cr.Spec.PgBackRest.BackupFromStandby {
+		_, err := r.helper.GetSecret(deployment.SSHKeysSecret)
+		if err != nil {
+			if errors.IsNotFound(err) {
+				logger.Info("Generation of RSA keys for pgbackrest started...")
+				srvPrivateRSA, srvPublicRSA, _ := opUtil.GenerateSSHKeyPair(4096)
+				secretData := map[string][]byte{"id_rsa": []byte(srvPrivateRSA), "id_rsa.pub": []byte(srvPublicRSA)}
+
+				secret := &corev1.Secret{
+					Type: corev1.SecretTypeOpaque,
+					ObjectMeta: metav1.ObjectMeta{
+						Name:      deployment.SSHKeysSecret,
+						Namespace: opUtil.GetNameSpace(),
+						Labels:    r.cluster.PatroniLabels,
+					},
+					Data: secretData,
+				}
+				err := r.helper.CreateSecretIfNotExists(secret)
+				if err != nil {
+					return err
+				}
+			} else {
+				return err
+			}
+		}
+	}
+	return nil
 }

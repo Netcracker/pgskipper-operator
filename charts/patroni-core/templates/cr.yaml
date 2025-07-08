@@ -195,6 +195,7 @@ spec:
     repoPath: {{ .Values.pgBackRest.repoPath | default "/var/lib/pgbackrest" }}
     diffSchedule: {{ .Values.pgBackRest.diffSchedule | default "0 0/1 * * *" }}
     incrSchedule: {{ .Values.pgBackRest.incrSchedule | default "0 0/1 * * *" }}
+    backupFromStandby: {{ .Values.pgBackRest.backupFromStandby | default false }}
   {{ if .Values.pgBackRest.rwx }}
     rwx:
 {{ toYaml .Values.pgBackRest.rwx | indent 6 }}

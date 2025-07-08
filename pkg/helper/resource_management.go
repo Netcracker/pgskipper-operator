@@ -35,6 +35,7 @@ import (
 	appsv1 "k8s.io/api/apps/v1"
 	k8sauth "k8s.io/api/authentication/v1"
 	corev1 "k8s.io/api/core/v1"
+	"k8s.io/apimachinery/pkg/api/equality"
 	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
@@ -426,7 +427,7 @@ func (rm *ResourceManager) CreateOrUpdateStatefulset(statefulSet *appsv1.Statefu
 			return err
 		}
 	} else {
-		if !reflect.DeepEqual(statefulSetBefore, statefulSet) {
+		if !equality.Semantic.DeepEqual(statefulSetBefore.Spec, statefulSet.Spec) {
 			logger.Info(fmt.Sprintf("Updating %s k8s StatefulSet", statefulSet.ObjectMeta.Name))
 			err = rm.kubeClient.Delete(context.TODO(), statefulSetBefore)
 			if err != nil {
