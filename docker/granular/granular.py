@@ -1109,12 +1109,6 @@ api.add_resource(GranularBackupStatusInfoEndpoint, '/backup/info')
 
 scheduler = BackgroundScheduler()
 scheduler.start()
-scheduler.add_job(backups.sweep_manager, 'interval', seconds=configs.eviction_interval())
-schedule_granular_backup(scheduler)
-
-# Add pgbackrest scheduler
-backrest_scheduler = BackgroundScheduler()
-backrest_scheduler.start()
 if os.environ['STORAGE_TYPE'] == "pgbackrest":
     schedule_diff_backup(scheduler)
     schedule_incr_backup(scheduler)
