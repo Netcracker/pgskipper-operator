@@ -194,7 +194,33 @@ function main() {
         BACKUP_ID=$(basename ${BACKUP_DESTINATION_DIRECTORY})
         log "'$BACKUP_ID'"
         log "BACKUP_DESTINATION_DIRECTORY"
-        curl  -H "Content-Type: application/json" -H "Accept: application/json" -d '{"timestamp": "'$BACKUP_ID'"}' -XPOST pgbackrest:3000/backup
+        # Check cluster state via patroni API
+        PGBACKREST_SRV="pgbackrest"
+        if [ "${BACKUP_FROM_STANDBY}" == "true" ]; then
+          PATRONI_RESPONSE=$(curl -s pg-patroni:8008/cluster)
+          if [ $? -eq 0 ]; then
+              # First verify we got valid JSON response
+              if echo "$PATRONI_RESPONSE" | jq . >/dev/null 2>&1; then
+                  # Look for healthy streaming replicas
+                  STREAMING_REPLICAS=$(echo "$PATRONI_RESPONSE" | jq -r '.members[] | select(.role=="replica" and .state=="streaming")')
+                  
+                  if [ ! -z "$STREAMING_REPLICAS" ]; then
+                      log "Found healthy streaming replica(s)"
+                      PGBACKREST_SRV="pgbackrest-standby"
+                  else
+                      log "No healthy streaming replicas found, leader will be used"
+                  fi
+              else
+                  log "Invalid JSON response from patroni API"
+                  process_exit_code 1 "Invalid JSON response from patroni API"
+              fi
+          else
+              log "Failed to query patroni API"
+              process_exit_code 1 "Failed to query patroni API"
+          fi
+        fi
+
+        curl  -H "Content-Type: application/json" -H "Accept: application/json" -d '{"timestamp": "'$BACKUP_ID'"}' -XPOST ${PGBACKREST_SRV}:3000/backup
   elif [[ "$STORAGE_TYPE" == "hostpath" ]] || [[ "$STORAGE_TYPE" == "pv" ]] || [[ "$STORAGE_TYPE" == "pv_label" ]] || [[ "$STORAGE_TYPE" == "provisioned" ]] || [[ "$STORAGE_TYPE" == "provisioned-default" ]]; then
     log "do backup"
     do_backup

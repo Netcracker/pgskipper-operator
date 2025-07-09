@@ -933,9 +933,17 @@ class DiffBackupRequestEndpoint(flask_restful.Resource):
 
         self.log.info('Perform diff backup')
 
-        backup_id = backups.generate_backup_id()
+        backup_id = backups.generate_short_id()
         payload = {'timestamp':backup_id}
-        r = requests.post("http://pgbackrest:3000/backup/diff", payload)
+
+        try:
+            pgbackrest_service = get_pgbackrest_service()
+            self.log.info(f"Using pgbackrest service: {pgbackrest_service}")
+        except Exception as e:
+            self.log.error(f"Failed to get pgbackrest service: {str(e)}")
+            return http.client.INTERNAL_SERVER_ERROR
+
+        r = requests.post(f"http://{pgbackrest_service}:3000/backup/diff", payload)
         if r.status_code == 200:
             return {
                 'backupId': backup_id
@@ -964,9 +972,17 @@ class IncrBackupRequestEndpoint(flask_restful.Resource):
 
         self.log.info('Perform incremental backup')
 
-        backup_id = backups.generate_backup_id()
+        backup_id = backups.generate_short_id()
         payload = {'timestamp':backup_id}
-        r = requests.post("http://pgbackrest:3000/backup/incr", payload)
+
+        try:
+            pgbackrest_service = get_pgbackrest_service()
+            self.log.info(f"Using pgbackrest service: {pgbackrest_service}")
+        except Exception as e:
+            self.log.error(f"Failed to get pgbackrest service: {str(e)}")
+            return http.client.INTERNAL_SERVER_ERROR
+
+        r = requests.post(f"http://{pgbackrest_service}:3000/backup/incr", payload)
         if r.status_code == 200:
             return {
                 'backupId': backup_id
@@ -1039,7 +1055,26 @@ class GranularBackupStatusInfoEndpoint(flask_restful.Resource):
 
         return backupInfo
 
-
+def get_pgbackrest_service():
+    if os.getenv("BACKUP_FROM_STANDBY") == "true":
+        try:
+            # Query Patroni API
+            patroni_response = requests.get("http://pg-patroni:8008/cluster").json()
+            
+            # Look for healthy streaming replicas
+            streaming_replicas = [member for member in patroni_response.get('members', []) 
+                                if member.get('role') == 'replica' and member.get('state') == 'streaming']
+            
+            if streaming_replicas:
+                logging.info("Found healthy streaming replica(s), using pgbackrest-standby")
+                return "pgbackrest-standby"
+            else:
+                logging.info("No healthy streaming replicas found, using leader")
+        except Exception as e:
+            logging.error(f"Failed to query Patroni API: {str(e)}")
+            raise e
+    
+    return "pgbackrest"
 
 app = Flask("GranularREST")
 collector_endpoint = os.getenv("OTEL_EXPORTER_OTLP_TRACES_ENDPOINT", "")
@@ -1080,5 +1115,9 @@ schedule_granular_backup(scheduler)
 # Add pgbackrest scheduler
 backrest_scheduler = BackgroundScheduler()
 backrest_scheduler.start()
-schedule_diff_backup(backrest_scheduler)
-schedule_incr_backup(backrest_scheduler)
+if os.environ['STORAGE_TYPE'] == "pgbackrest":
+    schedule_diff_backup(scheduler)
+    schedule_incr_backup(scheduler)
+else:
+    scheduler.add_job(backups.sweep_manager, 'interval', seconds=configs.eviction_interval())
+    schedule_granular_backup(scheduler)

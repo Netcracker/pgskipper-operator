@@ -147,6 +147,8 @@ def get_key_name_by_backup_id(backup_id, namespace, external_backup_storage=None
         data = json.load(f)
         return data.get("key_name")
 
+def generate_short_id():
+    return datetime.datetime.now().strftime("%Y%m%dT%H%M")
 
 def generate_id():
     return datetime.datetime.now().strftime("%Y%m%dT%H%M%S%f")
