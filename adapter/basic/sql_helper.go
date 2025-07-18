@@ -43,6 +43,7 @@ var (
 	getUser                           = "SELECT 1 FROM pg_roles WHERE rolname = $1;"
 	getDatabase                       = "SELECT 1 FROM pg_database WHERE datname = $1;"
 	dropConnectionsToDb               = "SELECT pg_terminate_backend(pg_stat_activity.pid) FROM pg_stat_activity WHERE datname = $1;"
+	terminateListenConnections        = "SELECT pg_terminate_backend(pg_stat_activity.pid) FROM pg_stat_activity WHERE pid <> pg_backend_pid() AND (query LIKE '%listen%' OR query LIKE '%LISTEN%') AND wait_event = 'ClientWrite' AND state_change IS NOT NULL AND (now() - pg_stat_activity.state_change) > interval '1 second';"
 	prohibitConnectionsToDb           = "UPDATE pg_database SET datallowconn = false WHERE datname = $1;"
 	prohibitConnectionsToDbExt        = "ALTER DATABASE \"%s\" WITH ALLOW_CONNECTIONS false;"
 	getDependenceDbForRole            = "SELECT distinct datname FROM pg_database WHERE has_database_privilege($1, datname, 'CREATE') or oid in (select dbid from pg_shdepend join pg_roles on pg_shdepend.refobjid = pg_roles.oid where rolname =$2);"

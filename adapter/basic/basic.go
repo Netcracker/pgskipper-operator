@@ -871,6 +871,13 @@ func (sa ServiceAdapter) disableDatabase(ctx context.Context, conn cluster.Conn,
 		return err
 	}
 
+	if util.GetEnv("EXTERNAL_POSTGRESQL", "") == "" {
+		err := sa.terminateListenConnections(ctx, conn)
+		if err != nil {
+			logger.Warn(fmt.Sprintf("Error during LISTEN connections cleanup: %v", err))
+		}
+	}
+
 	_, err = conn.Exec(ctx, dropConnectionsToDb, dbName)
 	if err != nil {
 		logger.Error(fmt.Sprintf("Error during drop connections to db %s", dbName), zap.Error(err))
@@ -931,6 +938,18 @@ func (sa ServiceAdapter) rollbackPrepared(ctx context.Context, conn cluster.Conn
 			}
 		}
 	}
+	return nil
+}
+
+func (sa ServiceAdapter) terminateListenConnections(ctx context.Context, conn cluster.Conn) error {
+	logger := util.ContextLogger(ctx)
+	logger.Debug("Cleaning up problematic LISTEN connections globally")
+
+	_, err := conn.Exec(ctx, terminateListenConnections)
+	if err != nil {
+		logger.Warn(fmt.Sprintf("Error during terminate LISTEN connections: %v", err))
+	}
+
 	return nil
 }
 

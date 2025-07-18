@@ -261,6 +261,7 @@ func TestDropResources_Database(t *testing.T) {
 	conn.On("QueryRow", context.Background(), existsRollbackTransactions, dbName).Return(row)
 	conn.On("Exec", context.Background(), dropDatabase(dbName)).Return(pgconn.CommandTag("DELETED"), nil)
 	conn.On("Exec", context.Background(), prohibitConnectionsToDb, dbName).Return(pgconn.CommandTag("UPDATED"), nil)
+	conn.On("Exec", context.Background(), terminateListenConnections).Return(pgconn.CommandTag("UPDATED"), nil)
 	conn.On("Exec", context.Background(), dropConnectionsToDb, dbName).Return(pgconn.CommandTag("UPDATED"), nil)
 	conn.On("Close", context.Background()).Return(nil)
 	row.On("Scan", mock.Anything).Return(nil).Run(func(args mock.Arguments) {
@@ -308,6 +309,7 @@ func TestDropResources_DatabaseFailedCase(t *testing.T) {
 	conn.On("QueryRow", context.Background(), existsRollbackTransactions, dbName).Return(row)
 	conn.On("Exec", context.Background(), dropDatabase(dbName)).Return(pgconn.CommandTag("DELETED"), expectedErrorC)
 	conn.On("Exec", context.Background(), prohibitConnectionsToDb, dbName).Return(pgconn.CommandTag("UPDATED"), nil)
+	conn.On("Exec", context.Background(), terminateListenConnections).Return(pgconn.CommandTag("UPDATED"), nil)
 	conn.On("Exec", context.Background(), dropConnectionsToDb, dbName).Return(pgconn.CommandTag("UPDATED"), nil)
 	conn.On("Close", context.Background()).Return(nil)
 	row.On("Scan", mock.Anything).Return(nil).Run(func(args mock.Arguments) {
