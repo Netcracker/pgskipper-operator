@@ -121,6 +121,10 @@ spec:
               value: {{ include "dbaas.pgHost" . }}
             - name: POSTGRES_PORT
               value: {{ default "5432" .Values.dbaas.pgPort | quote }}
+            {{ if .Values.externalDataBase }}
+            - name: EXTERNAL_POSTGRESQL
+              value: {{ default "" .Values.externalDataBase.type }}
+            {{- end }}
             - name: AUTH
               value: "False"
             - name: MULTI_USERS_ENABLED
