@@ -978,9 +978,13 @@ spec:
                     type: string
                   backupSchedule:
                     type: string
+                  compressionLevel:
+                    type: integer
                   connectTimeout:
                     type: string
                   databasesToSchedule:
+                    type: string
+                  encryption:
                     type: string
                   evictionBinaryPolicy:
                     type: string
@@ -1332,6 +1336,8 @@ spec:
                     type: string
                   walArchiving:
                     type: boolean
+                required:
+                - compressionLevel
                 type: object
               cloudSql:
                 properties:

@@ -49,8 +49,10 @@ spec:
       {{ include "kubernetes.labels" . | nindent 6 }}
     {{- end }}
     image: {{ template "find_image" (dict "deployName" "postgres_backup_daemon" "SERVICE_NAME" "postgres_backup_daemon" "vals" .Values "default" .Values.backupDaemon.dockerImage) }}
+    compressionLevel: {{ default 5 .Values.backupDaemon.compressionLevel }}
     walArchiving: {{ default false .Values.backupDaemon.walArchiving }}
     granularEviction: {{ .Values.backupDaemon.granularEviction | squote }}
+    encryption: {{.Values.backupDaemon.encryption}}
     allowPrefix: {{ default false .Values.backupDaemon.allowPrefix }}
     useEvictionPolicyFirst: "{{ .Values.backupDaemon.useEvictionPolicyFirst }}"
     evictionBinaryPolicy: {{ .Values.backupDaemon.evictionBinaryPolicy }}

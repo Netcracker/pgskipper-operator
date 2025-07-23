@@ -178,6 +178,7 @@ backupDaemon:
   # Docker Image that will be used for PostgreSQL Backup Daemon container
   dockerImage: ghcr.io/netcracker/pgskipper-backup-daemon:main
   podLabels: {}
+  compressionLevel: 5
   # If the flag is set as true, the installation procedure will configure Postgres to use the WAL archive and use the backup daemon as storage.
   # This setting can cause major disk usage impact, because each postgres WAL file size is 16MB.
   walArchiving: false
@@ -188,6 +189,7 @@ backupDaemon:
   # The eviction policy for backup daemon: period and action. The default value is 7d/delete.
   evictionPolicy: "7d/delete"
   granularEviction: "3600"
+  encryption: "Off"
   # jobFlag: "2"
   # connectTimeout: "5"
   allowPrefix: false
