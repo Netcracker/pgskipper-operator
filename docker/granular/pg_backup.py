@@ -218,6 +218,8 @@ class PostgreSQLDumpWorker(Thread):
 
             if configs.is_external_pg():
                 command.extend(extension_flags)
+                if self.postgres_version[0] < 15:
+                    command.extend(['-T','cron.*'])
 
             # Zero is corner-case in Python :(
             if self.compression_level or self.compression_level == 0:
@@ -261,6 +263,8 @@ class PostgreSQLDumpWorker(Thread):
 
             if configs.is_external_pg():
                 command.extend(extension_flags)
+                if self.postgres_version[0] < 15:
+                    command.extend(['-T','cron.*'])
 
             database_backup_path = backups.build_database_backup_path(self.backup_id, database,
                                                                   self.namespace, self.external_backup_root)
