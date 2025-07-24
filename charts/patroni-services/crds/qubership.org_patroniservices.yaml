@@ -978,6 +978,8 @@ spec:
                     type: string
                   backupSchedule:
                     type: string
+                  backupTimeout:
+                    type: integer
                   compressionLevel:
                     type: integer
                   connectTimeout:

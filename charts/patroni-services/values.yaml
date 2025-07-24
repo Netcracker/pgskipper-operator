@@ -188,6 +188,7 @@ backupDaemon:
   #  pgHost: pg-patroni.postgres-service
   # The eviction policy for backup daemon: period and action. The default value is 7d/delete.
   evictionPolicy: "7d/delete"
+  backupTimeout: 300
   granularEviction: "3600"
   encryption: "Off"
   # jobFlag: "2"

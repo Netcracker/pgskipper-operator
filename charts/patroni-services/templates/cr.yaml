@@ -53,6 +53,7 @@ spec:
     walArchiving: {{ default false .Values.backupDaemon.walArchiving }}
     granularEviction: {{ .Values.backupDaemon.granularEviction | squote }}
     encryption: {{.Values.backupDaemon.encryption}}
+    backupTimeout: {{.Values.backupDaemon.backupTimeout}}
     allowPrefix: {{ default false .Values.backupDaemon.allowPrefix }}
     useEvictionPolicyFirst: "{{ .Values.backupDaemon.useEvictionPolicyFirst }}"
     evictionBinaryPolicy: {{ .Values.backupDaemon.evictionBinaryPolicy }}
