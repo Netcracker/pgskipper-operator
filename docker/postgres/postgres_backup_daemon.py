@@ -28,7 +28,8 @@ if __name__ == "__main__":
     backups_params = {
         'backup_command': conf.get_string("command"),
         'storage_root': conf.get_string("storage"),  # TODO (vladislav.kaverin): Actually almost nobody needs storage root, only file-system storage.
-        'eviction_rule': conf.get_string("eviction")
+        'eviction_rule': conf.get_string("eviction"),
+        'timeout': conf.get_int("timeout")
     }
     backups_schedule = conf.get_string("schedule")
 

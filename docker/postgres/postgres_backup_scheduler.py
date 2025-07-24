@@ -109,20 +109,25 @@ class BackupsScheduler:
                                                      backup_id=backup.get_backup_id()
                                                      )
 
-                if oldest_backup:
-                    self.__log.info("Id of latest backup: {}".format(oldest_backup.get_id()))
-                    spent_time = oldest_backup.load_metrics().get('spent_time')
+                timeout_seconds = self.__backup_options.get('timeout')
+                if timeout_seconds:
+                    self.__log.info("Using configured timeout for backup: %ss", timeout_seconds)
+                    worker.join(timeout_seconds)
+                else:
+                    if oldest_backup:
+                        self.__log.info("Id of latest backup: {}".format(oldest_backup.get_id()))
+                        spent_time = oldest_backup.load_metrics().get('spent_time')
 
-                    if spent_time:
-                        # time stored as milliseconds converting to seconds and double the value
-                        time_out = spent_time / 1000 * 2
-                        self.__log.info("Setting timeout for backup process: {}".format(time_out))
-                        worker.join(time_out)
+                        if spent_time:
+                            # time stored as milliseconds converting to seconds and double the value
+                            time_out = spent_time / 1000 * 2
+                            self.__log.info("Setting timeout for backup process: {}".format(time_out))
+                            worker.join(time_out)
 
+                        else:
+                            worker.join()
                     else:
                         worker.join()
-                else:
-                    worker.join()
 
                 self.__log.info("Worker completed: {}".format(not worker.is_alive()))
 
