@@ -987,7 +987,7 @@ spec:
                   databasesToSchedule:
                     type: string
                   encryption:
-                    type: string
+                    type: boolean
                   evictionBinaryPolicy:
                     type: string
                   evictionPolicy:
@@ -4832,6 +4832,8 @@ spec:
                 type: object
               pgBackRest:
                 properties:
+                  backupFromStandby:
+                    type: boolean
                   diffSchedule:
                     type: string
                   dockerImage:

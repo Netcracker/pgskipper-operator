@@ -19,8 +19,8 @@ github.com/BurntSushi/toml v0.3.1/go.mod h1:xHWCNGjB5oqiDr8zfno3MHue2Ht5sIBksp03
 github.com/DataDog/datadog-go v3.2.0+incompatible/go.mod h1:LButxg5PwREeZtORoXG3tL4fMGNddJ+vMq1mwgfaqoQ=
 github.com/Masterminds/semver/v3 v3.1.1/go.mod h1:VPu/7SZ7ePZ3QOrcuXROw5FAcLl4a0cBrbBpGY/8hQs=
 github.com/NYTimes/gziphandler v0.0.0-20170623195520-56545f4a5d46/go.mod h1:3wb06e3pkSAbeQ52E9H9iFoQsEEwGN64994WTCIhntQ=
-github.com/Netcracker/pgskipper-operator-core v0.0.55 h1:sd1esscRY8Ebma/ANy+AtWDSqLbq6A/rbt+3/TFdxi8=
-github.com/Netcracker/pgskipper-operator-core v0.0.55/go.mod h1:dfV3km1hTxmi6KAoKTdc7xBgSF1/NdFdqLSrQnHKq+Y=
+github.com/Netcracker/pgskipper-operator-core v0.0.56 h1:F6XDdAzvskhFUtmizN/tuefHejQ+3gN1OtaxsTfEN9c=
+github.com/Netcracker/pgskipper-operator-core v0.0.56/go.mod h1:dfV3km1hTxmi6KAoKTdc7xBgSF1/NdFdqLSrQnHKq+Y=
 github.com/Netcracker/qubership-credential-manager v0.0.3 h1:08QiT/wFo184ac39oabLz6JHALc0a4Qazmv9gN657ZU=
 github.com/Netcracker/qubership-credential-manager v0.0.3/go.mod h1:BAZvlOSDmZ25z8YFLXyI57OCZ63MdQPtGq0/vmiTjuQ=
 github.com/PuerkitoBio/purell v1.0.0/go.mod h1:c11w/QuzBsJSee3cPx9rAFu61PvFxuPbtSwDGJws/X0=
