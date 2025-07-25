@@ -190,7 +190,7 @@ backupDaemon:
   evictionPolicy: "7d/delete"
   backupTimeout: 300
   granularEviction: "3600"
-  encryption: "Off"
+  encryption: false
   # jobFlag: "2"
   # connectTimeout: "5"
   allowPrefix: false

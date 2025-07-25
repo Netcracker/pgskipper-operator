@@ -987,7 +987,7 @@ spec:
                   databasesToSchedule:
                     type: string
                   encryption:
-                    type: string
+                    type: boolean
                   evictionBinaryPolicy:
                     type: string
                   evictionPolicy:
