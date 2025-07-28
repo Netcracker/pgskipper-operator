@@ -109,6 +109,8 @@ type Patroni struct {
 	IgnoreSlots                  bool                     `json:"ignoreSlots,omitempty"`
 	IgnoreSlotsPrefix            string                   `json:"ignoreSlotsPrefix,omitempty"`
 	External                     *External                `json:"external,omitempty"`
+	PodAnnotations               map[string]string        `json:"podAnnotations,omitempty"`
+	ConfigMapAnnotations         map[string]string        `json:"configMapAnnotations,omitempty"`
 }
 
 type External struct {

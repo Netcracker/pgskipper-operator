@@ -324,6 +324,14 @@ func NewPatroniStatefulset(cr *patroniv1.PatroniCore, deploymentIdx int, cluster
 	if patroniSpec.PriorityClassName != "" {
 		stSet.Spec.Template.Spec.PriorityClassName = patroniSpec.PriorityClassName
 	}
+	if stSet.Spec.Template.ObjectMeta.Annotations == nil {
+		stSet.Spec.Template.ObjectMeta.Annotations = make(map[string]string)
+	}
+	stSet.Spec.Template.ObjectMeta.Annotations["argocd.argoproj.io/ignore-resource-updates"] = "true"
+
+	for k, v := range patroniSpec.PodAnnotations {
+		stSet.Spec.Template.ObjectMeta.Annotations[k] = v
+	}
 
 	// TLS Section
 	if cr.Spec.Tls != nil && cr.Spec.Tls.Enabled {
