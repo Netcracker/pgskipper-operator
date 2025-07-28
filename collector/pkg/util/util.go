@@ -484,7 +484,7 @@ func GetFloatValue(value any, defaultValue float64) (float64, error) {
 	return result, nil
 }
 
-func ExecCmdOnPod(client *kubernetes.Clientset, podName string, namespace string, command string) (string, string, error) {
+func ExecCmdOnPod(client *kubernetes.Clientset, podName string, namespace string, command string, container string) (string, string, error) {
 
 	Log.Debug(fmt.Sprintf("Executing shell command: %s  on pod %s", command, podName))
 	config, err := rest.InClusterConfig()
@@ -501,11 +501,12 @@ func ExecCmdOnPod(client *kubernetes.Clientset, podName string, namespace string
 		Name(podName).
 		SubResource("exec").
 		VersionedParams(&corev1.PodExecOptions{
-			Command: []string{"/bin/sh", "-c", command},
-			Stdin:   false,
-			Stdout:  true,
-			Stderr:  true,
-			TTY:     true,
+			Command:   []string{"/bin/sh", "-c", command},
+			Container: container,
+			Stdin:     false,
+			Stdout:    true,
+			Stderr:    true,
+			TTY:       true,
 		}, clientgoscheme.ParameterCodec)
 	exec, err := remotecommand.NewSPDYExecutor(config, "POST", request.URL())
 	if err != nil {

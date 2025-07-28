@@ -676,10 +676,23 @@ func (s *Scraper) collectShellMetrics(pod v1.Pod, podIdentity string, pgVersion 
 	logger.Debug(fmt.Sprintf("Shell metrics loading time: %v", int(time.Since(startTime).Milliseconds())))
 }
 
+func GetContainerNameForPatroniPod(pod v1.Pod) string {
+	for _, c := range pod.Spec.Containers {
+		if strings.HasPrefix(c.Name, "pg-patroni") {
+			return c.Name
+		}
+	}
+	if len(pod.Spec.Containers) > 0 {
+		return pod.Spec.Containers[0].Name
+	}
+	return ""
+}
+
 func (s *Scraper) collectDiskMetricsOnPod(pod v1.Pod, podIdentity string, pgVersion int) {
 	logger.Debug("Collect disk metrics on pod")
+	containerName := GetContainerNameForPatroniPod(pod)
 	for metric, command := range shellMetrics {
-		res, _, err := util.ExecCmdOnPod(s.client, pod.Name, pod.Namespace, command)
+		res, _, err := util.ExecCmdOnPod(s.client, pod.Name, pod.Namespace, command, containerName)
 		if err != nil {
 			return
 		}
