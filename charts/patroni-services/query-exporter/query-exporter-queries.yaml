@@ -1056,17 +1056,25 @@ queries:
       + 1 as level,\n    tree.top_blocker_pid,\n    path || array[activity.pid] as
       path,\n    tree.all_blockers_above || array_agg(activity.pid) over () as all_blockers_above\n
       \ from activity, tree\n  where\n    not array[activity.pid] <@ tree.all_blockers_above\n
-      \   and activity.blocked_by <> '{}'::int[]\n    and activity.blocked_by <@ tree.all_blockers_above\n)\nselect\n
-      \ 1 as pg_lock_tree_info\n  , pid\n  , blocked_by\n  , relname\n  , mode\n  , case when wait_event_type
-      <> 'Lock' then replace(state, 'idle in transaction', 'idletx') else 'waiting'
-      end as state,\n  wait_event_type || ':' || wait_event as wait,\n  wait_age,\n
-      \ tx_age,\n  datname,\n  usename,\n  (select count(distinct t1.pid) from tree
-      t1 where array[tree.pid] <@ t1.path and t1.pid <> tree.pid) as blkd,\n  format(\n
-      \   '%s %s%s',\n    lpad('[' || pid::text || ']', 9, ' '),\n    repeat('.',
-      level - 1) || case when level > 1 then ' ' end,\n    left(query, 1000)\n  )
-      as query\nfrom tree\ngroup by datname, usename, relname, pid, blocked_by, mode,
-      wait, wait_age, query, wait_event_type, state, tx_age, level, top_blocker_pid\norder
-      by top_blocker_pid, level, tx_age desc, pid\n"
+      \   and activity.blocked_by <> '{}'::int[]\n    and activity.blocked_by <@ tree.all_blockers_above\n)\nselect
+      * from (\n  select\n    1 as pg_lock_tree_info\n    , pid\n    , blocked_by\n
+      \   , relname\n    , mode\n    , case when wait_event_type <> 'Lock' then replace(state,
+      'idle in transaction', 'idletx') else 'waiting' end as state,\n    wait_event_type
+      || ':' || wait_event as wait,\n    wait_age,\n    tx_age,\n    datname,\n    usename,\n
+      \   (select count(distinct t1.pid) from tree t1 where array[tree.pid] <@ t1.path
+      and t1.pid <> tree.pid) as blkd,\n    format(\n      '%s %s%s',\n      lpad('['
+      || pid::text || ']', 9, ' '),\n      repeat('.', level - 1) || case when level
+      > 1 then ' ' end,\n      left(query, 1000)\n    ) as query,\n    top_blocker_pid,\n
+      \   level\n  from tree\n  group by datname, usename, relname, pid, blocked_by,
+      mode, wait, wait_age, query, wait_event_type, state, tx_age, level, top_blocker_pid\n\n
+      \ union all\n\n  select\n    1 as pg_lock_tree_info,\n    null as pid,\n    '{}'::int[]
+      as blocked_by,\n    'No blocking activity' as relname,\n    null as mode,\n
+      \   'No blocking activity' as state,\n    null as wait,\n    null as wait_age,\n
+      \   null as tx_age,\n    null as datname,\n    null as usename,\n    0 as blkd,\n
+      \   'No blocking queries found' as query,\n    null as top_blocker_pid,\n    null
+      as level\n  where not exists (select 1 from tree)\n) as final_results\norder
+      by top_blocker_pid nulls last, level nulls last, tx_age desc nulls last, pid
+      nulls last;\n"
   pg_locks_query:
     databases:
     - master
