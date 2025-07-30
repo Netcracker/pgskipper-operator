@@ -64,7 +64,7 @@ func SetWalArchiving(spec qubershipv1.PatroniServicesSpec, patroniUrl string) er
 		postgreSQLParams["archive_mode"] = constants.ArchiveModeOn
 		postgreSQLParams["archive_command"] = constants.ArchiveCommand
 		recoveryParams["restore_command"] = constants.RestoreCommand
-	} else {
+	} else if !spec.BackupDaemon.RetainArchiveSettings {
 		logger.Info("WAL Archiving is turned Off, omitting archive_command and restore_command")
 		postgreSQLParams["archive_mode"] = constants.ArchiveModeOff
 		postgreSQLParams["archive_command"] = ""

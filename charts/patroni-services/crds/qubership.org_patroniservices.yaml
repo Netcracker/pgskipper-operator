@@ -1079,6 +1079,8 @@ spec:
                           More info: https://kubernetes.io/docs/concepts/configuration/manage-resources-containers/
                         type: object
                     type: object
+                  retainArchiveSettings:
+                    type: boolean
                   s3Storage:
                     properties:
                       accessKeyId:
@@ -4832,6 +4834,8 @@ spec:
                 type: object
               pgBackRest:
                 properties:
+                  backupFromStandby:
+                    type: boolean
                   diffSchedule:
                     type: string
                   dockerImage:
