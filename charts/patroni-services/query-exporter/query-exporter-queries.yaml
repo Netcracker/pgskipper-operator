@@ -1070,7 +1070,7 @@ queries:
       \ union all\n\n  select\n    1 as pg_lock_tree_info,\n    null as pid,\n    '{}'::int[]
       as blocked_by,\n    'No blocking activity' as relname,\n    null as mode,\n
       \   'No blocking activity' as state,\n    null as wait,\n    null as wait_age,\n
-      \   null as tx_age,\n    null as datname,\n    null as usename,\n    0 as blkd,\n
+      \   null as tx_age,\n    null as datname,\n    current_database() as datname,\n    null as usename,\n    0 as blkd,\n
       \   'No blocking queries found' as query,\n    null as top_blocker_pid,\n    null
       as level\n  where not exists (select 1 from tree)\n) as final_results\norder
       by top_blocker_pid nulls last, level nulls last, tx_age desc nulls last, pid
