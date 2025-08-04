@@ -208,6 +208,10 @@ spec:
     s3:
 {{ toYaml .Values.pgBackRest.s3 | indent 6 }}
   {{ end }}
+{{ if .Values.pgBackRest.drS3 }}
+    drS3:
+{{ toYaml .Values.pgBackRest.drS3 | indent 6 }}
+{{ end }}
 {{- if .Values.pgBackRest.resources }}
     resources:
 {{ toYaml .Values.pgBackRest.resources | indent 6 }}

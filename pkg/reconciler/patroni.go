@@ -292,6 +292,13 @@ func (r *PatroniReconciler) Reconcile() error {
 			}
 		}
 
+		// Wait for patroni to be ready in case of standby cluster
+		if patroni.IsStandbyClusterConfigurationExist(cr) {
+			if err := opUtil.WaitForPatroni(cr, r.cluster.PatroniMasterSelectors, r.cluster.PatroniReplicasSelector); err != nil {
+				return err
+			}
+		}
+
 		err := r.processPatroniServices(cr, patroniSpec)
 		if err != nil {
 			return err
@@ -329,6 +336,13 @@ func (r *PatroniReconciler) Reconcile() error {
 	if err := patroni.UpdatePostgreSQLParams(patroniSpec, r.cluster.PatroniUrl); err != nil {
 		logger.Error("Failed to update PostgreSQL Params, exiting", zap.Error(err))
 		return err
+	}
+
+	if cr.Spec.PgBackRest != nil {
+		if err := patroni.SetWalArchivingForPgBackRest(cr, r.cluster.PatroniUrl); err != nil {
+			logger.Error("Failed to update pgBackRest settings, exiting", zap.Error(err))
+			return err
+		}
 	}
 
 	//ldap integration settings
@@ -448,7 +462,7 @@ func (r *PatroniReconciler) processPatroniServices(cr *v1.PatroniCore, patroniSp
 				}
 			}
 			pgBackRestHeadless := deployment.GetBackrestHeadless()
-			if err := r.helper.ResourceManager.CreateServiceIfNotExists(pgBackRestHeadless); err != nil {
+			if err := r.helper.ResourceManager.CreateOrUpdateService(pgBackRestHeadless); err != nil {
 				logger.Error(fmt.Sprintf("Cannot create service %s", pgBackRestHeadless.Name), zap.Error(err))
 				return err
 			}
@@ -714,7 +728,7 @@ func (r PatroniReconciler) checkSymlinkAlreadyExist(podName, podIdentity string)
 
 func (r *PatroniReconciler) preparePgbackRest(cr *v1.PatroniCore, patroniConfigMap *corev1.ConfigMap) error {
 	// Prepare pgbackrest configuration CM
-	pgBackRestCm := deployment.GetPgBackRestCM(cr.Spec.PgBackRest)
+	pgBackRestCm := deployment.GetPgBackRestCM(cr)
 	if _, err := r.helper.ResourceManager.CreateOrUpdateConfigMap(pgBackRestCm); err != nil {
 		logger.Error(fmt.Sprintf("Cannot create or update config map %s", "pgbackrest-config"), zap.Error(err))
 		return err
@@ -722,7 +736,7 @@ func (r *PatroniReconciler) preparePgbackRest(cr *v1.PatroniCore, patroniConfigM
 
 	// Add pgbackrest section to patroni CM
 	pgbackrest := map[string]string{
-		"command":   "pgbackrest --stanza=patroni --delta --log-level-file=detail restore",
+		"command":   patroni.GetCommandForPgbackrest(cr, "pgbackrest --stanza=patroni --type=standby --delta --log-level-file=detail restore"),
 		"keep_data": "true",
 		"no_params": "true",
 	}
