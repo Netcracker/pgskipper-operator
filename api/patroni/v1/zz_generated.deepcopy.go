@@ -459,6 +459,7 @@ func (in *PatroniCoreStatusCondition) DeepCopy() *PatroniCoreStatusCondition {
 func (in *PgBackRest) DeepCopyInto(out *PgBackRest) {
 	*out = *in
 	out.S3 = in.S3
+	out.DRS3 = in.DRS3
 	if in.Rwx != nil {
 		in, out := &in.Rwx, &out.Rwx
 		*out = new(apiv1.Storage)
