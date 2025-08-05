@@ -597,6 +597,7 @@ func (r *PatroniReconciler) refreshDependCollationsVersion(pgClient *pgClient.Po
 
 // Get all collations with version mismatch for database
 func (r *PatroniReconciler) getCollationsForRefresh(pgClient *pgClient.PostgresClient, db string) ([]string, error) {
+
 	cForRefresh := make([]string, 0)
 	rows, err := pgClient.QueryForDB(db, `SELECT distinct c.collname AS "Collation"
              FROM pg_depend d
