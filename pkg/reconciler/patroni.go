@@ -32,7 +32,6 @@ import (
 	"github.com/Netcracker/pgskipper-operator/pkg/queryexporter"
 	"github.com/Netcracker/pgskipper-operator/pkg/upgrade"
 	opUtil "github.com/Netcracker/pgskipper-operator/pkg/util"
-	"github.com/Netcracker/pgskipper-operator/pkg/vault"
 	"github.com/Netcracker/qubership-credential-manager/pkg/manager"
 	"go.uber.org/zap"
 	corev1 "k8s.io/api/core/v1"
@@ -54,22 +53,20 @@ var commands = []string{
 }
 
 type PatroniReconciler struct {
-	cr          *v1.PatroniCore
-	helper      *helper.PatroniHelper
-	vaultClient *vault.Client
-	upgrade     *upgrade.Upgrade
-	scheme      *runtime.Scheme
-	cluster     *v1.PatroniClusterSettings
+	cr      *v1.PatroniCore
+	helper  *helper.PatroniHelper
+	upgrade *upgrade.Upgrade
+	scheme  *runtime.Scheme
+	cluster *v1.PatroniClusterSettings
 }
 
-func NewPatroniReconciler(cr *v1.PatroniCore, helper *helper.PatroniHelper, vaultClient *vault.Client, upgrade *upgrade.Upgrade, scheme *runtime.Scheme, cluster *v1.PatroniClusterSettings) *PatroniReconciler {
+func NewPatroniReconciler(cr *v1.PatroniCore, helper *helper.PatroniHelper, upgrade *upgrade.Upgrade, scheme *runtime.Scheme, cluster *v1.PatroniClusterSettings) *PatroniReconciler {
 	return &PatroniReconciler{
-		cr:          cr,
-		helper:      helper,
-		vaultClient: vaultClient,
-		upgrade:     upgrade,
-		scheme:      scheme,
-		cluster:     cluster,
+		cr:      cr,
+		helper:  helper,
+		upgrade: upgrade,
+		scheme:  scheme,
+		cluster: cluster,
 	}
 }
 
@@ -130,17 +127,6 @@ func (r *PatroniReconciler) Reconcile() error {
 			return err
 		}
 
-		if err := r.vaultClient.ProcessRoleSecret(pgSecret); err != nil {
-			return err
-		}
-	}
-
-	vaultRolesExist := r.vaultClient.IsVaultRolesExist()
-
-	if vaultRolesExist {
-		if err := r.vaultClient.UpdatePgClientPass(); err != nil {
-			return err
-		}
 	}
 
 	// find possible deployments by pods
@@ -308,10 +294,8 @@ func (r *PatroniReconciler) Reconcile() error {
 		}
 	}
 	// Set replicator password from Secret
-	if !cr.Spec.VaultRegistration.DbEngine.Enabled {
-		if err := r.helper.SyncReplicatorPassword(r.cluster.PgHost); err != nil {
-			return err
-		}
+	if err := r.helper.SyncReplicatorPassword(r.cluster.PgHost); err != nil {
+		return err
 	}
 
 	// add necessary shared_preload_libraries and settings
@@ -362,11 +346,6 @@ func (r *PatroniReconciler) Reconcile() error {
 	}
 
 	if err := opUtil.WaitForPatroni(cr, r.cluster.PatroniMasterSelectors, r.cluster.PatroniReplicasSelector); err != nil {
-		return err
-	}
-
-	// Activating Vault PostgreSQL plugin if it enabled
-	if err := r.vaultClient.PrepareDbEngine(vaultRolesExist, r.cluster); err != nil {
 		return err
 	}
 
@@ -465,7 +444,6 @@ func (r *PatroniReconciler) processPatroniStatefulset(cr *v1.PatroniCore, deploy
 		return err
 	}
 
-	vaultRolesExist := r.vaultClient.IsVaultRolesExist()
 	patroniSpec := cr.Spec.Patroni
 	pvc := storage.NewPvc(fmt.Sprintf("%s-data-%v", opUtil.GetPatroniClusterName(cr.Spec.Patroni.ClusterName), deploymentIdx), patroniSpec.Storage, deploymentIdx)
 	if err := r.helper.ResourceManager.CreatePvcIfNotExists(pvc); err != nil {
@@ -508,12 +486,6 @@ func (r *PatroniReconciler) processPatroniStatefulset(cr *v1.PatroniCore, deploy
 	if err != nil {
 		logger.Error(fmt.Sprintf("can't add secret HASH to annotations for %s", patroniDeployment.Name), zap.Error(err))
 		return err
-	}
-
-	// Vault Section
-	// For DbEngine case this section processed later for patroni
-	if vaultRolesExist || (cr.Spec.VaultRegistration.Enabled && !cr.Spec.VaultRegistration.DbEngine.Enabled) {
-		r.vaultClient.ProcessVaultSectionStatefulset(patroniDeployment, vault.PatroniEntrypoint, Secrets)
 	}
 
 	if err := r.helper.ResourceManager.CreateOrUpdateStatefulset(patroniDeployment, true); err != nil {

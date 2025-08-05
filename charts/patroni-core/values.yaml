@@ -17,8 +17,8 @@ privateRegistry:
       create: false
       # registry: ghcr.io/netcracker
       # username:
-      # password: 
-      # email: 
+      # password:
+      # email:
 
 global:
   cloudIntegrationEnabled: true
@@ -35,7 +35,7 @@ operatorInit:
       memory: 128Mi
     requests:
       cpu: 50m
-      memory: 128Mi  
+      memory: 128Mi
 
 ##  This section describes values for postgres-operator deployment
 operator:
@@ -55,17 +55,6 @@ operator:
   # Field for priority of the pod
 #  priorityClassName: "high-priority"
 
-vaultRegistration:
-  dockerImage: banzaicloud/vault-env:1.5.0
-  enabled: false
-  #  path: /postgres
-  #  url: http://localhost:8200
-  #  token: s.0il9o9kHeVmzgEhkBP6KqZBq
-  #  paasPlatform: "kubernetes"
-  #  paasVersion: "1.14"
-  dbEngine:
-    enabled: false
-#    name: "postgresql"
 
 policies:
   tolerations:

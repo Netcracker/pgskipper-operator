@@ -8645,37 +8645,6 @@ spec:
                   host:
                     type: string
                 type: object
-              vaultRegistration:
-                properties:
-                  dbEngine:
-                    description: Vault DbEngine configuration
-                    properties:
-                      enabled:
-                        type: boolean
-                      maxConnectionLifetime:
-                        type: string
-                      maxIdleConnections:
-                        type: integer
-                      maxOpenConnections:
-                        type: integer
-                      name:
-                        type: string
-                    type: object
-                  dockerImage:
-                    type: string
-                  enabled:
-                    type: boolean
-                  method:
-                    type: string
-                  path:
-                    type: string
-                  role:
-                    type: string
-                  token:
-                    type: string
-                  url:
-                    type: string
-                type: object
             type: object
           status:
             description: PatroniServicesStatus defines the observed state of PatroniServices

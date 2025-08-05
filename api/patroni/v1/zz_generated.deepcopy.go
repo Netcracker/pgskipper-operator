@@ -202,11 +202,6 @@ func (in *Patroni) DeepCopyInto(out *Patroni) {
 		copy(*out, *in)
 	}
 	out.Powa = in.Powa
-	if in.VaultRegistration != nil {
-		in, out := &in.VaultRegistration, &out.VaultRegistration
-		*out = new(apiv1.VaultRegistration)
-		**out = **in
-	}
 	if in.SecurityContext != nil {
 		in, out := &in.SecurityContext, &out.SecurityContext
 		*out = new(corev1.PodSecurityContext)
@@ -376,11 +371,6 @@ func (in *PatroniCoreSpec) DeepCopyInto(out *PatroniCoreSpec) {
 		in, out := &in.ConsulRegistration, &out.ConsulRegistration
 		*out = new(ConsulRegistration)
 		(*in).DeepCopyInto(*out)
-	}
-	if in.VaultRegistration != nil {
-		in, out := &in.VaultRegistration, &out.VaultRegistration
-		*out = new(apiv1.VaultRegistration)
-		**out = **in
 	}
 	if in.Policies != nil {
 		in, out := &in.Policies, &out.Policies

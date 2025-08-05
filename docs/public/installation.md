@@ -1,7 +1,6 @@
 * [Prerequisites](#prerequisites)
   * [Common](#common)
     * [Disaster Recovery](#disaster-recovery)
-    * [Vault](#vault)
     * [Kubernetes](#kubernetes)
     * [Openshift](#openshift)
     * [AWS](#aws)
@@ -479,8 +478,6 @@ This sections describes all possible deploy parameters for PostgreSQL DBaaS Adap
 | dbaas.adapter.username                      | string            | no        | dbaas-aggregator                        | Specifies the username for DBaaS Postgres Adapter basic authentication.                                                                                              |
 | dbaas.adapter.password                      | string            | no        | dbaas-aggregator                        | Specifies the password for DBaaS Postgres Adapter basic authentication.                                                                                              |
 | dbaas.adapter.address                       | string            | no        | http://dbaas-adapter.<postgres-ns>:8080 | Specifies the address of DBaaS Adapter during registration in Aggregator.                                                                                            |
-| dbaas.vaultIntegration.enabled              | bool              | no        | false                                   | Indicates whether to enable integration with Vault.                                                                                                                  |
-| dbaas.vaultIntegration.rotationPeriod       | string            | no        | 86400                                   | Specifies the DB password rotation period in seconds.                                                                                                                |
 | dbaas.extensions                            | []string          | no        | n/a                                     | Specifies the list of default extensions for created databases.                                                                                                      |
 | dbaas.updateExtensions                      | bool              | no        | false                                   | Specifies if default extensions should be created for existing databases.                                                                                            |
 | dbaas.apiVersion                            | string            | no        | v2                                      | Specifies the version of DBaaS API.                                                                                                                                  |
@@ -544,23 +541,6 @@ Postgres Operator allows register of PostgreSQL connection properties in Consul.
 | consulRegistration.checkTimeout    | string            | yes       | n/a           | Specifies checkTimeout for Consul ServiceCheck.                       |
 | consulRegistration.deregisterAfter | string            | yes       | n/a           | Specifies after which time Service will be de-registered from Consul. |
 
-
-## vaultRegistration
-
-Postgres Operator allows store all Postgres Service credentials in Vault. By default, registration disabled.
-
-| Parameter                                        | Type   | Mandatory | Default value    | Description                                                                                               |
-|--------------------------------------------------|--------|-----------|------------------|-----------------------------------------------------------------------------------------------------------|
-| vaultRegistration.enabled                        | bool   | no        | false            | Indicates that Vault will be used as storage credentials.                                                 |
-| vaultRegistration.path                           | string | no        | <postgres-ns> | Specifies Vault path to key-value storage.                                                                |
-| vaultRegistration.url                            | string | yes       | n/a              | Specifies url address to Vault service.                                                                   |
-| vaultRegistration.token                          | string | yes       | n/a              | Specifies token to Vault service.                                                                         |
-| vaultRegistration.paasPlatform                   | string | no        | kubernetes       | Specifies platform type.                                                                                  |
-| vaultRegistration.dbEngine.enabled               | bool   | yes       | false            | Indicates that PostgreSQL engine enabled or not.                                                          |
-| vaultRegistration.dbEngine.name                  | string | yes       | postgresql       | Specifies path name to Vault database Engine.                                                             |
-| vaultRegistration.dbEngine.maxOpenConnections    | int    | no        | 5                | Specifies the maximum number of open connections to the database.                                         |
-| vaultRegistration.dbEngine.maxIdleConnections    | int    | no        | 5                | Specifies the maximum number of idle connections to the database.                                         |
-| vaultRegistration.dbEngine.maxConnectionLifetime | string | no        | 5s               | Specifies the maximum amount of time a connection may be reused. If <= 0s connections are reused forever. |
 
 ## externalDataBase
 

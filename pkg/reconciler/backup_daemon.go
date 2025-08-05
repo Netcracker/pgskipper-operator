@@ -29,7 +29,6 @@ import (
 	"github.com/Netcracker/pgskipper-operator/pkg/patroni"
 	"github.com/Netcracker/pgskipper-operator/pkg/util"
 	"github.com/Netcracker/pgskipper-operator/pkg/util/constants"
-	"github.com/Netcracker/pgskipper-operator/pkg/vault"
 	"github.com/Netcracker/qubership-credential-manager/pkg/manager"
 	"go.uber.org/zap"
 	corev1 "k8s.io/api/core/v1"
@@ -41,18 +40,16 @@ const (
 )
 
 type BackupDaemonReconciler struct {
-	cr          *qubershipv1.PatroniServices
-	helper      *helper.Helper
-	vaultClient *vault.Client
-	cluster     *patroniv1.PatroniClusterSettings
+	cr      *qubershipv1.PatroniServices
+	helper  *helper.Helper
+	cluster *patroniv1.PatroniClusterSettings
 }
 
-func NewBackupDaemonReconciler(cr *qubershipv1.PatroniServices, helper *helper.Helper, vaultClient *vault.Client, cluster *patroniv1.PatroniClusterSettings) *BackupDaemonReconciler {
+func NewBackupDaemonReconciler(cr *qubershipv1.PatroniServices, helper *helper.Helper, cluster *patroniv1.PatroniClusterSettings) *BackupDaemonReconciler {
 	return &BackupDaemonReconciler{
-		cr:          cr,
-		helper:      helper,
-		vaultClient: vaultClient,
-		cluster:     cluster,
+		cr:      cr,
+		helper:  helper,
+		cluster: cluster,
 	}
 }
 
@@ -100,9 +97,6 @@ func (r *BackupDaemonReconciler) Reconcile() error {
 		logger.Error(fmt.Sprintf("can't add secret HASH to annotations for %s", backupDaemonDeployment.Name), zap.Error(err))
 		return err
 	}
-
-	// Vault Section
-	r.vaultClient.ProcessVaultSection(backupDaemonDeployment, vault.BackuperEntrypoint, Secrets)
 
 	//Adding securityContexts
 	backupDaemonDeployment.Spec.Template.Spec.Containers[0].SecurityContext = util.GetDefaultSecurityContext()

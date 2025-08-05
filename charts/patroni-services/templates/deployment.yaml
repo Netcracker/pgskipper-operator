@@ -97,7 +97,6 @@ spec:
               valueFrom:
                 fieldRef:
                   fieldPath: status.hostIP
-          {{- if not ( and .Values.vaultRegistration.enabled .Values.vaultRegistration.dbEngine.enabled) }}
             - name: PG_ADMIN_PASSWORD
               valueFrom:
                 secretKeyRef:
@@ -113,7 +112,6 @@ spec:
                 secretKeyRef:
                   name: replicator-credentials
                   key: password
-          {{- end }}
             - name: GLOBAL_SECURITY_CONTEXT
               value: {{ .Values.GLOBAL_SECURITY_CONTEXT | quote | default ("true" | quote) }}
             - name: CLOUD_PUBLIC_HOST

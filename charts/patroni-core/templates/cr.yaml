@@ -11,8 +11,8 @@ spec:
     enabled: true
     names:
     {{- range $i, $v := .Values.privateRegistry.secrets }}
-      - {{ $v.name }} 
-    {{- end }}     
+      - {{ $v.name }}
+    {{- end }}
   {{- end }}
   installationTimestamp: {{ now | unixEpoch | quote }}
   {{ if .Values.serviceAccount.create }}
@@ -175,22 +175,6 @@ spec:
 {{ if .Values.consulRegistration }}
   consulRegistration:
 {{ toYaml .Values.consulRegistration | indent 4 }}
-{{ end }}
-{{ if .Values.vaultRegistration }}
-  vaultRegistration:
-    dockerImage: {{ template "find_image" (dict "deployName" "vault_env" "SERVICE_NAME" "vault_env" "vals" .Values "default" .Values.vaultRegistration.dockerImage) }}
-    enabled: {{ .Values.vaultRegistration.enabled }}
-    path: {{ .Values.vaultRegistration.path | default .Release.Namespace }}
-  {{- if .Values.vaultRegistration.url }}
-    url: {{ .Values.vaultRegistration.url }}
-  {{- end }}
-    dbEngine:
-      enabled: {{ .Values.vaultRegistration.dbEngine.enabled }}
-      name: {{ .Values.vaultRegistration.dbEngine.name | default (printf "%s_%s_postgresql" .Values.CLOUD_PUBLIC_HOST .Release.Namespace) }}
-      maxOpenConnections: {{ .Values.vaultRegistration.dbEngine.maxOpenConnections | default 5 }}
-      maxIdleConnections: {{ .Values.vaultRegistration.dbEngine.maxIdleConnections | default 5 }}
-      maxConnectionLifetime: {{ .Values.vaultRegistration.dbEngine.maxConnectionLifetime | default "5s" }}
-
 {{ end }}
 {{ if .Values.pgBackRest }}
   pgBackRest:

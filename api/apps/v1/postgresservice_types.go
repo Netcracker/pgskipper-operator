@@ -23,27 +23,26 @@ import (
 // PatroniServicesSpec defines the desired state of PatroniServices
 // +k8s:openapi-gen=true
 type PatroniServicesSpec struct {
-	Patroni               *Patroni                 `json:"patroni,omitempty"`
-	BackupDaemon          *types.BackupDaemon      `json:"backupDaemon,omitempty"`
-	MetricCollector       *types.MetricCollector   `json:"metricCollector,omitempty"`
-	AuthSecret            string                   `json:"authSecret,omitempty"`
-	IntegrationTests      *IntegrationTests        `json:"integrationTests,omitempty"`
-	VaultRegistration     *types.VaultRegistration `json:"vaultRegistration,omitempty"`
-	Policies              *Policies                `json:"policies,omitempty"`
-	ServiceAccountName    string                   `json:"serviceAccountName,omitempty"`
-	CloudSql              *types.CloudSql          `json:"cloudSql,omitempty"`
-	SiteManager           *SiteManager             `json:"siteManager,omitempty"`
-	PowaUI                PowaUI                   `json:"powaUI,omitempty"`
-	ReplicationController ReplicationController    `json:"replicationController,omitempty"`
-	Pooler                Pooler                   `json:"connectionPooler,omitempty"`
-	Tracing               *Tracing                 `json:"tracing,omitempty"`
-	ExternalDataBase      *ExternalDataBase        `json:"externalDataBase,omitempty"`
-	PostgresExporter      *PostgresExporter        `json:"postgresExporter,omitempty"`
-	QueryExporter         QueryExporter            `json:"queryExporter,omitempty"`
-	Tls                   *Tls                     `json:"tls,omitempty"`
-	PgBackRest            *PgBackRest              `json:"pgBackRest,omitempty"`
-	InstallationTimestamp string                   `json:"installationTimestamp,omitempty"`
-	PrivateRegistry       PrivateRegistry          `json:"privateRegistry,omitempty"`
+	Patroni               *Patroni               `json:"patroni,omitempty"`
+	BackupDaemon          *types.BackupDaemon    `json:"backupDaemon,omitempty"`
+	MetricCollector       *types.MetricCollector `json:"metricCollector,omitempty"`
+	AuthSecret            string                 `json:"authSecret,omitempty"`
+	IntegrationTests      *IntegrationTests      `json:"integrationTests,omitempty"`
+	Policies              *Policies              `json:"policies,omitempty"`
+	ServiceAccountName    string                 `json:"serviceAccountName,omitempty"`
+	CloudSql              *types.CloudSql        `json:"cloudSql,omitempty"`
+	SiteManager           *SiteManager           `json:"siteManager,omitempty"`
+	PowaUI                PowaUI                 `json:"powaUI,omitempty"`
+	ReplicationController ReplicationController  `json:"replicationController,omitempty"`
+	Pooler                Pooler                 `json:"connectionPooler,omitempty"`
+	Tracing               *Tracing               `json:"tracing,omitempty"`
+	ExternalDataBase      *ExternalDataBase      `json:"externalDataBase,omitempty"`
+	PostgresExporter      *PostgresExporter      `json:"postgresExporter,omitempty"`
+	QueryExporter         QueryExporter          `json:"queryExporter,omitempty"`
+	Tls                   *Tls                   `json:"tls,omitempty"`
+	PgBackRest            *PgBackRest            `json:"pgBackRest,omitempty"`
+	InstallationTimestamp string                 `json:"installationTimestamp,omitempty"`
+	PrivateRegistry       PrivateRegistry        `json:"privateRegistry,omitempty"`
 }
 
 type PrivateRegistry struct {
