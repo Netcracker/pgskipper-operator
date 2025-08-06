@@ -15,6 +15,7 @@
 package powa
 
 import (
+	"context"
 	"fmt"
 
 	v1 "github.com/Netcracker/pgskipper-operator/api/patroni/v1"
@@ -73,7 +74,13 @@ func SetUpPOWA(pgHost string) error {
 }
 
 func isPowaTableExist(pg *pgClient.PostgresClient) bool {
-	rows, err := pg.Query(fmt.Sprintf("select * from pg_database where datname = '%s';", powaDBName))
+	conn, err := pg.GetConnection()
+	if err != nil {
+		return true
+	}
+	defer conn.Release()
+
+	rows, err := conn.Query(context.Background(), fmt.Sprintf("select * from pg_database where datname = '%s';", powaDBName))
 	if err != nil {
 		logger.Error("error during fetching info about Powa database")
 		return true
@@ -87,7 +94,7 @@ func isPowaTableExist(pg *pgClient.PostgresClient) bool {
 
 func createPOWAUser(password string, pg *pgClient.PostgresClient) error {
 	password = pgClient.EscapeString(password)
-	if _, err := pg.Query(fmt.Sprintf("CREATE ROLE %s SUPERUSER LOGIN PASSWORD '%s' ;", powaUser, password)); err != nil {
+	if err := pg.Execute(fmt.Sprintf("CREATE ROLE %s SUPERUSER LOGIN PASSWORD '%s' ;", powaUser, password)); err != nil {
 		logger.Error("cannot create POWA user", zap.Error(err))
 	}
 	return nil
@@ -103,7 +110,7 @@ func getPowaPassword() (string, error) {
 }
 
 func createPOWATableWithExtension(pg *pgClient.PostgresClient) {
-	if _, err := pg.Query("CREATE DATABASE powa;"); err != nil {
+	if err := pg.Execute("CREATE DATABASE powa;"); err != nil {
 		logger.Error("cannot create powa database", zap.Error(err))
 		return
 	}

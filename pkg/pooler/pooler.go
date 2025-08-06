@@ -248,11 +248,19 @@ func GetPgBouncerCreds() (*PgBouncerCreds, error) {
 }
 
 func createAuthFunctions(client *pgClient.PostgresClient, creds *PgBouncerCreds) error {
-	rows, err := client.Query("SELECT datname FROM pg_database;")
+	conn, err := client.GetConnection()
+	if err != nil {
+		return err
+	}
+	defer conn.Release()
+
+	rows, err := conn.Query(context.Background(), "SELECT datname FROM pg_database;")
 	if err != nil {
 		logger.Error("cannot get database list", zap.Error(err))
 		return err
 	}
+	defer rows.Close()
+
 	databases := make([]string, 0)
 	for rows.Next() {
 		var db string
