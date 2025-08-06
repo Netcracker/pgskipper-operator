@@ -191,7 +191,7 @@ backupDaemon:
   backupTimeout: 300
   granularEviction: "3600"
   encryption: false
-  retainArchiveSettings: true
+  retainArchiveSettings: false
   # jobFlag: "2"
   # connectTimeout: "5"
   allowPrefix: false

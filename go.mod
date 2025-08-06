@@ -3,7 +3,7 @@ module github.com/Netcracker/pgskipper-operator
 go 1.23.0
 
 require (
-	github.com/Netcracker/pgskipper-operator-core v0.0.57-0.20250730122316-04119ee2f9d6
+	github.com/Netcracker/pgskipper-operator-core v0.0.57
 	github.com/Netcracker/qubership-credential-manager v0.0.3
 	github.com/avast/retry-go/v4 v4.6.0
 	github.com/go-co-op/gocron v1.37.0
