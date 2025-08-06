@@ -15,6 +15,7 @@
 package reconciler
 
 import (
+	"context"
 	"fmt"
 	"strconv"
 	"strings"
@@ -273,8 +274,8 @@ func (r *PatroniReconciler) Reconcile() error {
 			}
 			if localeVersion != newLocaleVersion || cr.Spec.Patroni.ForceCollationVersionUpgrade {
 				logger.Warn(fmt.Sprintf("New os locale version is %s, but previous was %s. A collation version mismatch occured in databases. Run locale fix script", newLocaleVersion, localeVersion))
-				r.helper.StoreDataToCM("locale-version", newLocaleVersion)
 				r.runLocaleFixScript(pgVersion)
+				r.helper.StoreDataToCM("locale-version", newLocaleVersion)
 			}
 
 		} else {
@@ -525,6 +526,8 @@ func (r *PatroniReconciler) createServicesForEtcdAsDcs() error {
 func (r *PatroniReconciler) runLocaleFixScript(pgVersion int64) {
 	pgC := pgClient.GetPostgresClient(r.cluster.PgHost)
 	databaseList := helper.GetAllDatabases(pgC)
+	logger.Info(fmt.Sprintf("database count for locale fix: %d", len(databaseList)))
+
 	wg.Wait()
 	connCount := 0
 	limitPool := 10
@@ -537,6 +540,7 @@ func (r *PatroniReconciler) runLocaleFixScript(pgVersion int64) {
 			connCount = 0
 		}
 	}
+	wg.Wait()
 }
 
 func (r *PatroniReconciler) fixCollationVersionForDB(pgClient *pgClient.PostgresClient, pgVersion int64, db string) {
@@ -592,7 +596,13 @@ func (r *PatroniReconciler) refreshDependCollationsVersion(pgClient *pgClient.Po
 // Get all collations with version mismatch for database
 func (r *PatroniReconciler) getCollationsForRefresh(pgClient *pgClient.PostgresClient, db string) ([]string, error) {
 	cForRefresh := make([]string, 0)
-	rows, err := pgClient.QueryForDB(db, `SELECT distinct c.collname AS "Collation"
+	conn, err := pgClient.GetConnectionToDb(db)
+	if err != nil {
+		return nil, err
+	}
+	defer conn.Close(context.Background())
+
+	rows, err := conn.Query(context.Background(), `SELECT distinct c.collname AS "Collation"
              FROM pg_depend d
              JOIN pg_collation c ON (refclassid = 'pg_collation'::regclass AND refobjid = c.oid)
 			 WHERE c.collversion <> pg_collation_actual_version(c.oid) or c.collversion is null;`)
