@@ -2492,8 +2492,6 @@ spec:
                 type: object
               pgBackRest:
                 properties:
-                  backupFromStandby:
-                    type: boolean
                   configParams:
                     items:
                       type: string
