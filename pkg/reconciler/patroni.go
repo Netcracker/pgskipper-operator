@@ -274,7 +274,7 @@ func (r *PatroniReconciler) Reconcile() error {
 			}
 			if localeVersion != newLocaleVersion || cr.Spec.Patroni.ForceCollationVersionUpgrade {
 				logger.Warn(fmt.Sprintf("New os locale version is %s, but previous was %s. A collation version mismatch occured in databases. Run locale fix script", newLocaleVersion, localeVersion))
-				r.runLocaleFixScript(pgVersion)
+				r.runLocaleFixScript(pgVersion, newLocaleVersion, cr.Spec.Patroni.ForceCollationVersionUpgrade)
 				r.helper.StoreDataToCM("locale-version", newLocaleVersion)
 			}
 
@@ -523,9 +523,21 @@ func (r *PatroniReconciler) createServicesForEtcdAsDcs() error {
 	return nil
 }
 
-func (r *PatroniReconciler) runLocaleFixScript(pgVersion int64) {
+func (r *PatroniReconciler) runLocaleFixScript(pgVersion int64, newLocale string, forced bool) {
 	pgC := pgClient.GetPostgresClient(r.cluster.PgHost)
-	databaseList := helper.GetAllDatabases(pgC)
+
+	err := helper.WaitUntilRecoveryIsDone(pgC)
+	if err != nil {
+		logger.Error("recovery check failed, during locale update", zap.Error(err))
+		return
+	}
+
+	var databaseList []string
+	if forced {
+		databaseList = helper.GetAllDatabases(pgC)
+	} else {
+		databaseList = helper.GetDatabasesForLocaleUpdate(pgC, newLocale)
+	}
 	logger.Info(fmt.Sprintf("database count for locale fix: %d", len(databaseList)))
 
 	wg.Wait()
@@ -545,36 +557,39 @@ func (r *PatroniReconciler) runLocaleFixScript(pgVersion int64) {
 
 func (r *PatroniReconciler) fixCollationVersionForDB(pgClient *pgClient.PostgresClient, pgVersion int64, db string) {
 	defer wg.Done()
+
+	var err error
+	defer func() {
+		if err == nil {
+			logger.Info(fmt.Sprintf("fix locale for database: %s - OK", db))
+		} else {
+			logger.Info(fmt.Sprintf("fix locale for database: %s - HAVE PROBLEMS", db))
+		}
+	}()
+
 	logger.Info(fmt.Sprintf("fix locale for database: %s", db))
-	isPassed := true
-	err := pgClient.Execute(fmt.Sprintf("REINDEX DATABASE \"%s\"", db))
+	err = pgClient.ExecuteForDB(db, fmt.Sprintf("REINDEX DATABASE \"%s\"", db))
 	if err != nil {
-		isPassed = false
 		logger.Warn(fmt.Sprintf("Cannot reindex database for db: %s", db), zap.Error(err))
+		return
 	}
-	err = pgClient.Execute(fmt.Sprintf("REINDEX SYSTEM \"%s\"", db))
+	err = pgClient.ExecuteForDB(db, fmt.Sprintf("REINDEX SYSTEM \"%s\"", db))
 	if err != nil {
-		isPassed = false
 		logger.Warn(fmt.Sprintf("Cannot reindex system for db: %s", db), zap.Error(err))
+		return
 	}
+
 	if pgVersion >= 15 {
 		err = pgClient.Execute(fmt.Sprintf("ALTER DATABASE \"%s\" REFRESH COLLATION VERSION", db))
 		if err != nil {
-			isPassed = false
 			logger.Warn(fmt.Sprintf("Cannot alter locale version for db: %s", db), zap.Error(err))
+			return
 		}
 	}
 
 	err = r.refreshDependCollationsVersion(pgClient, db)
 	if err != nil {
-		isPassed = false
 		logger.Warn(fmt.Sprintf("Cannot alter dependent collations version for db: %s", db), zap.Error(err))
-	}
-
-	if isPassed {
-		logger.Info(fmt.Sprintf("fix locale for database: %s - OK", db))
-	} else {
-		logger.Info(fmt.Sprintf("fix locale for database: %s - HAVE PROBLEMS", db))
 	}
 }
 
