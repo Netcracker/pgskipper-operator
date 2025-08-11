@@ -602,7 +602,7 @@ func (r *PatroniReconciler) getCollationsForRefresh(pgClient *pgClient.PostgresC
 	rows, err := pgClient.QueryForDB(db, `SELECT distinct c.collname AS "Collation"
              FROM pg_depend d
              JOIN pg_collation c ON (refclassid = 'pg_collation'::regclass AND refobjid = c.oid)
-			 WHERE c.collversion <> pg_collation_actual_version(c.oid) or c.collversion is null;`)
+             WHERE c.collversion <> pg_collation_actual_version(c.oid) or c.collversion is null;`)
 	if err != nil {
 		logger.Error(fmt.Sprintf("error during fetching collations for database %s", db))
 		return nil, err
