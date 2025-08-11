@@ -4834,6 +4834,8 @@ spec:
                 type: object
               pgBackRest:
                 properties:
+                  backupFromStandby:
+                    type: boolean
                   diffSchedule:
                     type: string
                   dockerImage:
