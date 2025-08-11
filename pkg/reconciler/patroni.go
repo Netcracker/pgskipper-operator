@@ -617,6 +617,7 @@ func (r *PatroniReconciler) getCollationsForRefresh(pgClient *pgClient.PostgresC
 		}
 		cForRefresh = append(cForRefresh, collation)
 	}
+
 	return cForRefresh, nil
 }
 
