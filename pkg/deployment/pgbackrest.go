@@ -17,6 +17,7 @@ package deployment
 import (
 	"fmt"
 	v1 "github.com/Netcracker/pgskipper-operator/api/patroni/v1"
+	"github.com/Netcracker/pgskipper-operator/pkg/patroni"
 	"github.com/Netcracker/pgskipper-operator/pkg/util"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -81,7 +82,7 @@ func getPgBackRestContainer(deploymentIdx int, clustername string, patroniCoreSp
 			},
 		}, GetPgBackrestEvs(deploymentIdx, clustername, *patroniCoreSpec.PgBackRest)...),
 		Ports: []corev1.ContainerPort{
-			{ContainerPort: 3000, Name: "pgbackrest", Protocol: corev1.ProtocolTCP},
+			{ContainerPort: 3000, Name: "backrest", Protocol: corev1.ProtocolTCP},
 		},
 		TerminationMessagePath:   corev1.TerminationMessagePathDefault,
 		TerminationMessagePolicy: corev1.TerminationMessageReadFile,
@@ -118,9 +119,10 @@ func getPgbackRestResources(patroniCoreSpec *v1.PatroniCoreSpec) corev1.Resource
 	return *patroniCoreSpec.PgBackRest.Resources
 }
 
-func GetPgBackRestCM(pgBackrestSpec *v1.PgBackRest) *corev1.ConfigMap {
+func GetPgBackRestCM(cr *v1.PatroniCore) *corev1.ConfigMap {
 
-	settings := getPgBackRestSettings(pgBackrestSpec)
+	isStandby := patroni.IsStandbyClusterConfigurationExist(cr)
+	settings := getPgBackRestSettings(cr.Spec.PgBackRest, isStandby)
 
 	pgBackRestCM := &corev1.ConfigMap{
 		ObjectMeta: metav1.ObjectMeta{
@@ -133,12 +135,12 @@ func GetPgBackRestCM(pgBackrestSpec *v1.PgBackRest) *corev1.ConfigMap {
 }
 
 func GetPgBackRestService(labels map[string]string, standby bool) *corev1.Service {
-	serviceName := "pgbackrest"
+	serviceName := "backrest"
 	if standby {
-		serviceName = "pgbackrest-standby"
+		serviceName = "backrest-standby"
 	}
 	ports := []corev1.ServicePort{
-		{Name: "pgbackrest", Port: 3000},
+		{Name: "backrest", Port: 3000},
 	}
 	return &corev1.Service{
 		TypeMeta: metav1.TypeMeta{
@@ -160,7 +162,7 @@ func GetPgBackRestService(labels map[string]string, standby bool) *corev1.Servic
 func GetBackrestHeadless() *corev1.Service {
 	labels := map[string]string{"app": "patroni"}
 	ports := []corev1.ServicePort{
-		{Name: "pgbackrest", Port: 3000},
+		{Name: "backrest", Port: 3000},
 	}
 	return &corev1.Service{
 		TypeMeta: metav1.TypeMeta{
@@ -180,7 +182,7 @@ func GetBackrestHeadless() *corev1.Service {
 	}
 }
 
-func getPgBackRestSettings(pgBackrestSpec *v1.PgBackRest) string {
+func getPgBackRestSettings(pgBackrestSpec *v1.PgBackRest, isStandby bool) string {
 	var listSettings []string
 	listSettings = append(listSettings, "[global]")
 
@@ -188,16 +190,9 @@ func getPgBackRestSettings(pgBackrestSpec *v1.PgBackRest) string {
 	listSettings = append(listSettings, fmt.Sprintf("repo1-retention-diff=%d", pgBackrestSpec.DiffRetention))
 
 	if pgBackrestSpec.RepoType == "s3" {
-		listSettings = append(listSettings, fmt.Sprintf("repo1-type=%s", pgBackrestSpec.RepoType))
-		listSettings = append(listSettings, fmt.Sprintf("repo1-path=%s", pgBackrestSpec.RepoPath))
-		listSettings = append(listSettings, fmt.Sprintf("repo1-s3-bucket=%s", pgBackrestSpec.S3.Bucket))
-		listSettings = append(listSettings, fmt.Sprintf("repo1-s3-endpoint=%s", pgBackrestSpec.S3.Endpoint))
-		listSettings = append(listSettings, fmt.Sprintf("repo1-s3-key=%s", pgBackrestSpec.S3.Key))
-		listSettings = append(listSettings, fmt.Sprintf("repo1-s3-key-secret=%s", pgBackrestSpec.S3.Secret))
-		listSettings = append(listSettings, fmt.Sprintf("repo1-s3-region=%s", pgBackrestSpec.S3.Region))
-		listSettings = append(listSettings, "repo1-s3-uri-style=path")
-		if !pgBackrestSpec.S3.VerifySsl {
-			listSettings = append(listSettings, "repo1-s3-verify-ssl=n")
+		listSettings = addS3RepoSettings(listSettings, pgBackrestSpec.RepoType, pgBackrestSpec.RepoPath, pgBackrestSpec.S3, 1)
+		if isStandby && pgBackrestSpec.DRS3.Bucket != "" {
+			listSettings = addS3RepoSettings(listSettings, pgBackrestSpec.RepoType, pgBackrestSpec.RepoPath, pgBackrestSpec.DRS3, 2)
 		}
 	}
 	if pgBackrestSpec.RepoType == "rwx" {
@@ -206,6 +201,22 @@ func getPgBackRestSettings(pgBackrestSpec *v1.PgBackRest) string {
 	listSettings = append(listSettings, pgBackrestSpec.ConfigParams...)
 	settings := strings.Join(listSettings[:], "\n")
 	return settings
+}
+
+func addS3RepoSettings(listSettings []string, repoType string, repoPath string, s3 v1.S3, number int) []string {
+	resultListSettings := listSettings
+	resultListSettings = append(resultListSettings, fmt.Sprintf("repo%d-type=%s", number, repoType))
+	resultListSettings = append(resultListSettings, fmt.Sprintf("repo%d-path=%s", number, repoPath))
+	resultListSettings = append(resultListSettings, fmt.Sprintf("repo%d-s3-bucket=%s", number, s3.Bucket))
+	resultListSettings = append(resultListSettings, fmt.Sprintf("repo%d-s3-endpoint=%s", number, s3.Endpoint))
+	resultListSettings = append(resultListSettings, fmt.Sprintf("repo%d-s3-key=%s", number, s3.Key))
+	resultListSettings = append(resultListSettings, fmt.Sprintf("repo%d-s3-key-secret=%s", number, s3.Secret))
+	resultListSettings = append(resultListSettings, fmt.Sprintf("repo%d-s3-region=%s", number, s3.Region))
+	resultListSettings = append(resultListSettings, fmt.Sprintf("repo%d-s3-uri-style=path", number))
+	if !s3.VerifySsl {
+		resultListSettings = append(resultListSettings, fmt.Sprintf("repo%d-s3-verify-ssl=n", number))
+	}
+	return resultListSettings
 }
 
 func GetPgBackrestEvs(deploymentIdx int, clusterName string, pgBackRest v1.PgBackRest) []corev1.EnvVar {

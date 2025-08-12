@@ -47,16 +47,28 @@ func InitDRManager() {
 	helper := k8sHelper.GetHelper()
 	patroniHelper := k8sHelper.GetPatroniHelper()
 	cloudSqlCm := getCloudSqlCm(helper)
-	cr, _ := helper.GetPostgresServiceCR()
-	err := helper.AddNameAndUID(cr.Name, cr.UID, cr.Kind)
+
+	cr, err := helper.GetPostgresServiceCR()
 	if err != nil {
 		log.Error("Can not init Site Manager", zap.Error(err))
 	}
-	err = patroniHelper.AddNameAndUID(cr.Name, cr.UID, cr.Kind)
+	err = helper.AddNameAndUID(cr.Name, cr.UID, cr.Kind)
+	if err != nil {
+		log.Error("Can not init Site Manager", zap.Error(err))
+		panic(err)
+	}
+
+	coreCR, err := patroniHelper.GetPatroniCoreCR()
+	if err != nil {
+		log.Error("Can not init Site Manager", zap.Error(err))
+		panic(err)
+	}
+	err = patroniHelper.AddNameAndUID(coreCR.Name, coreCR.UID, coreCR.Kind)
 	if err != nil {
 		log.Error("Can not init Site Manager", zap.Error(err))
 	}
-	patroniClusterSettings := util.GetPatroniClusterSettings(cr.Spec.Patroni.ClusterName)
+
+	patroniClusterSettings := util.GetPatroniClusterSettings(coreCR.Spec.Patroni.ClusterName)
 	if cloudSqlCm != nil {
 		pgManager = newCloudSQLDRManager(helper, cloudSqlCm)
 	} else {
