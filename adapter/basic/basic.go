@@ -963,6 +963,12 @@ func (sa ServiceAdapter) disableUser(ctx context.Context, dbName string, resourc
 
 	defer connDb.Close()
 
+	// if user deleted, we need to rollback prepared transactions in order to avoid lock on reassign grants
+	err = sa.rollbackPrepared(ctx, connDb, dbName)
+	if err != nil {
+		return err
+	}
+
 	_, err = connDb.Exec(context.Background(), reassignGrants(getUsernameWithoutHost(resource.Name), sa.GetUser()))
 	if err != nil {
 		logger.Error(fmt.Sprintf("Couldn't reassign grants for user %s", resource.Name), zap.Error(err))
