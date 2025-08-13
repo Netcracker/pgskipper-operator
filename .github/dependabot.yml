@@ -1,29 +1,17 @@
 version: 2
 updates:
-  # pgskipper-operator (Go modules)
+  # Go
   - package-ecosystem: "gomod"
     directory: "/"
     schedule:
       interval: "weekly"
 
-  # Repository root Docker image (if present)
+  # Docker images
   - package-ecosystem: "docker"
-    directory: "/"
-    schedule:
-      interval: "weekly"
-  # Tests Docker image
-  - package-ecosystem: "docker"
-    directory: "/tests"
-    schedule:
-      interval: "weekly"
-  # docker-transfer utility image
-  - package-ecosystem: "docker"
-    directory: "/docker-transfer"
-    schedule:
-      interval: "weekly"
-  # Build environment Docker image
-  - package-ecosystem: "docker"
-    directory: "/build"
+    directories:
+      - "/tests"
+      - "/docker-transfer"
+      - "/build"
     schedule:
       interval: "weekly"
 
