@@ -229,8 +229,10 @@ Vault env variables for DBaaS
               value: {{ include "postgres.smServiceAccount" . }}
             - name: SM_HTTP_AUTH
               value: "true"
+            {{- if .Values.siteManager.httpAuth.smSecureAuth -}}
             - name: SM_CUSTOM_AUDIENCE
               value: {{ .Values.siteManager.httpAuth.customAudience }}
+            {{- end -}}
 {{ else }}
             - name: SM_HTTP_AUTH
               value: "false"
