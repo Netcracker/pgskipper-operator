@@ -210,6 +210,7 @@ type PgBackRest struct {
 	DiffSchedule      string                   `json:"diffSchedule,omitempty"`
 	IncrSchedule      string                   `json:"incrSchedule,omitempty"`
 	S3                S3                       `json:"s3,omitempty"`
+	DRS3              S3                       `json:"drS3,omitempty"`
 	Rwx               *types.Storage           `json:"rwx,omitempty"`
 	Resources         *v1.ResourceRequirements `json:"resources,omitempty"`
 	FullRetention     int                      `json:"fullRetention,omitempty"`
