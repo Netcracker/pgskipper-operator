@@ -399,8 +399,12 @@ func (r *PostgresServiceReconciler) reconcilePostgresServiceCluster(cr *qubershi
 
 	// configure postgres-exporter user
 	if cr.Spec.PostgresExporter != nil && cr.Spec.PostgresExporter.Install {
-		if err := postgresexporter.SetUpExporter(cr.Spec.PostgresExporter); err != nil { //REWORK
-			return err
+		if isPostgresExporterSetupRequired(cr) {
+			if err := postgresexporter.SetUpExporter(cr.Spec.PostgresExporter); err != nil { //REWORK
+				return err
+			}
+		} else {
+			r.logger.Info("Postgres Exporter setup is not required, skipping...")
 		}
 	}
 
@@ -687,4 +691,18 @@ func (r *PostgresServiceReconciler) processExternalResources(cr *qubershipv1.Pat
 	}
 
 	return nil
+}
+
+func isPostgresExporterSetupRequired(cr *qubershipv1.PatroniServices) bool {
+	setupRequired := true
+	if cr.Spec.SiteManager != nil {
+		patroniCoreCR, err := helper.GetHelper().GetPatroniCoreCR()
+		if err != nil {
+			return true
+		}
+		if patroniCoreCR.Spec.Patroni.StandbyCluster != nil && patroniCoreCR.Spec.Patroni.StandbyCluster.Host != "" {
+			setupRequired = false
+		}
+	}
+	return setupRequired
 }
