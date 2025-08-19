@@ -81,27 +81,38 @@ func findUserName(ctx context.Context, conn cluster.Conn, database string) strin
 
 func updateExtensionsCM() {
 	log.Debug("Update extensions CM")
-	cm := getCM(basic.ExtensionConfigName)
+	names := []string{basic.ExtensionConfigNameNew, basic.ExtensionConfigNameOld}
 
-	data := cm.Data
-	extensionsData := data[basic.ExtensionName]
+	for _, name := range names {
+		cm := getCM(name)
+		if cm == nil {
+			continue
+		}
 
-	var extensionMap map[string]interface{}
-	err := json.Unmarshal([]byte(extensionsData), &extensionMap)
-	if err != nil {
-		log.Warn(fmt.Sprintf("Failed to parse extensions file %s", basic.ExtensionPath+basic.ExtensionName), zap.Error(err))
-		extensionMap = make(map[string]interface{})
+		data := cm.Data
+		if data == nil {
+			data = map[string]string{}
+		}
+
+		extensionsData := data[basic.ExtensionName]
+
+		var extensionMap map[string]interface{}
+		err := json.Unmarshal([]byte(extensionsData), &extensionMap)
+		if err != nil {
+			log.Warn(fmt.Sprintf("Failed to parse extensions file %s", basic.ExtensionPath+basic.ExtensionName), zap.Error(err))
+			extensionMap = make(map[string]interface{})
+		}
+
+		extensionMap[basic.UpdateRequiredKey] = false
+
+		updatedMap, err := json.Marshal(extensionMap)
+		if err != nil {
+			log.Warn("Failed to marshal updated result for extensions map")
+		}
+
+		data[basic.ExtensionName] = string(updatedMap)
+
+		cm.Data = data
+		updateCM(cm)
 	}
-
-	extensionMap[basic.UpdateRequiredKey] = false
-
-	updatedMap, err := json.Marshal(extensionMap)
-	if err != nil {
-		log.Warn("Failed to marshal updated result for extensions map")
-	}
-
-	data[basic.ExtensionName] = string(updatedMap)
-
-	cm.Data = data
-	updateCM(cm)
 }

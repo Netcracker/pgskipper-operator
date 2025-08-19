@@ -43,9 +43,10 @@ const (
 	Skipped            = "SKIPPED"
 	Successful         = "SUCCESSFUL"
 
-	ExtensionPath       = "/app/extensions/"
-	ExtensionConfigName = "dbaas-postgres-adapter.extensions-config"
-	ExtensionName       = "dbaas.default_extensions.json"
+	ExtensionPath          = "/app/extensions/"
+	ExtensionConfigNameNew = "dbaas-postgres-adapter.extensions-config"
+	ExtensionConfigNameOld = "nc-dbaas-postgres-adapter.extensions-config"
+	ExtensionName          = "dbaas.default_extensions.json"
 
 	UpdateRequiredKey     = "updateRequired"
 	ExtensionsKey         = "extensions"

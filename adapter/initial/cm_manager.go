@@ -42,6 +42,8 @@ func updateCM(cm *v1.ConfigMap) {
 	_, err := CMs.Update(context.Background(), cm, metav1.UpdateOptions{})
 	if err != nil {
 		log.Error("Couldn't update config map", zap.Error(err))
+	} else {
+		log.Info("ConfigMap updated", zap.String("cm", cm.Name))
 	}
 }
 
