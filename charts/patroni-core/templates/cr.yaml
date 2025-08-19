@@ -67,6 +67,10 @@ spec:
     podLabels:
       {{ include "kubernetes.labels" . | nindent 6 }}
     {{- end }}
+    podAnnotations:
+      {{- toYaml .Values.patroni.podAnnotations | nindent 6 }}
+    configMapAnnotations:
+      {{- toYaml .Values.patroni.configMapAnnotations | nindent 6 }}
     replicas: {{ ( include "postgres.replicasCount" . ) }}
     image: {{ template "find_image" (dict "deployName" "pg_patroni" "SERVICE_NAME" "pg_patroni" "vals" .Values "default" .Values.patroni.dockerImage) }}
     patroniParams:

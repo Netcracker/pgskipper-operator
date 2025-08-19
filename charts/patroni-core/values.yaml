@@ -108,6 +108,8 @@ patroni:
   # Docker Image that will be used for Patroni container
   dockerImage: ghcr.io/netcracker/pgskipper-patroni-16:main
   podLabels: {}
+  podAnnotations: {}
+  configMapAnnotations: {}
   # patroni.fsGroup. Specifies fsGroup that will be used in Patroni Pod Spec.
   # Useful in case of k8s installation and provisioned storage
   #  fsGroup: 26
