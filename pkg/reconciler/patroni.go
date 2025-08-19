@@ -374,6 +374,28 @@ func (r *PatroniReconciler) Reconcile() error {
 			return err
 		}
 	}
+
+	for _, name := range []string{"patroni-config", "patroni-leader"} {
+		cm, err := r.helper.ResourceManager.GetConfigMap(name)
+		if err != nil {
+			if errors.IsNotFound(err) {
+				continue
+			}
+			logger.Error("Failed to fetch ConfigMap", zap.String("name", cm.Name), zap.Error(err))
+			return err
+		}
+		if cm.Annotations == nil {
+			cm.Annotations = make(map[string]string)
+		}
+		cm.Annotations["argocd.argoproj.io/ignore-resource-updates"] = "true"
+		for k, v := range cr.Spec.Patroni.ConfigMapAnnotations {
+			cm.Annotations[k] = v
+		}
+		if _, err := r.helper.ResourceManager.CreateOrUpdateConfigMap(cm); err != nil {
+			logger.Error("failed to annotate Patroni ConfigMap", zap.Error(err))
+			return err
+		}
+	}
 	return nil
 }
 
