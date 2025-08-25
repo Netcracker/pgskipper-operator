@@ -19,7 +19,7 @@
 
 # Prerequisites
 
-## General Information  
+## General Information
 
 This section provides information about the steps to install and configure a Postgres Service cluster on OpenShift/Kubernetes using Helm.
 Postgres Service consists of two charts:
@@ -106,9 +106,9 @@ $ vi restricted-seccomp.yaml
 ```
 kind: SecurityContextConstraints
 metadata:
-  name: restricted  
+  name: restricted
 .....
-seccompProfiles:    
+seccompProfiles:
 - runtime/default
 ```
 

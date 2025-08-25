@@ -2,14 +2,14 @@
 
 This guide will help you get postgres up and running as quickly as possible.
 
+- [Quickstart](#quickstart)
 - [Prerequisites](#prerequisites)
 - [Installation](#installation)
-  * [Storage configuration](#storage-configuration)
-  * [Installation patroni-core via Helm](#installation-patroni-core-via-helm)
-  * [Installation patroni-services via Helm](#installation-patroni-services-via-helm)
+  - [Storage configuration](#storage-configuration)
+  - [Installation via Helm](#installation-via-helm)
 - [Validation of Installation](#validation-of-installation)
-- [Connect to the Postgres](#connect-to-the-postgres)
-- [Delete a Postgres cluster](#delete-a-postgres-cluster)
+  - [Connect to the Postgres](#connect-to-the-postgres)
+  - [Delete a Postgres cluster](#delete-a-postgres-cluster)
 
 # Prerequisites
 In order to continue, please, make sure the following utilities are installed on your local machine
@@ -34,16 +34,19 @@ Before install, configure `patroni.storage` in charts/patroni-core/patroni-core-
 according to your PV configuration.
 
 1. If you have a PV provisioner, set up your storage sections as follows:
-```
+
+```yaml
 storage:
   type: provisioned
   size: 2Gi
   storageClass: <storage-class>
 ```
+
 Where `<storage-class>` is the name of your storageClass.
 
 2. If you have no PV provisioner, point your PVs, and their nodes in `patroni.storage` sections:
-```
+
+```yaml
 storage:
     type: pv
     size: 2Gi
@@ -54,6 +57,7 @@ storage:
       - <first-pv-node>
       - <second-pv-node>
 ```
+
 Where `<first-pv>` and `<second-pv>` are the names of your PVs, and `<first-pv-node>`,`<second-pv-node>` are the names of nodes where is located.
 
 For `backupDaemon.storage` section point your PV the same way, but in a single copy. 

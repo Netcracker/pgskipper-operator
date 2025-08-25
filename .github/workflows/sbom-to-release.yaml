@@ -1,0 +1,47 @@
+name: "Generate SBOM file and upload it to GitHub Release"
+run-name: "Generate SBOM file and upload it to GitHub Release ${{ inputs.release-tag }}"
+on:
+  release:
+    types: [released]
+  workflow_dispatch:
+    inputs:
+      release-tag:
+        description: "Release tag"
+        required: true
+        default: ""
+permissions:
+  contents: write
+jobs:
+  generate-sbom:
+    runs-on: ubuntu-latest
+    steps:
+      - name: "Set RELEASE_VERSION"
+        id: set-version
+        run: |
+          if [ "${{ github.event.release.tag_name }}" != "" ]; then
+            echo "RELEASE_VERSION=${{ github.event.release.tag_name }}" >> $GITHUB_ENV
+          else
+            echo "RELEASE_VERSION=${{ github.event.inputs.release-tag }}" >> $GITHUB_ENV
+          fi
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ env.RELEASE_VERSION }}
+      - name: "Free some space"
+        run: rm -rf /opt/hostedtoolcache
+        shell: bash
+      - name: "Generate BOM"
+        run: |
+          cd ${GITHUB_WORKSPACE}
+          export FETCH_LICENSE=true
+          docker run --rm -e FETCH_LICENSE=true -v /tmp:/tmp -v $(pwd):/app:rw -t ghcr.io/cyclonedx/cdxgen:v8.6.0 -r /app/charts -p -o /app/${{ github.event.repository.name }}_sbom.${{ env.RELEASE_VERSION }}.json
+          docker rmi -f $(docker images -aq)
+        shell: bash
+
+      - name: Upload SBOM file to GitHub Release
+        uses: AButler/upload-release-assets@v3.0
+        with:
+          files: "**/${{ github.event.repository.name }}_sbom.${{ env.RELEASE_VERSION }}.json"
+          repo-token: ${{ secrets.GITHUB_TOKEN }}
+          release-tag: ${{ env.RELEASE_VERSION }}
+

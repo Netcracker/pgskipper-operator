@@ -2,6 +2,8 @@ module github.com/Netcracker/pgskipper-operator
 
 go 1.23.0
 
+toolchain go1.24.3
+
 require (
 	github.com/Netcracker/pgskipper-operator-core v0.0.57
 	github.com/Netcracker/qubership-credential-manager v0.0.3

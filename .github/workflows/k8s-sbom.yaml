@@ -1,0 +1,22 @@
+name: "K8s bom tool"
+
+on:
+  workflow_dispatch: {}
+permissions:
+  contents: write
+jobs:
+  generate-sbom:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+      - name: install bom tool
+        run: |
+          go install sigs.k8s.io/bom/cmd/bom@latest
+          echo "$(go env GOPATH)/bin" >> $GITHUB_PATH
+      - name: "Generate sbom"
+        run: bom generate ./charts -o bom.json --format json
+      - name: Upload a Build Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          path: bom.json

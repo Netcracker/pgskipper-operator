@@ -1,0 +1,129 @@
+name: Build Artifacts v1
+on:
+  push:
+    branches:
+      - '**'
+
+concurrency:
+  group: build-and-push-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  TAG_NAME: ${{ github.ref }}
+  PUSH: ${{ github.actor != 'dependabot[bot]' }}
+
+jobs:
+  diff-detect:
+    runs-on: ubuntu-24.04
+    outputs:
+      exclude-jobs: ${{ steps.list-changed-files.outputs.exclude_jobs }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Get changed files
+        id: changed-files
+        uses: tj-actions/changed-files@ed68ef82c095e0d48ec87eccea555d944a631a4c # v46
+        with:
+          dir_names_exclude_current_dir: 'true'
+          files_yaml: |
+            pgskipper-operator:
+              - api/**
+              - build/**
+              - cmd/**
+              - controllers/**
+              - generator/**
+              - pkg/**
+              - version/**
+              - go.*
+              - Makefile
+              - tools.go
+            pgskipper-operator-tests:
+              - tests/**
+            docker-transfer:
+              - docker-transfer/**
+              - charts/**
+              - docs/**
+      - name: List all changed files
+        id: list-changed-files
+        run: |
+            if [ "${{ steps.changed-files.outputs.pgskipper-operator_any_changed }}" == 'true' ]; then
+              echo "✅ Changes detected in pgskipper-operator."
+              echo "✅ Changes detected in pgskipper-operator." >> $GITHUB_STEP_SUMMARY
+              echo "Changed files in pgskipper-operator: ${{ steps.changed-files.outputs.pgskipper-operator_all_changed_files}}" >> $GITHUB_STEP_SUMMARY
+            else
+              echo "ℹ️ No changes in pgskipper-operator."
+            fi
+            if [ "${{ steps.changed-files.outputs.pgskipper-operator-tests_any_changed }}" == 'true' ]; then
+              echo "✅ Changes detected in pgskipper-operator-tests."
+              echo "✅ Changes detected in pgskipper-operator-tests." >> $GITHUB_STEP_SUMMARY
+              echo "Changed files in pgskipper-operator-tests: ${{ steps.changed-files.outputs.pgskipper-operator-tests_all_changed_files}}" >> $GITHUB_STEP_SUMMARY
+            else
+              echo "ℹ️ No changes in pgskipper-operator-tests."
+            fi
+            if [ "${{ steps.changed-files.outputs.docker-transfer_any_changed }}" == 'true' ]; then
+              echo "✅ Changes detected in docker-transfer."
+              echo "✅ Changes detected in docker-transfer." >> $GITHUB_STEP_SUMMARY
+              echo "Changed files in docker-transfer: ${{ steps.changed-files.outputs.docker-transfer_all_changed_files}}" >> $GITHUB_STEP_SUMMARY
+            else
+              echo "ℹ️ No changes in docker-transfer."
+            fi
+
+            exclude_jobs='
+              ${{ steps.changed-files.outputs.pgskipper-operator_any_changed == 'false' && '{"component":{"name":"pgskipper-operator"}},' || '' }}
+              ${{ steps.changed-files.outputs.pgskipper-operator-tests_any_changed == 'false' && '{"component":{"name":"pgskipper-operator-tests"}},' || '' }}
+              ${{ steps.changed-files.outputs.docker-transfer_any_changed == 'false' && '{"component":{"name":"pgskipper-operator-transfer"}},' || '' }}
+            '
+            exclude_jobs=$(echo "${exclude_jobs}" | tr -d '[:space:]' | sed 's/,$//')
+            echo "[${exclude_jobs}]"
+            echo "exclude_jobs=[${exclude_jobs}]" >> $GITHUB_OUTPUT
+
+  multiplatform_build:
+    needs: diff-detect
+    strategy:
+      fail-fast: false
+      matrix:
+        component:
+          - name: pgskipper-operator
+            file: build/Dockerfile
+            context: "."
+          - name: pgskipper-operator-tests
+            file: tests/Dockerfile
+            context: "tests"
+          - name: pgskipper-operator-transfer
+            file: docker-transfer/Dockerfile
+            context: "."
+        exclude: ${{ fromJson(needs.diff-detect.outputs.exclude-jobs) }}
+    runs-on: ubuntu-latest
+    steps:
+      - name: Validate
+        run: |
+          if [[ "${{ github.event_name }}" == "workflow_dispatch" && "${{ github.ref }}" == refs/tags* ]]; then
+            echo -e "\033[91mManual workflow run on tags is not allowed!\033[0m"
+            exit 1
+          fi
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Set up QEMU
+        uses: docker/setup-qemu-action@v3
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+      - name: Login to Docker Hub
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${GITHUB_ACTOR}
+          password: ${{secrets.GITHUB_TOKEN}}
+      - name: Prepare Tag
+        run: echo "TAG_NAME=$(echo ${TAG_NAME} | sed 's@refs/tags/@@;s@refs/heads/@@;s@/@_@g')" >> $GITHUB_ENV
+      - name: Build and push
+        uses: docker/build-push-action@v6
+        with:
+          no-cache: true
+          context: ${{ matrix.component.context }}
+          file: ${{ matrix.component.file }}
+          platforms: linux/amd64,linux/arm64
+          push: ${{ env.PUSH }}
+          tags: ghcr.io/${{ github.repository_owner }}/${{ matrix.component.name }}:${{ env.TAG_NAME }}
+          provenance: false
