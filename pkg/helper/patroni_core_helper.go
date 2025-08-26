@@ -650,7 +650,12 @@ func (ph *PatroniHelper) GetLocaleVersion(podName string) string {
 
 	versionCM, err := util.FindCmInNamespaceByName(namespace, "deployment-info")
 	if err != nil || versionCM.Data["locale-version"] == "" {
-		return ph.GetLocaleVersionFromPod(podName)
+		version := ph.GetLocaleVersionFromPod(podName)
+		if version != "" {
+			versionCM.Data["locale-version"] = version
+			ph.CreateOrUpdateConfigMap(versionCM)
+		}
+		return version
 	}
 	return strings.TrimSpace(versionCM.Data["locale-version"])
 }
