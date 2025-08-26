@@ -495,7 +495,7 @@ spec:
       annotations:
         description: 'Standby cluster is not streaming from {{ .Release.Namespace }}'
         summary: Standby cluster is not streaming
-      expr: absent(ma_pg_standby_leader_count{namespace="{{ .Release.Namespace }}"}) != 1 and ma_pg_standby_leader_count{namespace="{{ .Release.Namespace }}"} < 1
+      expr: absent(ma_pg_standby_leader_count{namespace="{{ .Release.Namespace }}"}) == 0 and ma_pg_standby_leader_count{namespace="{{ .Release.Namespace }}"} < 1
       for: {{ default "3m" .Values.metricCollector.prometheusRules.alertDelay }}
       labels:
         severity: high
@@ -505,7 +505,7 @@ spec:
       annotations:
         description: 'Standby cluster has big lag in bytes for {{ .Release.Namespace }}'
         summary: Standby cluster has big lag in bytes
-      expr: absent(ma_pg_standby_replication_lag_in_bytes{namespace="{{ .Release.Namespace }}"}) != 1 and ma_pg_standby_replication_lag_in_bytes{namespace="{{ .Release.Namespace }}"} > {{ default 1073741824 .Values.metricCollector.prometheusRules.standbyLagInBytesThreshold }}
+      expr: absent(ma_pg_standby_replication_lag_in_bytes{namespace="{{ .Release.Namespace }}"}) == 0 and ma_pg_standby_replication_lag_in_bytes{namespace="{{ .Release.Namespace }}"} > {{ default 1073741824 .Values.metricCollector.prometheusRules.standbyLagInBytesThreshold }}
       for: {{ default "3m" .Values.metricCollector.prometheusRules.alertDelay }}
       labels:
         severity: high
@@ -515,7 +515,7 @@ spec:
       annotations:
         description: 'Standby cluster has big lag in milliseconds for {{ .Release.Namespace }}'
         summary: Standby cluster has big lag in milliseconds
-      expr: absent(ma_pg_standby_replication_lag_in_ms{namespace="{{ .Release.Namespace }}"}) != 1 and ma_pg_standby_replication_lag_in_ms{namespace="{{ .Release.Namespace }}"} > {{ default 600000 .Values.metricCollector.prometheusRules.standbyLagInMsThreshold }}
+      expr: absent(ma_pg_standby_replication_lag_in_ms{namespace="{{ .Release.Namespace }}"}) == 0 and ma_pg_standby_replication_lag_in_ms{namespace="{{ .Release.Namespace }}"} > {{ default 600000 .Values.metricCollector.prometheusRules.standbyLagInMsThreshold }}
       for: {{ default "3m" .Values.metricCollector.prometheusRules.alertDelay }}
       labels:
         severity: high
