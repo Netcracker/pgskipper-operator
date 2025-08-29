@@ -316,10 +316,12 @@ func (r *PatroniReconciler) Reconcile() error {
 		}
 	}
 	// Set replicator password from Secret
-	if !cr.Spec.VaultRegistration.DbEngine.Enabled {
+	if !cr.Spec.VaultRegistration.DbEngine.Enabled && !isStandbyClusterPresent {
 		if err := r.helper.SyncReplicatorPassword(r.cluster.PgHost); err != nil {
 			return err
 		}
+	} else if isStandbyClusterPresent {
+		logger.Info("Standby detected; skipping replicator password sync")
 	}
 
 	// add necessary shared_preload_libraries and settings
