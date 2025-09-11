@@ -26,7 +26,7 @@ compile:
                   -gcflags all=-trimpath=${GOPATH} -asmflags all=-trimpath=${GOPATH} ./main/main.go
 
 docker-build:
-	$(foreach docker_tag,$(DOCKER_NAMES),DOCKER_BUILDKIT=0 docker build --file="${DOCKER_FILE}" --pull -t $(docker_tag) ./;)
+	$(foreach docker_tag,$(DOCKER_NAMES),docker build --file="${DOCKER_FILE}" --pull -t $(docker_tag) ./;)
 
 docker-push:
 	$(foreach docker_tag,$(DOCKER_NAMES),docker push $(docker_tag);)
