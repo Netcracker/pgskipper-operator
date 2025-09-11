@@ -383,7 +383,7 @@ powaUI:
 replicationController:
   install: false
   dockerImage: ghcr.io/netcracker/pgskipper-replication-controller:main
-  resources:
+  resources
     limits:
       cpu: 200m
       memory: 64Mi
