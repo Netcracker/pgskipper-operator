@@ -15,6 +15,7 @@
 package reconciler
 
 import (
+	"context"
 	"fmt"
 	"strconv"
 	"strings"
@@ -273,8 +274,8 @@ func (r *PatroniReconciler) Reconcile() error {
 			}
 			if localeVersion != newLocaleVersion || cr.Spec.Patroni.ForceCollationVersionUpgrade {
 				logger.Warn(fmt.Sprintf("New os locale version is %s, but previous was %s. A collation version mismatch occured in databases. Run locale fix script", newLocaleVersion, localeVersion))
+				r.runLocaleFixScript(pgVersion, newLocaleVersion, cr.Spec.Patroni.ForceCollationVersionUpgrade)
 				r.helper.StoreDataToCM("locale-version", newLocaleVersion)
-				r.runLocaleFixScript(pgVersion)
 			}
 
 		} else {
@@ -370,6 +371,28 @@ func (r *PatroniReconciler) Reconcile() error {
 
 	if patroniSpec.Powa.Install {
 		if err := powa.SetUpPOWA(r.cluster.PgHost); err != nil {
+			return err
+		}
+	}
+
+	for _, name := range []string{"patroni-config", "patroni-leader"} {
+		cm, err := r.helper.ResourceManager.GetConfigMap(name)
+		if err != nil {
+			if errors.IsNotFound(err) {
+				continue
+			}
+			logger.Error("Failed to fetch ConfigMap", zap.String("name", cm.Name), zap.Error(err))
+			return err
+		}
+		if cm.Annotations == nil {
+			cm.Annotations = make(map[string]string)
+		}
+		cm.Annotations["argocd.argoproj.io/ignore-resource-updates"] = "true"
+		for k, v := range cr.Spec.Patroni.ConfigMapAnnotations {
+			cm.Annotations[k] = v
+		}
+		if _, err := r.helper.ResourceManager.CreateOrUpdateConfigMap(cm); err != nil {
+			logger.Error("failed to annotate Patroni ConfigMap", zap.Error(err))
 			return err
 		}
 	}
@@ -522,9 +545,23 @@ func (r *PatroniReconciler) createServicesForEtcdAsDcs() error {
 	return nil
 }
 
-func (r *PatroniReconciler) runLocaleFixScript(pgVersion int64) {
+func (r *PatroniReconciler) runLocaleFixScript(pgVersion int64, newLocale string, forced bool) {
 	pgC := pgClient.GetPostgresClient(r.cluster.PgHost)
-	databaseList := helper.GetAllDatabases(pgC)
+
+	err := helper.WaitUntilRecoveryIsDone(pgC)
+	if err != nil {
+		logger.Error("recovery check failed, during locale update", zap.Error(err))
+		return
+	}
+
+	var databaseList []string
+	if forced {
+		databaseList = helper.GetAllDatabases(pgC)
+	} else {
+		databaseList = helper.GetDatabasesForLocaleUpdate(pgC, newLocale)
+	}
+	logger.Info(fmt.Sprintf("database count for locale fix: %d", len(databaseList)))
+
 	wg.Wait()
 	connCount := 0
 	limitPool := 10
@@ -537,40 +574,44 @@ func (r *PatroniReconciler) runLocaleFixScript(pgVersion int64) {
 			connCount = 0
 		}
 	}
+	wg.Wait()
 }
 
 func (r *PatroniReconciler) fixCollationVersionForDB(pgClient *pgClient.PostgresClient, pgVersion int64, db string) {
 	defer wg.Done()
+
+	var err error
+	defer func() {
+		if err == nil {
+			logger.Info(fmt.Sprintf("fix locale for database: %s - OK", db))
+		} else {
+			logger.Info(fmt.Sprintf("fix locale for database: %s - HAVE PROBLEMS", db))
+		}
+	}()
+
 	logger.Info(fmt.Sprintf("fix locale for database: %s", db))
-	isPassed := true
-	err := pgClient.Execute(fmt.Sprintf("REINDEX DATABASE \"%s\"", db))
+	err = pgClient.ExecuteForDB(db, fmt.Sprintf("REINDEX DATABASE \"%s\"", db))
 	if err != nil {
-		isPassed = false
 		logger.Warn(fmt.Sprintf("Cannot reindex database for db: %s", db), zap.Error(err))
+		return
 	}
-	err = pgClient.Execute(fmt.Sprintf("REINDEX SYSTEM \"%s\"", db))
+	err = pgClient.ExecuteForDB(db, fmt.Sprintf("REINDEX SYSTEM \"%s\"", db))
 	if err != nil {
-		isPassed = false
 		logger.Warn(fmt.Sprintf("Cannot reindex system for db: %s", db), zap.Error(err))
+		return
 	}
+
 	if pgVersion >= 15 {
 		err = pgClient.Execute(fmt.Sprintf("ALTER DATABASE \"%s\" REFRESH COLLATION VERSION", db))
 		if err != nil {
-			isPassed = false
 			logger.Warn(fmt.Sprintf("Cannot alter locale version for db: %s", db), zap.Error(err))
+			return
 		}
 	}
 
 	err = r.refreshDependCollationsVersion(pgClient, db)
 	if err != nil {
-		isPassed = false
 		logger.Warn(fmt.Sprintf("Cannot alter dependent collations version for db: %s", db), zap.Error(err))
-	}
-
-	if isPassed {
-		logger.Info(fmt.Sprintf("fix locale for database: %s - OK", db))
-	} else {
-		logger.Info(fmt.Sprintf("fix locale for database: %s - HAVE PROBLEMS", db))
 	}
 }
 
@@ -592,7 +633,13 @@ func (r *PatroniReconciler) refreshDependCollationsVersion(pgClient *pgClient.Po
 // Get all collations with version mismatch for database
 func (r *PatroniReconciler) getCollationsForRefresh(pgClient *pgClient.PostgresClient, db string) ([]string, error) {
 	cForRefresh := make([]string, 0)
-	rows, err := pgClient.QueryForDB(db, `SELECT distinct c.collname AS "Collation"
+	conn, err := pgClient.GetConnectionToDb(db)
+	if err != nil {
+		return nil, err
+	}
+	defer conn.Close(context.Background())
+
+	rows, err := conn.Query(context.Background(), `SELECT distinct c.collname AS "Collation"
              FROM pg_depend d
              JOIN pg_collation c ON (refclassid = 'pg_collation'::regclass AND refobjid = c.oid)
 			 WHERE c.collversion <> pg_collation_actual_version(c.oid) or c.collversion is null;`)

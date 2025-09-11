@@ -1120,6 +1120,10 @@ spec:
                     type: object
                   clusterName:
                     type: string
+                  configMapAnnotations:
+                    additionalProperties:
+                      type: string
+                    type: object
                   createEndpoint:
                     type: boolean
                   dcs:
@@ -1190,6 +1194,10 @@ spec:
                     type: object
                   pgWalStorageAutoManage:
                     type: boolean
+                  podAnnotations:
+                    additionalProperties:
+                      type: string
+                    type: object
                   podLabels:
                     additionalProperties:
                       type: string

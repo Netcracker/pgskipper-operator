@@ -234,7 +234,7 @@ func EnsureQueryExporterUser(pgHost string) error {
 
 func createExporterUser(creds QueryExporterCreds, client *pgClient.PostgresClient) error {
 	logger.Info(fmt.Sprintf("Creation of \"%s\" user for query-exporter", creds.username))
-	if _, err := client.Query(fmt.Sprintf("CREATE ROLE \"%s\" LOGIN PASSWORD '%s';", creds.username, creds.password)); err != nil {
+	if err := client.Execute(fmt.Sprintf("CREATE ROLE \"%s\" LOGIN PASSWORD '%s';", creds.username, creds.password)); err != nil {
 		logger.Error("cannot create Query Exporter user", zap.Error(err))
 		return err
 	}
@@ -242,7 +242,7 @@ func createExporterUser(creds QueryExporterCreds, client *pgClient.PostgresClien
 }
 
 func grantExporterUser(creds QueryExporterCreds, pg *pgClient.PostgresClient) error {
-	if _, err := pg.Query(fmt.Sprintf("GRANT pg_read_all_data, pg_monitor TO \"%s\";", creds.username)); err != nil {
+	if err := pg.Execute(fmt.Sprintf("GRANT pg_read_all_data, pg_monitor TO \"%s\";", creds.username)); err != nil {
 		logger.Error("cannot modify Query Exporter user", zap.Error(err))
 		return err
 	}

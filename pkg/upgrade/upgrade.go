@@ -186,15 +186,8 @@ func (u *Upgrade) CheckForAbsTimeUsage(pgHost string) error {
 	databaseList := helper.GetAllDatabases(pgC)
 	absTimeDatabases := make([]string, 0)
 
-	checkForAbsTimeQuery := "SELECT 1 FROM information_schema.columns WHERE data_type = 'abstime' AND table_schema <> 'pg_catalog';"
-
 	for _, db := range databaseList {
-		rows, err := pgC.QueryForDB(db, checkForAbsTimeQuery)
-		if err != nil {
-			logger.Warn(fmt.Sprintf("Cannot check incompatible data type 'abstime' on database %s", db), zap.Error(err))
-		}
-
-		if rows.Next() {
+		if u.IfAbsTimeIsUsed(pgC, db) {
 			absTimeDatabases = append(absTimeDatabases, db)
 		}
 	}
@@ -204,6 +197,25 @@ func (u *Upgrade) CheckForAbsTimeUsage(pgHost string) error {
 	}
 
 	return nil
+}
+
+func (u *Upgrade) IfAbsTimeIsUsed(pgC *pgClient.PostgresClient, db string) bool {
+	conn, err := pgC.GetConnectionToDb(db)
+	if err != nil {
+		return false
+	}
+	defer conn.Close(context.Background())
+
+	checkForAbsTimeQuery := "SELECT 1 FROM information_schema.columns WHERE data_type = 'abstime' AND table_schema <> 'pg_catalog';"
+	rows, err := conn.Query(context.Background(), checkForAbsTimeQuery)
+	if err != nil {
+		logger.Warn(fmt.Sprintf("Cannot check incompatible data type 'abstime' on database %s", db), zap.Error(err))
+	}
+
+	if rows.Next() {
+		return true
+	}
+	return false
 }
 
 func (u *Upgrade) decideInitDbArgs(cr *v1.PatroniCore, cluster *v1.PatroniClusterSettings) (args string, err error) {
@@ -277,7 +289,13 @@ func (u *Upgrade) CheckForPreparedTransactions(pgHost string) error {
 	pgC := pgClient.GetPostgresClient(pgHost)
 	checkForPreparedTxQuery := "SELECT DISTINCT database FROM pg_prepared_xacts;"
 
-	rows, err := pgC.Query(checkForPreparedTxQuery)
+	conn, err := pgC.GetConnection()
+	if err != nil {
+		return err
+	}
+	defer conn.Release()
+
+	rows, err := conn.Query(context.Background(), checkForPreparedTxQuery)
 	if err != nil {
 		logger.Error("Failed to check for prepared transactions", zap.Error(err))
 		return fmt.Errorf("failed to check for prepared transactions: %w", err)

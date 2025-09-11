@@ -28,7 +28,7 @@ serviceAccount:
   name: "patroni-sa"
 
 operatorInit:
-  image: ghcr.io/netcracker/credential-manager:release-2025.2-1.48.0
+  image: ghcr.io/netcracker/qubership-credential-manager:main
   resources:
     limits:
       cpu: 50m
@@ -108,6 +108,8 @@ patroni:
   # Docker Image that will be used for Patroni container
   dockerImage: ghcr.io/netcracker/pgskipper-patroni-16:release-2025.2-1.48.0
   podLabels: {}
+  podAnnotations: {}
+  configMapAnnotations: {}
   # patroni.fsGroup. Specifies fsGroup that will be used in Patroni Pod Spec.
   # Useful in case of k8s installation and provisioned storage
   #  fsGroup: 26
