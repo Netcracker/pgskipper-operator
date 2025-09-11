@@ -389,7 +389,10 @@ func GetContainerNameForPatroniPod(podName string) string {
 	if strings.Contains(podName, "node1") {
 		return "pg-patroni-node1"
 	}
-	return "pg-patroni-node2"
+	if strings.Contains(podName, "node2") {
+		return "pg-patroni-node2"
+	}
+	return "pg-patroni-node3"
 }
 
 func SliceContains[T comparable](slice []T, value T) bool {
