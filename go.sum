@@ -36,8 +36,8 @@ github.com/KyleBanks/depth v1.2.1 h1:5h8fQADFrWtarTdtDudMmGsC7GPbOAu6RVB3ffsVFHc
 github.com/KyleBanks/depth v1.2.1/go.mod h1:jzSb9d0L43HxTQfT+oSA1EEp2q+ne2uh6XgeJcm8brE=
 github.com/Masterminds/semver/v3 v3.1.1/go.mod h1:VPu/7SZ7ePZ3QOrcuXROw5FAcLl4a0cBrbBpGY/8hQs=
 github.com/NYTimes/gziphandler v0.0.0-20170623195520-56545f4a5d46/go.mod h1:3wb06e3pkSAbeQ52E9H9iFoQsEEwGN64994WTCIhntQ=
-github.com/Netcracker/qubership-dbaas-adapter-core v0.9.5 h1:fv6sMasCFsQAPggYT38Peh8khCSc8oZOEz5kiVZCzfc=
-github.com/Netcracker/qubership-dbaas-adapter-core v0.9.5/go.mod h1:dEXm/aZmbDHVkkMqmcU901I1akukhL+3y4bPoTWBWFQ=
+github.com/Netcracker/qubership-dbaas-adapter-core v0.9.7 h1:vlypBZL/QFex+HTtltQITeVtf1Vc7dRvmPZQHkUB+UI=
+github.com/Netcracker/qubership-dbaas-adapter-core v0.9.7/go.mod h1:E5T/eCw8vGUoTsUYQ+AbobE6neLBK5+8oXTH4ZNQKwo=
 github.com/PuerkitoBio/purell v1.1.1 h1:WEQqlqaGbrPkxLJWfBwQmfEAE1Z7ONdDLqrN38tNFfI=
 github.com/PuerkitoBio/purell v1.1.1/go.mod h1:c11w/QuzBsJSee3cPx9rAFu61PvFxuPbtSwDGJws/X0=
 github.com/PuerkitoBio/urlesc v0.0.0-20170810143723-de5bf2ad4578 h1:d+Bc7a5rLufV/sSk/8dngufqelfh6jnri85riMAaF/M=
