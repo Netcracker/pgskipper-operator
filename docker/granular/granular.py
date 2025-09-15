@@ -1067,14 +1067,14 @@ def get_pgbackrest_service():
             
             if streaming_replicas:
                 logging.info("Found healthy streaming replica(s), using pgbackrest-standby")
-                return "pgbackrest-standby"
+                return "backrest-standby"
             else:
                 logging.info("No healthy streaming replicas found, using leader")
         except Exception as e:
             logging.error(f"Failed to query Patroni API: {str(e)}")
             raise e
     
-    return "pgbackrest"
+    return "backrest"
 
 app = Flask("GranularREST")
 collector_endpoint = os.getenv("OTEL_EXPORTER_OTLP_TRACES_ENDPOINT", "")

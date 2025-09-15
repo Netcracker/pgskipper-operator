@@ -195,7 +195,7 @@ function main() {
         log "'$BACKUP_ID'"
         log "BACKUP_DESTINATION_DIRECTORY"
         # Check cluster state via patroni API
-        PGBACKREST_SRV="pgbackrest"
+        PGBACKREST_SRV="backrest"
         if [ "${BACKUP_FROM_STANDBY}" == "true" ]; then
           PATRONI_RESPONSE=$(curl -s pg-patroni:8008/cluster)
           if [ $? -eq 0 ]; then
@@ -206,7 +206,7 @@ function main() {
                   
                   if [ ! -z "$STREAMING_REPLICAS" ]; then
                       log "Found healthy streaming replica(s)"
-                      PGBACKREST_SRV="pgbackrest-standby"
+                      PGBACKREST_SRV="backrest-standby"
                   else
                       log "No healthy streaming replicas found, leader will be used"
                   fi

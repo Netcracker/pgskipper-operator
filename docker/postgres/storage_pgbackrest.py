@@ -43,9 +43,15 @@ class BackRestStorage(storage.Storage):
 
     def list(self):
 
-        response = requests.get("http://pgbackrest:3000/list").json()
+        response = requests.get("http://backrest-headless:3000/list").json()
         print(response)
-        vault = [BackRestVault(backup['annotation']['timestamp']) for backup in response]
+        vault = []
+        for backup in response:
+            annotation = backup.get('annotation') or {}
+            if annotation.get('timestamp'):
+                vault.append(BackRestVault(annotation['timestamp']))
+            else:
+                self.__log.warning("Found backup without timestamp in annotation: %s", backup)
         return vault
 
     def size(self):
