@@ -39,12 +39,15 @@ var (
 	metrics = make([]string, 0)
 )
 
-func collectMetrics(scraper *pgScraper.Scraper) {
+func collectMetrics(scraper *pgScraper.Scraper, dr bool) {
 	log.Printf("Start collecting metrics")
 
 	scraper.CollectCommonMetrics()
 	scraper.CollectMetrics()
 	scraper.CollectBackupMetrics()
+	if dr {
+		scraper.CollectDRMetrics()
+	}
 
 	mode := util.GetEnv("METRICS_PROFILE", "prod")
 	if mode == "dev" {
@@ -88,9 +91,14 @@ func main() {
 		panic(err.Error())
 	}
 
+	dr := util.IsSiteManagerEnabled()
+	if dr {
+		log.Println("DR mode is enabled")
+	}
+
 	for {
 		scraper := pgScraper.GetScraper(client, util.GetHttpClient(), protocol, port)
-		collectMetrics(scraper)
+		collectMetrics(scraper, dr)
 		log.Printf("Timeout %v", scrapeTimeout)
 		time.Sleep(time.Duration(scrapeTimeout) * time.Second)
 	}

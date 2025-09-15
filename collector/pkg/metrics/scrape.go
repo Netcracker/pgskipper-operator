@@ -29,6 +29,7 @@ import (
 	k8sClient "github.com/Netcracker/pgskipper-monitoring-agent/collector/pkg/k8s"
 	"github.com/Netcracker/pgskipper-monitoring-agent/collector/pkg/postgres"
 	"github.com/Netcracker/pgskipper-monitoring-agent/collector/pkg/util"
+	"go.uber.org/zap"
 	v1 "k8s.io/api/core/v1"
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/utils/strings/slices"
@@ -521,7 +522,10 @@ func (s *Scraper) collectArchiveData() {
 				s.metrics = append(s.metrics, NewMetric(fmt.Sprintf("%s_%s", baseName, "mode_prom")).withLabels(gauges.DefaultLabels()).setValue(1))
 				s.metrics = append(s.metrics, NewMetric(fmt.Sprintf("%s_%s", baseName, "archived_count")).withLabels(gauges.DefaultLabels()).setValue(row["archived_count"]))
 				s.metrics = append(s.metrics, NewMetric(fmt.Sprintf("%s_%s", baseName, "failed_count")).withLabels(gauges.DefaultLabels()).setValue(row["failed_count"]))
-				delay := postgres.GetFloatValue(row, "extract", 0.0)
+				delay, err := util.GetFloatValue(row["delay"], 0.0)
+				if err != nil {
+					logger.Error(fmt.Sprintf("Error parsing float value: %v for column extract, returning default value: %v", row["delay"], 0.0), zap.Error(err))
+				}
 				if delay != 0.0 {
 					s.metrics = append(s.metrics, NewMetric(fmt.Sprintf("%s_%s", baseName, "delay")).withLabels(gauges.DefaultLabels()).setValue(delay))
 				}
