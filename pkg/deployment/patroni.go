@@ -308,8 +308,10 @@ func NewPatroniStatefulset(cr *patroniv1.PatroniCore, deploymentIdx int, cluster
 	}
 	stSet.Spec.Template.ObjectMeta.Annotations["argocd.argoproj.io/ignore-resource-updates"] = "true"
 
-	for k, v := range patroniSpec.PodAnnotations {
-		stSet.Spec.Template.ObjectMeta.Annotations[k] = v
+	if patroniSpec.PodAnnotations != nil {
+		for k, v := range patroniSpec.PodAnnotations {
+			stSet.Spec.Template.ObjectMeta.Annotations[k] = v
+		}
 	}
 
 	// TLS Section

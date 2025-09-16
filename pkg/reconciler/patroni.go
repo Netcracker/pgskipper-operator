@@ -388,8 +388,10 @@ func (r *PatroniReconciler) Reconcile() error {
 			cm.Annotations = make(map[string]string)
 		}
 		cm.Annotations["argocd.argoproj.io/ignore-resource-updates"] = "true"
-		for k, v := range cr.Spec.Patroni.ConfigMapAnnotations {
-			cm.Annotations[k] = v
+		if patroniSpec.ConfigMapAnnotations != nil {
+			for k, v := range patroniSpec.ConfigMapAnnotations {
+				cm.Annotations[k] = v
+			}
 		}
 		if _, err := r.helper.ResourceManager.CreateOrUpdateConfigMap(cm); err != nil {
 			logger.Error("failed to annotate Patroni ConfigMap", zap.Error(err))
