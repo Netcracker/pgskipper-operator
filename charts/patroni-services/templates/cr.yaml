@@ -401,22 +401,9 @@ spec:
 
 {{ if .Values.pgBackRest }}
   pgBackRest:
-    repoType: {{ .Values.pgBackRest.repoType  | default "rwx" }}
-    repoPath: {{ .Values.pgBackRest.repoPath | default "/var/lib/pgbackrest" }}
     diffSchedule: {{ .Values.pgBackRest.diffSchedule | default "0 0/1 * * *" }}
     incrSchedule: {{ .Values.pgBackRest.incrSchedule | default "0 0/1 * * *" }}
-    fullRetention: {{ .Values.pgBackRest.fullRetention | default 5 }}
-    diffRetention: {{ .Values.pgBackRest.diffRetention | default 3 }}
     backupFromStandby: {{ .Values.pgBackRest.backupFromStandby | default false }}
-    configParams: {{ .Values.pgBackRest.configParams | default (list) | toJson }}
-  {{ if .Values.pgBackRest.rwx }}
-    rwx:
-{{ toYaml .Values.pgBackRest.rwx | indent 6 }}
-  {{ end }}
-  {{ if .Values.pgBackRest.s3 }}
-    s3:
-{{ toYaml .Values.pgBackRest.s3 | indent 6 }}
-  {{ end }}
 {{ end }}
 
   {{ if .Values.tests.install }}
