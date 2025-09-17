@@ -22,9 +22,11 @@ import (
 	"github.com/Netcracker/pgskipper-operator/pkg/util"
 	"go.uber.org/zap"
 	corev1 "k8s.io/api/core/v1"
+	discoveryv1 "k8s.io/api/discovery/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/apimachinery/pkg/util/wait"
+	"k8s.io/utils/ptr"
 	crclient "sigs.k8s.io/controller-runtime/pkg/client"
 )
 
@@ -151,17 +153,37 @@ func reconcileExternalService(name string, labels map[string]string, externalHos
 	return service
 }
 
-func reconcileEndpoint(name string, labels map[string]string) *corev1.Endpoints {
-	endpoint := &corev1.Endpoints{
+func reconcileEndpointSlice(name string, labels map[string]string) *discoveryv1.EndpointSlice {
+	endpointSlice := &discoveryv1.EndpointSlice{
 		TypeMeta: metav1.TypeMeta{
-			APIVersion: "v1",
-			Kind:       "Endpoints",
+			APIVersion: "discovery.k8s.io/v1",
+			Kind:       "EndpointSlice",
 		},
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      name,
 			Namespace: namespace,
-			Labels:    labels,
+			Labels: map[string]string{
+				"kubernetes.io/service-name": name,
+			},
 		},
+		AddressType: discoveryv1.AddressTypeIPv4,
+		Ports: []discoveryv1.EndpointPort{
+			{
+				Name:     ptr.To("pg"),
+				Port:     ptr.To[int32](5432),
+				Protocol: ptr.To(corev1.ProtocolTCP),
+			},
+			{
+				Name:     ptr.To("patroni"),
+				Port:     ptr.To[int32](8008),
+				Protocol: ptr.To(corev1.ProtocolTCP),
+			},
+		},
+		Endpoints: []discoveryv1.Endpoint{},
 	}
-	return endpoint
+
+	for k, v := range labels {
+		endpointSlice.Labels[k] = v
+	}
+	return endpointSlice
 }

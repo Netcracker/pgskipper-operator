@@ -34,6 +34,7 @@ import (
 	appsv1 "k8s.io/api/apps/v1"
 	k8sauth "k8s.io/api/authentication/v1"
 	corev1 "k8s.io/api/core/v1"
+	discoveryv1 "k8s.io/api/discovery/v1"
 	"k8s.io/apimachinery/pkg/api/equality"
 	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -557,17 +558,17 @@ func (rm *ResourceManager) CreateOrUpdateSecret(secret *corev1.Secret) error {
 	return nil
 }
 
-func (rm *ResourceManager) CreateEndpointIfNotExists(endpoint *corev1.Endpoints) error {
-	foundEndpoint := &corev1.Endpoints{}
+func (rm *ResourceManager) CreateEndpointSliceIfNotExists(endpointSlice *discoveryv1.EndpointSlice) error {
+	foundEndpointSlice := &discoveryv1.EndpointSlice{}
 	err := rm.kubeClient.Get(context.TODO(), types.NamespacedName{
-		Name: endpoint.Name, Namespace: endpoint.Namespace,
-	}, foundEndpoint)
+		Name: endpointSlice.Name, Namespace: endpointSlice.Namespace,
+	}, foundEndpointSlice)
 	if err != nil && errors.IsNotFound(err) {
-		logger.Info(fmt.Sprintf("Creating %s k8s service", endpoint.Name))
-		endpoint.OwnerReferences = rm.GetOwnerReferences()
-		err = rm.kubeClient.Create(context.TODO(), endpoint)
+		logger.Info(fmt.Sprintf("Creating %s k8s EndpointSlice", endpointSlice.Name))
+		endpointSlice.OwnerReferences = rm.GetOwnerReferences()
+		err = rm.kubeClient.Create(context.TODO(), endpointSlice)
 		if err != nil {
-			logger.Error(fmt.Sprintf("Failed to create service %s", endpoint.Name), zap.Error(err))
+			logger.Error(fmt.Sprintf("Failed to create EndpointSlice %s", endpointSlice.Name), zap.Error(err))
 			return err
 		}
 	} else if err != nil {

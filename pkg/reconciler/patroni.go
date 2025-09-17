@@ -543,14 +543,15 @@ func (r *PatroniReconciler) processPatroniStatefulset(cr *v1.PatroniCore, deploy
 }
 
 func (r *PatroniReconciler) createEndpointsForEtcdAsDcs() error {
-	pgEndpoint := reconcileEndpoint(r.cluster.PostgresServiceName, r.cluster.PatroniLabels)
-	if err := r.helper.CreateEndpointIfNotExists(pgEndpoint); err != nil {
-		logger.Error(fmt.Sprintf("Cannot create endpoint %s", pgEndpoint.Name), zap.Error(err))
+	pgEndpointSlice := reconcileEndpointSlice(r.cluster.PostgresServiceName, r.cluster.PatroniLabels)
+	if err := r.helper.CreateEndpointSliceIfNotExists(pgEndpointSlice); err != nil {
+		logger.Error(fmt.Sprintf("Cannot create EndpointSlice %s", pgEndpointSlice.Name), zap.Error(err))
 		return err
 	}
-	pgReadOnlyEndpoint := reconcileEndpoint(r.cluster.PostgresServiceName, r.cluster.PatroniLabels)
-	if err := r.helper.CreateEndpointIfNotExists(pgReadOnlyEndpoint); err != nil {
-		logger.Error(fmt.Sprintf("Cannot create endpoint %s", pgReadOnlyEndpoint.Name), zap.Error(err))
+
+	pgReadOnlyEndpointSlice := reconcileEndpointSlice(r.cluster.PostgresServiceName+"-ro", r.cluster.PatroniLabels)
+	if err := r.helper.CreateEndpointSliceIfNotExists(pgReadOnlyEndpointSlice); err != nil {
+		logger.Error(fmt.Sprintf("Cannot create EndpointSlice %s", pgReadOnlyEndpointSlice.Name), zap.Error(err))
 		return err
 	}
 	return nil
