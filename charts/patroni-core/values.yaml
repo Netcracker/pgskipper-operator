@@ -17,8 +17,8 @@ privateRegistry:
       create: false
       # registry: ghcr.io/netcracker
       # username:
-      # password: 
-      # email: 
+      # password:
+      # email:
 
 global:
   cloudIntegrationEnabled: true
@@ -35,7 +35,7 @@ operatorInit:
       memory: 128Mi
     requests:
       cpu: 50m
-      memory: 128Mi  
+      memory: 128Mi
 
 ##  This section describes values for postgres-operator deployment
 operator:

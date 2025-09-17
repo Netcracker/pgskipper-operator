@@ -123,7 +123,7 @@ capabilities:
 
 {{- define "find_image" -}}
   {{- $image := .default -}}
-  
+
   {{ printf "%s" $image }}
 {{- end -}}
 

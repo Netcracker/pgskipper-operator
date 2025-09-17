@@ -1,2 +1,3 @@
+version: "1"
 run:
   timeout: 10m
