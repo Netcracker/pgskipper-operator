@@ -47,7 +47,7 @@ jobs:
           fi
 
       - name: Lint Code Base
-        uses: super-linter/super-linter@v8.2.0
+        uses: super-linter/super-linter@v8
         env:
           VALIDATE_ALL_CODEBASE: ${{ inputs.full_scan || false }}
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
