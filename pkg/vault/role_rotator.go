@@ -129,7 +129,7 @@ func (rc *rotationController) restartPodWithLabels(podLabels map[string]string) 
 
 	for podIdx := 0; podIdx < len(podList.Items); podIdx++ {
 		podForRestart := podList.Items[podIdx]
-		logger.Info(fmt.Sprintf("Restart %v", podForRestart.ObjectMeta.Name))
+		logger.Info(fmt.Sprintf("Restart %v", podForRestart.Name))
 		if err = rc.k8sClient.Delete(context.Background(), &podForRestart); err != nil {
 			logger.Error(fmt.Sprintf("Pod %s cannot being restarted", podForRestart.Name), zap.Error(err))
 		}

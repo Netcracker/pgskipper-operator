@@ -17,6 +17,8 @@ package postgresexporter
 import (
 	"context"
 	"fmt"
+	"sync"
+
 	"github.com/Netcracker/pgskipper-operator/pkg/helper"
 	"github.com/Netcracker/pgskipper-operator/pkg/util"
 	"go.uber.org/zap"
@@ -26,7 +28,6 @@ import (
 	"k8s.io/apimachinery/pkg/watch"
 	"k8s.io/client-go/kubernetes"
 	"sigs.k8s.io/controller-runtime/pkg/client"
-	"sync"
 )
 
 const (
@@ -153,17 +154,17 @@ func (exp *Watcher) handleWatcher(clientSet *kubernetes.Clientset, namespace str
 				continue
 			}
 			exp.cmList[cm.Namespace] = append(exp.cmList[cm.Namespace], cm.Name)
-			logger.Info(fmt.Sprintf("CM %s was added in namespace %s", cm.ObjectMeta.Name, cm.ObjectMeta.Namespace))
+			logger.Info(fmt.Sprintf("CM %s was added in namespace %s", cm.Name, cm.Namespace))
 			if err := exp.updateCM(); err != nil {
 				continue
 			}
 		case watch.Modified:
-			logger.Info(fmt.Sprintf("CM %s was modified in namespace %s", cm.ObjectMeta.Name, cm.ObjectMeta.Namespace))
+			logger.Info(fmt.Sprintf("CM %s was modified in namespace %s", cm.Name, cm.Namespace))
 			if err := exp.updateCM(); err != nil {
 				continue
 			}
 		case watch.Deleted:
-			logger.Info(fmt.Sprintf("CM %s was deleted in namespace %s", cm.ObjectMeta.Name, cm.ObjectMeta.Namespace))
+			logger.Info(fmt.Sprintf("CM %s was deleted in namespace %s", cm.Name, cm.Namespace))
 			exp.removeCMFromList(cm.Namespace, cm.Name)
 			if err := exp.updateCM(); err != nil {
 				continue

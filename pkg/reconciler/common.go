@@ -51,18 +51,18 @@ func GetService(service *corev1.Service) (*corev1.Service, error) {
 		Name: service.Name, Namespace: service.Namespace,
 	}, foundService)
 	if err != nil {
-		logger.Error(fmt.Sprintf("There is an error during getting service %s", service.ObjectMeta.Name), zap.Error(err))
+		logger.Error(fmt.Sprintf("There is an error during getting service %s", service.Name), zap.Error(err))
 		return nil, err
 	}
-	logger.Info(fmt.Sprintf("Getting %s k8s service for patch", service.ObjectMeta.Name))
+	logger.Info(fmt.Sprintf("Getting %s k8s service for patch", service.Name))
 	return foundService, nil
 }
 
 func UpdateService(service *corev1.Service) error {
-	logger.Info(fmt.Sprintf("Updating %s k8s service", service.ObjectMeta.Name))
+	logger.Info(fmt.Sprintf("Updating %s k8s service", service.Name))
 	err := k8sClient.Update(context.TODO(), service)
 	if err != nil {
-		logger.Error(fmt.Sprintf("Failed to update service %v", service.ObjectMeta.Name), zap.Error(err))
+		logger.Error(fmt.Sprintf("Failed to update service %v", service.Name), zap.Error(err))
 		return err
 	}
 	return nil

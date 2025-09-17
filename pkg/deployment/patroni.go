@@ -89,39 +89,12 @@ func getMaxPreparedTransactions(cr *patroniv1.PatroniCore) string {
 	return ExtractParamsFromCRByName(cr, "max_prepared_transactions")
 }
 
-func getDefaultPatroniAffinity() *corev1.Affinity {
-	return &corev1.Affinity{
-		PodAntiAffinity: &corev1.PodAntiAffinity{
-			RequiredDuringSchedulingIgnoredDuringExecution: []corev1.PodAffinityTerm{
-				{
-					LabelSelector: &metav1.LabelSelector{
-						MatchExpressions: []metav1.LabelSelectorRequirement{
-							{
-								Key:      "app.kubernetes.io/name",
-								Operator: metav1.LabelSelectorOpIn,
-								Values:   []string{"patroni-core"},
-							},
-						},
-					},
-					TopologyKey: "kubernetes.io/hostname",
-				},
-			},
-		},
-	}
-}
-
 func NewPatroniStatefulset(cr *patroniv1.PatroniCore, deploymentIdx int, clusterName string, patroniTemplate string, postgreSQLUserConf string, patroniLabels map[string]string) *appsv1.StatefulSet {
 	logger := util.GetLogger()
 	patroniSpec := cr.Spec.Patroni
 	statefulsetName := fmt.Sprintf("pg-%s-node%v", clusterName, deploymentIdx)
 	dockerImage := patroniSpec.DockerImage
 	nodes := patroniSpec.Storage.Nodes
-
-	affinity := patroniSpec.Affinity.DeepCopy()
-	if affinity == nil || (affinity.NodeAffinity == nil && affinity.PodAffinity == nil && affinity.PodAntiAffinity == nil) {
-		logger.Info("applying default affinity for patroni")
-		affinity = getDefaultPatroniAffinity()
-	}
 
 	stSet := &appsv1.StatefulSet{
 		ObjectMeta: metav1.ObjectMeta{
@@ -324,14 +297,14 @@ func NewPatroniStatefulset(cr *patroniv1.PatroniCore, deploymentIdx int, cluster
 	if patroniSpec.PriorityClassName != "" {
 		stSet.Spec.Template.Spec.PriorityClassName = patroniSpec.PriorityClassName
 	}
-	if stSet.Spec.Template.ObjectMeta.Annotations == nil {
-		stSet.Spec.Template.ObjectMeta.Annotations = make(map[string]string)
+	if stSet.Spec.Template.Annotations == nil {
+		stSet.Spec.Template.Annotations = make(map[string]string)
 	}
-	stSet.Spec.Template.ObjectMeta.Annotations["argocd.argoproj.io/ignore-resource-updates"] = "true"
+	stSet.Spec.Template.Annotations["argocd.argoproj.io/ignore-resource-updates"] = "true"
 
 	if patroniSpec.PodAnnotations != nil {
 		for k, v := range patroniSpec.PodAnnotations {
-			stSet.Spec.Template.ObjectMeta.Annotations[k] = v
+			stSet.Spec.Template.Annotations[k] = v
 		}
 	}
 

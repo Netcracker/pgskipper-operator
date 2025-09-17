@@ -68,11 +68,11 @@ func (c *Client) MoveSecretToVault(secret *corev1.Secret) error {
 		Name: secret.Name, Namespace: secret.Namespace,
 	}, foundSecret)
 	if err != nil && errors.IsNotFound(err) {
-		logger.Info(fmt.Sprintf("Creating %s secret", secret.ObjectMeta.Name))
+		logger.Info(fmt.Sprintf("Creating %s secret", secret.Name))
 		return err
 	}
 	var vaultPath = c.registration.Path + "/" + secret.Name
-	logger.Info(fmt.Sprintf("Putting %s secret to Vault", secret.ObjectMeta.Name))
+	logger.Info(fmt.Sprintf("Putting %s secret to Vault", secret.Name))
 	postgresSecret := foundSecret.Data
 	for k, v := range postgresSecret {
 		sec[k] = string(v)
@@ -98,10 +98,10 @@ func (c *Client) DeleteSecret(labelSelectors map[string]string) error {
 	if err := c.k8sClient.List(context.Background(), secretList, listOpts...); err == nil {
 		for secretIdx := 0; secretIdx < len(secretList.Items); secretIdx++ {
 			vaultedSecret := secretList.Items[secretIdx]
-			logger.Info(fmt.Sprintf("Delete secret %v", vaultedSecret.ObjectMeta.Name))
+			logger.Info(fmt.Sprintf("Delete secret %v", vaultedSecret.Name))
 			err = c.k8sClient.Delete(context.TODO(), &vaultedSecret)
 			if err != nil {
-				logger.Error(fmt.Sprintf("Error delete secret %v", vaultedSecret.ObjectMeta.Name), zap.Error(err))
+				logger.Error(fmt.Sprintf("Error delete secret %v", vaultedSecret.Name), zap.Error(err))
 				return err
 			}
 		}
@@ -115,7 +115,7 @@ func (c *Client) LabelSecretToDeletion(secret *corev1.Secret) error {
 		Name: secret.Name, Namespace: secret.Namespace,
 	}, foundSecret)
 	if err != nil {
-		logger.Info(fmt.Sprintf("Cant find %s secret", secret.ObjectMeta.Name))
+		logger.Info(fmt.Sprintf("Cant find %s secret", secret.Name))
 		return err
 	}
 	lables := foundSecret.GetLabels()
