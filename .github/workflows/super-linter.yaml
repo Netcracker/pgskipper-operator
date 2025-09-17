@@ -37,6 +37,7 @@ jobs:
         with:
           # Full git history is needed to get a proper list of changed files within `super-linter`
           fetch-depth: 0
+          persist-credentials: false
 
       - name: "Load super-linter environment file"
         run: |
@@ -47,7 +48,7 @@ jobs:
           fi
 
       - name: Lint Code Base
-        uses: super-linter/super-linter@v8
+        uses: super-linter/super-linter@ffde3b2b33b745cb612d787f669ef9442b1339a6
         env:
           VALIDATE_ALL_CODEBASE: ${{ inputs.full_scan || false }}
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
