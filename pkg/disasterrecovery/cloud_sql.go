@@ -172,7 +172,9 @@ func (manager *CloudSQLDRManager) getStatus(response http.ResponseWriter) error 
 func (manager *CloudSQLDRManager) changeMode(mode string) error {
 	cloudSQlClient := manager.sqlClient
 	log.Info(fmt.Sprintf("Received change to  %s, processing ...", mode))
-	if mode == "standby" {
+
+	switch mode {
+	case "standby":
 		primaryDbInstance, err := cloudSQlClient.getPrimaryNotInCurrentRegion()
 		if err != nil {
 			return err
@@ -204,7 +206,8 @@ func (manager *CloudSQLDRManager) changeMode(mode string) error {
 		if err := cloudSQlClient.dropInstance(primaryDbInstanceInCurRegion.Name); err != nil {
 			return err
 		}
-	} else if mode == "active" {
+
+	case "active":
 		dbInstance, err := cloudSQlClient.getReplicaInCurrentRegion()
 		if err != nil {
 			return err
@@ -235,7 +238,10 @@ func (manager *CloudSQLDRManager) changeMode(mode string) error {
 			return err
 		}
 
+	default:
+		return fmt.Errorf("unsupported mode: %s", mode)
 	}
+
 	return nil
 }
 
@@ -613,10 +619,11 @@ func (manager *CloudSQLDRManager) processPreConfigureRequest(response http.Respo
 
 func (manager *CloudSQLDRManager) doPreConfigure(request v1.SiteManagerStatus) {
 	if err := func(mode string, noWait bool) error {
-		if mode == "active" {
+		switch mode {
+		case "active":
 			log.Info("Skipping Pre Configuration for standby -> active change")
 			time.Sleep(30 * time.Second)
-		} else if mode == "standby" {
+		case "standby":
 			if !noWait {
 				log.Info("No-Wait flag has been passed as false, doing replication check")
 				_ = manager.waitTillStandbyIsSynced()
@@ -641,6 +648,8 @@ func (manager *CloudSQLDRManager) doPreConfigure(request v1.SiteManagerStatus) {
 				log.Error("Failed to reconfigure CloudSQL proxy", zap.Error(err))
 				return err
 			}
+		default:
+			return fmt.Errorf("unsupported mode: %s", mode)
 		}
 		return nil
 	}(request.Mode, request.NoWait); err != nil {
