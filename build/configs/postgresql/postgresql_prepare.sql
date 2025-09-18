@@ -80,35 +80,35 @@ DROP FUNCTION IF EXISTS pg_patroni_service_slot_cleaner(ud_allowed_slot_delay in
 CREATE FUNCTION pg_patroni_service_slot_cleaner(ud_allowed_slot_delay integer default -1)
 RETURNS void AS $$
 DECLARE
-	replica RECORD;
-	allowed_slot_delay integer;
-	use_old_cmp_function boolean;
+  replica RECORD;
+  allowed_slot_delay integer;
+  use_old_cmp_function boolean;
 BEGIN
-	-- get password from env. shell scripts cannot be executed directly but can be executed inside COPY block
-	CREATE TEMPORARY TABLE pg_patroni_service_slot_cleaner_passwd_output (tt_id serial PRIMARY KEY NOT NULL, command_output text );
-	COPY pg_patroni_service_slot_cleaner_passwd_output (command_output) FROM PROGRAM 'strings /proc/1/environ | sed -n "s/^PG_ROOT_PASSWORD=\(.*\)/\1/p"';
+  -- get password from env. shell scripts cannot be executed directly but can be executed inside COPY block
+  CREATE TEMPORARY TABLE pg_patroni_service_slot_cleaner_passwd_output (tt_id serial PRIMARY KEY NOT NULL, command_output text );
+  COPY pg_patroni_service_slot_cleaner_passwd_output (command_output) FROM PROGRAM 'strings /proc/1/environ | sed -n "s/^PG_ROOT_PASSWORD=\(.*\)/\1/p"';
 
-	-- get current wal_keep_segments value and determine allowed_slot_delay
-	IF ud_allowed_slot_delay < 0 THEN
-		SELECT INTO allowed_slot_delay setting FROM pg_settings where name='wal_keep_segments';
-	ELSE
-		allowed_slot_delay = ud_allowed_slot_delay;
-	END IF;
+  -- get current wal_keep_segments value and determine allowed_slot_delay
+  IF ud_allowed_slot_delay < 0 THEN
+    SELECT INTO allowed_slot_delay setting FROM pg_settings where name='wal_keep_segments';
+  ELSE
+    allowed_slot_delay = ud_allowed_slot_delay;
+  END IF;
 
-	-- check if we have pg_xlog_location_diff or not (postgresql 9.6 vs postgresql 10)
-	select into use_old_cmp_function exists(select * from pg_proc where proname = 'pg_xlog_location_diff');
+  -- check if we have pg_xlog_location_diff or not (postgresql 9.6 vs postgresql 10)
+  select into use_old_cmp_function exists(select * from pg_proc where proname = 'pg_xlog_location_diff');
 
-	--todo[anin] 16Mb size per WAL file is used. Honest calculation should get value from pg_settings
-	allowed_slot_delay := allowed_slot_delay * 16 ;
-	RAISE NOTICE 'allowed_slot_delay: % Mb', allowed_slot_delay;
+  --todo[anin] 16Mb size per WAL file is used. Honest calculation should get value from pg_settings
+  allowed_slot_delay := allowed_slot_delay * 16 ;
+  RAISE NOTICE 'allowed_slot_delay: % Mb', allowed_slot_delay;
 
-	-- perform slot cleanup for each active replica
-	FOR replica IN SELECT * FROM pg_stat_replication where application_name like 'pg-%-node%' LOOP
-		RAISE NOTICE 'Replica: % with addr %', replica.application_name, replica.client_addr;
+  -- perform slot cleanup for each active replica
+  FOR replica IN SELECT * FROM pg_stat_replication where application_name like 'pg-%-node%' LOOP
+    RAISE NOTICE 'Replica: % with addr %', replica.application_name, replica.client_addr;
     PERFORM pg_patroni_service_slot_cleaner_for_host(host(replica.client_addr), allowed_slot_delay, use_old_cmp_function);
-	END LOOP;
+  END LOOP;
 
-	--check slots on master
+  --check slots on master
   RAISE NOTICE 'Start master check';
   PERFORM pg_patroni_service_slot_cleaner_for_host('127.0.0.1', allowed_slot_delay, use_old_cmp_function);
 END; $$ LANGUAGE plpgsql;

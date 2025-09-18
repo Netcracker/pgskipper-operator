@@ -8,12 +8,21 @@ env:
    COPYRIGHT_YEAR: '2024-2025'
 jobs:
   license:
+    permissions:
+      contents: write
+      pull-requests: write
     runs-on: ubuntu-24.04
     steps:
-      - uses: actions/checkout@v4
-      - run: docker run -v "${PWD}:/src" -i ghcr.io/google/addlicense -v -c "${{ env.COPYRIGHT_COMPANY }}" -y "${{ env.COPYRIGHT_YEAR }}" $(find . -type f -name "*.go" -o -type f -name "*.sh" -o -type f -name "*.py" | xargs echo)
+      - uses: actions/checkout@692973e3d937129bcbf40652eb9f2f61becf3332 # v4.1.7
+        with:
+          persist-credentials: false
+          token: ${{ secrets.GITHUB_TOKEN }}
+      - run: |
+          docker run -v "${PWD}:/src" -i ghcr.io/google/addlicense \
+          -v -c "${{ env.COPYRIGHT_COMPANY }}" -y "${{ env.COPYRIGHT_YEAR }}" \
+          $(find . -type f \( -name "*.go" -o -name "*.sh" -o -name "*.py" \) -print0 | xargs -0 echo)
       - name: Create Pull Request
-        uses: peter-evans/create-pull-request@v7
+        uses: peter-evans/create-pull-request@5e914681df9dc83aa4e4905692ca88beb2f9e91f # v7.0.5
         with:
           commit-message: Auto-update license header
           branch: license-update

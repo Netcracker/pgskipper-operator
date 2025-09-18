@@ -1,4 +1,4 @@
-#!/bin/sh
+#!/bin/bash
 cur_user=$(id -u)
 if [[ "$cur_user" != "26" ]]
 then
