@@ -32,7 +32,7 @@ jobs:
           password: ${{secrets.GITHUB_TOKEN}}
       - name: Get package IDs for delete
         id: get-ids-for-delete
-        uses: Netcracker/get-package-ids@v0.0.1
+        uses: Netcracker/get-package-ids@84bc8eb8bed50218be76e671b3a24c35a1300979
         with:
           component-name: ${{ matrix.component.name }}
           component-tag: ${{ env.TAG_NAME }}

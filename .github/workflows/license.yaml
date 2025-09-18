@@ -18,9 +18,9 @@ jobs:
           persist-credentials: false
           token: ${{ secrets.GITHUB_TOKEN }}
       - run: |
-          docker run -v "${PWD}:/src" -i ghcr.io/google/addlicense \
-          -v -c "${{ env.COPYRIGHT_COMPANY }}" -y "${{ env.COPYRIGHT_YEAR }}" \
-          $(find . -type f \( -name "*.go" -o -name "*.sh" -o -name "*.py" \) -print0 | xargs -0 echo)
+          find . -type f \( -name "*.go" -o -name "*.sh" -o -name "*.py" \) -print0 | \
+          xargs -0 docker run -v "${PWD}:/src" -i ghcr.io/google/addlicense \
+          -v -c "${{ env.COPYRIGHT_COMPANY }}" -y "${{ env.COPYRIGHT_YEAR }}"
       - name: Create Pull Request
         uses: peter-evans/create-pull-request@5e914681df9dc83aa4e4905692ca88beb2f9e91f # v7.0.5
         with:

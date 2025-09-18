@@ -69,7 +69,7 @@ jobs:
         run: echo "TAG_NAME=$(echo ${TAG_NAME} | sed 's@refs/tags/@@;s@refs/heads/@@;s@/@_@g')" >> $GITHUB_ENV
       - name: Get package IDs for delete
         id: get-ids-for-delete
-        uses: Netcracker/get-package-ids@v0.0.1
+        uses: Netcracker/get-package-ids@84bc8eb8bed50218be76e671b3a24c35a1300979
         with:
           component-name: ${{ matrix.component.name }}
           component-tag: ${{ env.TAG_NAME }}
@@ -85,7 +85,7 @@ jobs:
           push: ${{ env.PUSH }}
           tags: ghcr.io/netcracker/${{ matrix.component.name }}:${{ env.TAG_NAME }}
           provenance: false
-      - uses: actions/delete-package-versions@e5bc658cc4c965c472aba07bbc604b8e78b0e8e5 # v5.0.0
+      - uses: actions/delete-package-versions@e5bc658cc4c965c472efe991f8beea3981499c55 # v5.0.0
         with:
           package-name: ${{ matrix.component.name }}
           package-type: 'container'
