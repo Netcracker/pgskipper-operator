@@ -29,6 +29,7 @@ import configs
 import pg_backup
 import pg_restore
 import utils
+import glob
 import storage_s3
 import psycopg2
 import threading
@@ -1055,6 +1056,365 @@ class GranularBackupStatusInfoEndpoint(flask_restful.Resource):
 
         return backupInfo
 
+class NewBackup(flask_restful.Resource):
+    __endpoints = ["/api/v1/backup"]
+
+    def __init__(self):
+        self.log = logging.getLogger("NewBackup")
+        self.allowed_fields = ["storageName", "blobPath", "databases"]
+
+    @staticmethod
+    def get_endpoints():
+        return NewBackup.__endpoints
+
+    @auth.login_required
+    def post(self):
+        body = request.get_json(silent=True) or {}
+        blob_path = body.get("blobPath")
+        databases = body.get("databases") or []
+
+        if not blob_path:
+            return {"message": "blobPath is required"}, http.client.BAD_REQUEST
+        if databases and not isinstance(databases, (list, tuple)):
+            return {"message": "databases must be an array"}, http.client.BAD_REQUEST
+
+        # Reuse old logic directly
+        backup_request = {
+            "databases": list(databases),
+            "externalBackupPath": blob_path,
+        }
+        return GranularBackupRequestEndpoint().perform_granular_backup(backup_request)
+
+
+class NewBackupStatus(flask_restful.Resource):
+    __endpoints = ["/api/v1/backup/<backup_id>"]
+
+    def __init__(self):
+        self.log = logging.getLogger("NewBackupStatus")
+        self.s3 = storage_s3.AwsS3Vault() if os.environ.get("STORAGE_TYPE") == "s3" else None
+
+    @staticmethod
+    def get_endpoints():
+        return NewBackupStatus.__endpoints
+
+    @auth.login_required
+    def get(self, backup_id):
+        if not backup_id:
+            return "Backup ID is not specified.", http.client.BAD_REQUEST
+
+        namespace = request.args.get("namespace") or configs.default_namespace()
+        if not backups.is_valid_namespace(namespace):
+            return "Invalid namespace name: %s." % namespace.encode("utf-8"), http.client.BAD_REQUEST
+
+        external_backup_path = request.args.get("blobPath")
+        external_backup_root = backups.build_external_backup_root(external_backup_path) if external_backup_path else None
+
+        status_path = backups.build_backup_status_file_path(backup_id, namespace, external_backup_root)
+
+        if self.s3:
+            try:
+                raw = json.loads(self.s3.read_object(status_path))
+            except Exception:
+                return "Backup in bucket is not found.", http.client.NOT_FOUND
+        else:
+            if not os.path.isfile(status_path):
+                return "Backup is not found.", http.client.NOT_FOUND
+            with open(status_path) as f:
+                raw = json.load(f)
+
+        return backups.transform_backup_status_v1(raw), http.client.OK
+    
+    @auth.login_required
+    @superuser_authorization
+    def delete(self, backup_id):
+        if not backup_id:
+            return {"backupId": backup_id, "message": "Backup ID is not specified", "status": "Failed"}, http.client.BAD_REQUEST
+
+        req_ns  = request.args.get("namespace")
+        external_backup_path = request.args.get("blobPath") or request.args.get("externalBackupPath")
+        if not external_backup_path:
+            return {"backupId": backup_id,
+                    "message": "blobPath query parameter is required (e.g. ?blobPath=tmp/a/b/c).",
+                    "status": "Failed"}, http.client.BAD_REQUEST
+        external_backup_root = backups.build_external_backup_root(external_backup_path) if external_backup_path else None
+
+        def _exists(p: str) -> bool:
+            if self.s3:
+                try:
+                    return self.s3.is_file_exists(p)
+                except Exception:
+                    return False
+            return os.path.isfile(p)
+        
+        namespace = req_ns
+        if not namespace:
+            candidates = []
+            try:
+                candidates.append(configs.default_namespace())
+            except Exception:
+                pass
+            if "default" not in candidates:
+                candidates.append("default")
+
+            for cand in candidates:
+                status_try = backups.build_backup_status_file_path(backup_id, cand, external_backup_root)
+                if _exists(status_try):
+                    namespace = cand
+                    break
+
+        if not namespace:
+            namespace = configs.default_namespace()
+
+        status_path = backups.build_backup_status_file_path(backup_id, namespace, external_backup_root)
+        if not _exists(status_path):
+            if external_backup_root is None and not self.s3:
+                base = os.getenv("EXTERNAL_STORAGE_ROOT")
+                if base:
+                    candidate = os.path.join(base, namespace, backup_id, "status.json")
+                    if os.path.isfile(candidate):
+                        external_backup_root = base
+                        status_path = backups.build_backup_status_file_path(backup_id, namespace, external_backup_root)
+
+        if not _exists(status_path):
+            return {"backupId": backup_id,
+                    "message": "Backup is not found. If this backup is in external storage, pass ?blobPath=<prefix>.",
+                    "status": "Failed"}, http.client.NOT_FOUND
+
+        try:
+            target_dir = backups.build_backup_path(backup_id, namespace, external_backup_root)
+            if self.s3:
+                self.s3.delete_objects(target_dir)
+            else:
+                TerminateBackupEndpoint().post(backup_id)
+                shutil.rmtree(target_dir, ignore_errors=False)
+
+                if external_backup_root is None:
+                    ns_dir = backups.build_namespace_path(namespace)
+                    if os.path.isdir(ns_dir) and not os.listdir(ns_dir) and namespace != "default":
+                        shutil.rmtree(ns_dir, ignore_errors=True)
+
+        except Exception as e:
+            self.log.exception("Delete failed for %s: %s", backup_id, e)
+            return {"backupId": backup_id,
+                    "message": f"An error occurred while deleting backup: {e}",
+                    "status": "Failed"}, http.client.INTERNAL_SERVER_ERROR
+
+        return {"backupId": backup_id, "message": "Backup deleted successfully.", "status": "Successful"}, http.client.OK
+
+
+class NewRestore(flask_restful.Resource):
+    __endpoints = ["/api/v1/restore/<backup_id>"]
+
+    def __init__(self):
+        self.log = logging.getLogger("NewRestore")
+        self.s3 = storage_s3.AwsS3Vault() if os.environ.get("STORAGE_TYPE") == "s3" else None
+
+    @staticmethod
+    def get_endpoints():
+        return NewRestore.__endpoints
+
+    @auth.login_required
+    @superuser_authorization
+    def post(self, backup_id):
+        body = request.get_json(silent=True) or {}
+        blob_path = body.get("blobPath")
+        pairs = body.get("databases") or []
+
+        if not blob_path:
+            return {"message": "blobPath is required"}, http.client.BAD_REQUEST
+        if not isinstance(pairs, (list, tuple)):
+            return {"message": "databases must be an array of objects"}, http.client.BAD_REQUEST
+
+        databases = []
+        databases_mapping = {}
+        for item in pairs:
+            item = item or {}
+            prev_name = item.get("previousDatabaseName")
+            curr_name = item.get("databaseName")
+            if not prev_name or not curr_name:
+                return {"message": "each databases item must have previousDatabaseName and databaseName"}, http.client.BAD_REQUEST
+            databases.append(prev_name)
+            databases_mapping[prev_name] = curr_name
+
+        namespace = configs.default_namespace()
+        if not backups.is_valid_namespace(namespace):
+            return "Invalid namespace name: %s." % namespace.encode("utf-8"), http.client.BAD_REQUEST
+
+        external_backup_path = blob_path
+        external_backup_root = backups.build_external_backup_root(external_backup_path) if external_backup_path else None
+        backup_details_file = backups.build_backup_status_file_path(backup_id, namespace, external_backup_root)
+
+        if self.s3:
+            try:
+                status = self.s3.read_object(backup_details_file)
+                backup_details = json.loads(status)
+            except Exception:
+                return "Backup in bucket is not found.", http.client.NOT_FOUND
+        else:
+            if not os.path.isfile(backup_details_file):
+                return "Backup is not found.", http.client.NOT_FOUND
+            with open(backup_details_file, "r") as f:
+                backup_details = json.load(f)
+
+        backup_status = backup_details["status"]
+        if backup_status != backups.BackupStatus.SUCCESSFUL:
+            return "Backup status '%s' is unsuitable status for restore." % backup_status, http.client.FORBIDDEN
+
+        if self.s3:
+            for database in list(backup_details.get("databases", {}).keys()):
+                if not self.s3.is_file_exists(backups.build_database_backup_path(backup_id, database, namespace, external_backup_root)):
+                    return "Backup in bucket is not found.", http.client.NOT_FOUND
+        elif not backups.backup_exists(backup_id, namespace, external_backup_root):
+            return "Backup is not found.", http.client.NOT_FOUND
+
+        ghost_databases = []
+        uncompleted_backups = []
+        requested = databases or list(backup_details.get("databases", {}).keys())
+        owners_mapping = {}
+
+        for database in requested:
+            database_details = backup_details["databases"].get(database)
+            if not database_details:
+                ghost_databases.append(database)
+                continue
+            if database_details["status"] != backups.BackupStatus.SUCCESSFUL:
+                uncompleted_backups.append((database, database_details["status"]))
+                continue
+            owners_mapping[database] = database_details.get("owner", "postgres")
+
+        if ghost_databases:
+            return "Databases are not found: %s." % ", ".join([db.encode("utf-8") for db in ghost_databases]), http.client.NOT_FOUND
+        if uncompleted_backups:
+            return (
+                "Database backup is in unsuitable status for restore: %s."
+                % ", ".join(["%s: %s" % (i[0].encode("utf-8"), i[1]) for i in uncompleted_backups]),
+                http.client.FORBIDDEN,
+            )
+
+        tracking_id = backups.generate_restore_id(backup_id, namespace)
+
+        # Defaults preserved from old endpoint
+        force = False
+        restore_roles = True
+        single_transaction = True
+
+        # Start worker (same as old)
+        worker = pg_restore.PostgreSQLRestoreWorker(
+            requested, force,
+            {"backupId": backup_id, "namespace": namespace, "externalBackupPath": external_backup_path, "trackingId": tracking_id},
+            databases_mapping, owners_mapping, restore_roles, single_transaction, body.get("dbaasClone")
+        )
+        worker.start()
+
+        return {"restoreId": tracking_id}, http.client.ACCEPTED
+
+
+class NewRestoreStatus(flask_restful.Resource):
+    __endpoints = ["/api/v1/restore/<restore_id>"]
+
+    def __init__(self):
+        self.log = logging.getLogger("NewRestoreStatus")
+        self.s3 = storage_s3.AwsS3Vault() if os.environ.get("STORAGE_TYPE") == "s3" else None
+
+    @staticmethod
+    def get_endpoints():
+        return NewRestoreStatus.__endpoints
+
+    @auth.login_required
+    @superuser_authorization
+    def get(self, restore_id):
+        if not restore_id:
+            return "Restore tracking ID is not specified.", http.client.BAD_REQUEST
+
+        try:
+            backup_id, namespace = backups.extract_backup_id_from_tracking_id(restore_id)
+        except Exception as e:
+            self.log.exception(e)
+            return "Malformed restore tracking ID.", http.client.BAD_REQUEST
+
+        if not backups.is_valid_namespace(namespace):
+            return "Invalid namespace name: %s." % namespace.encode("utf-8"), http.client.BAD_REQUEST
+
+        external_backup_path = request.args.get("blobPath")
+        external_backup_root = backups.build_external_backup_root(external_backup_path) if external_backup_path else None
+        status_path = backups.build_restore_status_file_path(backup_id, restore_id, namespace, external_backup_root)
+
+        if self.s3:
+            try:
+                raw = json.loads(self.s3.read_object(status_path))
+            except Exception:
+                return "Backup in bucket is not found.", http.client.NOT_FOUND
+        else:
+            if not os.path.isfile(status_path):
+                return "Restore is not found.", http.client.NOT_FOUND
+            with open(status_path) as f:
+                raw = json.load(f)
+
+        return backups.transform_restore_status_v1(raw), http.client.OK
+    
+    @auth.login_required
+    @superuser_authorization
+    def delete(self, restore_id):
+        if not restore_id:
+            return {"restoreId": restore_id, "message": "Restore ID is not specified", "status": "Failed"}, http.client.BAD_REQUEST
+
+        resp = TerminateRestoreEndpoint().post(restore_id)
+        code = getattr(resp, "status_code", None)
+        try:
+            backup_id, namespace = backups.extract_backup_id_from_tracking_id(restore_id)
+        except Exception as e:
+            self.log.exception(e)
+            return {"restoreId": restore_id,
+                    "message": "Malformed restore ID; termination attempted but cleanup skipped.",
+                    "status": "Successful"}, http.client.OK
+
+        external_backup_path = request.args.get("blobPath") or request.args.get("externalBackupPath")
+        if not external_backup_path:
+            return {"restoreId": restore_id,
+                    "message": "blobPath query parameter is required for cleanup (e.g. ?blobPath=tmp/a/b/c).",
+                    "status": "Failed"}, http.client.BAD_REQUEST
+        external_backup_root = backups.build_external_backup_root(external_backup_path) if external_backup_path else None
+
+        status_path = backups.build_restore_status_file_path(backup_id, restore_id, namespace, external_backup_root)
+
+        # restore_dir = os.path.dirname(status_path)
+        backup_base = backups.build_backup_path(backup_id, namespace, external_backup_root)
+        pattern_name = f"{restore_id}"
+        pattern_glob = os.path.join(backup_base, pattern_name + "*")
+
+        try:
+            if self.s3:
+                prefix = os.path.join(backup_base, pattern_name).rstrip("/") + ""
+                if not prefix.startswith(backup_base):
+                    return {"restoreId": restore_id,
+                            "message": "Unsafe restore prefix; refusing to delete.",
+                            "status": "Failed"}, http.client.BAD_REQUEST
+                self.s3.delete_objects(prefix if prefix.endswith("/") else prefix)
+            else:
+                for p in glob.glob(pattern_glob):
+                    if os.path.isfile(p):
+                        os.remove(p)
+                if os.path.isfile(status_path):
+                    try:
+                        os.remove(status_path)
+                    except FileNotFoundError:
+                        pass
+        except Exception as e:
+            self.log.exception("Restore cleanup failed for %s: %s", restore_id, e)
+            return {"restoreId": restore_id,
+                    "message": f"Termination attempted; cleanup encountered an error: {e}",
+                    "status": "Successful"}, http.client.OK
+
+        if code == 404:
+            msg = "No active restore (already finished or not found). Cleanup completed."
+        elif code and 200 <= code < 300:
+            msg = "Restore terminated successfully. Cleanup completed."
+        else:
+            msg = "Termination attempted. Cleanup completed."
+
+        return {"restoreId": restore_id, "message": msg, "status": "Successful"}, http.client.OK
+
+    
 def get_pgbackrest_service():
     if os.getenv("BACKUP_FROM_STANDBY") == "true":
         try:
@@ -1106,6 +1466,10 @@ api.add_resource(GranularBackupDownloadEndpoint, '/backup/download/<backup_id>')
 api.add_resource(DiffBackupRequestEndpoint, '/backup/diff')
 api.add_resource(IncrBackupRequestEndpoint, '/backup/incr')
 api.add_resource(GranularBackupStatusInfoEndpoint, '/backup/info')
+api.add_resource(NewBackup, *NewBackup.get_endpoints())
+api.add_resource(NewBackupStatus, *NewBackupStatus.get_endpoints())
+api.add_resource(NewRestore, *NewRestore.get_endpoints())
+api.add_resource(NewRestoreStatus, *NewRestoreStatus.get_endpoints())
 
 scheduler = BackgroundScheduler()
 scheduler.start()

@@ -413,3 +413,50 @@ def sweep_by_policy():
             shutil.rmtree(dir) if not s3 else s3.delete_objects(dir)
 
     log.info("Backups sweeping finished.")
+
+def transform_backup_status_v1(raw: dict) -> dict:
+    raw = raw or {}
+    dbs = raw.get("databases") or {}
+    return {
+        "status": raw.get("status"), 
+        "errorMessage": raw.get("errorMessage") or raw.get("error"),
+        "backupId": raw.get("backupId"),
+        "creationTime": raw.get("created"),
+        "completionTime": raw.get("completed") or raw.get("completionTime"),
+        "databases": [
+            {
+                "databaseName": name,
+                "status": (info or {}).get("status"),
+                "size": (info or {}).get("size"),
+                "duration": (info or {}).get("duration"),
+                "path": (info or {}).get("path"),
+                "errorMessage": (info or {}).get("errorMessage") or (info or {}).get("error"),
+                "creationTime": (info or {}).get("created") or raw.get("created"),
+            }
+            for name, info in dbs.items()
+        ],
+    }
+
+def transform_restore_status_v1(raw: dict) -> dict:
+    raw = raw or {}
+    dbs = raw.get("databases") or {}
+    out = {
+        "status": raw.get("status"),
+        "errorMessage": raw.get("errorMessage") or raw.get("error"),
+        "restoreId": raw.get("trackingId") or raw.get("restoreId"),
+        "creationTime": raw.get("created"),
+        "completionTime": raw.get("completed") or raw.get("completionTime"),
+        "databases": [],
+    }
+    for prev_name, info in dbs.items():
+        info = info or {}
+        out["databases"].append({
+            "previousDatabaseName": prev_name,
+            "databaseName": info.get("databaseName") or info.get("restoredAs") or prev_name,
+            "status": info.get("status"),
+            "duration": info.get("duration"),
+            "path": info.get("path"),
+            "errorMessage": info.get("errorMessage") or info.get("error"),
+            "creationTime": info.get("created") or raw.get("created"),
+        })
+    return out

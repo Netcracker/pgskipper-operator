@@ -544,6 +544,16 @@ class PostgreSQLDumpWorker(Thread):
         if not os.path.exists(self.backup_dir):
             os.makedirs(self.backup_dir)
 
+    def on_failure(self, database, e):
+        msg = f'Backup of "{database}" failed: {str(e)}'
+        self.update_status('errorMessage', msg, database)
+        self.update_status('status', backups.BackupStatus.FAILED, database, flush=True)
+
+    def _mark_done(self, final_status):
+        now_iso = datetime.datetime.utcnow().strftime('%Y-%m-%dT%H:%M:%SZ')
+        self.update_status('status', final_status)
+        self.update_status('completionTime', now_iso, flush=True)
+
     def run(self):
         try:
             if not self.databases:
@@ -552,12 +562,12 @@ class PostgreSQLDumpWorker(Thread):
                 self.populate_databases_list()
 
             self.process_backup_request()
-            self.update_status('status', backups.BackupStatus.SUCCESSFUL, flush=True)
+            self._mark_done(backups.BackupStatus.SUCCESSFUL)
             self.log.info(self.log_msg("Backup request processing has been completed."))
         except Exception as e:
             self.log.exception(self.log_msg("Backup request processing has failed."))
-            self.update_status('details', str(e))
-            self.update_status('status', backups.BackupStatus.FAILED, flush=True)
+            self.update_status('errorMessage', f'Backup failed: {e}')
+            self._mark_done(backups.BackupStatus.FAILED)
             self.expire()
             raise e
         finally:
@@ -566,4 +576,5 @@ class PostgreSQLDumpWorker(Thread):
 
     def get_pg_version_from_dump(self, database_backup_path):
         return utils.get_pg_version_from_dump(database_backup_path, self.key_name if self.encryption else None, self.bin_path)
+    
 

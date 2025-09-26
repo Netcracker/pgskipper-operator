@@ -27,8 +27,8 @@ try:
 except ImportError:
     from io import StringIO
 
-bucket = os.getenv("CONTAINER")
-CONTAINER_SEG = "{}_segments".format(bucket)
+bucket = os.getenv("CONTAINER") or os.getenv("AWS_S3_BUCKET") or os.getenv("S3_BUCKET")
+CONTAINER_SEG = "{}_segments".format(bucket) if bucket else None
 PG_CLUSTER_NAME = os.getenv("PG_CLUSTER_NAME")
 
 RETRY_COUNT = 10
@@ -41,13 +41,16 @@ class AwsS3Vault:
     def __init__(self, cluster_name=None, cache_enabled=False,
                  aws_s3_bucket_listing=None):
 
-        self.bucket = bucket
+        self.bucket = bucket or os.getenv("CONTAINER") or os.getenv("AWS_S3_BUCKET") or os.getenv("S3_BUCKET")
         self.console = None
         self.cluster_name = cluster_name
         self.cache_enabled = cache_enabled
         self.cached_state = {}
         self.aws_s3_bucket_listing = aws_s3_bucket_listing
         self.aws_prefix = os.getenv("AWS_S3_PREFIX", "")
+
+        if not self.bucket or not isinstance(self.bucket, str) or not self.bucket.strip():
+            raise ValueError("S3 bucket is not configured. Set one of CONTAINER, AWS_S3_BUCKET, or S3_BUCKET.")
 
     def get_s3_client(self):
         return boto3.client("s3",

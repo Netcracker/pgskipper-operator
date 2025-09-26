@@ -162,6 +162,10 @@ class PostgreSQLRestoreWorker(Thread):
         self.log.info(self.log_msg("Start restoring database '%s'."
                                    % database))
 
+        db_start = int(time.time())
+        self.update_status('creationTime',
+                       datetime.datetime.fromtimestamp(db_start).isoformat(),
+                       database=database)
         self.update_status('status', backups.BackupStatus.IN_PROGRESS, database)
         self.update_status('source', backups.build_database_backup_full_path(
             self.backup_id, database, self.location,
@@ -189,6 +193,11 @@ class PostgreSQLRestoreWorker(Thread):
                     self.s3.download_file(roles_backup_path)
             except Exception as e:
                 raise e
+        self.update_status('path',
+                       backups.build_database_backup_full_path(
+                           self.backup_id, database, self.location, self.namespace),
+                       database=database,
+                       flush=True)
         new_bd_name = self.databases_mapping.get(database) or database
         db_owner = self.owners_mapping.get(database, 'postgres')
         dump_version = self.get_pg_version_from_dump(dump_path)
@@ -472,6 +481,8 @@ class PostgreSQLRestoreWorker(Thread):
         if exit_code != 0:
             with open(stderr_path, 'r') as f:
                 raise backups.RestoreFailedException(database, '\n'.join(f.readlines()))
+        else:
+            self.update_status('duration', int(time.time() - db_start), database=database)
 
         if database != new_bd_name:
             self.log.info(self.log_msg("Database '%s' has been successfully restored with new name '%s'." %
@@ -482,6 +493,9 @@ class PostgreSQLRestoreWorker(Thread):
     def run(self):
         try:
             self.process_restore_request()
+            self.update_status('completionTime',
+                           datetime.datetime.utcnow().isoformat(),
+                           flush=True)
             self.update_status('status', backups.BackupStatus.SUCCESSFUL, flush=True)
             self.log.info(self.log_msg("Backup has been successfully restored."))
             if self.s3:
@@ -489,6 +503,9 @@ class PostgreSQLRestoreWorker(Thread):
         except Exception as e:
             self.log.exception(self.log_msg("Restore request processing has failed."))
             self.update_status('details', str(e))
+            self.update_status('completionTime',
+                           datetime.datetime.utcnow().isoformat(),
+                           flush=True)
             self.update_status('status', backups.BackupStatus.FAILED, flush=True)
             if self.s3:
                 shutil.rmtree(self.backup_dir)
