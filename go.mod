@@ -3,7 +3,7 @@ module github.com/Netcracker/pgskipper-dbaas-adapter/postgresql-dbaas-adapter
 go 1.23.0
 
 require (
-	github.com/Netcracker/qubership-dbaas-adapter-core v0.9.7
+	github.com/Netcracker/qubership-dbaas-adapter-core v0.10.1
 	github.com/gofiber/fiber/v2 v2.52.5
 	github.com/google/uuid v1.6.0
 	github.com/jackc/pgconn v1.14.3
@@ -14,6 +14,14 @@ require (
 	k8s.io/api v0.20.0
 	k8s.io/apimachinery v0.21.0
 	k8s.io/client-go v0.20.0
+)
+
+require (
+	github.com/gabriel-vasile/mimetype v1.4.8 // indirect
+	github.com/go-playground/locales v0.14.1 // indirect
+	github.com/go-playground/universal-translator v0.18.1 // indirect
+	github.com/go-playground/validator/v10 v10.27.0 // indirect
+	github.com/leodido/go-urn v1.4.0 // indirect
 )
 
 require (
@@ -82,7 +90,7 @@ require (
 	go.uber.org/multierr v1.10.0 // indirect
 	golang.org/x/crypto v0.35.0 // indirect
 	golang.org/x/exp v0.0.0-20240112132812-db7319d0e0e3
-	golang.org/x/net v0.33.0 // indirect
+	golang.org/x/net v0.34.0 // indirect
 	golang.org/x/oauth2 v0.18.0 // indirect
 	golang.org/x/sys v0.30.0 // indirect
 	golang.org/x/term v0.29.0 // indirect

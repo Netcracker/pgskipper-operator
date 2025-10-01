@@ -16,20 +16,23 @@ package backup
 
 import (
 	"github.com/Netcracker/pgskipper-dbaas-adapter/postgresql-dbaas-adapter/adapter/cluster"
+	"github.com/Netcracker/qubership-dbaas-adapter-core/pkg/service"
 	"github.com/valyala/fasthttp"
+
 	"go.uber.org/zap"
 )
 
 type BackupAdapter struct {
-	ClusterAdapter cluster.ClusterAdapter
-	DaemonAddress  string
-	Keep           string
-	Auth           bool
-	User           string
-	Password       string
-	PgSSl          string
-	Client         *fasthttp.Client
-	log            *zap.Logger
+	ClusterAdapter       cluster.ClusterAdapter
+	DaemonAddress        string
+	Keep                 string
+	Auth                 bool
+	User                 string
+	Password             string
+	PgSSl                string
+	Client               *fasthttp.Client
+	log                  *zap.Logger
+	DefaultBackupService service.BackupAdministrationService
 }
 
 type PostgresDaemonBackupRequest struct {
