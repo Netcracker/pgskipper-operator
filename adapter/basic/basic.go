@@ -25,7 +25,7 @@ import (
 
 	"github.com/Netcracker/qubership-dbaas-adapter-core/pkg/dao"
 
-	uuid "github.com/satori/go.uuid"
+	uuid "github.com/google/uuid"
 	"go.uber.org/zap"
 
 	"github.com/Netcracker/pgskipper-dbaas-adapter/postgresql-dbaas-adapter/adapter/cluster"
@@ -1218,8 +1218,7 @@ func (sa ServiceAdapter) getConnectionProperties(dbName, username, role, passwor
 }
 
 func (generator UUIDGenerator) Generate() string {
-	uuidName := uuid.NewV4()
-	uuidString := uuidName.String()
+	uuidString := uuid.New().String()
 	return strings.ReplaceAll(uuidString, "-", "")
 }
 
