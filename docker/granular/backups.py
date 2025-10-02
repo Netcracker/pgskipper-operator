@@ -414,6 +414,48 @@ def sweep_by_policy():
 
     log.info("Backups sweeping finished.")
 
+def _parse_bytes(v):
+    if v is None:
+        return None
+    if isinstance(v, (int, float)):
+        return int(v)
+    s = str(v).strip().replace(',', '').lower()
+
+    # plain number
+    try:
+        return int(float(s))
+    except ValueError:
+        pass
+
+    if s.endswith('bytes'):
+        s = s[:-5].strip()
+
+    import re
+    m = re.match(r'^([0-9]+(?:\.[0-9]+)?)\s*([a-z]+)$', s)
+    if not m:
+        return None
+    num, unit = m.groups()
+    num = float(num)
+
+    dec = {
+        'kb': 1000, 'mb': 1000**2, 'gb': 1000**3, 'tb': 1000**4,
+        'b': 1
+    }
+    bin_ = {
+        'kib': 1024, 'mib': 1024**2, 'gib': 1024**3, 'tib': 1024**4,
+    }
+
+    if unit in bin_:
+        return int(num * bin_[unit])
+    if unit in dec:
+        return int(num * dec[unit])
+
+    short = {'k': 1000, 'm': 1000**2, 'g': 1000**3, 't': 1000**4}
+    if unit in short:
+        return int(num * short[unit])
+
+    return None
+
 def transform_backup_status_v1(raw: dict) -> dict:
     raw = raw or {}
     dbs = raw.get("databases") or {}
@@ -427,7 +469,7 @@ def transform_backup_status_v1(raw: dict) -> dict:
             {
                 "databaseName": name,
                 "status": (info or {}).get("status"),
-                "size": (info or {}).get("size"),
+                "size": _parse_bytes(info.get("size")),
                 "duration": (info or {}).get("duration"),
                 "path": (info or {}).get("path"),
                 "errorMessage": (info or {}).get("errorMessage") or (info or {}).get("error"),
