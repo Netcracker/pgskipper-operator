@@ -102,17 +102,15 @@ spec:
 {{ toYaml .Values.patroni.pgHba | indent 6}}
   {{- end }}
     resources:
-  {{ if .Values.patroni.resources.unlimited }}
+  {{- if .Values.patroni.resources.unlimited }}
       limits: {}
       requests:
 {{ toYaml .Values.patroni.resources.requests | indent 8}}
     unlimited: {{ .Values.patroni.resources.unlimited }}
-  {{ else }}
-      limits:
-{{ toYaml .Values.patroni.resources.limits | indent 8}}
-      requests:
-{{ toYaml .Values.patroni.resources.requests | indent 8}}
-  {{ end }}
+  {{- else }}
+      limits: {{- toYaml .Values.patroni.resources.limits | nindent 8 }}
+      requests: {{- toYaml .Values.patroni.resources.requests | nindent 8 }}
+  {{- end }}
     storage:
       type: {{ default "pv" .Values.patroni.storage.type }}
       size: {{ default "10Gi" .Values.patroni.storage.size }}
