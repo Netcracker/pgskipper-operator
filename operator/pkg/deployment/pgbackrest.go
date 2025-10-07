@@ -183,6 +183,30 @@ func GetBackrestHeadless() *corev1.Service {
 	}
 }
 
+func GetPatroniHeadless(clusterName string) *corev1.Service {
+	labels := map[string]string{"app": clusterName}
+	ports := []corev1.ServicePort{
+		{Name: "postgresql", Port: 5432},
+		{Name: "patroni-api", Port: 8008},
+	}
+	return &corev1.Service{
+		TypeMeta: metav1.TypeMeta{
+			APIVersion: "v1",
+			Kind:       "Service",
+		},
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "patroni-headless",
+			Namespace: util.GetNameSpace(),
+		},
+
+		Spec: corev1.ServiceSpec{
+			Selector:  labels,
+			Ports:     ports,
+			ClusterIP: "None",
+		},
+	}
+}
+
 func getPgBackRestSettings(pgBackrestSpec *v1.PgBackRest, isStandby bool) string {
 	var listSettings []string
 	listSettings = append(listSettings, "[global]")
