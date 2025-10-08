@@ -2529,6 +2529,10 @@ spec:
                       verifySsl:
                         type: boolean
                     type: object
+                  exporter:
+                    type: boolean
+                  exporterDockerImage:
+                    type: string
                   fullRetention:
                     type: integer
                   incrSchedule:

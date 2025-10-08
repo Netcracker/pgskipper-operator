@@ -204,19 +204,21 @@ type PatroniCoreStatus struct {
 }
 
 type PgBackRest struct {
-	DockerImage       string                   `json:"dockerImage,omitempty"`
-	RepoType          string                   `json:"repoType,omitempty"`
-	RepoPath          string                   `json:"repoPath,omitempty"`
-	DiffSchedule      string                   `json:"diffSchedule,omitempty"`
-	IncrSchedule      string                   `json:"incrSchedule,omitempty"`
-	S3                S3                       `json:"s3,omitempty"`
-	DRS3              S3                       `json:"drS3,omitempty"`
-	Rwx               *types.Storage           `json:"rwx,omitempty"`
-	Resources         *v1.ResourceRequirements `json:"resources,omitempty"`
-	FullRetention     int                      `json:"fullRetention,omitempty"`
-	DiffRetention     int                      `json:"diffRetention,omitempty"`
-	BackupFromStandby bool                     `json:"backupFromStandby,omitempty"`
-	ConfigParams      []string                 `json:"configParams,omitempty"`
+	DockerImage         string                   `json:"dockerImage,omitempty"`
+	RepoType            string                   `json:"repoType,omitempty"`
+	RepoPath            string                   `json:"repoPath,omitempty"`
+	DiffSchedule        string                   `json:"diffSchedule,omitempty"`
+	IncrSchedule        string                   `json:"incrSchedule,omitempty"`
+	S3                  S3                       `json:"s3,omitempty"`
+	DRS3                S3                       `json:"drS3,omitempty"`
+	Rwx                 *types.Storage           `json:"rwx,omitempty"`
+	Resources           *v1.ResourceRequirements `json:"resources,omitempty"`
+	FullRetention       int                      `json:"fullRetention,omitempty"`
+	DiffRetention       int                      `json:"diffRetention,omitempty"`
+	BackupFromStandby   bool                     `json:"backupFromStandby,omitempty"`
+	ConfigParams        []string                 `json:"configParams,omitempty"`
+	Exporter            bool                     `json:"exporter,omitempty"`
+	ExporterDockerImage string                   `json:"exporterDockerImage,omitempty"`
 }
 
 type S3 struct {

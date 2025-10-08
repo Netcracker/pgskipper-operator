@@ -278,6 +278,8 @@ patroni:
 #   configParams:
 #     - "log-level-file=detail"
 #     - "log-level-console=info"
+#   exporter: false
+#   exporterDockerImage: "ghcr.io/netcracker/pgbrest-exporter:
 
 tests:
   install: true
