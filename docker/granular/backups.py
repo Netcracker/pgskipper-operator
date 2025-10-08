@@ -23,6 +23,7 @@ import time
 import storage_s3
 import configs
 import utils
+from datetime import timezone
 from itertools import groupby
 
 
@@ -414,6 +415,16 @@ def sweep_by_policy():
 
     log.info("Backups sweeping finished.")
 
+
+def _as_iso8601(v):
+    if v is None or v == "":
+        return ""
+    if isinstance(v, (int, float)):
+        if v > 1e12:  
+            v = v / 1000.0
+        return datetime.datetime.fromtimestamp(v, tz=timezone.utc).isoformat(timespec='seconds').replace('+00:00', 'Z')
+    return str(v)
+
 def _parse_bytes(v):
     if v is None:
         return None
@@ -459,21 +470,30 @@ def _parse_bytes(v):
 def transform_backup_status_v1(raw: dict) -> dict:
     raw = raw or {}
     dbs = raw.get("databases") or {}
+
+    storage_name = raw.get("storageName") or raw.get("storage") or raw.get("storage_name") or ""
+    blob_path    = raw.get("blobPath") or raw.get("externalBackupPath") or raw.get("blob_path") or ""
+
+    creation  = _as_iso8601(raw.get("created") or raw.get("creationTime") or raw.get("creation") or raw.get("timestamp") or raw.get("startTime"))
+    completion= _as_iso8601(raw.get("completed") or raw.get("completionTime") or raw.get("completedTime"))
+
     return {
-        "status": raw.get("status"), 
+        "status":       raw.get("status"),
         "errorMessage": raw.get("errorMessage") or raw.get("error"),
-        "backupId": raw.get("backupId"),
-        "creationTime": raw.get("created"),
-        "completionTime": raw.get("completed") or raw.get("completionTime"),
+        "backupId":     raw.get("backupId"),
+        "storageName":  storage_name,
+        "blobPath":     blob_path,
+        "creationTime": creation,
+        "completionTime": completion,
         "databases": [
             {
                 "databaseName": name,
-                "status": (info or {}).get("status"),
-                "size": _parse_bytes(info.get("size")),
-                "duration": (info or {}).get("duration"),
-                "path": (info or {}).get("path"),
+                "status":       (info or {}).get("status"),
+                "size":         _parse_bytes((info or {}).get("size") or (info or {}).get("sizeBytes")),
+                "duration":     (info or {}).get("duration"),
+                "path":         (info or {}).get("path"),
                 "errorMessage": (info or {}).get("errorMessage") or (info or {}).get("error"),
-                "creationTime": (info or {}).get("created") or raw.get("created"),
+                "creationTime": _as_iso8601((info or {}).get("created") or (info or {}).get("creationTime") or creation),
             }
             for name, info in dbs.items()
         ],
@@ -482,23 +502,32 @@ def transform_backup_status_v1(raw: dict) -> dict:
 def transform_restore_status_v1(raw: dict) -> dict:
     raw = raw or {}
     dbs = raw.get("databases") or {}
+
+    storage_name = raw.get("storageName") or raw.get("storage") or raw.get("storage_name") or ""
+    blob_path    = raw.get("blobPath") or raw.get("externalBackupPath") or raw.get("blob_path") or ""
+
+    creation  = _as_iso8601(raw.get("created") or raw.get("creationTime") or raw.get("creation") or raw.get("timestamp") or raw.get("startTime"))
+    completion= _as_iso8601(raw.get("completed") or raw.get("completionTime") or raw.get("completedTime"))
+
     out = {
-        "status": raw.get("status"),
-        "errorMessage": raw.get("errorMessage") or raw.get("error"),
-        "restoreId": raw.get("trackingId") or raw.get("restoreId"),
-        "creationTime": raw.get("created"),
-        "completionTime": raw.get("completed") or raw.get("completionTime"),
+        "status":         raw.get("status"),
+        "errorMessage":   raw.get("errorMessage") or raw.get("error"),
+        "restoreId":      raw.get("trackingId") or raw.get("restoreId"),
+        "storageName":    storage_name,
+        "blobPath":       blob_path,
+        "creationTime":   creation,
+        "completionTime": completion,
         "databases": [],
     }
     for prev_name, info in dbs.items():
         info = info or {}
         out["databases"].append({
             "previousDatabaseName": prev_name,
-            "databaseName": info.get("databaseName") or info.get("restoredAs") or prev_name,
-            "status": info.get("status"),
-            "duration": info.get("duration"),
-            "path": info.get("path"),
-            "errorMessage": info.get("errorMessage") or info.get("error"),
-            "creationTime": info.get("created") or raw.get("created"),
+            "databaseName":   info.get("databaseName") or info.get("restoredAs") or prev_name,
+            "status":         info.get("status"),
+            "duration":       info.get("duration"),
+            "path":           info.get("path"),
+            "errorMessage":   info.get("errorMessage") or info.get("error"),
+            "creationTime":   _as_iso8601(info.get("created") or info.get("creationTime") or creation),
         })
     return out

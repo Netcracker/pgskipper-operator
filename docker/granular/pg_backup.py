@@ -61,10 +61,13 @@ class PostgreSQLDumpWorker(Thread):
             self.key_source = encryption.KeyManagement.get_key_source()
         else:
             self.encryption = False
+            
+        self.storage_name = backup_request.get('storageName') or ""
         self.status = {
             'backupId': self.backup_id,
             'namespace': self.namespace,
-            'status': backups.BackupStatus.PLANNED
+            'status': backups.BackupStatus.PLANNED,
+            'storageName': self.storage_name,
         }
         self.pg_dump_proc = None
 
