@@ -1,0 +1,244 @@
+# PostgreSQL Failover Test - Helmfile Configuration
+#
+# Location: tests/examples/spring-boot-failover-test/
+# This example demonstrates PostgreSQL failover testing with Spring Boot
+#
+# This helmfile manages the deployment of:
+# - Patroni-Core Operator (PostgreSQL core functionality)
+# - Patroni-Services Operator (PostgreSQL services)
+# - Spring Boot test application
+#
+# Usage:
+#   helmfile sync                      - Deploy with official images
+#   helmfile -e orbstack sync          - Deploy to OrbStack
+#   helmfile -e rancher sync           - Deploy to Rancher Desktop
+#
+# Environment Variables (optional):
+#   USE_LOCAL_IMAGES=true              - Build and use local operator images
+#   PGSKIPPER_IMAGE=<image>            - Override operator image (default: ghcr.io/netcracker/pgskipper-operator)
+#   PGSKIPPER_TAG=<tag>                - Override operator tag (default: main)
+#   APP_IMAGE_TAG=<tag>                - Override Spring Boot app image tag (default: latest)
+#
+# Examples:
+#   USE_LOCAL_IMAGES=true helmfile -e orbstack sync  - Build local images for OrbStack
+#   PGSKIPPER_TAG=v1.2.3 helmfile sync               - Use specific version from ghcr.io
+#   APP_IMAGE_TAG=1.0.0 helmfile sync                - Build and deploy app with tag 1.0.0
+
+helmDefaults:
+  wait: true
+  timeout: 600
+  createNamespace: true
+  cleanupOnFail: true
+
+environments:
+  default:
+    values:
+      - environments/default.yaml
+  orbstack:
+    values:
+      - environments/orbstack.yaml
+  rancher:
+    values:
+      - environments/rancher.yaml
+
+---
+
+{{ $namespace := env "NAMESPACE" | default "postgres" }}
+{{ $appNamespace := env "APP_NAMESPACE" | default "default" }}
+
+{{/* Image configuration via environment variables */}}
+{{ $useLocalImages := env "USE_LOCAL_IMAGES" | default "false" }}
+
+{{ $pgskipperImage := "" }}
+{{ $pgskipperTag := "" }}
+{{ $pullPolicy := "" }}
+
+{{ if eq $useLocalImages "true" }}
+  {{ $pgskipperImage = "pgskipper-operator" }}
+  {{ $pgskipperTag = "local" }}
+  {{ $pullPolicy = "Never" }}
+{{ else }}
+  {{ $pgskipperImage = env "PGSKIPPER_IMAGE" | default "ghcr.io/netcracker/pgskipper-operator" }}
+  {{ $pgskipperTag = env "PGSKIPPER_TAG" | default "main" }}
+  {{ $pullPolicy = "IfNotPresent" }}
+{{ end }}
+
+{{/* Spring Boot application image configuration */}}
+{{ $appImageTag := env "APP_IMAGE_TAG" | default "latest" }}
+
+releases:
+  #############################################################################
+  # Patroni-Core Operator
+  # Manages PostgreSQL core functionality and CRDs
+  #############################################################################
+  - name: patroni-core
+    namespace: {{ $namespace }}
+    chart: ../../../charts/patroni-core
+    labels:
+      component: postgres-operator
+      type: core
+    values:
+      - ./helm-charts/postgresql/patroni-core-simple.yaml
+      - operator:
+          image: {{ $pgskipperImage }}:{{ $pgskipperTag }}
+          imagePullPolicy: {{ $pullPolicy }}
+    hooks:
+      # Build custom operator images if requested
+      - events: ["presync"]
+        showlogs: true
+        command: "bash"
+        args:
+          - "-c"
+          # language=bash
+          - |
+            if [ "{{ $useLocalImages }}" != "true" ]; then
+              echo "Using official pgskipper-operator images: {{ $pgskipperImage }}:{{ $pgskipperTag }}"
+            else
+              echo "Building local pgskipper-operator images..."
+
+              # Switch to configured Docker context (for local k8s like OrbStack/Rancher)
+              DOCKER_CONTEXT="{{ .Values.dockerContext | default "default" }}"
+              CURRENT_CONTEXT=$(docker context show)
+              echo "Current Docker context: $CURRENT_CONTEXT"
+              echo "Target Docker context: $DOCKER_CONTEXT"
+
+              if [ "$CURRENT_CONTEXT" != "$DOCKER_CONTEXT" ]; then
+                echo "Switching to $DOCKER_CONTEXT context..."
+                docker context use "$DOCKER_CONTEXT"
+              fi
+
+              cd ../../..
+
+              TAG_ENV="{{ $pgskipperTag }}" DOCKER_NAMES="{{ $pgskipperImage }}:{{ $pgskipperTag }}" make docker-build
+
+              echo "✓ Local operator images built successfully: {{ $pgskipperImage }}:{{ $pgskipperTag }}"
+            fi
+      # Validate storage before deployment
+      - events: ["presync"]
+        showlogs: true
+        command: "bash"
+        args:
+          - "-c"
+          # language=bash
+          - |
+            ./scripts/configure-storage.sh --auto
+      # Wait for operator to be ready
+      - events: ["postsync"]
+        showlogs: true
+        command: "bash"
+        args:
+          - "-c"
+          # language=bash
+          - |
+            echo "Waiting for Patroni-Core Operator to be ready..."
+            kubectl wait --for=condition=available --timeout=300s \
+              deployment -l app.kubernetes.io/name=patroni-core-operator -n {{ $namespace }} 2>/dev/null || true
+
+  #############################################################################
+  # Patroni-Services Operator
+  # Manages PostgreSQL services and high availability
+  #############################################################################
+  - name: patroni-services
+    namespace: {{ $namespace }}
+    chart: ../../../charts/patroni-services
+    labels:
+      component: postgres-operator
+      type: services
+    values:
+      - ./helm-charts/postgresql/patroni-services-simple.yaml
+      - operator:
+          image: {{ $pgskipperImage }}:{{ $pgskipperTag }}
+          imagePullPolicy: {{ $pullPolicy }}
+    needs:
+      - {{ $namespace }}/patroni-core
+    hooks:
+      # Wait for PostgreSQL cluster to be ready
+      - events: ["postsync"]
+        showlogs: true
+        command: "bash"
+        args:
+          - "-c"
+          # language=bash
+          - |
+            echo "Waiting for PostgreSQL cluster to initialize..."
+            sleep 30
+
+            echo "Waiting for primary PostgreSQL pod..."
+            timeout 600 bash -c 'until kubectl get pods -n {{ $namespace }} --selector=pgtype=master 2>/dev/null | grep -q Running; do sleep 5; done' || true
+
+            echo "Waiting for all PostgreSQL pods to be ready..."
+            kubectl wait --for=condition=ready --timeout=600s \
+              pods -l app=postgres -n {{ $namespace }} 2>/dev/null || true
+
+            echo "PostgreSQL cluster is ready!"
+
+  #############################################################################
+  # Spring Boot Test Application
+  # Application that tests PostgreSQL failover behavior
+  #############################################################################
+  - name: failover-test
+    namespace: {{ $appNamespace }}
+    chart: ./helm-charts/spring-app
+    labels:
+      component: test-application
+      type: spring-boot
+    values:
+      - image:
+          tag: {{ $appImageTag }}
+    needs:
+      - {{ $namespace }}/patroni-services
+    hooks:
+      # Build Docker image before deployment
+      - events: ["presync"]
+        showlogs: true
+        command: "bash"
+        args:
+          - "-c"
+          # language=bash
+          - |
+            # Switch to configured Docker context
+            DOCKER_CONTEXT="{{ .Values.dockerContext | default "default" }}"
+            CURRENT_CONTEXT=$(docker context show)
+            echo "Current Docker context: $CURRENT_CONTEXT"
+            echo "Target Docker context: $DOCKER_CONTEXT"
+
+            if [ "$CURRENT_CONTEXT" != "$DOCKER_CONTEXT" ]; then
+              echo "Switching to $DOCKER_CONTEXT context..."
+              docker context use "$DOCKER_CONTEXT"
+            fi
+
+            echo "Building Spring Boot application Docker image tag ..."
+            IMAGE_TAG="{{ $appImageTag }}" ./scripts/build.sh
+      # Wait for application to be ready
+      - events: ["postsync"]
+        showlogs: true
+        command: "bash"
+        args:
+          - "-c"
+          # language=bash
+          - |
+            echo "Waiting for application pods to be ready..."
+            kubectl wait --for=condition=ready --timeout=300s \
+              pods -l app.kubernetes.io/name=postgresql-failover-test -n {{ $appNamespace }}
+
+            echo "Application is ready!"
+
+            # Display status
+            echo ""
+            echo "====================================="
+            echo "Deployment Complete!"
+            echo "====================================="
+            echo ""
+            echo "PostgreSQL Cluster Status:"
+            kubectl get pods -n {{ $namespace }} -l app=postgres
+            echo ""
+            echo "Application Status:"
+            kubectl get pods -n {{ $appNamespace }} -l app.kubernetes.io/name=postgresql-failover-test
+            echo ""
+            echo "Services:"
+            kubectl get svc -n {{ $namespace }}
+            echo ""
+            echo "Next steps:"
+            echo "1. Check application logs: kubectl logs -f -n {{ $appNamespace }} -l app.kubernetes.io/name=postgresql-failover-test"
+            echo "2. Test failover: ./scripts/trigger-failover.sh"
+            echo "3. Monitor reconnection: ./scripts/test-reconnection.sh"
