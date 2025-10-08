@@ -2,18 +2,21 @@ FROM --platform=$BUILDPLATFORM golang:1.25-alpine3.22 AS builder
 
 WORKDIR /workspace
 
-COPY go.mod .
-COPY go.sum .
+COPY go.mod go.sum ./
 
-RUN go mod download
+RUN --mount=type=cache,id=gomodcache,target=/go/pkg/mod \
+    --mount=type=cache,id=gobuildcache,target=/root/.cache/go-build \
+    go mod download
 
-COPY . /workspace
-
-RUN go mod tidy
+COPY . .
 
 # Build
-ARG TARGETOS TARGETARCH
-RUN CGO_ENABLED=0 GOOS=$TARGETOS GOARCH=$TARGETARCH go build -o ./build/_output/bin/postgres-operator \
+ARG TARGETOS
+ARG TARGETARCH
+
+RUN --mount=type=cache,id=gomodcache,target=/go/pkg/mod \
+    --mount=type=cache,id=gobuildcache,target=/root/.cache/go-build \
+    CGO_ENABLED=0 GOOS=$TARGETOS GOARCH=$TARGETARCH go build -o ./build/_output/bin/postgres-operator \
     -gcflags all=-trimpath=${GOPATH} -asmflags all=-trimpath=${GOPATH} ./cmd/pgskipper-operator
 
 FROM alpine:3.22
