@@ -1,0 +1,7 @@
+# Absolute minimal values for patroni-services
+postgresUser: postgres
+postgresPassword: postgres
+replicatorPassword: replicator
+
+global:
+  cloudIntegrationEnabled: false
