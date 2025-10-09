@@ -833,7 +833,7 @@ For more information on how to do the Major Upgrade of PostgreSQL, please, follo
 ```yaml
     pgbouncer:
       listen_port: '6432'
-      listen_addr: '0.0.0.0'
+      listen_addr: '*'
       auth_type: 'md5'
       auth_file: '/etc/pgbouncer/userlist.txt'
       auth_user: 'pgbouncer'
