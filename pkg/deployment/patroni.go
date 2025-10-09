@@ -177,6 +177,7 @@ func NewPatroniStatefulset(cr *patroniv1.PatroniCore, deploymentIdx int, cluster
 						{
 							Name:            statefulsetName,
 							Image:           dockerImage,
+							ImagePullPolicy: patroniSpec.DockerImagePullPolicy,
 							SecurityContext: util.GetDefaultSecurityContext(),
 							Command:         []string{},
 							Args:            []string{},
@@ -299,8 +300,7 @@ func NewPatroniStatefulset(cr *patroniv1.PatroniCore, deploymentIdx int, cluster
 									Name:      "postgresql-config",
 								},
 							},
-							Resources:       *patroniSpec.Resources,
-							ImagePullPolicy: corev1.PullIfNotPresent,
+							Resources: *patroniSpec.Resources,
 						},
 					},
 					RestartPolicy:                 corev1.RestartPolicyAlways,
