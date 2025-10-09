@@ -177,6 +177,7 @@ func NewPatroniStatefulset(cr *patroniv1.PatroniCore, deploymentIdx int, cluster
 						{
 							Name:            statefulsetName,
 							Image:           dockerImage,
+							ImagePullPolicy: patroniSpec.DockerImagePullPolicy,
 							SecurityContext: util.GetDefaultSecurityContext(),
 							Command:         []string{},
 							Args:            []string{},
@@ -243,6 +244,23 @@ func NewPatroniStatefulset(cr *patroniv1.PatroniCore, deploymentIdx int, cluster
 									},
 								},
 								{
+									Name: "POD_NAME",
+									ValueFrom: &corev1.EnvVarSource{
+										FieldRef: &corev1.ObjectFieldSelector{
+											APIVersion: "v1",
+											FieldPath:  "metadata.name",
+										},
+									},
+								},
+								{
+									Name:  "HEADLESS_SERVICE",
+									Value: "patroni-headless",
+								},
+								{
+									Name:  "POD_DNS_NAME",
+									Value: "$(POD_NAME).$(HEADLESS_SERVICE).$(POD_NAMESPACE).svc.cluster.local",
+								},
+								{
 									Name: "PG_RESOURCES_LIMIT_MEM",
 									ValueFrom: &corev1.EnvVarSource{
 										ResourceFieldRef: &corev1.ResourceFieldSelector{
@@ -299,8 +317,7 @@ func NewPatroniStatefulset(cr *patroniv1.PatroniCore, deploymentIdx int, cluster
 									Name:      "postgresql-config",
 								},
 							},
-							Resources:       *patroniSpec.Resources,
-							ImagePullPolicy: corev1.PullIfNotPresent,
+							Resources: *patroniSpec.Resources,
 						},
 					},
 					RestartPolicy:                 corev1.RestartPolicyAlways,
@@ -309,7 +326,7 @@ func NewPatroniStatefulset(cr *patroniv1.PatroniCore, deploymentIdx int, cluster
 					DNSPolicy:                     corev1.DNSClusterFirst,
 				},
 			},
-			ServiceName:                          "backrest-headless",
+			ServiceName:                          "patroni-headless",
 			PodManagementPolicy:                  appsv1.OrderedReadyPodManagement,
 			UpdateStrategy:                       appsv1.StatefulSetUpdateStrategy{Type: appsv1.RollingUpdateStatefulSetStrategyType},
 			RevisionHistoryLimit:                 ptr.To[int32](10),

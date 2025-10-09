@@ -1,0 +1,61 @@
+# Cloud Native Buildpacks Project Descriptor
+# This file configures buildpack behavior for the application
+
+[_]
+schema-version = "0.2"
+
+# Build configuration
+[build]
+  # Include/exclude files from the build
+  include = [
+    "src/",
+    "pom.xml"
+  ]
+
+  exclude = [
+    "target/",
+    ".git/",
+    ".idea/",
+    "*.iml",
+    ".DS_Store"
+  ]
+
+# Build environment variables
+[[build.env]]
+name = "BP_JVM_VERSION"
+value = "17"
+
+[[build.env]]
+name = "BP_MAVEN_BUILD_ARGUMENTS"
+value = "clean package -DskipTests"
+
+[[build.env]]
+name = "BPE_DELIM_JAVA_TOOL_OPTIONS"
+value = " "
+
+[[build.env]]
+name = "BPE_APPEND_JAVA_TOOL_OPTIONS"
+value = "-XX:+UseContainerSupport -XX:MaxRAMPercentage=75.0 -XX:InitialRAMPercentage=50.0"
+
+# Buildpack configuration for specific optimizations
+[[build.env]]
+name = "BP_JVM_JLINK_ENABLED"
+value = "false"  # Set to true to create a custom JRE with jlink
+
+[[build.env]]
+name = "BP_JVM_TYPE"
+value = "JRE"  # Use JRE instead of JDK for smaller image
+
+# Health check configuration
+[[build.env]]
+name = "THC_PATH"
+value = "/api/health"
+
+# Metadata
+[metadata]
+  [metadata.application]
+    name = "PostgreSQL Failover Test"
+    version = "1.0.0"
+
+  [metadata.build]
+    description = "Spring Boot application for testing PostgreSQL failover and reconnection"
