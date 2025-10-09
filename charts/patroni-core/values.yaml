@@ -29,6 +29,7 @@ serviceAccount:
 
 operatorInit:
   image: ghcr.io/netcracker/qubership-credential-manager:main
+  imagePullPolicy: Always
   resources:
     limits:
       cpu: 50m
@@ -41,6 +42,7 @@ operatorInit:
 operator:
   # Docker Image that will be used to Postgres Operator deployment
   image: ghcr.io/netcracker/pgskipper-operator:main
+  imagePullPolicy: Always
   podLabels: {}
   securityContext: {}
   waitTimeout: 10

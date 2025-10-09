@@ -34,6 +34,7 @@ operatorInit:
 operator:
   # Docker Image that will be used to Postgres Operator deployment
   image: ghcr.io/netcracker/pgskipper-operator:main
+  imagePullPolicy: Always
   podLabels: {}
   securityContext: {}
   waitTimeout: 10
@@ -284,6 +285,7 @@ dbaas:
   multiUsers: true
   # Docker Image that will be used for PostgreSQL DBaaS Adapter container
   dockerImage: ghcr.io/netcracker/pgskipper-dbaas-adapter:main
+  imagePullPolicy: Always
   podLabels: {}
   securityContext: {}
   # PostgreSQL cluster entry point.

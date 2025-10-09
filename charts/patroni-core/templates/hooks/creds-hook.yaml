@@ -24,7 +24,7 @@ spec:
       containers:
       - name: credentials-saver
         image: {{ template "find_image" (dict "deployName" "postgres_operator_init" "SERVICE_NAME" "postgres_operator_init" "vals" .Values "default" .Values.operatorInit.image) }}
-        imagePullPolicy: Always
+        imagePullPolicy: {{ default "Always" .Values.operatorInit.imagePullPolicy }}
         env:
           - name: IS_HOOK
             value: "True"
