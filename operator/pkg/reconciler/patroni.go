@@ -90,9 +90,13 @@ func (r *PatroniReconciler) Reconcile() error {
 	}
 
 	if isStandbyClusterPresent {
-		patroni.AddStandbyClusterSettings(cr, patroniConfigMap, r.cluster.ConfigMapKey)
+		if err := patroni.AddStandbyClusterSettings(cr, patroniConfigMap, r.cluster.ConfigMapKey); err != nil {
+			return err
+		}
 	} else {
-		patroni.DeleteStandbyClusterSettings(patroniConfigMap, r.cluster.ConfigMapKey)
+		if err := patroni.DeleteStandbyClusterSettings(patroniConfigMap, r.cluster.ConfigMapKey); err != nil {
+			return err
+		}
 	}
 	if (patroniSpec.Dcs.Type == "etcd") || (patroniSpec.Dcs.Type == "etcd3") {
 		patroni.AddEtcdSettings(cr, patroniConfigMap, r.cluster.ConfigMapKey)
