@@ -255,6 +255,19 @@ backupDaemon:
 #     region: "us-east-1"
 #     verifySsl: false
 
+pgbackrestexporter:
+  install: false
+  image: artifactorycn.netcracker.com:17009/pgbackrest_exporter:2.55.1
+  resources:
+    requests:
+      cpu: 100m
+      memory: 128Mi
+    limits:
+      cpu: 200m
+      memory: 256Mi
+  securityContext: {}
+  affinity: {}
+  podLabels: {}
 
 # externalDataBase:
 #   type: RDS|CLOUDSQL

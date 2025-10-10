@@ -113,30 +113,6 @@ func getPgBackRestContainer(deploymentIdx int, clustername string, patroniCoreSp
 	return pgBackRestContainer
 }
 
-func getPgBackRestExporterContainer(patroniCoreSpec *v1.PatroniCoreSpec) corev1.Container {
-	pgBrExporterContainer := corev1.Container{
-		Name:            "pgbrest-exporter-sidecar",
-		Image:           patroniCoreSpec.PgBackRest.ExporterDockerImage,
-		ImagePullPolicy: "Always",
-		SecurityContext: util.GetDefaultSecurityContext(),
-		Command:         []string{"sh"},
-		Args:            []string{"/run_exporter.sh"},
-		Ports: []corev1.ContainerPort{
-			{ContainerPort: 9854, Name: "brexporter", Protocol: corev1.ProtocolTCP},
-		},
-		TerminationMessagePath:   corev1.TerminationMessagePathDefault,
-		TerminationMessagePolicy: corev1.TerminationMessageReadFile,
-		VolumeMounts: []corev1.VolumeMount{
-			{
-				MountPath: "/etc/pgbackrest",
-				Name:      "pgbackrest-conf",
-			},
-		},
-		Resources: getPgbackRestResources(patroniCoreSpec),
-	}
-	return pgBrExporterContainer
-}
-
 func getPgbackRestResources(patroniCoreSpec *v1.PatroniCoreSpec) corev1.ResourceRequirements {
 	if patroniCoreSpec.PgBackRest.Resources == nil {
 		return *patroniCoreSpec.Patroni.Resources
@@ -166,29 +142,6 @@ func GetPgBackRestService(labels map[string]string, standby bool) *corev1.Servic
 	}
 	ports := []corev1.ServicePort{
 		{Name: "backrest", Port: 3000},
-	}
-	return &corev1.Service{
-		TypeMeta: metav1.TypeMeta{
-			APIVersion: "v1",
-			Kind:       "Service",
-		},
-		ObjectMeta: metav1.ObjectMeta{
-			Name:      serviceName,
-			Namespace: util.GetNameSpace(),
-		},
-
-		Spec: corev1.ServiceSpec{
-			Selector: labels,
-			Ports:    ports,
-		},
-	}
-}
-
-func GetPgBrExporterService() *corev1.Service {
-	serviceName := "backrest-exporter"
-	labels := map[string]string{"app": "patroni"}
-	ports := []corev1.ServicePort{
-		{Name: "brexporter", Port: 9854},
 	}
 	return &corev1.Service{
 		TypeMeta: metav1.TypeMeta{

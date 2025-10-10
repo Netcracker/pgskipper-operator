@@ -378,9 +378,6 @@ func NewPatroniStatefulset(cr *patroniv1.PatroniCore, deploymentIdx int, cluster
 			stSet.Spec.Template.Spec.Containers[0].VolumeMounts = append(stSet.Spec.Template.Spec.Containers[0].VolumeMounts, corev1.VolumeMount{Name: SSHKeysSecret, MountPath: SSHKeysPath})
 			stSet.Spec.Template.Spec.Containers[1].VolumeMounts = append(stSet.Spec.Template.Spec.Containers[1].VolumeMounts, corev1.VolumeMount{Name: SSHKeysSecret, MountPath: SSHKeysPath})
 		}
-		if cr.Spec.PgBackRest.Exporter {
-			stSet.Spec.Template.Spec.Containers = append(stSet.Spec.Template.Spec.Containers, getPgBackRestExporterContainer(cr.Spec))
-		}
 	}
 	return stSet
 }

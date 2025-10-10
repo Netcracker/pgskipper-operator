@@ -406,6 +406,36 @@ spec:
     backupFromStandby: {{ .Values.pgBackRest.backupFromStandby | default false }}
 {{ end }}
 
+{{- if .Values.pgbackrestexporter.install }}
+  pgbackrestexporter:
+    install: {{ .Values.pgbackrestexporter.install }}
+    image: {{ template "find_image" (dict "deployName" "pgbackrestexporter" "SERVICE_NAME" "pgbackrestexporter" "vals" .Values "default" .Values.pgbackrestexporter.image) }}
+    {{- if .Values.pgbackrestexporter.affinity }}
+    affinity: {{ .Values.pgbackrestexporter.affinity | toJson }}
+    {{- else if .Values.affinity }}
+    affinity: {{ .Values.affinity | toJson }}
+    {{- end }}
+    {{- if .Values.pgbackrestexporter.podLabels }}
+    podLabels:
+{{ toYaml .Values.pgbackrestexporter.podLabels | nindent 6 }}
+{{- include "kubernetes.labels" . | nindent 6 }}
+    {{- else if .Values.podLabels }}
+    podLabels:
+{{ toYaml .Values.podLabels | nindent 6 }}
+{{- include "kubernetes.labels" . | nindent 6 }}
+    {{- else }}
+    podLabels:
+      {{ include "kubernetes.labels" . | nindent 6 }}
+    {{- end }}
+    resources:
+{{ toYaml .Values.pgbackrestexporter.resources | indent 6 }}
+    securityContext:
+      {{- include "restricted.globalPodSecurityContext" . | nindent 6 }}
+      {{- with .Values.pgbackrestexporter.securityContext }}
+      {{- toYaml . | nindent 6 -}}
+      {{- end }}
+{{- end }}
+
   {{ if .Values.tests.install }}
   integrationTests:
     {{- if .Values.tests.affinity }}
