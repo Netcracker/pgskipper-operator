@@ -16,12 +16,13 @@ package deployment
 
 import (
 	"fmt"
+	"strings"
+
 	v1 "github.com/Netcracker/pgskipper-operator/api/patroni/v1"
 	"github.com/Netcracker/pgskipper-operator/pkg/patroni"
 	"github.com/Netcracker/pgskipper-operator/pkg/util"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"strings"
 )
 
 const SSHKeysSecret = "pgbackrest-keys"
