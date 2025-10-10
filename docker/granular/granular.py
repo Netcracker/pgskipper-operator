@@ -20,7 +20,7 @@ import io
 
 import flask
 import flask_restful
-from flask import Flask, Response, jsonify
+from flask import Flask, Response
 from apscheduler.schedulers.background import BackgroundScheduler
 
 import requests
@@ -1495,7 +1495,7 @@ class NewRestoreStatus(flask_restful.Resource):
     @superuser_authorization
     def delete(self, restore_id):
         if not restore_id:
-            return jsonify({"restoreId": restore_id, "message": "Restore ID is not specified", "status": "Failed"}), http.client.BAD_REQUEST
+            return {"restoreId": restore_id, "message": "Restore ID is not specified", "status": "Failed"}, http.client.BAD_REQUEST
 
         try:
             backup_id, namespace = backups.extract_backup_id_from_tracking_id(restore_id)
@@ -1521,20 +1521,20 @@ class NewRestoreStatus(flask_restful.Resource):
             except Exception:
                 term_body = repr(resp)
 
-            return jsonify({
+            return {
                 "restoreId": restore_id,
                 "message": "Malformed restore ID; termination attempted but cleanup skipped.",
                 "status": "Successful",
                 "termination": {"code": term_code, "body": term_body}
-            }), http.client.OK
+            }, http.client.OK
 
         external_backup_path = request.args.get("blobPath") or request.args.get("externalBackupPath")
         if not external_backup_path:
-            return jsonify({
+            return {
                 "restoreId": restore_id,
                 "message": "blobPath query parameter is required for cleanup (e.g. ?blobPath=tmp/a/b/c).",
                 "status": "Failed"
-            }), http.client.BAD_REQUEST
+            }, http.client.BAD_REQUEST
 
         external_backup_root = backups.build_external_backup_root(external_backup_path)
         status_path = backups.build_restore_status_file_path(backup_id, restore_id, namespace, external_backup_root)
@@ -1569,7 +1569,7 @@ class NewRestoreStatus(flask_restful.Resource):
                 TerminateRestoreEndpoint().post(restore_id)
             except Exception:
                 pass
-            return jsonify({"restoreId": restore_id, "message": "Restore is not found.", "status": "Failed"}), http.client.NOT_FOUND
+            return {"restoreId": restore_id, "message": "Restore is not found.", "status": "Failed"}, http.client.NOT_FOUND
 
         resp = TerminateRestoreEndpoint().post(restore_id)
         term_body, term_code = None, None
@@ -1612,12 +1612,12 @@ class NewRestoreStatus(flask_restful.Resource):
                         pass
         except Exception as e:
             self.log.exception("Restore cleanup failed for %s: %s", restore_id, e)
-            return jsonify({
+            return {
                 "restoreId": restore_id,
                 "message": f"Termination attempted; cleanup encountered an error: {e}",
                 "status": "Successful",
                 "termination": {"code": term_code, "body": term_body}
-            }), http.client.OK
+            }, http.client.OK
 
         if term_code == 404:
             return {"restoreId": restore_id, "message": "Restore is not found.", "status": "Failed",

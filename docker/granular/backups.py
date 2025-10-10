@@ -423,6 +423,17 @@ def _as_iso8601(v):
         if v > 1e12:  
             v = v / 1000.0
         return datetime.datetime.fromtimestamp(v, tz=timezone.utc).isoformat(timespec='seconds').replace('+00:00', 'Z')
+    
+    # Handle string timestamps that are already in ISO format but missing timezone
+    if isinstance(v, str):
+        iso_pattern = r'^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(\.\d+)?$'
+        if re.match(iso_pattern, v):
+            try:
+                dt = datetime.datetime.fromisoformat(v)
+                return dt.replace(tzinfo=timezone.utc).isoformat(timespec='seconds').replace('+00:00', 'Z')
+            except ValueError:
+                pass
+    
     return str(v)
 
 def _parse_bytes(v):
