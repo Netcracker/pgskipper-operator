@@ -84,6 +84,7 @@ type Patroni struct {
 	Resources                    *v1.ResourceRequirements `json:"resources,omitempty"`
 	Replicas                     int                      `json:"replicas,omitempty"`
 	DockerImage                  string                   `json:"image,omitempty"`
+	DockerImagePullPolicy        v1.PullPolicy            `json:"imagePullPolicy,omitempty"`
 	Storage                      *types.Storage           `json:"storage,omitempty"`
 	Affinity                     v1.Affinity              `json:"affinity,omitempty"`
 	PostgreSQLParams             []string                 `json:"postgreSQLParams,omitempty"`

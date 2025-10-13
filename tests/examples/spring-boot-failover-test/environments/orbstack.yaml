@@ -1,0 +1,5 @@
+# OrbStack environment - for local development with OrbStack
+# OrbStack provides a lightweight Kubernetes cluster on macOS
+
+storageClass: local-path
+dockerContext: orbstack

@@ -1,0 +1,13 @@
+apiVersion: v2
+name: postgresql-failover-test
+description: Spring Boot application for testing PostgreSQL failover and reconnection
+type: application
+version: 1.0.0
+appVersion: "1.0.0"
+keywords:
+  - postgresql
+  - spring-boot
+  - failover
+  - high-availability
+maintainers:
+  - name: PostgreSQL Stability Testing
