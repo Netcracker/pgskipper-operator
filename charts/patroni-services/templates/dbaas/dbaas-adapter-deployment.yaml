@@ -73,6 +73,7 @@ spec:
                 mountPath: /app/extensions
           resources:
 {{ .Values.dbaas.resources | toYaml | indent 12 }}
+  {{- template "postgres-dbaas.woVaultEnvs" . }}
           env:
             - name: POSTGRES_DATABASE
               value: {{ default "postgres" .Values.dbaas.dbName }}
@@ -110,8 +111,10 @@ spec:
           securityContext:
             {{- include "restricted.globalContainerSecurityContext" . | nindent 12 }}
           env:
+{{- template "postgres-dbaas.woVaultEnvs" . }}
             - name: POSTGRES_DATABASE
               value: {{ default "postgres" .Values.dbaas.dbName }}
+{{- template "postgres-dbaas.woVaultEnvsReg" . }}
             - name: DBAAS_ADAPTER_ADDRESS
               value: {{ default (printf "http://dbaas-postgres-adapter.%s:8080" .Release.Namespace) .Values.dbaas.adapter.address }}
             - name: DBAAS_AGGREGATOR_REGISTRATION_ADDRESS

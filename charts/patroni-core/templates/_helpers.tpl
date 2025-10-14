@@ -92,6 +92,15 @@ capabilities:
 {{- end }}
 {{- end -}}
 
+{{- define "patroni-core-operator.woVaultEnvs" }}
+            - name: PAAS_PLATFORM
+              value: "kubernetes"
+            - name: PAAS_VERSION
+              value: "1.14"
+            - name: OPENSHIFT_SERVER
+              value: "https://kubernetes.default:443"
+{{- end }}
+
 
 {{- define "find_image" -}}
   {{- $image := .default -}}

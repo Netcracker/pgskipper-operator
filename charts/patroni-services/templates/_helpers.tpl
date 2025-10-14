@@ -105,6 +105,50 @@ Create the name of the service account to use
 {{- end -}}
 {{- end -}}
 
+{{/*
+With Out Vault operator envs
+*/}}
+{{- define "postgres-operator.woVaultEnvs" }}
+            - name: PAAS_PLATFORM
+              value: "kubernetes"
+            - name: PAAS_VERSION
+              value: "1.14"
+            - name: OPENSHIFT_SERVER
+              value: "https://kubernetes.default:443"
+{{- end }}
+
+{{/*
+With Out Vault env variables for DBaaS
+*/}}
+{{- define "postgres-dbaas.woVaultEnvs" }}
+            - name: POSTGRES_ADMIN_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: postgres-credentials
+                  key: password
+            - name: POSTGRES_ADMIN_USER
+              valueFrom:
+                secretKeyRef:
+                  name: postgres-credentials
+                  key: username
+{{- end }}
+
+{{/*
+With Out Vault env variables for DBaaS
+*/}}
+{{- define "postgres-dbaas.woVaultEnvsReg" }}
+            - name: DBAAS_AGGREGATOR_REGISTRATION_USERNAME
+              valueFrom:
+                secretKeyRef:
+                  name: dbaas-aggregator-registration-credentials
+                  key: username
+            - name: DBAAS_AGGREGATOR_REGISTRATION_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: dbaas-aggregator-registration-credentials
+                  key: password
+{{- end }}
+
 {{- define "find_image" -}}
   {{- $image := .default -}}
 
