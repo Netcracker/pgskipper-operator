@@ -73,8 +73,8 @@ spec:
                 mountPath: /app/extensions
           resources:
 {{ .Values.dbaas.resources | toYaml | indent 12 }}
-  {{- template "postgres-dbaas.woVaultEnvs" . }}
           env:
+  {{- template "postgres-dbaas.woVaultEnvs" . }}
             - name: POSTGRES_DATABASE
               value: {{ default "postgres" .Values.dbaas.dbName }}
             - name: POSTGRES_HOST
