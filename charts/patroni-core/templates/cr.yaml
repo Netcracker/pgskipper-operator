@@ -207,7 +207,6 @@ spec:
     diffRetention: {{ .Values.pgBackRest.diffRetention | default 3 }}
     backupFromStandby: {{ .Values.pgBackRest.backupFromStandby | default false }}
     exporter: {{ .Values.pgBackRest.exporter | default false }}
-    exporterDockerImage: {{ template "find_image" (dict "deployName" "pgbrest_exporter_sidecar" "SERVICE_NAME" "pgbrest_exporter_sidecar" "vals" .Values "default" .Values.pgBackRest.exporterDockerImage) }}
   {{ if .Values.pgBackRest.rwx }}
     rwx:
 {{ toYaml .Values.pgBackRest.rwx | indent 6 }}

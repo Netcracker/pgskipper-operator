@@ -24,10 +24,10 @@ import (
 )
 
 var (
-	pgbackrestExporterLabels = map[string]string{"name": "pgbackrest-exporter", "app": "pgbackrest-exporter"}
+	pgBackRestExporterLabels = map[string]string{"name": "pgbackrest-exporter", "app": "pgbackrest-exporter"}
 )
 
-func NewPgBackRestExporterDeployment(spec netcrackev1.Pgbackrestexporter, sa string) *appsv1.Deployment {
+func NewPgBackRestExporterDeployment(spec netcrackev1.PgBackRestExporter, sa string) *appsv1.Deployment {
 	deploymentName := "pgbackrest-exporter"
 	dockerImage := spec.Image
 
@@ -35,7 +35,7 @@ func NewPgBackRestExporterDeployment(spec netcrackev1.Pgbackrestexporter, sa str
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      deploymentName,
 			Namespace: util.GetNameSpace(),
-			Labels:    util.Merge(pgbackrestExporterLabels, spec.PodLabels),
+			Labels:    util.Merge(pgBackRestExporterLabels, spec.PodLabels),
 		},
 		Spec: appsv1.DeploymentSpec{
 			Strategy: appsv1.DeploymentStrategy{
@@ -46,11 +46,11 @@ func NewPgBackRestExporterDeployment(spec netcrackev1.Pgbackrestexporter, sa str
 				},
 			},
 			Selector: &metav1.LabelSelector{
-				MatchLabels: util.Merge(pgbackrestExporterLabels, spec.PodLabels),
+				MatchLabels: util.Merge(pgBackRestExporterLabels, spec.PodLabels),
 			},
 			Template: corev1.PodTemplateSpec{
 				ObjectMeta: metav1.ObjectMeta{
-					Labels: util.Merge(pgbackrestExporterLabels, spec.PodLabels),
+					Labels: util.Merge(pgBackRestExporterLabels, spec.PodLabels),
 				},
 				Spec: corev1.PodSpec{
 					Volumes:            getVolumes(),

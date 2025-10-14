@@ -445,7 +445,7 @@ func (r *PostgresServiceReconciler) reconcilePostgresServiceCluster(cr *qubershi
 	}
 
 	// reconcile PgBackRest Exporter
-	if cr.Spec.Pgbackrestexporter != nil && cr.Spec.Pgbackrestexporter.Install {
+	if cr.Spec.PgBackRestExporter != nil && cr.Spec.PgBackRestExporter.Install {
 		if err := r.reconcilePgBackRestExporter(cr); err != nil {
 			return err
 		}

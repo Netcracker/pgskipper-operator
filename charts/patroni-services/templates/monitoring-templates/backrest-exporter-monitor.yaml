@@ -1,4 +1,4 @@
-{{- if and (eq (include "monitoring.install" .) "true") (.Values.metricCollector.prometheusMonitoring) }}
+{{- if .Values.pgBackRestExporter.install }}
 apiVersion: monitoring.coreos.com/v1
 kind: ServiceMonitor
 metadata:

@@ -255,7 +255,7 @@ backupDaemon:
 #     region: "us-east-1"
 #     verifySsl: false
 
-pgbackrestexporter:
+pgBackRestExporter:
   install: false
   image: artifactorycn.netcracker.com:17009/pgbackrest_exporter:2.55.1
   resources:

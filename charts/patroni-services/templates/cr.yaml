@@ -406,18 +406,18 @@ spec:
     backupFromStandby: {{ .Values.pgBackRest.backupFromStandby | default false }}
 {{ end }}
 
-{{- if .Values.pgbackrestexporter.install }}
-  pgbackrestexporter:
-    install: {{ .Values.pgbackrestexporter.install }}
-    image: {{ template "find_image" (dict "deployName" "pgbackrestexporter" "SERVICE_NAME" "pgbackrestexporter" "vals" .Values "default" .Values.pgbackrestexporter.image) }}
-    {{- if .Values.pgbackrestexporter.affinity }}
-    affinity: {{ .Values.pgbackrestexporter.affinity | toJson }}
+{{- if .Values.pgBackRestExporter.install }}
+  pgBackRestExporter:
+    install: {{ .Values.pgBackRestExporter.install }}
+    image: {{ template "find_image" (dict "deployName" "pgbackrestexporter" "SERVICE_NAME" "pgbackrestexporter" "vals" .Values "default" .Values.pgBackRestExporter.image) }}
+    {{- if .Values.pgBackRestExporter.affinity }}
+    affinity: {{ .Values.pgBackRestExporter.affinity | toJson }}
     {{- else if .Values.affinity }}
     affinity: {{ .Values.affinity | toJson }}
     {{- end }}
-    {{- if .Values.pgbackrestexporter.podLabels }}
+    {{- if .Values.pgBackRestExporter.podLabels }}
     podLabels:
-{{ toYaml .Values.pgbackrestexporter.podLabels | nindent 6 }}
+{{ toYaml .Values.pgBackRestExporter.podLabels | nindent 6 }}
 {{- include "kubernetes.labels" . | nindent 6 }}
     {{- else if .Values.podLabels }}
     podLabels:
@@ -428,10 +428,10 @@ spec:
       {{ include "kubernetes.labels" . | nindent 6 }}
     {{- end }}
     resources:
-{{ toYaml .Values.pgbackrestexporter.resources | indent 6 }}
+{{ toYaml .Values.pgBackRestExporter.resources | indent 6 }}
     securityContext:
       {{- include "restricted.globalPodSecurityContext" . | nindent 6 }}
-      {{- with .Values.pgbackrestexporter.securityContext }}
+      {{- with .Values.pgBackRestExporter.securityContext }}
       {{- toYaml . | nindent 6 -}}
       {{- end }}
 {{- end }}

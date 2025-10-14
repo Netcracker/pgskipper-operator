@@ -42,7 +42,7 @@ type PatroniServicesSpec struct {
 	QueryExporter         QueryExporter            `json:"queryExporter,omitempty"`
 	Tls                   *Tls                     `json:"tls,omitempty"`
 	PgBackRest            *PgBackRest              `json:"pgBackRest,omitempty"`
-	Pgbackrestexporter    *Pgbackrestexporter      `json:"pgbackrestexporter,omitempty"`
+	PgBackRestExporter    *PgBackRestExporter      `json:"pgBackRestExporter,omitempty"`
 	InstallationTimestamp string                   `json:"installationTimestamp,omitempty"`
 	PrivateRegistry       PrivateRegistry          `json:"privateRegistry,omitempty"`
 }
@@ -239,7 +239,7 @@ type PgBackRest struct {
 	BackupFromStandby bool   `json:"backupFromStandby,omitempty"`
 }
 
-type Pgbackrestexporter struct {
+type PgBackRestExporter struct {
 	Install         bool                    `json:"install,omitempty"`
 	Image           string                  `json:"image,omitempty"`
 	Resources       v1.ResourceRequirements `json:"resources,omitempty"`
