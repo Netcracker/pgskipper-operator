@@ -652,7 +652,7 @@ func (r *PatroniReconciler) fixCollationVersionForDB(pgClient *pgClient.Postgres
 }
 
 func fixBrokenIndexes(pgClient *pgClient.PostgresClient, db string, brokenIndNames []string) {
-	logger.Info(fmt.Sprintf("Broken indexes found for db: %s", db))
+	logger.Warn(fmt.Sprintf("Broken indexes found for db: %s", db))
 	indexesFixed := true
 	for _, BrokenIndName := range brokenIndNames {
 		dropIndexQuery := fmt.Sprintf("DROP INDEX IF EXISTS \"%s\"", BrokenIndName)
@@ -679,7 +679,7 @@ func fixBrokenIndexes(pgClient *pgClient.PostgresClient, db string, brokenIndNam
 }
 
 func findBrokenIndexes(pgClient *pgClient.PostgresClient, db string) ([]string, error) {
-	logger.Info(fmt.Sprintf("check broken indexes for db: %s", db))
+	logger.Debug(fmt.Sprintf("check broken indexes for db: %s", db))
 
 	brokenIndexQuery := `
 		SELECT 
