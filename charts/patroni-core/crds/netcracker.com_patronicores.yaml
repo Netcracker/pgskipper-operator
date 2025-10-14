@@ -4,9 +4,9 @@ kind: CustomResourceDefinition
 metadata:
   annotations:
     controller-gen.kubebuilder.io/version: v0.19.0
-  name: patronicores.qubership.org
+  name: patronicores.netcracker.com
 spec:
-  group: qubership.org
+  group: netcracker.com
   names:
     kind: PatroniCore
     listKind: PatroniCoreList
