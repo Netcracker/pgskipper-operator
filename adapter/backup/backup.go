@@ -423,11 +423,19 @@ func mapStatus(daemonStatus string) dao.DatabaseAdapterBackupAdapterTrackStatus 
 }
 
 func (ba *BackupAdapter) CollectBackupV2(ctx context.Context, storageName string, blobPath string, databaseNames []string) (*dao.BackupResponse, bool) {
-	return ba.DefaultBackupService.CollectBackupV2(ctx, storageName, blobPath, databaseNames)
+	response, found := ba.DefaultBackupService.CollectBackupV2(ctx, storageName, blobPath, databaseNames)
+	if found {
+		convertBackupResponseStatus(response)
+	}
+	return response, found
 }
 
 func (ba *BackupAdapter) RestoreBackupV2(ctx context.Context, backupId string, restoreRequest dao.CreateRestoreRequest, dryRun bool) (*dao.RestoreResponse, bool) {
-	return ba.DefaultBackupService.RestoreBackupV2(ctx, backupId, restoreRequest, dryRun)
+	response, found := ba.DefaultBackupService.RestoreBackupV2(ctx, backupId, restoreRequest, dryRun)
+	if found {
+		convertRestoreResponseStatus(response)
+	}
+	return response, found
 }
 
 func (ba *BackupAdapter) EvictBackupV2(ctx context.Context, backupId string, blobPath string) bool {
@@ -439,9 +447,52 @@ func (ba *BackupAdapter) EvictRestoreV2(ctx context.Context, restoreId string, b
 }
 
 func (ba *BackupAdapter) TrackBackupV2(ctx context.Context, backupId string, blobPath string) (*dao.BackupResponse, bool) {
-	return ba.DefaultBackupService.TrackBackupV2(ctx, backupId, blobPath)
+	response, found := ba.DefaultBackupService.TrackBackupV2(ctx, backupId, blobPath)
+	if found {
+		convertBackupResponseStatus(response)
+	}
+	return response, found
 }
 
 func (ba *BackupAdapter) TrackRestoreV2(ctx context.Context, restoreId string, blobPath string) (*dao.RestoreResponse, bool) {
-	return ba.DefaultBackupService.TrackRestoreV2(ctx, restoreId, blobPath)
+	response, found := ba.DefaultBackupService.TrackRestoreV2(ctx, restoreId, blobPath)
+	if found {
+		convertRestoreResponseStatus(response)
+	}
+	return response, found
+}
+
+func convertBackupResponseStatus(response *dao.BackupResponse) {
+	if response != nil {
+		response.Status = convertBackupResponse(response.Status)
+		for i, database := range response.Databases {
+			database.Status = convertBackupResponse(database.Status)
+			response.Databases[i] = database
+		}
+	}
+}
+
+func convertRestoreResponseStatus(response *dao.RestoreResponse) {
+	if response != nil {
+		response.Status = convertBackupResponse(response.Status)
+		for i, database := range response.Databases {
+			database.Status = convertBackupResponse(database.Status)
+			response.Databases[i] = database
+		}
+	}
+}
+
+func convertBackupResponse(status dao.BackupRestoreStatus) dao.BackupRestoreStatus {
+	switch status {
+	case "Successful":
+		return dao.CompletedStatus
+	case "Failed", "Canceled", "Unknown":
+		return dao.FailedStatus
+	case "In progress":
+		return dao.InProgressStatus
+	case "Planned":
+		return dao.NotStartedStatus
+	default:
+		return status
+	}
 }
