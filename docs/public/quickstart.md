@@ -64,11 +64,11 @@ When setup is complete, we can proceed to install the postgres operator.
 
 Manually install CRD for Patroni-Core:
 ```
-kubectl create -f ./charts/patroni-core/crds/qubership.org_patronicores.yaml
+kubectl create -f ./charts/patroni-core/crds/netcracker.com_patronicores.yaml
 ```
 Manually install CRD for Postgres-Services
 ```
-kubectl create -f ./charts/patroni-services/crds/qubership.org_patroniservices.yaml
+kubectl create -f ./charts/patroni-services/crds/netcracker.com_patroniservices.yaml
 ```
 
 Install Patroni-Core Operator via Helm by following command:

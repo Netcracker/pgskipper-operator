@@ -99,12 +99,12 @@ func NewPatroniCoreReconciler(client client.Client, scheme *runtime.Scheme) *Pat
 
 }
 
-//+kubebuilder:rbac:groups=qubership.org,resources=patronicore,verbs=get;list;watch;create;update;patch;delete
-//+kubebuilder:rbac:groups=qubership.org,resources=patronicore/status,verbs=get;update;patch
-//+kubebuilder:rbac:groups=qubership.org,resources=patronicore/finalizers,verbs=update
-//+kubebuilder:rbac:groups=qubership.org,resources=postgresservices,verbs=get;list;watch;create;update;patch;delete
-//+kubebuilder:rbac:groups=qubership.org,resources=postgresservices/status,verbs=get;update;patch
-//+kubebuilder:rbac:groups=qubership.org,resources=postgresservices/finalizers,verbs=update
+//+kubebuilder:rbac:groups=netcracker.com,resources=patronicore,verbs=get;list;watch;create;update;patch;delete
+//+kubebuilder:rbac:groups=netcracker.com,resources=patronicore/status,verbs=get;update;patch
+//+kubebuilder:rbac:groups=netcracker.com,resources=patronicore/finalizers,verbs=update
+//+kubebuilder:rbac:groups=netcracker.com,resources=postgresservices,verbs=get;list;watch;create;update;patch;delete
+//+kubebuilder:rbac:groups=netcracker.com,resources=postgresservices/status,verbs=get;update;patch
+//+kubebuilder:rbac:groups=netcracker.com,resources=postgresservices/finalizers,verbs=update
 
 // Reconcile is part of the main kubernetes reconciliation loop which aims to
 // move the current state of the cluster closer to the desired state.
