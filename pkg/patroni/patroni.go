@@ -331,11 +331,33 @@ func updateStandbyClusterSettings(configMap *corev1.ConfigMap, settings interfac
 	err := yaml.Unmarshal([]byte(configMap.Data[configMapKey]), &config)
 	if err != nil {
 		logger.Error("Could not unmarshal patroni config map", zap.Error(err))
+		return configMap
 	}
-	config["bootstrap"].(map[interface{}]interface{})["dcs"].(map[interface{}]interface{})["standby_cluster"] = settings
+
+	// Validate config structure exists before type assertion
+	if config == nil {
+		logger.Error("Config map is nil after unmarshal")
+		return configMap
+	}
+
+	bootstrap, ok := config["bootstrap"].(map[interface{}]interface{})
+	if !ok || bootstrap == nil {
+		logger.Error("Config map missing 'bootstrap' section or wrong type")
+		return configMap
+	}
+
+	dcs, ok := bootstrap["dcs"].(map[interface{}]interface{})
+	if !ok || dcs == nil {
+		logger.Error("Config map missing 'bootstrap.dcs' section or wrong type")
+		return configMap
+	}
+
+	dcs["standby_cluster"] = settings
+
 	result, err := yaml.Marshal(config)
 	if err != nil {
 		logger.Error("Could not marshal patroni config map", zap.Error(err))
+		return configMap
 	}
 	configMap.Data[configMapKey] = string(result)
 	return configMap
