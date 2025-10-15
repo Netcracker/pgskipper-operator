@@ -38,7 +38,7 @@ func NewPgBackRestExporterReconciler(cr *netcrackev1.PatroniServices, helper *he
 
 func (r *PgBackRestExporterReconciler) Reconcile() error {
 	cr := r.cr
-	pgBackRestExporterSpec := *cr.Spec.Pgbackrestexporter
+	pgBackRestExporterSpec := *cr.Spec.PgBackRestExporter
 
 	deployment := pgbackrestexporter.NewPgBackRestExporterDeployment(pgBackRestExporterSpec, cr.Spec.ServiceAccountName)
 
