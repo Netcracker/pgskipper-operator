@@ -1,47 +1,4 @@
 {
-  "__inputs": [
-    {
-      "name": "DS_PROMETHEUS",
-      "label": "Prometheus",
-      "description": "",
-      "type": "datasource",
-      "pluginId": "prometheus",
-      "pluginName": "Prometheus"
-    }
-  ],
-  "__elements": {},
-  "__requires": [
-    {
-      "type": "grafana",
-      "id": "grafana",
-      "name": "Grafana",
-      "version": "11.5.1"
-    },
-    {
-      "type": "datasource",
-      "id": "prometheus",
-      "name": "Prometheus",
-      "version": "1.0.0"
-    },
-    {
-      "type": "panel",
-      "id": "stat",
-      "name": "Stat",
-      "version": ""
-    },
-    {
-      "type": "panel",
-      "id": "table",
-      "name": "Table",
-      "version": ""
-    },
-    {
-      "type": "panel",
-      "id": "timeseries",
-      "name": "Time series",
-      "version": ""
-    }
-  ],
   "annotations": {
     "list": [
       {
@@ -68,7 +25,7 @@
   "editable": true,
   "fiscalYearStartMonth": 0,
   "graphTooltip": 0,
-  "id": null,
+  "id": 244,
   "links": [
     {
       "asDropdown": false,
@@ -112,7 +69,7 @@
     {
       "datasource": {
         "type": "prometheus",
-        "uid": "${DS_PROMETHEUS}"
+        "uid": "${datasource}"
       },
       "description": "Count of selected stanzas.",
       "fieldConfig": {
@@ -125,8 +82,7 @@
             "mode": "absolute",
             "steps": [
               {
-                "color": "green",
-                "value": null
+                "color": "green"
               }
             ]
           }
@@ -157,15 +113,15 @@
         "textMode": "value",
         "wideLayout": true
       },
-      "pluginVersion": "11.5.1",
+      "pluginVersion": "11.6.5",
       "targets": [
         {
           "datasource": {
             "type": "prometheus",
-            "uid": "${DS_PROMETHEUS}"
+            "uid": "${datasource}"
           },
           "editorMode": "code",
-          "expr": "sum(count by (stanza)(pgbackrest_stanza_status{stanza=~\"$stanza\"}))",
+          "expr": "sum(count by (stanza)(pgbackrest_stanza_status{stanza=~\"$stanza\", cluster=\"$cluster\", namespace=\"$namespace\"}))",
           "legendFormat": "__auto",
           "range": true,
           "refId": "A"
@@ -177,7 +133,7 @@
     {
       "datasource": {
         "type": "prometheus",
-        "uid": "${DS_PROMETHEUS}"
+        "uid": "${datasource}"
       },
       "description": "Count of all backups for selected stanzas and repos.",
       "fieldConfig": {
@@ -190,8 +146,7 @@
             "mode": "absolute",
             "steps": [
               {
-                "color": "green",
-                "value": null
+                "color": "green"
               }
             ]
           }
@@ -222,15 +177,15 @@
         "textMode": "value",
         "wideLayout": true
       },
-      "pluginVersion": "11.5.1",
+      "pluginVersion": "11.6.5",
       "targets": [
         {
           "datasource": {
             "type": "prometheus",
-            "uid": "${DS_PROMETHEUS}"
+            "uid": "${datasource}"
           },
           "editorMode": "code",
-          "expr": "sum(count by (stanza) (pgbackrest_backup_info{stanza=~\"$stanza\", repo_key=~\"$repo_key\"}))",
+          "expr": "sum(count by (stanza) (pgbackrest_backup_info{stanza=~\"$stanza\", repo_key=~\"$repo_key\", cluster=\"$cluster\", namespace=\"$namespace\"}))",
           "legendFormat": "__auto",
           "range": true,
           "refId": "A"
@@ -242,7 +197,7 @@
     {
       "datasource": {
         "type": "prometheus",
-        "uid": "${DS_PROMETHEUS}"
+        "uid": "${datasource}"
       },
       "description": "Number of full backups for selected stanzas and repos.",
       "fieldConfig": {
@@ -255,8 +210,7 @@
             "mode": "absolute",
             "steps": [
               {
-                "color": "green",
-                "value": null
+                "color": "green"
               }
             ]
           }
@@ -287,15 +241,15 @@
         "textMode": "value",
         "wideLayout": true
       },
-      "pluginVersion": "11.5.1",
+      "pluginVersion": "11.6.5",
       "targets": [
         {
           "datasource": {
             "type": "prometheus",
-            "uid": "${DS_PROMETHEUS}"
+            "uid": "${datasource}"
           },
           "editorMode": "code",
-          "expr": "sum(count by (stanza) (pgbackrest_backup_info{stanza=~\"$stanza\", repo_key=~\"$repo_key\", backup_type=\"full\"}))",
+          "expr": "sum(count by (stanza) (pgbackrest_backup_info{stanza=~\"$stanza\", repo_key=~\"$repo_key\", backup_type=\"full\", cluster=\"$cluster\", namespace=\"$namespace\"}))",
           "legendFormat": "__auto",
           "range": true,
           "refId": "A"
@@ -307,7 +261,7 @@
     {
       "datasource": {
         "type": "prometheus",
-        "uid": "${DS_PROMETHEUS}"
+        "uid": "${datasource}"
       },
       "description": "Number of diff backups for selected stanzas and repos.",
       "fieldConfig": {
@@ -320,8 +274,7 @@
             "mode": "absolute",
             "steps": [
               {
-                "color": "green",
-                "value": null
+                "color": "green"
               }
             ]
           }
@@ -352,15 +305,15 @@
         "textMode": "value",
         "wideLayout": true
       },
-      "pluginVersion": "11.5.1",
+      "pluginVersion": "11.6.5",
       "targets": [
         {
           "datasource": {
             "type": "prometheus",
-            "uid": "${DS_PROMETHEUS}"
+            "uid": "${datasource}"
           },
           "editorMode": "code",
-          "expr": "sum(count by (stanza) (pgbackrest_backup_info{stanza=~\"$stanza\", repo_key=~\"$repo_key\", backup_type=\"diff\"}))",
+          "expr": "sum(count by (stanza) (pgbackrest_backup_info{stanza=~\"$stanza\", repo_key=~\"$repo_key\", backup_type=\"diff\", cluster=\"$cluster\", namespace=\"$namespace\"}))",
           "legendFormat": "__auto",
           "range": true,
           "refId": "A"
@@ -372,7 +325,7 @@
     {
       "datasource": {
         "type": "prometheus",
-        "uid": "${DS_PROMETHEUS}"
+        "uid": "${datasource}"
       },
       "description": "Number of incr backups for selected stanzas and repos.",
       "fieldConfig": {
@@ -385,8 +338,7 @@
             "mode": "absolute",
             "steps": [
               {
-                "color": "green",
-                "value": null
+                "color": "green"
               }
             ]
           }
@@ -417,15 +369,15 @@
         "textMode": "value",
         "wideLayout": true
       },
-      "pluginVersion": "11.5.1",
+      "pluginVersion": "11.6.5",
       "targets": [
         {
           "datasource": {
             "type": "prometheus",
-            "uid": "${DS_PROMETHEUS}"
+            "uid": "${datasource}"
           },
           "editorMode": "code",
-          "expr": "sum(count by (stanza) (pgbackrest_backup_info{stanza=~\"$stanza\", repo_key=~\"$repo_key\", backup_type=\"incr\"}))",
+          "expr": "sum(count by (stanza) (pgbackrest_backup_info{stanza=~\"$stanza\", repo_key=~\"$repo_key\", backup_type=\"incr\", cluster=\"$cluster\", namespace=\"$namespace\"}))",
           "legendFormat": "__auto",
           "range": true,
           "refId": "A"
@@ -437,7 +389,7 @@
     {
       "datasource": {
         "type": "prometheus",
-        "uid": "${DS_PROMETHEUS}"
+        "uid": "PC3E95692D54ABCC0"
       },
       "description": "Number of backups with errors for selected stanzas and repos.",
       "fieldConfig": {
@@ -450,8 +402,7 @@
             "mode": "absolute",
             "steps": [
               {
-                "color": "green",
-                "value": null
+                "color": "green"
               },
               {
                 "color": "red",
@@ -486,7 +437,7 @@
         "textMode": "value",
         "wideLayout": true
       },
-      "pluginVersion": "11.5.1",
+      "pluginVersion": "11.6.5",
       "targets": [
         {
           "datasource": {
@@ -494,7 +445,7 @@
             "uid": "${DS_PROMETHEUS}"
           },
           "editorMode": "code",
-          "expr": "sum(pgbackrest_backup_error_status{stanza=~\"$stanza\", repo_key=~\"$repo_key\"})",
+          "expr": "sum(pgbackrest_backup_error_status{stanza=~\"$stanza\", repo_key=~\"$repo_key\", cluster=\"$cluster\", namespace=\"$namespace\"})",
           "legendFormat": "__auto",
           "range": true,
           "refId": "A"
@@ -506,7 +457,7 @@
     {
       "datasource": {
         "type": "prometheus",
-        "uid": "${DS_PROMETHEUS}"
+        "uid": "${datasource}"
       },
       "description": "Current stanza and active operations statuses for selected stanzas.",
       "fieldConfig": {
@@ -524,8 +475,7 @@
             "mode": "absolute",
             "steps": [
               {
-                "color": "text",
-                "value": null
+                "color": "text"
               }
             ]
           }
@@ -577,8 +527,7 @@
                   "mode": "absolute",
                   "steps": [
                     {
-                      "color": "green",
-                      "value": null
+                      "color": "green"
                     },
                     {
                       "color": "red",
@@ -732,8 +681,7 @@
                   "mode": "absolute",
                   "steps": [
                     {
-                      "color": "orange",
-                      "value": null
+                      "color": "orange"
                     },
                     {
                       "color": "purple",
@@ -797,8 +745,7 @@
                   "mode": "absolute",
                   "steps": [
                     {
-                      "color": "purple",
-                      "value": null
+                      "color": "purple"
                     },
                     {
                       "color": "green",
@@ -840,16 +787,16 @@
           }
         ]
       },
-      "pluginVersion": "11.5.1",
+      "pluginVersion": "11.6.5",
       "targets": [
         {
           "datasource": {
             "type": "prometheus",
-            "uid": "${DS_PROMETHEUS}"
+            "uid": "${datasource}"
           },
           "editorMode": "code",
           "exemplar": false,
-          "expr": "pgbackrest_stanza_status{stanza=~\"$stanza\"}",
+          "expr": "pgbackrest_stanza_status{stanza=~\"$stanza\", cluster=\"$cluster\", namespace=\"$namespace\"}",
           "format": "table",
           "instant": true,
           "interval": "",
@@ -859,7 +806,7 @@
         {
           "datasource": {
             "type": "prometheus",
-            "uid": "${DS_PROMETHEUS}"
+            "uid": "${datasource}"
           },
           "editorMode": "code",
           "exemplar": false,
@@ -873,7 +820,7 @@
         {
           "datasource": {
             "type": "prometheus",
-            "uid": "${DS_PROMETHEUS}"
+            "uid": "${datasource}"
           },
           "editorMode": "code",
           "exemplar": false,
@@ -887,7 +834,7 @@
         {
           "datasource": {
             "type": "prometheus",
-            "uid": "${DS_PROMETHEUS}"
+            "uid": "${datasource}"
           },
           "editorMode": "code",
           "exemplar": false,
@@ -902,7 +849,7 @@
         {
           "datasource": {
             "type": "prometheus",
-            "uid": "${DS_PROMETHEUS}"
+            "uid": "${datasource}"
           },
           "editorMode": "code",
           "exemplar": false,
@@ -917,7 +864,7 @@
         {
           "datasource": {
             "type": "prometheus",
-            "uid": "${DS_PROMETHEUS}"
+            "uid": "${datasource}"
           },
           "editorMode": "code",
           "exemplar": false,
@@ -983,7 +930,7 @@
     {
       "datasource": {
         "type": "prometheus",
-        "uid": "${DS_PROMETHEUS}"
+        "uid": "${datasource}"
       },
       "description": "Current repository status for selected stanzas and repos.",
       "fieldConfig": {
@@ -1004,8 +951,7 @@
             "mode": "absolute",
             "steps": [
               {
-                "color": "text",
-                "value": null
+                "color": "text"
               }
             ]
           }
@@ -1023,8 +969,7 @@
                   "mode": "absolute",
                   "steps": [
                     {
-                      "color": "green",
-                      "value": null
+                      "color": "green"
                     },
                     {
                       "color": "red",
@@ -1145,16 +1090,16 @@
           }
         ]
       },
-      "pluginVersion": "11.5.1",
+      "pluginVersion": "11.6.5",
       "targets": [
         {
           "datasource": {
             "type": "prometheus",
-            "uid": "${DS_PROMETHEUS}"
+            "uid": "${datasource}"
           },
           "editorMode": "code",
           "exemplar": false,
-          "expr": "pgbackrest_repo_status{stanza=~\"$stanza\", repo_key=~\"$repo_key\"}",
+          "expr": "pgbackrest_repo_status{stanza=~\"$stanza\", repo_key=~\"$repo_key\", cluster=\"$cluster\", namespace=\"$namespace\"}",
           "format": "table",
           "instant": true,
           "interval": "",
@@ -1204,7 +1149,7 @@
     {
       "datasource": {
         "type": "prometheus",
-        "uid": "${DS_PROMETHEUS}"
+        "uid": "${datasource}"
       },
       "description": "Number of backups for selected stanzas and repos.",
       "fieldConfig": {
@@ -1254,8 +1199,7 @@
             "mode": "absolute",
             "steps": [
               {
-                "color": "green",
-                "value": null
+                "color": "green"
               }
             ]
           },
@@ -1287,15 +1231,15 @@
           "sort": "none"
         }
       },
-      "pluginVersion": "11.5.1",
+      "pluginVersion": "11.6.5",
       "targets": [
         {
           "datasource": {
             "type": "prometheus",
-            "uid": "${DS_PROMETHEUS}"
+            "uid": "${datasource}"
           },
           "editorMode": "code",
-          "expr": "count by (stanza) (pgbackrest_backup_info{stanza=~\"$stanza\", repo_key=~\"$repo_key\"})",
+          "expr": "count by (stanza) (pgbackrest_backup_info{stanza=~\"$stanza\", repo_key=~\"$repo_key\", cluster=\"$cluster\", namespace=\"$namespace\"})",
           "legendFormat": "{{stanza}}",
           "range": true,
           "refId": "A"
@@ -1307,7 +1251,7 @@
     {
       "datasource": {
         "type": "prometheus",
-        "uid": "${DS_PROMETHEUS}"
+        "uid": "${datasource}"
       },
       "description": "Current WAL archive status for selected stanzas and repos.",
       "fieldConfig": {
@@ -1328,8 +1272,7 @@
             "mode": "absolute",
             "steps": [
               {
-                "color": "text",
-                "value": null
+                "color": "text"
               }
             ]
           }
@@ -1356,8 +1299,7 @@
                   "mode": "absolute",
                   "steps": [
                     {
-                      "color": "orange",
-                      "value": null
+                      "color": "orange"
                     },
                     {
                       "color": "red",
@@ -1474,16 +1416,16 @@
           }
         ]
       },
-      "pluginVersion": "11.5.1",
+      "pluginVersion": "11.6.5",
       "targets": [
         {
           "datasource": {
             "type": "prometheus",
-            "uid": "${DS_PROMETHEUS}"
+            "uid": "${datasource}"
           },
           "editorMode": "code",
           "exemplar": false,
-          "expr": "pgbackrest_wal_archive_status{stanza=~\"$stanza\", repo_key=~\"$repo_key\"}",
+          "expr": "pgbackrest_wal_archive_status{stanza=~\"$stanza\", repo_key=~\"$repo_key\", cluster=\"$cluster\", namespace=\"$namespace\"}",
           "format": "table",
           "instant": true,
           "interval": "",
@@ -1536,7 +1478,7 @@
     {
       "datasource": {
         "type": "prometheus",
-        "uid": "${DS_PROMETHEUS}"
+        "uid": "${datasource}"
       },
       "description": "Average full uncompressed size of the database for selected stanzas and repos.",
       "fieldConfig": {
@@ -1586,8 +1528,7 @@
             "mode": "absolute",
             "steps": [
               {
-                "color": "green",
-                "value": null
+                "color": "green"
               }
             ]
           },
@@ -1619,15 +1560,15 @@
           "sort": "none"
         }
       },
-      "pluginVersion": "11.5.1",
+      "pluginVersion": "11.6.5",
       "targets": [
         {
           "datasource": {
             "type": "prometheus",
-            "uid": "${DS_PROMETHEUS}"
+            "uid": "${datasource}"
           },
           "editorMode": "code",
-          "expr": "avg by (stanza) (pgbackrest_backup_size_bytes{stanza=~\"$stanza\", repo_key=~\"$repo_key\"})",
+          "expr": "avg by (stanza) (pgbackrest_backup_size_bytes{stanza=~\"$stanza\", repo_key=~\"$repo_key\", cluster=\"$cluster\", namespace=\"$namespace\"})",
           "legendFormat": "{{ stanza }}",
           "range": true,
           "refId": "A"
@@ -1639,7 +1580,7 @@
     {
       "datasource": {
         "type": "prometheus",
-        "uid": "${DS_PROMETHEUS}"
+        "uid": "${datasource}"
       },
       "description": "Last backup error status and duration for selected stanzas.",
       "fieldConfig": {
@@ -1660,8 +1601,7 @@
             "mode": "absolute",
             "steps": [
               {
-                "color": "text",
-                "value": null
+                "color": "text"
               }
             ]
           }
@@ -1688,8 +1628,7 @@
                   "mode": "absolute",
                   "steps": [
                     {
-                      "color": "orange",
-                      "value": null
+                      "color": "orange"
                     },
                     {
                       "color": "green",
@@ -1823,16 +1762,16 @@
           }
         ]
       },
-      "pluginVersion": "11.5.1",
+      "pluginVersion": "11.6.5",
       "targets": [
         {
           "datasource": {
             "type": "prometheus",
-            "uid": "${DS_PROMETHEUS}"
+            "uid": "${datasource}"
           },
           "editorMode": "code",
           "exemplar": false,
-          "expr": "pgbackrest_backup_last_error_status{stanza=~\"$stanza\"}",
+          "expr": "pgbackrest_backup_last_error_status{stanza=~\"$stanza\", cluster=\"$cluster\", namespace=\"$namespace\"}",
           "format": "table",
           "instant": true,
           "interval": "",
@@ -1842,7 +1781,7 @@
         {
           "datasource": {
             "type": "prometheus",
-            "uid": "${DS_PROMETHEUS}"
+            "uid": "${datasource}"
           },
           "editorMode": "code",
           "exemplar": false,
@@ -1908,7 +1847,7 @@
     {
       "datasource": {
         "type": "prometheus",
-        "uid": "${DS_PROMETHEUS}"
+        "uid": "${datasource}"
       },
       "description": "Total size occupied by backups in the repository for selected stanzas and repos.",
       "fieldConfig": {
@@ -1958,8 +1897,7 @@
             "mode": "absolute",
             "steps": [
               {
-                "color": "green",
-                "value": null
+                "color": "green"
               }
             ]
           },
@@ -1991,15 +1929,15 @@
           "sort": "none"
         }
       },
-      "pluginVersion": "11.5.1",
+      "pluginVersion": "11.6.5",
       "targets": [
         {
           "datasource": {
             "type": "prometheus",
-            "uid": "${DS_PROMETHEUS}"
+            "uid": "${datasource}"
           },
           "editorMode": "code",
-          "expr": "sum by (stanza) (pgbackrest_backup_repo_delta_bytes{stanza=~\"$stanza\", repo_key=~\"$repo_key\"})",
+          "expr": "sum by (stanza) (pgbackrest_backup_repo_delta_bytes{stanza=~\"$stanza\", repo_key=~\"$repo_key\", cluster=\"$cluster\", namespace=\"$namespace\"})",
           "legendFormat": "{{ stanza }}",
           "range": true,
           "refId": "A"
@@ -2024,7 +1962,7 @@
     {
       "datasource": {
         "type": "prometheus",
-        "uid": "${DS_PROMETHEUS}"
+        "uid": "${datasource}"
       },
       "description": "Average last full backup duration for selected stanzas.",
       "fieldConfig": {
@@ -2074,8 +2012,7 @@
             "mode": "absolute",
             "steps": [
               {
-                "color": "green",
-                "value": null
+                "color": "green"
               }
             ]
           },
@@ -2107,15 +2044,15 @@
           "sort": "none"
         }
       },
-      "pluginVersion": "11.5.1",
+      "pluginVersion": "11.6.5",
       "targets": [
         {
           "datasource": {
             "type": "prometheus",
-            "uid": "${DS_PROMETHEUS}"
+            "uid": "${datasource}"
           },
           "editorMode": "code",
-          "expr": "avg by (stanza) (pgbackrest_backup_last_duration_seconds{stanza=~\"$stanza\", backup_type=\"full\"})",
+          "expr": "avg by (stanza) (pgbackrest_backup_last_duration_seconds{stanza=~\"$stanza\", backup_type=\"full\", cluster=\"$cluster\", namespace=\"$namespace\"})",
           "legendFormat": "{{stanza}}",
           "range": true,
           "refId": "A"
@@ -2127,7 +2064,7 @@
     {
       "datasource": {
         "type": "prometheus",
-        "uid": "${DS_PROMETHEUS}"
+        "uid": "${datasource}"
       },
       "description": "Average last differential backup duration for selected stanzas.",
       "fieldConfig": {
@@ -2177,8 +2114,7 @@
             "mode": "absolute",
             "steps": [
               {
-                "color": "green",
-                "value": null
+                "color": "green"
               }
             ]
           },
@@ -2210,15 +2146,15 @@
           "sort": "none"
         }
       },
-      "pluginVersion": "11.5.1",
+      "pluginVersion": "11.6.5",
       "targets": [
         {
           "datasource": {
             "type": "prometheus",
-            "uid": "${DS_PROMETHEUS}"
+            "uid": "${datasource}"
           },
           "editorMode": "code",
-          "expr": "avg by (stanza) (pgbackrest_backup_last_duration_seconds{stanza=~\"$stanza\", backup_type=\"diff\"})",
+          "expr": "avg by (stanza) (pgbackrest_backup_last_duration_seconds{stanza=~\"$stanza\", backup_type=\"diff\", cluster=\"$cluster\", namespace=\"$namespace\"})",
           "legendFormat": "{{stanza}}",
           "range": true,
           "refId": "A"
@@ -2230,7 +2166,7 @@
     {
       "datasource": {
         "type": "prometheus",
-        "uid": "${DS_PROMETHEUS}"
+        "uid": "${datasource}"
       },
       "description": "Average last incremental backup duration for selected stanzas.",
       "fieldConfig": {
@@ -2280,8 +2216,7 @@
             "mode": "absolute",
             "steps": [
               {
-                "color": "green",
-                "value": null
+                "color": "green"
               }
             ]
           },
@@ -2313,15 +2248,15 @@
           "sort": "none"
         }
       },
-      "pluginVersion": "11.5.1",
+      "pluginVersion": "11.6.5",
       "targets": [
         {
           "datasource": {
             "type": "prometheus",
-            "uid": "${DS_PROMETHEUS}"
+            "uid": "${datasource}"
           },
           "editorMode": "code",
-          "expr": "avg by (stanza) (pgbackrest_backup_last_duration_seconds{stanza=~\"$stanza\", backup_type=\"incr\"})",
+          "expr": "avg by (stanza) (pgbackrest_backup_last_duration_seconds{stanza=~\"$stanza\", backup_type=\"incr\", cluster=\"$cluster\", namespace=\"$namespace\"})",
           "legendFormat": "{{stanza}}",
           "range": true,
           "refId": "A"
@@ -2333,7 +2268,7 @@
     {
       "datasource": {
         "type": "prometheus",
-        "uid": "${DS_PROMETHEUS}"
+        "uid": "${datasource}"
       },
       "description": "Average size occupied by last full backup in the repository for selected stanzas.",
       "fieldConfig": {
@@ -2383,8 +2318,7 @@
             "mode": "absolute",
             "steps": [
               {
-                "color": "green",
-                "value": null
+                "color": "green"
               }
             ]
           },
@@ -2416,15 +2350,15 @@
           "sort": "none"
         }
       },
-      "pluginVersion": "11.5.1",
+      "pluginVersion": "11.6.5",
       "targets": [
         {
           "datasource": {
             "type": "prometheus",
-            "uid": "${DS_PROMETHEUS}"
+            "uid": "${datasource}"
           },
           "editorMode": "code",
-          "expr": "avg by (stanza) (pgbackrest_backup_last_repo_delta_bytes{stanza=~\"$stanza\", backup_type=~\"full\"})",
+          "expr": "avg by (stanza) (pgbackrest_backup_last_repo_delta_bytes{stanza=~\"$stanza\", backup_type=~\"full\", cluster=\"$cluster\", namespace=\"$namespace\"})",
           "legendFormat": "{{stanza}}",
           "range": true,
           "refId": "A"
@@ -2436,7 +2370,7 @@
     {
       "datasource": {
         "type": "prometheus",
-        "uid": "${DS_PROMETHEUS}"
+        "uid": "${datasource}"
       },
       "description": "Average size occupied by last differential backup in the repository for selected stanzas.",
       "fieldConfig": {
@@ -2486,8 +2420,7 @@
             "mode": "absolute",
             "steps": [
               {
-                "color": "green",
-                "value": null
+                "color": "green"
               }
             ]
           },
@@ -2519,15 +2452,15 @@
           "sort": "none"
         }
       },
-      "pluginVersion": "11.5.1",
+      "pluginVersion": "11.6.5",
       "targets": [
         {
           "datasource": {
             "type": "prometheus",
-            "uid": "${DS_PROMETHEUS}"
+            "uid": "${datasource}"
           },
           "editorMode": "code",
-          "expr": "avg by (stanza) (pgbackrest_backup_last_repo_delta_bytes{stanza=~\"$stanza\", backup_type=\"diff\"})",
+          "expr": "avg by (stanza) (pgbackrest_backup_last_repo_delta_bytes{stanza=~\"$stanza\", backup_type=\"diff\", cluster=\"$cluster\", namespace=\"$namespace\"})",
           "legendFormat": "{{stanza}}",
           "range": true,
           "refId": "A"
@@ -2539,7 +2472,7 @@
     {
       "datasource": {
         "type": "prometheus",
-        "uid": "${DS_PROMETHEUS}"
+        "uid": "${datasource}"
       },
       "description": "Average size occupied by last  incremental backup in the repository for selected stanzas.",
       "fieldConfig": {
@@ -2589,8 +2522,7 @@
             "mode": "absolute",
             "steps": [
               {
-                "color": "green",
-                "value": null
+                "color": "green"
               }
             ]
           },
@@ -2622,15 +2554,15 @@
           "sort": "none"
         }
       },
-      "pluginVersion": "11.5.1",
+      "pluginVersion": "11.6.5",
       "targets": [
         {
           "datasource": {
             "type": "prometheus",
-            "uid": "${DS_PROMETHEUS}"
+            "uid": "${datasource}"
           },
           "editorMode": "code",
-          "expr": "avg by (stanza) (pgbackrest_backup_last_repo_delta_bytes{stanza=~\"$stanza\", backup_type=\"incr\"})",
+          "expr": "avg by (stanza) (pgbackrest_backup_last_repo_delta_bytes{stanza=~\"$stanza\", backup_type=\"incr\", cluster=\"$cluster\", namespace=\"$namespace\"})",
           "legendFormat": "{{stanza}}",
           "range": true,
           "refId": "A"
@@ -2642,7 +2574,7 @@
     {
       "datasource": {
         "type": "prometheus",
-        "uid": "${DS_PROMETHEUS}"
+        "uid": "${datasource}"
       },
       "description": "For selected stanzas.\n\nBackup sizes:\n* **databaze size** - full uncompressed size of the database;\n* **database backup size** - the amount of data in the database to actually back up.\n\nThese will be the same for full backups.\n\nRepo sizes:\n* **repo backup set size** - includes all the files from this backup and any referenced backups in the repository that are required to restore the database from this backup;\n* **repo backup size** - includes only the files in this backup.\n\nThese will also be the same for full backups. Repository sizes reflect compressed file sizes if compression is enabled.\n\nSee https://pgbackrest.org/command.html#command-info\n\nFor block incremental backups **repo backup set size** is zero.",
       "fieldConfig": {
@@ -2665,8 +2597,7 @@
             "mode": "absolute",
             "steps": [
               {
-                "color": "text",
-                "value": null
+                "color": "text"
               }
             ]
           },
@@ -2852,16 +2783,16 @@
           }
         ]
       },
-      "pluginVersion": "11.5.1",
+      "pluginVersion": "11.6.5",
       "targets": [
         {
           "datasource": {
             "type": "prometheus",
-            "uid": "${DS_PROMETHEUS}"
+            "uid": "${datasource}"
           },
           "editorMode": "code",
           "exemplar": false,
-          "expr": "pgbackrest_backup_last_size_bytes{stanza=~\"$stanza\"}",
+          "expr": "pgbackrest_backup_last_size_bytes{stanza=~\"$stanza\", cluster=\"$cluster\", namespace=\"$namespace\"}",
           "format": "table",
           "hide": false,
           "instant": true,
@@ -2872,7 +2803,7 @@
         {
           "datasource": {
             "type": "prometheus",
-            "uid": "${DS_PROMETHEUS}"
+            "uid": "${datasource}"
           },
           "editorMode": "code",
           "exemplar": false,
@@ -2887,7 +2818,7 @@
         {
           "datasource": {
             "type": "prometheus",
-            "uid": "${DS_PROMETHEUS}"
+            "uid": "${datasource}"
           },
           "editorMode": "code",
           "exemplar": false,
@@ -2902,7 +2833,7 @@
         {
           "datasource": {
             "type": "prometheus",
-            "uid": "${DS_PROMETHEUS}"
+            "uid": "${datasource}"
           },
           "editorMode": "code",
           "exemplar": false,
@@ -2916,7 +2847,7 @@
         {
           "datasource": {
             "type": "prometheus",
-            "uid": "${DS_PROMETHEUS}"
+            "uid": "${datasource}"
           },
           "editorMode": "code",
           "exemplar": false,
@@ -2931,7 +2862,7 @@
         {
           "datasource": {
             "type": "prometheus",
-            "uid": "${DS_PROMETHEUS}"
+            "uid": "${datasource}"
           },
           "editorMode": "code",
           "exemplar": false,
@@ -3008,7 +2939,7 @@
     {
       "datasource": {
         "type": "prometheus",
-        "uid": "${DS_PROMETHEUS}"
+        "uid": "${datasource}"
       },
       "description": "Number of annotations in the last backups for selected stanzas.",
       "fieldConfig": {
@@ -3026,8 +2957,7 @@
             "mode": "absolute",
             "steps": [
               {
-                "color": "text",
-                "value": null
+                "color": "text"
               }
             ]
           }
@@ -3120,16 +3050,16 @@
           }
         ]
       },
-      "pluginVersion": "11.5.1",
+      "pluginVersion": "11.6.5",
       "targets": [
         {
           "datasource": {
             "type": "prometheus",
-            "uid": "${DS_PROMETHEUS}"
+            "uid": "${datasource}"
           },
           "editorMode": "code",
           "exemplar": false,
-          "expr": "pgbackrest_backup_last_annotations{stanza=~\"$stanza\", backup_type=\"full\"}",
+          "expr": "pgbackrest_backup_last_annotations{stanza=~\"$stanza\", backup_type=\"full\", cluster=\"$cluster\", namespace=\"$namespace\"}",
           "format": "table",
           "instant": true,
           "interval": "",
@@ -3139,7 +3069,7 @@
         {
           "datasource": {
             "type": "prometheus",
-            "uid": "${DS_PROMETHEUS}"
+            "uid": "${datasource}"
           },
           "editorMode": "code",
           "exemplar": false,
@@ -3154,7 +3084,7 @@
         {
           "datasource": {
             "type": "prometheus",
-            "uid": "${DS_PROMETHEUS}"
+            "uid": "${datasource}"
           },
           "editorMode": "code",
           "exemplar": false,
@@ -3216,7 +3146,7 @@
     {
       "datasource": {
         "type": "prometheus",
-        "uid": "${DS_PROMETHEUS}"
+        "uid": "${datasource}"
       },
       "description": "Average number of annotations in the last backup for selected stanzas.",
       "fieldConfig": {
@@ -3266,8 +3196,7 @@
             "mode": "absolute",
             "steps": [
               {
-                "color": "green",
-                "value": null
+                "color": "green"
               }
             ]
           }
@@ -3298,15 +3227,15 @@
           "sort": "none"
         }
       },
-      "pluginVersion": "11.5.1",
+      "pluginVersion": "11.6.5",
       "targets": [
         {
           "datasource": {
             "type": "prometheus",
-            "uid": "${DS_PROMETHEUS}"
+            "uid": "${datasource}"
           },
           "editorMode": "code",
-          "expr": "avg by (stanza) (pgbackrest_backup_last_annotations{stanza=~\"$stanza\"})",
+          "expr": "avg by (stanza) (pgbackrest_backup_last_annotations{stanza=~\"$stanza\", cluster=\"$cluster\", namespace=\"$namespace\"})",
           "legendFormat": "{{stanza}}",
           "range": true,
           "refId": "A"
@@ -3318,7 +3247,7 @@
     {
       "datasource": {
         "type": "prometheus",
-        "uid": "${DS_PROMETHEUS}"
+        "uid": "${datasource}"
       },
       "description": "Number of databases in the last backups for selected stanzas.",
       "fieldConfig": {
@@ -3336,8 +3265,7 @@
             "mode": "absolute",
             "steps": [
               {
-                "color": "text",
-                "value": null
+                "color": "text"
               }
             ]
           }
@@ -3430,16 +3358,16 @@
           }
         ]
       },
-      "pluginVersion": "11.5.1",
+      "pluginVersion": "11.6.5",
       "targets": [
         {
           "datasource": {
             "type": "prometheus",
-            "uid": "${DS_PROMETHEUS}"
+            "uid": "${datasource}"
           },
           "editorMode": "code",
           "exemplar": false,
-          "expr": "pgbackrest_backup_last_databases{stanza=~\"$stanza\", backup_type=\"full\"}",
+          "expr": "pgbackrest_backup_last_databases{stanza=~\"$stanza\", backup_type=\"full\", cluster=\"$cluster\", namespace=\"$namespace\"}",
           "format": "table",
           "instant": true,
           "interval": "",
@@ -3449,7 +3377,7 @@
         {
           "datasource": {
             "type": "prometheus",
-            "uid": "${DS_PROMETHEUS}"
+            "uid": "${datasource}"
           },
           "editorMode": "code",
           "exemplar": false,
@@ -3464,7 +3392,7 @@
         {
           "datasource": {
             "type": "prometheus",
-            "uid": "${DS_PROMETHEUS}"
+            "uid": "${datasource}"
           },
           "editorMode": "code",
           "exemplar": false,
@@ -3526,7 +3454,7 @@
     {
       "datasource": {
         "type": "prometheus",
-        "uid": "${DS_PROMETHEUS}"
+        "uid": "${datasource}"
       },
       "description": "Average number of databases in the last backup for selected stanzas.",
       "fieldConfig": {
@@ -3576,8 +3504,7 @@
             "mode": "absolute",
             "steps": [
               {
-                "color": "green",
-                "value": null
+                "color": "green"
               }
             ]
           }
@@ -3608,15 +3535,15 @@
           "sort": "none"
         }
       },
-      "pluginVersion": "11.5.1",
+      "pluginVersion": "11.6.5",
       "targets": [
         {
           "datasource": {
             "type": "prometheus",
-            "uid": "${DS_PROMETHEUS}"
+            "uid": "${datasource}"
           },
           "editorMode": "code",
-          "expr": "avg by (stanza) (pgbackrest_backup_last_databases{stanza=~\"$stanza\"})",
+          "expr": "avg by (stanza) (pgbackrest_backup_last_databases{stanza=~\"$stanza\", cluster=\"$cluster\", namespace=\"$namespace\"})",
           "legendFormat": "{{stanza}}",
           "range": true,
           "refId": "A"
@@ -3641,7 +3568,7 @@
     {
       "datasource": {
         "type": "prometheus",
-        "uid": "${DS_PROMETHEUS}"
+        "uid": "${datasource}"
       },
       "description": "Average full backup duration for selected stanzas and  repos.",
       "fieldConfig": {
@@ -3691,8 +3618,7 @@
             "mode": "absolute",
             "steps": [
               {
-                "color": "green",
-                "value": null
+                "color": "green"
               }
             ]
           },
@@ -3724,15 +3650,15 @@
           "sort": "none"
         }
       },
-      "pluginVersion": "11.5.1",
+      "pluginVersion": "11.6.5",
       "targets": [
         {
           "datasource": {
             "type": "prometheus",
-            "uid": "${DS_PROMETHEUS}"
+            "uid": "${datasource}"
           },
           "editorMode": "code",
-          "expr": "avg by (stanza) (pgbackrest_backup_duration_seconds{stanza=~\"$stanza\", repo_key=~\"$repo_key\", backup_type=\"full\"})",
+          "expr": "avg by (stanza) (pgbackrest_backup_duration_seconds{stanza=~\"$stanza\", repo_key=~\"$repo_key\", backup_type=\"full\", cluster=\"$cluster\", namespace=\"$namespace\"})",
           "legendFormat": "{{stanza}}",
           "range": true,
           "refId": "A"
@@ -3744,7 +3670,7 @@
     {
       "datasource": {
         "type": "prometheus",
-        "uid": "${DS_PROMETHEUS}"
+        "uid": "${datasource}"
       },
       "description": "Average differential backup duration for selected stanzas and repos.",
       "fieldConfig": {
@@ -3794,8 +3720,7 @@
             "mode": "absolute",
             "steps": [
               {
-                "color": "green",
-                "value": null
+                "color": "green"
               }
             ]
           },
@@ -3827,15 +3752,15 @@
           "sort": "none"
         }
       },
-      "pluginVersion": "11.5.1",
+      "pluginVersion": "11.6.5",
       "targets": [
         {
           "datasource": {
             "type": "prometheus",
-            "uid": "${DS_PROMETHEUS}"
+            "uid": "${datasource}"
           },
           "editorMode": "code",
-          "expr": "avg by (stanza) (pgbackrest_backup_duration_seconds{stanza=~\"$stanza\", repo_key=~\"$repo_key\", backup_type=\"diff\"})",
+          "expr": "avg by (stanza) (pgbackrest_backup_duration_seconds{stanza=~\"$stanza\", repo_key=~\"$repo_key\", backup_type=\"diff\", cluster=\"$cluster\", namespace=\"$namespace\"})",
           "legendFormat": "{{stanza}}",
           "range": true,
           "refId": "A"
@@ -3847,7 +3772,7 @@
     {
       "datasource": {
         "type": "prometheus",
-        "uid": "${DS_PROMETHEUS}"
+        "uid": "PC3E95692D54ABCC0"
       },
       "description": "Average incremental backup duration for selected stanzas and repos.",
       "fieldConfig": {
@@ -3897,8 +3822,7 @@
             "mode": "absolute",
             "steps": [
               {
-                "color": "green",
-                "value": null
+                "color": "green"
               }
             ]
           },
@@ -3930,7 +3854,7 @@
           "sort": "none"
         }
       },
-      "pluginVersion": "11.5.1",
+      "pluginVersion": "11.6.5",
       "targets": [
         {
           "datasource": {
@@ -3938,7 +3862,7 @@
             "uid": "${DS_PROMETHEUS}"
           },
           "editorMode": "code",
-          "expr": "avg by (stanza) (pgbackrest_backup_duration_seconds{stanza=~\"$stanza\", repo_key=~\"$repo_key\", backup_type=\"incr\"})",
+          "expr": "avg by (stanza) (pgbackrest_backup_duration_seconds{stanza=~\"$stanza\", repo_key=~\"$repo_key\", backup_type=\"incr\", cluster=\"$cluster\", namespace=\"$namespace\"})",
           "legendFormat": "{{stanza}}",
           "range": true,
           "refId": "A"
@@ -3950,7 +3874,7 @@
     {
       "datasource": {
         "type": "prometheus",
-        "uid": "${DS_PROMETHEUS}"
+        "uid": "PC3E95692D54ABCC0"
       },
       "description": "Average size occupied by full backup in the repository for selected stanzas and repos.",
       "fieldConfig": {
@@ -4000,8 +3924,7 @@
             "mode": "absolute",
             "steps": [
               {
-                "color": "green",
-                "value": null
+                "color": "green"
               }
             ]
           },
@@ -4033,7 +3956,7 @@
           "sort": "none"
         }
       },
-      "pluginVersion": "11.5.1",
+      "pluginVersion": "11.6.5",
       "targets": [
         {
           "datasource": {
@@ -4041,7 +3964,7 @@
             "uid": "${DS_PROMETHEUS}"
           },
           "editorMode": "code",
-          "expr": "avg by (stanza) (pgbackrest_backup_repo_delta_bytes{stanza=~\"$stanza\", repo_key=~\"$repo_key\", backup_type=~\"full\"})",
+          "expr": "avg by (stanza) (pgbackrest_backup_repo_delta_bytes{stanza=~\"$stanza\", repo_key=~\"$repo_key\", backup_type=~\"full\", cluster=\"$cluster\", namespace=\"$namespace\"})",
           "legendFormat": "{{stanza}}",
           "range": true,
           "refId": "A"
@@ -4053,7 +3976,7 @@
     {
       "datasource": {
         "type": "prometheus",
-        "uid": "${DS_PROMETHEUS}"
+        "uid": "PC3E95692D54ABCC0"
       },
       "description": "Average size occupied by differential backup in the repository for selected stanzas and repos.",
       "fieldConfig": {
@@ -4103,8 +4026,7 @@
             "mode": "absolute",
             "steps": [
               {
-                "color": "green",
-                "value": null
+                "color": "green"
               }
             ]
           },
@@ -4136,7 +4058,7 @@
           "sort": "none"
         }
       },
-      "pluginVersion": "11.5.1",
+      "pluginVersion": "11.6.5",
       "targets": [
         {
           "datasource": {
@@ -4144,7 +4066,7 @@
             "uid": "${DS_PROMETHEUS}"
           },
           "editorMode": "code",
-          "expr": "avg by (stanza) (pgbackrest_backup_repo_delta_bytes{stanza=~\"$stanza\", repo_key=~\"$repo_key\", backup_type=\"diff\"})",
+          "expr": "avg by (stanza) (pgbackrest_backup_repo_delta_bytes{stanza=~\"$stanza\", repo_key=~\"$repo_key\", backup_type=\"diff\", cluster=\"$cluster\", namespace=\"$namespace\"})",
           "legendFormat": "{{stanza}}",
           "range": true,
           "refId": "A"
@@ -4156,7 +4078,7 @@
     {
       "datasource": {
         "type": "prometheus",
-        "uid": "${DS_PROMETHEUS}"
+        "uid": "PC3E95692D54ABCC0"
       },
       "description": "Average size occupied by incremental backup in the repository for selected stanzas and repos.",
       "fieldConfig": {
@@ -4206,8 +4128,7 @@
             "mode": "absolute",
             "steps": [
               {
-                "color": "green",
-                "value": null
+                "color": "green"
               }
             ]
           },
@@ -4239,7 +4160,7 @@
           "sort": "none"
         }
       },
-      "pluginVersion": "11.5.1",
+      "pluginVersion": "11.6.5",
       "targets": [
         {
           "datasource": {
@@ -4247,7 +4168,7 @@
             "uid": "${DS_PROMETHEUS}"
           },
           "editorMode": "code",
-          "expr": "avg by (stanza) (pgbackrest_backup_repo_delta_bytes{stanza=~\"$stanza\", repo_key=~\"$repo_key\", backup_type=\"incr\"})",
+          "expr": "avg by (stanza) (pgbackrest_backup_repo_delta_bytes{stanza=~\"$stanza\", repo_key=~\"$repo_key\", backup_type=\"incr\", cluster=\"$cluster\", namespace=\"$namespace\"})",
           "legendFormat": "{{stanza}}",
           "range": true,
           "refId": "A"
@@ -4259,7 +4180,7 @@
     {
       "datasource": {
         "type": "prometheus",
-        "uid": "${DS_PROMETHEUS}"
+        "uid": "PC3E95692D54ABCC0"
       },
       "description": "Average number of annotations in the full backup for selected stanzas and repos.",
       "fieldConfig": {
@@ -4309,8 +4230,7 @@
             "mode": "absolute",
             "steps": [
               {
-                "color": "green",
-                "value": null
+                "color": "green"
               }
             ]
           }
@@ -4341,7 +4261,7 @@
           "sort": "none"
         }
       },
-      "pluginVersion": "11.5.1",
+      "pluginVersion": "11.6.5",
       "targets": [
         {
           "datasource": {
@@ -4349,7 +4269,7 @@
             "uid": "${DS_PROMETHEUS}"
           },
           "editorMode": "code",
-          "expr": "avg by (stanza) (pgbackrest_backup_annotations{stanza=~\"$stanza\", repo_key=~\"$repo_key\", backup_type=\"full\"})",
+          "expr": "avg by (stanza) (pgbackrest_backup_annotations{stanza=~\"$stanza\", repo_key=~\"$repo_key\", backup_type=\"full\", cluster=\"$cluster\", namespace=\"$namespace\"})",
           "legendFormat": "{{stanza}}",
           "range": true,
           "refId": "A"
@@ -4361,7 +4281,7 @@
     {
       "datasource": {
         "type": "prometheus",
-        "uid": "${DS_PROMETHEUS}"
+        "uid": "PC3E95692D54ABCC0"
       },
       "description": "Average number of annotations in the diff backup for selected stanzas and repos.",
       "fieldConfig": {
@@ -4411,8 +4331,7 @@
             "mode": "absolute",
             "steps": [
               {
-                "color": "green",
-                "value": null
+                "color": "green"
               }
             ]
           }
@@ -4443,7 +4362,7 @@
           "sort": "none"
         }
       },
-      "pluginVersion": "11.5.1",
+      "pluginVersion": "11.6.5",
       "targets": [
         {
           "datasource": {
@@ -4451,7 +4370,7 @@
             "uid": "${DS_PROMETHEUS}"
           },
           "editorMode": "code",
-          "expr": "avg by (stanza) (pgbackrest_backup_annotations{stanza=~\"$stanza\", repo_key=~\"$repo_key\", backup_type=\"diff\"})",
+          "expr": "avg by (stanza) (pgbackrest_backup_annotations{stanza=~\"$stanza\", repo_key=~\"$repo_key\", backup_type=\"diff\", cluster=\"$cluster\", namespace=\"$namespace\"})",
           "legendFormat": "{{stanza}}",
           "range": true,
           "refId": "A"
@@ -4463,7 +4382,7 @@
     {
       "datasource": {
         "type": "prometheus",
-        "uid": "${DS_PROMETHEUS}"
+        "uid": "PC3E95692D54ABCC0"
       },
       "description": "Average number of annotations in the incr backup for selected stanzas and repos.",
       "fieldConfig": {
@@ -4513,8 +4432,7 @@
             "mode": "absolute",
             "steps": [
               {
-                "color": "green",
-                "value": null
+                "color": "green"
               }
             ]
           }
@@ -4545,7 +4463,7 @@
           "sort": "none"
         }
       },
-      "pluginVersion": "11.5.1",
+      "pluginVersion": "11.6.5",
       "targets": [
         {
           "datasource": {
@@ -4553,7 +4471,7 @@
             "uid": "${DS_PROMETHEUS}"
           },
           "editorMode": "code",
-          "expr": "avg by (stanza) (pgbackrest_backup_annotations{stanza=~\"$stanza\", repo_key=~\"$repo_key\", backup_type=\"incr\"})",
+          "expr": "avg by (stanza) (pgbackrest_backup_annotations{stanza=~\"$stanza\", repo_key=~\"$repo_key\", backup_type=\"incr\", cluster=\"$cluster\", namespace=\"$namespace\"})",
           "legendFormat": "{{stanza}}",
           "range": true,
           "refId": "A"
@@ -4565,7 +4483,7 @@
     {
       "datasource": {
         "type": "prometheus",
-        "uid": "${DS_PROMETHEUS}"
+        "uid": "${datasource}"
       },
       "description": "Average number of databases in the full backup for selected stanzas and repos.",
       "fieldConfig": {
@@ -4615,8 +4533,7 @@
             "mode": "absolute",
             "steps": [
               {
-                "color": "green",
-                "value": null
+                "color": "green"
               }
             ]
           }
@@ -4647,15 +4564,15 @@
           "sort": "none"
         }
       },
-      "pluginVersion": "11.5.1",
+      "pluginVersion": "11.6.5",
       "targets": [
         {
           "datasource": {
             "type": "prometheus",
-            "uid": "${DS_PROMETHEUS}"
+            "uid": "${datasource}"
           },
           "editorMode": "code",
-          "expr": "avg by (stanza) (pgbackrest_backup_databases{stanza=~\"$stanza\", repo_key=~\"$repo_key\", backup_type=\"full\"})",
+          "expr": "avg by (stanza) (pgbackrest_backup_databases{stanza=~\"$stanza\", repo_key=~\"$repo_key\", backup_type=\"full\", cluster=\"$cluster\", namespace=\"$namespace\"})",
           "legendFormat": "{{stanza}}",
           "range": true,
           "refId": "A"
@@ -4667,7 +4584,7 @@
     {
       "datasource": {
         "type": "prometheus",
-        "uid": "${DS_PROMETHEUS}"
+        "uid": "${datasource}"
       },
       "description": "Average number of databases in the diff backup for selected stanzas and repos.",
       "fieldConfig": {
@@ -4717,8 +4634,7 @@
             "mode": "absolute",
             "steps": [
               {
-                "color": "green",
-                "value": null
+                "color": "green"
               }
             ]
           }
@@ -4749,15 +4665,15 @@
           "sort": "none"
         }
       },
-      "pluginVersion": "11.5.1",
+      "pluginVersion": "11.6.5",
       "targets": [
         {
           "datasource": {
             "type": "prometheus",
-            "uid": "${DS_PROMETHEUS}"
+            "uid": "${datasource}"
           },
           "editorMode": "code",
-          "expr": "avg by (stanza) (pgbackrest_backup_databases{stanza=~\"$stanza\", repo_key=~\"$repo_key\", backup_type=\"diff\"})",
+          "expr": "avg by (stanza) (pgbackrest_backup_databases{stanza=~\"$stanza\", repo_key=~\"$repo_key\", backup_type=\"diff\", cluster=\"$cluster\", namespace=\"$namespace\"})",
           "legendFormat": "{{stanza}}",
           "range": true,
           "refId": "A"
@@ -4769,7 +4685,7 @@
     {
       "datasource": {
         "type": "prometheus",
-        "uid": "${DS_PROMETHEUS}"
+        "uid": "${datasource}"
       },
       "description": "Average number of databases in the incr backup for selected stanzas and repos.",
       "fieldConfig": {
@@ -4819,8 +4735,7 @@
             "mode": "absolute",
             "steps": [
               {
-                "color": "green",
-                "value": null
+                "color": "green"
               }
             ]
           }
@@ -4851,15 +4766,15 @@
           "sort": "none"
         }
       },
-      "pluginVersion": "11.5.1",
+      "pluginVersion": "11.6.5",
       "targets": [
         {
           "datasource": {
             "type": "prometheus",
-            "uid": "${DS_PROMETHEUS}"
+            "uid": "${datasource}"
           },
           "editorMode": "code",
-          "expr": "avg by (stanza) (pgbackrest_backup_databases{stanza=~\"$stanza\", repo_key=~\"$repo_key\", backup_type=\"incr\"})",
+          "expr": "avg by (stanza) (pgbackrest_backup_databases{stanza=~\"$stanza\", repo_key=~\"$repo_key\", backup_type=\"incr\", cluster=\"$cluster\", namespace=\"$namespace\"})",
           "legendFormat": "{{stanza}}",
           "range": true,
           "refId": "A"
@@ -4884,7 +4799,7 @@
     {
       "datasource": {
         "type": "prometheus",
-        "uid": "${DS_PROMETHEUS}"
+        "uid": "${datasource}"
       },
       "description": "Backup error status for selected stanzas, repos, backup types, block incremental statuses and backup names.",
       "fieldConfig": {
@@ -4902,8 +4817,7 @@
             "mode": "absolute",
             "steps": [
               {
-                "color": "text",
-                "value": null
+                "color": "text"
               }
             ]
           }
@@ -4950,8 +4864,7 @@
                   "mode": "absolute",
                   "steps": [
                     {
-                      "color": "orange",
-                      "value": null
+                      "color": "orange"
                     },
                     {
                       "color": "green",
@@ -5069,15 +4982,15 @@
           }
         ]
       },
-      "pluginVersion": "11.5.1",
+      "pluginVersion": "11.6.5",
       "targets": [
         {
           "datasource": {
             "type": "prometheus",
-            "uid": "${DS_PROMETHEUS}"
+            "uid": "${datasource}"
           },
           "editorMode": "code",
-          "expr": "pgbackrest_backup_error_status{stanza=~\"$stanza\", repo_key=~\"$repo_key\", backup_type=~\"$backup_type\", block_incr=~\"$block_incr\", backup_name=~\"$backup_name\"}",
+          "expr": "pgbackrest_backup_error_status{stanza=~\"$stanza\", repo_key=~\"$repo_key\", backup_type=~\"$backup_type\", block_incr=~\"$block_incr\", backup_name=~\"$backup_name\", cluster=\"$cluster\", namespace=\"$namespace\"}",
           "format": "table",
           "instant": true,
           "interval": "",
@@ -5170,7 +5083,7 @@
     {
       "datasource": {
         "type": "prometheus",
-        "uid": "${DS_PROMETHEUS}"
+        "uid": "${datasource}"
       },
       "description": "Backup duration for selected stanzas, repos, backup types, block incremental statuses and backup names.",
       "fieldConfig": {
@@ -5197,8 +5110,7 @@
             "mode": "absolute",
             "steps": [
               {
-                "color": "text",
-                "value": null
+                "color": "text"
               }
             ]
           }
@@ -5360,14 +5272,15 @@
           }
         ]
       },
-      "pluginVersion": "11.5.1",
+      "pluginVersion": "11.6.5",
       "targets": [
         {
           "datasource": {
             "type": "prometheus",
-            "uid": "${DS_PROMETHEUS}"
+            "uid": "${datasource}"
           },
-          "expr": "pgbackrest_backup_duration_seconds{stanza=~\"$stanza\", repo_key=~\"$repo_key\", backup_type=~\"$backup_type\", backup_name=~\"$backup_name\"}",
+          "editorMode": "code",
+          "expr": "pgbackrest_backup_duration_seconds{stanza=~\"$stanza\", repo_key=~\"$repo_key\", backup_type=~\"$backup_type\", backup_name=~\"$backup_name\", cluster=\"$cluster\", namespace=\"$namespace\"}",
           "format": "table",
           "instant": true,
           "interval": "",
@@ -5429,7 +5342,7 @@
     {
       "datasource": {
         "type": "prometheus",
-        "uid": "${DS_PROMETHEUS}"
+        "uid": "${datasource}"
       },
       "description": "For selected stanzas, repos, backup types, block incremental statuses and backup names.\n\nBackup sizes:\n* **databaze size** - full uncompressed size of the database;\n* **database backup size** - the amount of data in the database to actually back up.\n\nThese will be the same for full backups.\n\nRepo sizes:\n* **repo backup set size** - includes all the files from this backup and any referenced backups in the repository that are required to restore the database from this backup;\n* **repo backup size** - includes only the files in this backup.\n\nThese will also be the same for full backups. Repository sizes reflect compressed file sizes if compression is enabled.\n\nSee https://pgbackrest.org/command.html#command-info\n\nFor block incremental backups **repo backup set size** is zero.",
       "fieldConfig": {
@@ -5452,8 +5365,7 @@
             "mode": "absolute",
             "steps": [
               {
-                "color": "text",
-                "value": null
+                "color": "text"
               }
             ]
           },
@@ -5639,16 +5551,16 @@
           }
         ]
       },
-      "pluginVersion": "11.5.1",
+      "pluginVersion": "11.6.5",
       "targets": [
         {
           "datasource": {
             "type": "prometheus",
-            "uid": "${DS_PROMETHEUS}"
+            "uid": "${datasource}"
           },
           "editorMode": "code",
           "exemplar": false,
-          "expr": "pgbackrest_backup_size_bytes{stanza=~\"$stanza\", repo_key=~\"$repo_key\", backup_type=~\"$backup_type\", block_incr=~\"$block_incr\", backup_name=~\"$backup_name\"}",
+          "expr": "pgbackrest_backup_size_bytes{stanza=~\"$stanza\", repo_key=~\"$repo_key\", backup_type=~\"$backup_type\", block_incr=~\"$block_incr\", backup_name=~\"$backup_name\", cluster=\"$cluster\", namespace=\"$namespace\"}",
           "format": "table",
           "hide": false,
           "instant": true,
@@ -5659,7 +5571,7 @@
         {
           "datasource": {
             "type": "prometheus",
-            "uid": "${DS_PROMETHEUS}"
+            "uid": "${datasource}"
           },
           "editorMode": "code",
           "exemplar": false,
@@ -5674,7 +5586,7 @@
         {
           "datasource": {
             "type": "prometheus",
-            "uid": "${DS_PROMETHEUS}"
+            "uid": "${datasource}"
           },
           "editorMode": "code",
           "exemplar": false,
@@ -5689,7 +5601,7 @@
         {
           "datasource": {
             "type": "prometheus",
-            "uid": "${DS_PROMETHEUS}"
+            "uid": "${datasource}"
           },
           "editorMode": "code",
           "exemplar": false,
@@ -5703,7 +5615,7 @@
         {
           "datasource": {
             "type": "prometheus",
-            "uid": "${DS_PROMETHEUS}"
+            "uid": "${datasource}"
           },
           "editorMode": "code",
           "exemplar": false,
@@ -5718,7 +5630,7 @@
         {
           "datasource": {
             "type": "prometheus",
-            "uid": "${DS_PROMETHEUS}"
+            "uid": "${datasource}"
           },
           "editorMode": "code",
           "exemplar": false,
@@ -5801,7 +5713,7 @@
     {
       "datasource": {
         "type": "prometheus",
-        "uid": "${DS_PROMETHEUS}"
+        "uid": "${datasource}"
       },
       "description": "Backup detail info for selected stanzas, repos, backup types, block incremental statuses and backup names.",
       "fieldConfig": {
@@ -5819,8 +5731,7 @@
             "mode": "absolute",
             "steps": [
               {
-                "color": "text",
-                "value": null
+                "color": "text"
               }
             ]
           }
@@ -6021,15 +5932,15 @@
           }
         ]
       },
-      "pluginVersion": "11.5.1",
+      "pluginVersion": "11.6.5",
       "targets": [
         {
           "datasource": {
             "type": "prometheus",
-            "uid": "${DS_PROMETHEUS}"
+            "uid": "${datasource}"
           },
           "editorMode": "code",
-          "expr": "pgbackrest_backup_info{stanza=~\"$stanza\", repo_key=~\"$repo_key\", backup_type=~\"$backup_type\", block_incr=~\"$block_incr\", backup_name=~\"$backup_name\"}",
+          "expr": "pgbackrest_backup_info{stanza=~\"$stanza\", repo_key=~\"$repo_key\", backup_type=~\"$backup_type\", block_incr=~\"$block_incr\", backup_name=~\"$backup_name\", cluster=\"$cluster\", namespace=\"$namespace\"}",
           "format": "table",
           "instant": true,
           "interval": "",
@@ -6135,7 +6046,7 @@
     {
       "datasource": {
         "type": "prometheus",
-        "uid": "${DS_PROMETHEUS}"
+        "uid": "${datasource}"
       },
       "description": "Number of annotations in the backup for selected stanzas, repos, backup types, block incremental statuses and backup names.",
       "fieldConfig": {
@@ -6153,8 +6064,7 @@
             "mode": "absolute",
             "steps": [
               {
-                "color": "text",
-                "value": null
+                "color": "text"
               }
             ]
           }
@@ -6324,16 +6234,16 @@
           }
         ]
       },
-      "pluginVersion": "11.5.1",
+      "pluginVersion": "11.6.5",
       "targets": [
         {
           "datasource": {
             "type": "prometheus",
-            "uid": "${DS_PROMETHEUS}"
+            "uid": "${datasource}"
           },
           "editorMode": "code",
           "exemplar": false,
-          "expr": "pgbackrest_backup_annotations{stanza=~\"$stanza\", repo_key=~\"$repo_key\", backup_type=~\"$backup_type\", block_incr=~\"$block_incr\", backup_name=~\"$backup_name\"}",
+          "expr": "pgbackrest_backup_annotations{stanza=~\"$stanza\", repo_key=~\"$repo_key\", backup_type=~\"$backup_type\", block_incr=~\"$block_incr\", backup_name=~\"$backup_name\", cluster=\"$cluster\", namespace=\"$namespace\"}",
           "format": "table",
           "instant": true,
           "interval": "",
@@ -6404,7 +6314,7 @@
     {
       "datasource": {
         "type": "prometheus",
-        "uid": "${DS_PROMETHEUS}"
+        "uid": "${datasource}"
       },
       "description": "Number of databases in the backup for selected stanzas, repos, backup types, block incremental statuses and backup names.",
       "fieldConfig": {
@@ -6422,8 +6332,7 @@
             "mode": "absolute",
             "steps": [
               {
-                "color": "text",
-                "value": null
+                "color": "text"
               }
             ]
           }
@@ -6593,16 +6502,16 @@
           }
         ]
       },
-      "pluginVersion": "11.5.1",
+      "pluginVersion": "11.6.5",
       "targets": [
         {
           "datasource": {
             "type": "prometheus",
-            "uid": "${DS_PROMETHEUS}"
+            "uid": "${datasource}"
           },
           "editorMode": "code",
           "exemplar": false,
-          "expr": "pgbackrest_backup_databases{stanza=~\"$stanza\", repo_key=~\"$repo_key\", backup_type=~\"$backup_type\", block_incr=~\"$block_incr\", backup_name=~\"$backup_name\"}",
+          "expr": "pgbackrest_backup_databases{stanza=~\"$stanza\", repo_key=~\"$repo_key\", backup_type=~\"$backup_type\", block_incr=~\"$block_incr\", backup_name=~\"$backup_name\", cluster=\"$cluster\", namespace=\"$namespace\"}",
           "format": "table",
           "hide": false,
           "instant": true,
@@ -6687,7 +6596,7 @@
     {
       "datasource": {
         "type": "prometheus",
-        "uid": "${DS_PROMETHEUS}"
+        "uid": "${datasource}"
       },
       "description": "Information about exporter build parameters and status of getting data from  pgBackRest.\n\nWhen the information is collected for all available stanzas, the **stanza for metrics** is **all-stanzas**.",
       "fieldConfig": {
@@ -6707,8 +6616,7 @@
             "mode": "absolute",
             "steps": [
               {
-                "color": "green",
-                "value": null
+                "color": "green"
               },
               {
                 "color": "red",
@@ -6817,8 +6725,7 @@
                   "mode": "absolute",
                   "steps": [
                     {
-                      "color": "orange",
-                      "value": null
+                      "color": "orange"
                     },
                     {
                       "color": "red",
@@ -6933,16 +6840,16 @@
         "showHeader": true,
         "sortBy": []
       },
-      "pluginVersion": "11.5.1",
+      "pluginVersion": "11.6.5",
       "targets": [
         {
           "datasource": {
             "type": "prometheus",
-            "uid": "${DS_PROMETHEUS}"
+            "uid": "${datasource}"
           },
           "editorMode": "code",
           "exemplar": false,
-          "expr": "pgbackrest_exporter_build_info",
+          "expr": "pgbackrest_exporter_build_info{cluster=\"$cluster\", namespace=\"$namespace\"}",
           "format": "table",
           "instant": true,
           "legendFormat": "__auto",
@@ -6952,7 +6859,7 @@
         {
           "datasource": {
             "type": "prometheus",
-            "uid": "${DS_PROMETHEUS}"
+            "uid": "${datasource}"
           },
           "editorMode": "code",
           "exemplar": false,
@@ -7031,8 +6938,9 @@
       "type": "table"
     }
   ],
+  "preload": false,
   "refresh": "5m",
-  "schemaVersion": 40,
+  "schemaVersion": 41,
   "tags": [
     "pgbackrest",
     "backups"
@@ -7040,7 +6948,10 @@
   "templating": {
     "list": [
       {
-        "current": {},
+        "current": {
+          "text": "Platform Monitoring Prometheus",
+          "value": "PC3E95692D54ABCC0"
+        },
         "includeAll": false,
         "label": "Datasource",
         "name": "datasource",
@@ -7051,21 +6962,72 @@
         "type": "datasource"
       },
       {
-        "allValue": ".*",
-        "current": {},
+        "current": {
+          "text": "",
+          "value": ""
+        },
         "datasource": {
           "type": "prometheus",
-          "uid": "${DS_PROMETHEUS}"
+          "uid": "${datasource}"
         },
-        "definition": "label_values(pgbackrest_repo_status, stanza)",
+        "definition": "label_values(ma_status,$cluster)",
+        "label": "Cluster",
+        "name": "cluster",
+        "options": [],
+        "query": {
+          "qryType": 1,
+          "query": "label_values(ma_status,$cluster)",
+          "refId": "PrometheusVariableQueryEditor-VariableQuery"
+        },
+        "refresh": 1,
+        "regex": "",
+        "type": "query"
+      },
+      {
+        "current": {
+          "text": "postgres-ci",
+          "value": "postgres-ci"
+        },
+        "datasource": {
+          "type": "prometheus",
+          "uid": "${datasource}"
+        },
+        "definition": "label_values(ma_status{cluster=~\"$cluster\"},namespace)",
+        "description": "",
+        "label": "Project",
+        "name": "namespace",
+        "options": [],
+        "query": {
+          "qryType": 1,
+          "query": "label_values(ma_status{cluster=~\"$cluster\"},namespace)",
+          "refId": "PrometheusVariableQueryEditor-VariableQuery"
+        },
+        "refresh": 1,
+        "regex": "",
+        "type": "query"
+      },
+      {
+        "allValue": ".*",
+        "current": {
+          "text": "All",
+          "value": [
+            "$__all"
+          ]
+        },
+        "datasource": {
+          "type": "prometheus",
+          "uid": "${datasource}"
+        },
+        "definition": "label_values(pgbackrest_repo_status{cluster=~\"$cluster\", namespace=\"$namespace\"},stanza)",
         "includeAll": true,
         "label": "Stanza",
         "multi": true,
         "name": "stanza",
         "options": [],
         "query": {
-          "query": "label_values(pgbackrest_repo_status, stanza)",
-          "refId": "StandardVariableQuery"
+          "qryType": 1,
+          "query": "label_values(pgbackrest_repo_status{cluster=~\"$cluster\", namespace=\"$namespace\"},stanza)",
+          "refId": "PrometheusVariableQueryEditor-VariableQuery"
         },
         "refresh": 2,
         "regex": "",
@@ -7074,20 +7036,26 @@
       },
       {
         "allValue": ".*",
-        "current": {},
+        "current": {
+          "text": "All",
+          "value": [
+            "$__all"
+          ]
+        },
         "datasource": {
           "type": "prometheus",
-          "uid": "${DS_PROMETHEUS}"
+          "uid": "${datasource}"
         },
-        "definition": "label_values(pgbackrest_repo_status{stanza=~\"$stanza\"}, repo_key)",
+        "definition": "label_values(pgbackrest_repo_status{stanza=~\"$stanza\", cluster=~\"$cluster\", namespace=\"$namespace\"},repo_key)",
         "includeAll": true,
         "label": "Repo key",
         "multi": true,
         "name": "repo_key",
         "options": [],
         "query": {
-          "query": "label_values(pgbackrest_repo_status{stanza=~\"$stanza\"}, repo_key)",
-          "refId": "StandardVariableQuery"
+          "qryType": 1,
+          "query": "label_values(pgbackrest_repo_status{stanza=~\"$stanza\", cluster=~\"$cluster\", namespace=\"$namespace\"},repo_key)",
+          "refId": "PrometheusVariableQueryEditor-VariableQuery"
         },
         "refresh": 2,
         "regex": "",
@@ -7096,20 +7064,26 @@
       },
       {
         "allValue": ".*",
-        "current": {},
+        "current": {
+          "text": "All",
+          "value": [
+            "$__all"
+          ]
+        },
         "datasource": {
           "type": "prometheus",
-          "uid": "${DS_PROMETHEUS}"
+          "uid": "${datasource}"
         },
-        "definition": "label_values(pgbackrest_backup_info{stanza=~\"$stanza\", repo_key=~\"$repo_key\"}, backup_type)",
+        "definition": "label_values(pgbackrest_backup_info{stanza=~\"$stanza\", repo_key=~\"$repo_key\", cluster=~\"$cluster\", namespace=\"$namespace\"},backup_type)",
         "includeAll": true,
         "label": "Backup type",
         "multi": true,
         "name": "backup_type",
         "options": [],
         "query": {
-          "query": "label_values(pgbackrest_backup_info{stanza=~\"$stanza\", repo_key=~\"$repo_key\"}, backup_type)",
-          "refId": "StandardVariableQuery"
+          "qryType": 1,
+          "query": "label_values(pgbackrest_backup_info{stanza=~\"$stanza\", repo_key=~\"$repo_key\", cluster=~\"$cluster\", namespace=\"$namespace\"},backup_type)",
+          "refId": "PrometheusVariableQueryEditor-VariableQuery"
         },
         "refresh": 2,
         "regex": "",
@@ -7118,20 +7092,26 @@
       },
       {
         "allValue": ".*",
-        "current": {},
+        "current": {
+          "text": "All",
+          "value": [
+            "$__all"
+          ]
+        },
         "datasource": {
           "type": "prometheus",
-          "uid": "${DS_PROMETHEUS}"
+          "uid": "${datasource}"
         },
-        "definition": "label_values(pgbackrest_backup_info{stanza=~\"$stanza\", repo_key=~\"$repo_key\", backup_type=~\"$backup_type\"}, block_incr)",
+        "definition": "label_values(pgbackrest_backup_info{stanza=~\"$stanza\", repo_key=~\"$repo_key\", backup_type=~\"$backup_type\", cluster=~\"$cluster\", namespace=\"$namespace\"},block_incr)",
         "includeAll": true,
         "label": "Block incr",
         "multi": true,
         "name": "block_incr",
         "options": [],
         "query": {
-          "query": "label_values(pgbackrest_backup_info{stanza=~\"$stanza\", repo_key=~\"$repo_key\", backup_type=~\"$backup_type\"}, block_incr)",
-          "refId": "StandardVariableQuery"
+          "qryType": 1,
+          "query": "label_values(pgbackrest_backup_info{stanza=~\"$stanza\", repo_key=~\"$repo_key\", backup_type=~\"$backup_type\", cluster=~\"$cluster\", namespace=\"$namespace\"},block_incr)",
+          "refId": "PrometheusVariableQueryEditor-VariableQuery"
         },
         "refresh": 2,
         "regex": "",
@@ -7140,20 +7120,26 @@
       },
       {
         "allValue": ".*",
-        "current": {},
+        "current": {
+          "text": "All",
+          "value": [
+            "$__all"
+          ]
+        },
         "datasource": {
           "type": "prometheus",
-          "uid": "${DS_PROMETHEUS}"
+          "uid": "${datasource}"
         },
-        "definition": "label_values(pgbackrest_backup_info{stanza=~\"$stanza\", repo_key=~\"$repo_key\", backup_type=~\"$backup_type\",block_incr=~\"$block_incr\"}, backup_name)",
+        "definition": "label_values(pgbackrest_backup_info{stanza=~\"$stanza\", repo_key=~\"$repo_key\", backup_type=~\"$backup_type\", block_incr=~\"$block_incr\", cluster=~\"$cluster\", namespace=\"$namespace\"},backup_name)",
         "includeAll": true,
         "label": "Backup name",
         "multi": true,
         "name": "backup_name",
         "options": [],
         "query": {
-          "query": "label_values(pgbackrest_backup_info{stanza=~\"$stanza\", repo_key=~\"$repo_key\", backup_type=~\"$backup_type\",block_incr=~\"$block_incr\"}, backup_name)",
-          "refId": "StandardVariableQuery"
+          "qryType": 1,
+          "query": "label_values(pgbackrest_backup_info{stanza=~\"$stanza\", repo_key=~\"$repo_key\", backup_type=~\"$backup_type\", block_incr=~\"$block_incr\", cluster=~\"$cluster\", namespace=\"$namespace\"},backup_name)",
+          "refId": "PrometheusVariableQueryEditor-VariableQuery"
         },
         "refresh": 2,
         "regex": "",
@@ -7163,14 +7149,11 @@
     ]
   },
   "time": {
-    "from": "now-12h",
+    "from": "now-15m",
     "to": "now"
   },
   "timepicker": {},
   "timezone": "",
   "title": "pgBackRest Exporter Dashboard",
-  "uid": "Wyf8STx7z",
-  "version": 2,
-  "weekStart": "",
-  "gnetId": 17709
+  "version": 10
 }

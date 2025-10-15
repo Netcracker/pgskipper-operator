@@ -27,5 +27,5 @@ spec:
     {{ end }}
   selector:
     matchLabels:
-      app: backrest-exporter
+      app: pgbackrest-exporter
 {{ end }}

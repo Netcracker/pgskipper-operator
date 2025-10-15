@@ -113,6 +113,7 @@ func GetPgBackRestExporterService() *corev1.Service {
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      serviceName,
 			Namespace: util.GetNameSpace(),
+			Labels:    labels,
 		},
 
 		Spec: corev1.ServiceSpec{
