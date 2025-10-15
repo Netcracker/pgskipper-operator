@@ -25,12 +25,12 @@ import (
 	"net/http"
 	"os"
 	"reflect"
+	"regexp"
 	r "runtime"
 	"strconv"
 	"strings"
 	"sync"
 	"time"
-	"regexp"
 
 	"github.com/Netcracker/pgskipper-operator-core/pkg/util"
 	qubershipv1 "github.com/Netcracker/pgskipper-operator/api/apps/v1"

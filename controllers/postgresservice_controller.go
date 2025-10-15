@@ -444,6 +444,13 @@ func (r *PostgresServiceReconciler) reconcilePostgresServiceCluster(cr *qubershi
 		}
 	}
 
+	// reconcile PgBackRest Exporter
+	if cr.Spec.PgBackRestExporter != nil && cr.Spec.PgBackRestExporter.Install {
+		if err := r.reconcilePgBackRestExporter(cr); err != nil {
+			return err
+		}
+	}
+
 	// Reconcile IntegrationTests
 	if cr.Spec.IntegrationTests != nil {
 		r.logger.Info("Tests Spec is not empty, proceeding with reconcile")
@@ -596,6 +603,16 @@ func (r *PostgresServiceReconciler) reconcileRC(cr *qubershipv1.PatroniServices)
 	pRec := reconciler.NewRCReconciler(cr, r.helper, utils.GetPatroniClusterSettings(cr.Spec.Patroni.ClusterName))
 	if err := pRec.Reconcile(); err != nil {
 		r.logger.Error("Can not reconcile Replication Controller", zap.Error(err))
+		return err
+	}
+	return nil
+}
+
+func (r *PostgresServiceReconciler) reconcilePgBackRestExporter(cr *qubershipv1.PatroniServices) error {
+	r.logger.Info("PgBackRest Exporter reconciliation started")
+	pRec := reconciler.NewPgBackRestExporterReconciler(cr, r.helper, utils.GetPatroniClusterSettings(cr.Spec.Patroni.ClusterName))
+	if err := pRec.Reconcile(); err != nil {
+		r.logger.Error("Can not reconcile PgBackRest Exporter", zap.Error(err))
 		return err
 	}
 	return nil

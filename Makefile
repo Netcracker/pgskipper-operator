@@ -35,6 +35,7 @@ gzip-charts:
 	gzip -f -c ./charts/patroni-services/monitoring/cloudsql-grafana-dashboard.json > ./charts/patroni-services/monitoring/cloudsql-grafana-dashboard.json.gz
 	gzip -f -c ./charts/patroni-services/monitoring/postgres-exporter-grafana-dashboard.json > ./charts/patroni-services/monitoring/postgres-exporter-grafana-dashboard.json.gz
 	gzip -f -c ./charts/patroni-services/monitoring/query-exporter-grafana-dashboard.json > ./charts/patroni-services/monitoring/query-exporter-grafana-dashboard.json.gz
+	gzip -f -c ./charts/patroni-services/monitoring/pgbackrest-exporter-grafana-dashboard.json > ./charts/patroni-services/monitoring/pgbackrest-exporter-grafana-dashboard.json.gz
 
 move-charts:
 	@echo "Move helm charts"
