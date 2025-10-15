@@ -11,8 +11,8 @@ spec:
     enabled: true
     names:
     {{- range $i, $v := .Values.privateRegistry.secrets }}
-      - {{ $v.name }} 
-    {{- end }}     
+      - {{ $v.name }}
+    {{- end }}
   {{- end }}
   installationTimestamp: {{ now | unixEpoch | quote }}
   {{ if .Values.serviceAccount.create }}

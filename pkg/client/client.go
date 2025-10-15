@@ -111,7 +111,12 @@ func (c *PostgresClient) ExecuteForDB(dbName, query string) error {
 	if err != nil {
 		return err
 	}
-	defer conn.Close(context.Background())
+	defer func() {
+		err := conn.Close(context.Background())
+		if err != nil {
+			logger.Error("Error during closing connection", zap.Error(err))
+		}
+	}()
 	if _, err := conn.Exec(context.Background(), query); err == nil {
 		return nil
 	} else {
