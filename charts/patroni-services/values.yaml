@@ -270,6 +270,10 @@ pgBackRestExporter:
     runAsUser: 2001
   affinity: {}
   podLabels: {}
+  env:
+    DATABASE_PARALLEL_PROCESSES: "1"
+    DATABASE_COUNT: "true"
+    DATABASE_COUNT_LATEST: "true"
 
 # externalDataBase:
 #   type: RDS|CLOUDSQL

@@ -246,6 +246,7 @@ type PgBackRestExporter struct {
 	SecurityContext *v1.PodSecurityContext  `json:"securityContext,omitempty"`
 	Affinity        v1.Affinity             `json:"affinity,omitempty"`
 	PodLabels       map[string]string       `json:"podLabels,omitempty"`
+	Env             map[string]string       `json:"env,omitempty"`
 }
 type S3 struct {
 	Bucket    string `json:"bucket,omitempty"`

@@ -5808,6 +5808,10 @@ spec:
                             x-kubernetes-list-type: atomic
                         type: object
                     type: object
+                  env:
+                    additionalProperties:
+                      type: string
+                    type: object
                   image:
                     type: string
                   install:

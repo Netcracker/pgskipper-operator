@@ -427,6 +427,8 @@ spec:
     podLabels:
       {{ include "kubernetes.labels" . | nindent 6 }}
     {{- end }}
+    env:
+{{ toYaml .Values.pgBackRestExporter.env | indent 6 }}
     resources:
 {{ toYaml .Values.pgBackRestExporter.resources | indent 6 }}
     securityContext:

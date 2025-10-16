@@ -65,6 +65,7 @@ func NewPgBackRestExporterDeployment(spec netcrackev1.PgBackRestExporter, sa str
 							Ports: []corev1.ContainerPort{
 								{ContainerPort: 9854, Name: "brexporter", Protocol: corev1.ProtocolTCP},
 							},
+							Env:          getEnvVariables(spec),
 							VolumeMounts: getVolumeMounts(),
 							Resources:    spec.Resources,
 						},
@@ -121,4 +122,15 @@ func GetPgBackRestExporterService() *corev1.Service {
 			Ports:    ports,
 		},
 	}
+}
+
+func getEnvVariables(spec netcrackev1.PgBackRestExporter) []corev1.EnvVar {
+	envs := []corev1.EnvVar{}
+	for key, value := range spec.Env {
+		envs = append(envs, corev1.EnvVar{
+			Name:  key,
+			Value: value,
+		})
+	}
+	return envs
 }
