@@ -25,7 +25,7 @@
   "editable": true,
   "fiscalYearStartMonth": 0,
   "graphTooltip": 0,
-  "id": 244,
+  "id": 278,
   "links": [
     {
       "asDropdown": false,
@@ -6970,13 +6970,13 @@
           "type": "prometheus",
           "uid": "${datasource}"
         },
-        "definition": "label_values(ma_status,$cluster)",
+        "definition": "label_values(pgbackrest_stanza_status,$cluster)",
         "label": "Cluster",
         "name": "cluster",
         "options": [],
         "query": {
           "qryType": 1,
-          "query": "label_values(ma_status,$cluster)",
+          "query": "label_values(pgbackrest_stanza_status,$cluster)",
           "refId": "PrometheusVariableQueryEditor-VariableQuery"
         },
         "refresh": 1,
@@ -6992,14 +6992,14 @@
           "type": "prometheus",
           "uid": "${datasource}"
         },
-        "definition": "label_values(ma_status{cluster=~\"$cluster\"},namespace)",
+        "definition": "label_values(pgbackrest_stanza_status{cluster=~\"$cluster\"},namespace)",
         "description": "",
         "label": "Project",
         "name": "namespace",
         "options": [],
         "query": {
           "qryType": 1,
-          "query": "label_values(ma_status{cluster=~\"$cluster\"},namespace)",
+          "query": "label_values(pgbackrest_stanza_status{cluster=~\"$cluster\"},namespace)",
           "refId": "PrometheusVariableQueryEditor-VariableQuery"
         },
         "refresh": 1,
@@ -7155,5 +7155,5 @@
   "timepicker": {},
   "timezone": "",
   "title": "pgBackRest Exporter Dashboard",
-  "version": 10
+  "version": 1
 }
