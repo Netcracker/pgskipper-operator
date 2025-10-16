@@ -60,8 +60,6 @@ func NewPgBackRestExporterDeployment(spec netcrackev1.PgBackRestExporter, sa str
 						{
 							Name:    deploymentName,
 							Image:   dockerImage,
-							Command: []string{"sh"},
-							Args:    []string{"/run_exporter.sh"},
 							Ports: []corev1.ContainerPort{
 								{ContainerPort: 9854, Name: "brexporter", Protocol: corev1.ProtocolTCP},
 							},
