@@ -26,32 +26,7 @@
   "fiscalYearStartMonth": 0,
   "graphTooltip": 0,
   "id": 278,
-  "links": [
-    {
-      "asDropdown": false,
-      "icon": "external link",
-      "includeVars": false,
-      "keepTime": false,
-      "tags": [],
-      "targetBlank": true,
-      "title": "pgbackrest_exporter GitHub",
-      "tooltip": "",
-      "type": "link",
-      "url": "https://github.com/woblerr/pgbackrest_exporter"
-    },
-    {
-      "asDropdown": false,
-      "icon": "external link",
-      "includeVars": false,
-      "keepTime": false,
-      "tags": [],
-      "targetBlank": true,
-      "title": "pgbackrest_exporter dashboard GitHub",
-      "tooltip": "",
-      "type": "link",
-      "url": "https://github.com/woblerr/pgbackrest_exporter-dashboard"
-    }
-  ],
+  "links": [],
   "panels": [
     {
       "collapsed": false,
@@ -7149,7 +7124,7 @@
     ]
   },
   "time": {
-    "from": "now-15m",
+    "from": "now-6h",
     "to": "now"
   },
   "timepicker": {},
