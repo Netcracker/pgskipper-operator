@@ -265,7 +265,9 @@ pgBackRestExporter:
     limits:
       cpu: 200m
       memory: 256Mi
-  securityContext: {}
+  securityContext:
+  # pgbackrest user id
+    runAsUser: 2001
   affinity: {}
   podLabels: {}
 
