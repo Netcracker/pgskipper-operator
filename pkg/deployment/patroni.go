@@ -329,7 +329,7 @@ func NewPatroniStatefulset(cr *patroniv1.PatroniCore, deploymentIdx int, cluster
 
 	if patroniSpec.PatroniResourcesLimitMemory != "" {
 		stSet.Spec.Template.Spec.Containers[0].Env = append(stSet.Spec.Template.Spec.Containers[0].Env, corev1.EnvVar{
-			Name:  "PATRONI_RESOURCES_LIMIT_MEMORY",
+			Name:  "PG_RESOURCES_LIMIT_MEM",
 			Value: patroniSpec.PatroniResourcesLimitMemory,
 		})
 	} else {
