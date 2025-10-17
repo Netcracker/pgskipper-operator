@@ -111,6 +111,7 @@ spec:
       limits: {{- toYaml .Values.patroni.resources.limits | nindent 8 }}
       requests: {{- toYaml .Values.patroni.resources.requests | nindent 8 }}
   {{- end }}
+    patroniResourcesLimitMemory: {{ .Values.patroni.patroniResourcesLimitMemory | default "" }}
     storage:
       type: {{ default "pv" .Values.patroni.storage.type }}
       size: {{ default "10Gi" .Values.patroni.storage.size }}

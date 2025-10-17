@@ -243,14 +243,6 @@ func NewPatroniStatefulset(cr *patroniv1.PatroniCore, deploymentIdx int, cluster
 									},
 								},
 								{
-									Name: "PG_RESOURCES_LIMIT_MEM",
-									ValueFrom: &corev1.EnvVarSource{
-										ResourceFieldRef: &corev1.ResourceFieldSelector{
-											Resource: "limits.memory",
-										},
-									},
-								},
-								{
 									Name:  "PATRONI_CLUSTER_NAME",
 									Value: clusterName,
 								},
@@ -333,6 +325,22 @@ func NewPatroniStatefulset(cr *patroniv1.PatroniCore, deploymentIdx int, cluster
 		for k, v := range patroniSpec.PodAnnotations {
 			stSet.Spec.Template.ObjectMeta.Annotations[k] = v
 		}
+	}
+
+	if patroniSpec.PatroniResourcesLimitMemory != "" {
+		stSet.Spec.Template.Spec.Containers[0].Env = append(stSet.Spec.Template.Spec.Containers[0].Env, corev1.EnvVar{
+			Name:  "PATRONI_RESOURCES_LIMIT_MEMORY",
+			Value: patroniSpec.PatroniResourcesLimitMemory,
+		})
+	} else {
+		stSet.Spec.Template.Spec.Containers[0].Env = append(stSet.Spec.Template.Spec.Containers[0].Env, corev1.EnvVar{
+			Name: "PG_RESOURCES_LIMIT_MEM",
+			ValueFrom: &corev1.EnvVarSource{
+				ResourceFieldRef: &corev1.ResourceFieldSelector{
+					Resource: "limits.memory",
+				},
+			},
+		})
 	}
 
 	// TLS Section

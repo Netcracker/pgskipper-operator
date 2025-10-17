@@ -2072,6 +2072,8 @@ spec:
                     items:
                       type: string
                     type: array
+                  patroniResourcesLimitMemory:
+                    type: string
                   pgHba:
                     items:
                       type: string
