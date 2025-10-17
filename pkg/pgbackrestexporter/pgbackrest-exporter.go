@@ -92,8 +92,9 @@ func getVolumes() []corev1.Volume {
 func getVolumeMounts() []corev1.VolumeMount {
 	return []corev1.VolumeMount{
 		{
-			MountPath: "/etc/pgbackrest",
+			MountPath: "/etc/pgbackrest/pgbackrest.conf",
 			Name:      "pgbackrest-conf",
+			SubPath:   "pgbackrest.conf",
 		},
 	}
 }
