@@ -106,9 +106,9 @@ Create the name of the service account to use
 {{- end -}}
 
 {{/*
-With Out Vault operator envs
+K8s Platform envs
 */}}
-{{- define "postgres-operator.woVaultEnvs" }}
+{{- define "postgres-operator.platformEnvs" }}
             - name: PAAS_PLATFORM
               value: "kubernetes"
             - name: PAAS_VERSION
@@ -118,9 +118,9 @@ With Out Vault operator envs
 {{- end }}
 
 {{/*
-With Out Vault env variables for DBaaS
+POSTGRES ADMIN env variables for DBaaS
 */}}
-{{- define "postgres-dbaas.woVaultEnvs" }}
+{{- define "postgres-dbaas.pgAdminEnvs" }}
             - name: POSTGRES_ADMIN_PASSWORD
               valueFrom:
                 secretKeyRef:
@@ -134,9 +134,9 @@ With Out Vault env variables for DBaaS
 {{- end }}
 
 {{/*
-With Out Vault env variables for DBaaS
+Aggregator Registration env variables for DBaaS
 */}}
-{{- define "postgres-dbaas.woVaultEnvsReg" }}
+{{- define "postgres-dbaas.aggregatorEnvsReg" }}
             - name: DBAAS_AGGREGATOR_REGISTRATION_USERNAME
               valueFrom:
                 secretKeyRef:

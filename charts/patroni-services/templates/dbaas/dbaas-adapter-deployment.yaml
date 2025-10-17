@@ -74,7 +74,7 @@ spec:
           resources:
 {{ .Values.dbaas.resources | toYaml | indent 12 }}
           env:
-  {{- template "postgres-dbaas.woVaultEnvs" . }}
+  {{- template "postgres-dbaas.pgAdminEnvs" . }}
             - name: POSTGRES_DATABASE
               value: {{ default "postgres" .Values.dbaas.dbName }}
             - name: POSTGRES_HOST
@@ -111,10 +111,10 @@ spec:
           securityContext:
             {{- include "restricted.globalContainerSecurityContext" . | nindent 12 }}
           env:
-{{- template "postgres-dbaas.woVaultEnvs" . }}
+{{- template "postgres-dbaas.pgAdminEnvs" . }}
             - name: POSTGRES_DATABASE
               value: {{ default "postgres" .Values.dbaas.dbName }}
-{{- template "postgres-dbaas.woVaultEnvsReg" . }}
+{{- template "postgres-dbaas.aggregatorEnvsReg" . }}
             - name: DBAAS_ADAPTER_ADDRESS
               value: {{ default (printf "http://dbaas-postgres-adapter.%s:8080" .Release.Namespace) .Values.dbaas.adapter.address }}
             - name: DBAAS_AGGREGATOR_REGISTRATION_ADDRESS

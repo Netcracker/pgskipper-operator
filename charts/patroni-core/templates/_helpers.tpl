@@ -92,7 +92,7 @@ capabilities:
 {{- end }}
 {{- end -}}
 
-{{- define "patroni-core-operator.woVaultEnvs" }}
+{{- define "patroni-core-operator.platformEnvs" }}
             - name: PAAS_PLATFORM
               value: "kubernetes"
             - name: PAAS_VERSION
