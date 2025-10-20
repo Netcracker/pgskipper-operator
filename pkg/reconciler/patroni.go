@@ -455,7 +455,7 @@ func (r *PatroniReconciler) processPatroniServices(cr *v1.PatroniCore, patroniSp
 		if cr.Spec.PgBackRest != nil {
 			pgBackRestService := deployment.GetPgBackRestService(r.cluster.PatroniMasterSelectors, false)
 			if err := r.helper.ResourceManager.CreateOrUpdateService(pgBackRestService); err != nil {
-				logger.Error(fmt.Sprintf("Cannot create service %s", pgService.Name), zap.Error(err))
+				logger.Error(fmt.Sprintf("Cannot create service %s", pgBackRestService.Name), zap.Error(err))
 				return err
 			}
 			if cr.Spec.PgBackRest.BackupFromStandby {
