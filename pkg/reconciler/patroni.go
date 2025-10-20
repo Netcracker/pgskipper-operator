@@ -316,14 +316,13 @@ func (r *PatroniReconciler) Reconcile() error {
 		}
 	}
 	// Set replicator password from Secret
-	if !cr.Spec.VaultRegistration.DbEngine.Enabled && !isStandbyClusterPresent {
-		if err := r.helper.SyncReplicatorPassword(r.cluster.PgHost); err != nil {
+	if !cr.Spec.VaultRegistration.DbEngine.Enabled {
+		if isStandbyClusterPresent {
+			logger.Info("Standby detected; skipping replicator password sync")
+		} else if err := r.helper.SyncReplicatorPassword(r.cluster.PgHost); err != nil {
 			return err
 		}
-	} else if isStandbyClusterPresent {
-		logger.Info("Standby detected; skipping replicator password sync")
 	}
-
 	// add necessary shared_preload_libraries and settings
 	if cr.Spec.Patroni.Powa.Install {
 		powa.UpdatePgSettings(cr)
@@ -617,7 +616,7 @@ func (r *PatroniReconciler) fixCollationVersionForDB(pgClient *pgClient.Postgres
 	}()
 
 	logger.Info(fmt.Sprintf("fix locale for database: %s", db))
-	err = pgClient.ExecuteForDB(db, fmt.Sprintf("REINDEX DATABASE \"%s\"", db))
+	err = pgClient.ExecuteForDB(db, fmt.Sprintf("REINDEX DATABASE CONCURRENTLY \"%s\"", db))
 	if err != nil {
 		logger.Warn(fmt.Sprintf("Cannot reindex database for db: %s", db), zap.Error(err))
 		return
@@ -626,6 +625,15 @@ func (r *PatroniReconciler) fixCollationVersionForDB(pgClient *pgClient.Postgres
 	if err != nil {
 		logger.Warn(fmt.Sprintf("Cannot reindex system for db: %s", db), zap.Error(err))
 		return
+	}
+	brokenIndNames, err := findBrokenIndexes(pgClient, db)
+	if err != nil {
+		logger.Warn(fmt.Sprintf("Cannot find broken indexes for db: %s", db), zap.Error(err))
+		return
+	}
+
+	if len(brokenIndNames) > 0 {
+		fixBrokenIndexes(pgClient, db, brokenIndNames)
 	}
 
 	if pgVersion >= 15 {
@@ -640,6 +648,76 @@ func (r *PatroniReconciler) fixCollationVersionForDB(pgClient *pgClient.Postgres
 	if err != nil {
 		logger.Warn(fmt.Sprintf("Cannot alter dependent collations version for db: %s", db), zap.Error(err))
 	}
+}
+
+func fixBrokenIndexes(pgClient *pgClient.PostgresClient, db string, brokenIndNames []string) {
+	logger.Warn(fmt.Sprintf("Broken indexes found for db: %s", db))
+	indexesFixed := true
+	for _, BrokenIndName := range brokenIndNames {
+		dropIndexQuery := fmt.Sprintf("DROP INDEX IF EXISTS \"%s\"", BrokenIndName)
+		err := pgClient.ExecuteForDB(db, dropIndexQuery)
+		if err != nil {
+			logger.Warn(fmt.Sprintf("Cannot drop index for db: %s", db), zap.Error(err))
+			indexesFixed = false
+		}
+		if strings.Contains(BrokenIndName, "_ccnew") {
+			indexNameOld := strings.Split(BrokenIndName, "_ccnew")[0]
+			err = pgClient.ExecuteForDB(db, fmt.Sprintf("REINDEX INDEX CONCURRENTLY \"%s\"", indexNameOld))
+			if err != nil {
+				logger.Warn(fmt.Sprintf("Cannot reindex index for db: %s", db), zap.Error(err))
+				indexesFixed = false
+			}
+		}
+	}
+
+	if indexesFixed {
+		logger.Info(fmt.Sprintf("Broken indexes fixed for db: %s", db))
+	} else {
+		logger.Warn(fmt.Sprintf("Broken indexes not fixed for db: %s", db))
+	}
+}
+
+func findBrokenIndexes(pgClient *pgClient.PostgresClient, db string) ([]string, error) {
+	logger.Debug(fmt.Sprintf("check broken indexes for db: %s", db))
+
+	brokenIndexQuery := `
+		SELECT 
+			n.nspname AS schema_name,
+			c.relname AS index_name
+		FROM 
+			pg_index i
+		JOIN 
+			pg_class c ON i.indexrelid = c.oid
+		JOIN 
+			pg_namespace n ON c.relnamespace = n.oid
+		WHERE 
+			n.nspname NOT IN ('pg_catalog', 'information_schema') AND i.indisvalid = false AND ( c.relname like '%_ccnew%' or c.relname like '%_ccold%')
+		ORDER BY 
+				schema_name, index_name;`
+
+	conn, err := pgClient.GetConnectionToDb(db)
+	if err != nil {
+		return nil, err
+	}
+	defer conn.Close(context.Background())
+
+	rows, err := conn.Query(context.Background(), brokenIndexQuery)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	indexNames := make([]string, 0)
+	var schemaName string
+	var indexName string
+	for rows.Next() {
+		err = rows.Scan(&schemaName, &indexName)
+		if err != nil {
+			return nil, err
+		}
+		indexNames = append(indexNames, fmt.Sprintf("\"%s\".\"%s\"", schemaName, indexName))
+	}
+	return indexNames, nil
 }
 
 func (r *PatroniReconciler) refreshDependCollationsVersion(pgClient *pgClient.PostgresClient, db string) error {
