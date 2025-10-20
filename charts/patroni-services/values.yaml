@@ -257,7 +257,7 @@ backupDaemon:
 
 pgBackRestExporter:
   install: false
-  image: artifactorycn.netcracker.com:17009/pgbackrest_exporter:2.55.1
+  image: artifactorycn.netcracker.com:17152/woblerr/pgbackrest_exporter:v0.21.0-alpine
   resources:
     requests:
       cpu: 100m
