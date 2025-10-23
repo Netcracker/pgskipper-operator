@@ -115,6 +115,8 @@ class PostgreSQLRestoreWorker(Thread):
             database_details = databases_section.get(database)
             if not database_details:
                 database_details = {}
+                if self.databases_mapping and self.databases_mapping[database]:
+                    database_details['newDatabaseName'] = self.databases_mapping[database]
                 databases_section[database] = database_details
 
             database_details[key] = value

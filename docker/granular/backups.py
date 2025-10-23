@@ -534,7 +534,7 @@ def transform_restore_status_v1(raw: dict) -> dict:
         info = info or {}
         out["databases"].append({
             "previousDatabaseName": prev_name,
-            "databaseName":   info.get("databaseName") or info.get("restoredAs") or prev_name,
+            "databaseName":   info.get("newDatabaseName") or info.get("databaseName") or info.get("restoredAs") or prev_name,
             "status":         info.get("status"),
             "duration":       info.get("duration"),
             "path":           info.get("path"),
