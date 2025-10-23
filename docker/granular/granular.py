@@ -1080,6 +1080,8 @@ class NewBackup(flask_restful.Resource):
         if databases and not isinstance(databases, (list, tuple)):
             return {"message": "databases must be an array"}, http.client.BAD_REQUEST
 
+        blob_path = normalize_blobPath(blob_path)
+
         # Reuse old logic directly
         backup_request = {
             "databases": list(databases),
@@ -1094,6 +1096,8 @@ class NewBackup(flask_restful.Resource):
         elif isinstance(resp, dict):
             body, code = resp, http.client.ACCEPTED
         else:
+            if code == http.client.BAD_REQUEST:
+                return resp, http.client.NOT_FOUND
             return resp
 
         try:
@@ -1146,7 +1150,8 @@ class NewBackupStatus(flask_restful.Resource):
         if not backups.is_valid_namespace(namespace):
             return "Invalid namespace name: %s." % namespace.encode("utf-8"), http.client.BAD_REQUEST
 
-        external_backup_path = request.args.get("blobPath")
+        blob_path = normalize_blobPath(request.args.get("blobPath"))
+        external_backup_path = blob_path
         external_backup_root = backups.build_external_backup_root(external_backup_path) if external_backup_path else None
 
         status_path = backups.build_backup_status_file_path(backup_id, namespace, external_backup_root)
@@ -1174,7 +1179,8 @@ class NewBackupStatus(flask_restful.Resource):
             return {"backupId": backup_id, "message": "Backup ID is not specified", "status": "Failed"}, http.client.BAD_REQUEST
 
         req_ns = request.args.get("namespace")
-        external_backup_path = request.args.get("blobPath") or request.args.get("externalBackupPath")
+        blob_path = normalize_blobPath(request.args.get("blobPath"))
+        external_backup_path = blob_path or request.args.get("externalBackupPath")
         if not external_backup_path:
             return {"backupId": backup_id,
                     "message": "blobPath query parameter is required (e.g. ?blobPath=tmp/a/b/c).",
@@ -1288,11 +1294,16 @@ class NewRestore(flask_restful.Resource):
         body = request.get_json(silent=True) or {}
         blob_path = body.get("blobPath")
         pairs = body.get("databases") or []
+        
+        dry_run = body.get("dryRun")
+        if dry_run:
+            self.log.info(f"Dry run requested for restore with backup ID: {backup_id}")
 
         if not blob_path:
             return {"message": "blobPath is required"}, http.client.BAD_REQUEST
         if not isinstance(pairs, (list, tuple)):
             return {"message": "databases must be an array of objects"}, http.client.BAD_REQUEST
+        blob_path = normalize_blobPath(blob_path)
 
         databases = []
         databases_mapping = {}
@@ -1352,12 +1363,12 @@ class NewRestore(flask_restful.Resource):
             owners_mapping[database] = database_details.get("owner", "postgres")
 
         if ghost_databases:
-            return "Databases are not found: %s." % ", ".join([db.encode("utf-8") for db in ghost_databases]), http.client.NOT_FOUND
+            return "Databases are not found: %s." % ", ".join(ghost_databases), http.client.NOT_FOUND
         if uncompleted_backups:
             return (
                 "Database backup is in unsuitable status for restore: %s."
-                % ", ".join(["%s: %s" % (i[0].encode("utf-8"), i[1]) for i in uncompleted_backups]),
-                http.client.FORBIDDEN,
+                % ", ".join(["%s: %s" % (i[0], i[1]) for i in uncompleted_backups]),
+                http.client.BAD_REQUEST,
             )
 
         tracking_id = backups.generate_restore_id(backup_id, namespace)
@@ -1368,12 +1379,13 @@ class NewRestore(flask_restful.Resource):
         single_transaction = True
 
         # Start worker (same as old)
-        worker = pg_restore.PostgreSQLRestoreWorker(
-            requested, force,
-            {"backupId": backup_id, "namespace": namespace, "externalBackupPath": external_backup_path, "trackingId": tracking_id},
-            databases_mapping, owners_mapping, restore_roles, single_transaction, body.get("dbaasClone")
-        )
-        worker.start()
+        if not dry_run:
+            worker = pg_restore.PostgreSQLRestoreWorker(
+                requested, force,
+                {"backupId": backup_id, "namespace": namespace, "externalBackupPath": external_backup_path, "trackingId": tracking_id},
+                databases_mapping, owners_mapping, restore_roles, single_transaction, body.get("dbaasClone")
+            )
+            worker.start()
 
         try:
             import datetime
@@ -1382,7 +1394,7 @@ class NewRestore(flask_restful.Resource):
             created_iso = ""
 
         storage_name = body.get("storageName") or ""
-        blob_path = body.get("blobPath") or external_backup_path or ""
+        blob_path = blob_path or external_backup_path or ""
 
         dbs_out = []
         for prev in (requested or []):
@@ -1421,6 +1433,10 @@ class NewRestore(flask_restful.Resource):
                 "externalBackupPath": external_backup_path or "",
                 "sourceBackupId": backup_id
             }
+
+            if dry_run:
+                return enriched, http.client.OK
+
             try:
                 status_path = backups.build_restore_status_file_path(backup_id, tracking_id, namespace,
                                                                      backups.build_external_backup_root(external_backup_path) if external_backup_path else None)
@@ -1468,7 +1484,8 @@ class NewRestoreStatus(flask_restful.Resource):
         if not backups.is_valid_namespace(namespace):
             return "Invalid namespace name: %s." % namespace.encode("utf-8"), http.client.BAD_REQUEST
 
-        external_backup_path = request.args.get("blobPath")
+        blob_path = normalize_blobPath(request.args.get("blobPath"))
+        external_backup_path = blob_path
         external_backup_root = backups.build_external_backup_root(external_backup_path) if external_backup_path else None
         storage_name = request.args.get("storageName") or os.environ.get("STORAGE_NAME")
         status_path = backups.build_restore_status_file_path(backup_id, restore_id, namespace, external_backup_root)
@@ -1528,7 +1545,8 @@ class NewRestoreStatus(flask_restful.Resource):
                 "termination": {"code": term_code, "body": term_body}
             }, http.client.OK
 
-        external_backup_path = request.args.get("blobPath") or request.args.get("externalBackupPath")
+        blob_path = normalize_blobPath(request.args.get("blobPath"))
+        external_backup_path = blob_path or request.args.get("externalBackupPath")
         if not external_backup_path:
             return {
                 "restoreId": restore_id,
@@ -1632,7 +1650,16 @@ class NewRestoreStatus(flask_restful.Resource):
 
         return {"restoreId": restore_id, "message": msg, "status": "Successful",
                 "termination": {"code": term_code, "body": term_body}}, http.client.OK
-    
+
+def normalize_blobPath(blob_path):
+    # Normalize blob_path by removing a single leading and trailing slash
+    if isinstance(blob_path, str):
+        if blob_path.startswith("/"):
+            blob_path = blob_path[1:]
+        if blob_path.endswith("/"):
+            blob_path = blob_path[:-1]
+    return blob_path
+
 def get_pgbackrest_service():
     if os.getenv("BACKUP_FROM_STANDBY") == "true":
         try:
