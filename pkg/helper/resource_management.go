@@ -37,6 +37,7 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/equality"
 	"k8s.io/apimachinery/pkg/api/errors"
+	"k8s.io/apimachinery/pkg/api/meta"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/apimachinery/pkg/util/wait"
@@ -73,7 +74,7 @@ func (rm *ResourceManager) GetPatroniCoreCR() (*patroniv1.PatroniCore, error) {
 	if err := rm.kubeClient.Get(context.TODO(), types.NamespacedName{
 		Name: "patroni-core", Namespace: namespace,
 	}, cr); err != nil {
-		if errors.IsNotFound(err) {
+		if errors.IsNotFound(err) || meta.IsNoMatchError(err) {
 			logger.Info("Custom Resource patroni-core not found")
 			return cr, nil
 		}
