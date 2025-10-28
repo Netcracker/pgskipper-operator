@@ -1041,8 +1041,7 @@ queries:
     - pg_lock_tree_info
     sql: "with recursive activity as (\n  select\n    current_timestamp\n    ,c.relname\n
       \   ,l.mode\n    ,pg_blocking_pids(a.pid) blocked_by\n    ,a.*\n    ,age(clock_timestamp(),
-      xact_start)::interval(0) as tx_age\n    ,age(clock_timestamp(), (select max(l.waitstart)
-      from pg_locks l where a.pid = l.pid))::interval(0) as wait_age\n  from pg_stat_activity
+      xact_start)::interval(0) as tx_age\n    ,age(clock_timestamp(), state_change) as wait_age\n  from pg_stat_activity
       a\n        , pg_locks l\n        , pg_class c\n        , pg_namespace n\n   where\n
       \  l.pid                = a.pid\n   and l.relation       = c.oid\n   and   c.relnamespace
       \      = n.oid\n   and   n.nspname not in ('pg_catalog')\n   and   c.relname
