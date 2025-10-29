@@ -1271,7 +1271,7 @@ queries:
     - pg_stat_long_running_totalTime
     sql: SELECT distinct pd.datname as datname, substring(pss.query from 1 for 50)
       AS query, sum(pss.total_plan_time+pss.total_exec_time) over (partition by substring(pss.query
-      from 1 for 50)) AS pg_stat_long_running_totalTime, sum((pss.total_plan_time+pss.total_exec_time)/calls)
+      from 1 for 50)) AS pg_stat_long_running_totalTime, sum((pss.total_plan_time+pss.total_exec_time)/NULLIF(calls,0))
       over (partition by substring(pss.query from 1 for 50)) as pg_stat_long_running_totalAvgtime FROM
       pg_stat_statements AS pss  INNER JOIN pg_database AS pd ON pss.dbid=pd.oid where
       (pss.total_plan_time+pss.total_exec_time)>0 and (substring(pss.query from 1
@@ -1293,8 +1293,8 @@ queries:
     sql: SELECT t1.*, t2.rolname, t3.datname from (SELECT query, dbid, userid, queryid,
       round(total_plan_time::numeric + total_exec_time::numeric, 2) AS pg_stat_query_totalTime,
       calls as pg_stat_query_calls, rows as pg_stat_query_rows, round((total_plan_time::numeric + total_exec_time::numeric)  /
-      calls, 2) AS pg_stat_query_avg_time, round((100 * (total_plan_time+total_exec_time) / sum(total_plan_time::numeric
-      + total_exec_time::numeric) OVER ())::numeric, 2) AS pg_stat_query_percentage_cpu, shared_blks_read as pg_stat_query_shared_blks_read,
+      NULLIF(calls,0), 2) AS pg_stat_query_avg_time, round((100 * (total_plan_time+total_exec_time) / NULLIF(sum(total_plan_time::numeric
+      + total_exec_time::numeric) OVER (),0))::numeric, 2) AS pg_stat_query_percentage_cpu, shared_blks_read as pg_stat_query_shared_blks_read,
       shared_blks_written as pg_stat_query_shared_blks_written, temp_blks_written as pg_stat_query_temp_blks_written FROM pg_stat_statements
       ORDER BY pg_stat_query_totalTime DESC LIMIT 10)
       t1 JOIN pg_roles t2 ON (t1.userid=t2.oid) JOIN pg_database t3 ON (t1.dbid=t3.oid)
