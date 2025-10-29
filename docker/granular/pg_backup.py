@@ -32,7 +32,7 @@ import storage_s3
 
 class PostgreSQLDumpWorker(Thread):
 
-    def __init__(self, databases, backup_request):
+    def __init__(self, databases, backup_request, blob_path=None):
         Thread.__init__(self)
 
         self.log = logging.getLogger("PostgreSQLDumpWorker")
@@ -50,6 +50,7 @@ class PostgreSQLDumpWorker(Thread):
         self.bin_path = configs.get_pgsql_bin_path(self.postgres_version)
         self.parallel_jobs = configs.get_parallel_jobs()
         self.databases = databases if databases else []
+        self.blob_path = blob_path
         self.backup_dir = backups.build_backup_path(self.backup_id, self.namespace, self.external_backup_root)
         self.create_backup_dir()
         self.s3 = storage_s3.AwsS3Vault() if os.environ['STORAGE_TYPE'] == "s3" else None
@@ -116,7 +117,7 @@ class PostgreSQLDumpWorker(Thread):
         if self.s3:
             try:
                 # upload dumpfile
-                self.s3.upload_file(path)
+                self.s3.upload_file(path, self.blob_path, self.backup_id)
             except Exception as e:
                 raise e
 
@@ -296,9 +297,9 @@ class PostgreSQLDumpWorker(Thread):
         if self.s3:
             try:
                 # upload dumpfile
-                self.s3.upload_file(database_backup_path)
+                self.s3.upload_file(database_backup_path, self.blob_path, self.backup_id)
                 # upload errorfile
-                self.s3.upload_file(self.stderr_file(database))
+                self.s3.upload_file(self.stderr_file(database), self.blob_path, self.backup_id)
             except Exception as e:
                 raise e
 
@@ -433,7 +434,7 @@ class PostgreSQLDumpWorker(Thread):
             if self.s3:
                 try:
                     logging.info("Streaming {} roles to AWS".format(database))
-                    self.s3.upload_file(roles_backup_path)
+                    self.s3.upload_file(roles_backup_path, self.blob_path, self.backup_id)
                 except Exception as e:
                     raise e
                 finally:
@@ -446,9 +447,9 @@ class PostgreSQLDumpWorker(Thread):
         os.remove(self.stderr_file(database))
 
     def on_success(self, database):
-        database_backup_path = backups.build_database_backup_path(self.backup_id, database, self.namespace, self.external_backup_root)
+        database_backup_path = backups.build_database_backup_path(self.backup_id, database, self.namespace, self.external_backup_root, self.blob_path)
 
-        pg_dump_backup_path = backups.build_backup_path(self.backup_id, self.namespace, self.external_backup_root)
+        pg_dump_backup_path = backups.build_backup_path(self.backup_id, self.namespace, self.external_backup_root, self.blob_path)
         path_for_parallel_flag_backup = os.path.join(pg_dump_backup_path, database)
         
         if self.s3:
@@ -463,7 +464,7 @@ class PostgreSQLDumpWorker(Thread):
                 size_bytes = os.path.getsize(database_backup_path)
         self.update_status('path', backups.
                            build_database_backup_full_path(
-            self.backup_id, database, self.location, self.namespace), database)
+            self.backup_id, database, self.location, self.namespace, blob_path=self.blob_path), database)
         self.update_status('sizeBytes', size_bytes, database)
         self.update_status('size', backups.sizeof_fmt(size_bytes), database)
         if self.encryption:

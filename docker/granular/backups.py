@@ -89,61 +89,55 @@ def build_namespace_path(namespace=configs.default_namespace()):
     return '%s/%s' % (configs.backups_storage(), namespace)
 
 
-def build_database_backup_path(backup_id, database,
-                               namespace=configs.default_namespace(), external_backup_storage=None):
-    if configs.get_encryption():
-        return '%s/%s_enc.dump' % (
-            build_backup_path(backup_id, namespace, external_backup_storage), database)
-    else:
-        return '%s/%s.dump' % (
-            build_backup_path(backup_id, namespace, external_backup_storage), database)
-
+def build_database_backup_path(backup_id, database, 
+                               namespace=configs.default_namespace(), external_backup_storage=None, blob_path=None):
+    ext = '_enc.dump' if configs.get_encryption() else '.dump'
+    return '%s/%s%s' % (
+                build_backup_path(backup_id, namespace, external_backup_storage, blob_path), database, ext)
 
 def build_roles_backup_path(backup_id, database,
-                            namespace=configs.default_namespace(), external_backup_storage=None):
-    if configs.get_encryption():
-        return "%s/%s.roles_enc.sql" % (
-            build_backup_path(backup_id, namespace, external_backup_storage), database)
-    else:
-        return "%s/%s.roles.sql" % (
-            build_backup_path(backup_id, namespace, external_backup_storage), database)
-
+                            namespace=configs.default_namespace(), external_backup_storage=None, blob_path=None):
+    ext = 'roles_enc.sql' if configs.get_encryption() else 'roles.sql'
+    return "%s/%s.%s" % (
+        build_backup_path(backup_id, namespace, external_backup_storage, blob_path), database, ext)
 
 def build_database_backup_full_path(backup_id, database, storage_root,
                                         namespace=configs.default_namespace(),
-                                        ):
-    if configs.get_encryption():
-        return '%s/%s/%s/%s_enc.dump' % (
-        storage_root, namespace, backup_id, database)
+                                        blob_path=None):
+    ext = '_enc.dump' if configs.get_encryption() else '.dump'
+    if blob_path is not None:
+        return '%s/%s/%s%s' % (blob_path, backup_id, database, ext)
     else:
-        return '%s/%s/%s/%s.dump' % (
-        storage_root, namespace, backup_id, database)
+        return '%s/%s/%s/%s%s' % (storage_root, namespace, backup_id, database, ext)
 
 
 def build_database_restore_report_path(backup_id, database, restore_tracking_id, namespace=configs.default_namespace()):
     return '%s/%s.%s.report' % (build_backup_path(backup_id, namespace), database, restore_tracking_id)
 
 
-def build_backup_path(backup_id, namespace=configs.default_namespace(), external_backup_storage=None):
-    return '%s/%s/%s' % (configs.backups_storage() if external_backup_storage is None else external_backup_storage,
-                         namespace, backup_id)
+def build_backup_path(backup_id, namespace=configs.default_namespace(), external_backup_storage=None, blob_path=None):
+    if blob_path is not None:
+        return '%s/%s' % (blob_path, backup_id)
+    else:
+        return '%s/%s/%s' % (configs.backups_storage() if external_backup_storage is None else external_backup_storage,
+                             namespace, backup_id)
 
 
 def build_external_backup_root(external_backup_path):
     return '%s/%s' % (os.getenv("EXTERNAL_STORAGE_ROOT"), external_backup_path)
 
 
-def build_backup_status_file_path(backup_id, namespace=configs.default_namespace(), external_backup_storage=None):
-    return '%s/status.json' % build_backup_path(backup_id, namespace, external_backup_storage)
+def build_backup_status_file_path(backup_id, namespace=configs.default_namespace(), external_backup_storage=None, blob_path=None):
+    return '%s/status.json' % build_backup_path(backup_id, namespace, external_backup_storage, blob_path)
 
 
 def build_restore_status_file_path(backup_id, tracking_id, namespace=configs.default_namespace(),
-                                   external_backup_storage=None):
-    return '%s/%s.json' % (build_backup_path(backup_id, namespace, external_backup_storage), tracking_id)
+                                   external_backup_storage=None, blob_path=None):
+    return '%s/%s.json' % (build_backup_path(backup_id, namespace, external_backup_storage, blob_path), tracking_id)
 
 
-def get_key_name_by_backup_id(backup_id, namespace, external_backup_storage=None):
-    status_path = build_backup_status_file_path(backup_id, namespace, external_backup_storage)
+def get_key_name_by_backup_id(backup_id, namespace, external_backup_storage=None, blob_path=None):
+    status_path = build_backup_status_file_path(backup_id, namespace, external_backup_storage, blob_path)
     with open(status_path) as f:
         data = json.load(f)
         return data.get("key_name")

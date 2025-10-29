@@ -286,7 +286,8 @@ class GranularBackupRequestEndpoint(flask_restful.Resource):
                                'keep',
                                'compressionLevel',
                                'externalBackupPath',
-                               'storageName']
+                               'storageName',
+                               'blobPath']
 
     def perform_granular_backup(self, backup_request):
         # # for gke full backup
@@ -333,7 +334,7 @@ class GranularBackupRequestEndpoint(flask_restful.Resource):
         backup_id = backups.generate_backup_id()
         backup_request['backupId'] = backup_id
 
-        worker = pg_backup.PostgreSQLDumpWorker(databases, backup_request)
+        worker = pg_backup.PostgreSQLDumpWorker(databases, backup_request, backup_request.get('blobPath'))
 
         worker.start()
 
@@ -1063,6 +1064,7 @@ class NewBackup(flask_restful.Resource):
     def __init__(self):
         self.log = logging.getLogger("NewBackup")
         self.allowed_fields = ["storageName", "blobPath", "databases"]
+        self.s3 = storage_s3.AwsS3Vault() if os.environ.get("STORAGE_TYPE") == "s3" else None
 
     @staticmethod
     def get_endpoints():
@@ -1070,6 +1072,9 @@ class NewBackup(flask_restful.Resource):
 
     @auth.login_required
     def post(self):
+        if not self.s3:
+            return "S3 is not configured for backup daemon", http.client.FORBIDDEN
+
         body = request.get_json(silent=True) or {}
         storage_name = body.get("storageName")
         blob_path = body.get("blobPath")
@@ -1085,7 +1090,7 @@ class NewBackup(flask_restful.Resource):
         # Reuse old logic directly
         backup_request = {
             "databases": list(databases),
-            "externalBackupPath": blob_path,
+            "blobPath": blob_path,
             "storageName": storage_name
         }
         resp = GranularBackupRequestEndpoint().perform_granular_backup(backup_request)
@@ -1096,6 +1101,8 @@ class NewBackup(flask_restful.Resource):
         elif isinstance(resp, dict):
             body, code = resp, http.client.ACCEPTED
         else:
+            if code == http.client.BAD_REQUEST:
+                return resp, http.client.NOT_FOUND
             if code == http.client.BAD_REQUEST:
                 return resp, http.client.NOT_FOUND
             return resp
@@ -1143,6 +1150,9 @@ class NewBackupStatus(flask_restful.Resource):
 
     @auth.login_required
     def get(self, backup_id):
+        if not self.s3:
+            return "S3 is not configured for backup daemon", http.client.FORBIDDEN
+
         if not backup_id:
             return "Backup ID is not specified.", http.client.BAD_REQUEST
 
@@ -1151,49 +1161,38 @@ class NewBackupStatus(flask_restful.Resource):
             return "Invalid namespace name: %s." % namespace.encode("utf-8"), http.client.BAD_REQUEST
 
         blob_path = normalize_blobPath(request.args.get("blobPath"))
-        external_backup_path = blob_path
-        external_backup_root = backups.build_external_backup_root(external_backup_path) if external_backup_path else None
+        status_path = backups.build_backup_status_file_path(backup_id, blob_path=blob_path)
 
-        status_path = backups.build_backup_status_file_path(backup_id, namespace, external_backup_root)
+        
+        try:
+            raw = json.loads(self.s3.read_object(status_path))
+        except Exception:
+            return "Backup in bucket is not found.", http.client.NOT_FOUND
 
-        if self.s3:
-            try:
-                raw = json.loads(self.s3.read_object(status_path))
-            except Exception:
-                return "Backup in bucket is not found.", http.client.NOT_FOUND
-        else:
-            if not os.path.isfile(status_path):
-                return "Backup is not found.", http.client.NOT_FOUND
-            with open(status_path) as f:
-                raw = json.load(f)
-
-        if external_backup_path and not (raw.get("blobPath") or raw.get("externalBackupPath")):
-            raw["blobPath"] = external_backup_path
+        if blob_path and not raw.get("blobPath"):
+            raw["blobPath"] = blob_path
 
         return backups.transform_backup_status_v1(raw), http.client.OK
     
     @auth.login_required
     @superuser_authorization
     def delete(self, backup_id):
+        if not self.s3:
+            return "S3 is not configured for backup daemon", http.client.FORBIDDEN
+
         if not backup_id:
             return {"backupId": backup_id, "message": "Backup ID is not specified", "status": "Failed"}, http.client.BAD_REQUEST
 
         req_ns = request.args.get("namespace")
-        blob_path = normalize_blobPath(request.args.get("blobPath"))
-        external_backup_path = blob_path or request.args.get("externalBackupPath")
-        if not external_backup_path:
+        blob_path = request.args.get("blobPath")
+        if not blob_path:
             return {"backupId": backup_id,
                     "message": "blobPath query parameter is required (e.g. ?blobPath=tmp/a/b/c).",
                     "status": "Failed"}, http.client.BAD_REQUEST
-        external_backup_root = backups.build_external_backup_root(external_backup_path)
+        blob_path = normalize_blobPath(blob_path)
 
-        def _exists(p: str) -> bool:
-            if self.s3:
-                try:
-                    return self.s3.is_file_exists(p)
-                except Exception:
-                    return False
-            return os.path.isfile(p)
+        def _exists(p: str) -> bool:            
+            return self.s3.is_file_exists(p)
 
         namespace = req_ns
         if not namespace:
@@ -1205,14 +1204,14 @@ class NewBackupStatus(flask_restful.Resource):
             if "default" not in candidates:
                 candidates.append("default")
             for cand in candidates:
-                status_try = backups.build_backup_status_file_path(backup_id, cand, external_backup_root)
+                status_try = backups.build_backup_status_file_path(backup_id, cand, blob_path=blob_path)
                 if _exists(status_try):
                     namespace = cand
                     break
         if not namespace:
             namespace = configs.default_namespace()
 
-        status_path = backups.build_backup_status_file_path(backup_id, namespace, external_backup_root)
+        status_path = backups.build_backup_status_file_path(backup_id, namespace, blob_path=blob_path)
         existed_before = _exists(status_path)
 
         resp = TerminateBackupEndpoint().post(backup_id)
@@ -1242,16 +1241,8 @@ class NewBackupStatus(flask_restful.Resource):
         self.log.info("Terminate response for %s: code=%s body=%s", backup_id, term_code, term_body)
 
         try:
-            target_dir = backups.build_backup_path(backup_id, namespace, external_backup_root)
-            if self.s3:
-                self.s3.delete_objects(target_dir)
-            else:
-                if os.path.isdir(target_dir):
-                    shutil.rmtree(target_dir, ignore_errors=False)
-                if external_backup_root is None:
-                    ns_dir = backups.build_namespace_path(namespace)
-                    if os.path.isdir(ns_dir) and not os.listdir(ns_dir) and namespace != "default":
-                        shutil.rmtree(ns_dir, ignore_errors=True)
+            target_dir = backups.build_backup_path(backup_id, blob_path=blob_path)
+            self.s3.delete_objects(target_dir)
         except Exception as e:
             if not existed_before and term_code == http.client.NOT_FOUND:
                 return {"backupId": backup_id, "message": "Backup is not found.", "status": "Failed"}, http.client.NOT_FOUND
@@ -1291,6 +1282,9 @@ class NewRestore(flask_restful.Resource):
     @auth.login_required
     @superuser_authorization
     def post(self, backup_id):
+        if not self.s3:
+            return "S3 is not configured for backup daemon", http.client.FORBIDDEN
+
         body = request.get_json(silent=True) or {}
         blob_path = body.get("blobPath")
         pairs = body.get("databases") or []
@@ -1320,32 +1314,21 @@ class NewRestore(flask_restful.Resource):
         if not backups.is_valid_namespace(namespace):
             return "Invalid namespace name: %s." % namespace.encode("utf-8"), http.client.BAD_REQUEST
 
-        external_backup_path = blob_path
-        external_backup_root = backups.build_external_backup_root(external_backup_path) if external_backup_path else None
-        backup_details_file = backups.build_backup_status_file_path(backup_id, namespace, external_backup_root)
+        backup_details_file = backups.build_backup_status_file_path(backup_id, blob_path=blob_path)
 
-        if self.s3:
-            try:
-                status = self.s3.read_object(backup_details_file)
-                backup_details = json.loads(status)
-            except Exception:
-                return "Backup in bucket is not found.", http.client.NOT_FOUND
-        else:
-            if not os.path.isfile(backup_details_file):
-                return "Backup is not found.", http.client.NOT_FOUND
-            with open(backup_details_file, "r") as f:
-                backup_details = json.load(f)
+        try:
+            status = self.s3.read_object(backup_details_file)
+            backup_details = json.loads(status)
+        except Exception:
+            return "Backup in bucket is not found.", http.client.NOT_FOUND
 
         backup_status = backup_details["status"]
         if backup_status != backups.BackupStatus.SUCCESSFUL:
             return "Backup status '%s' is unsuitable status for restore." % backup_status, http.client.FORBIDDEN
 
-        if self.s3:
-            for database in list(backup_details.get("databases", {}).keys()):
-                if not self.s3.is_file_exists(backups.build_database_backup_path(backup_id, database, namespace, external_backup_root)):
-                    return "Backup in bucket is not found.", http.client.NOT_FOUND
-        elif not backups.backup_exists(backup_id, namespace, external_backup_root):
-            return "Backup is not found.", http.client.NOT_FOUND
+        for database in list(backup_details.get("databases", {}).keys()):
+            if not self.s3.is_file_exists(backups.build_database_backup_path(backup_id, database, blob_path=blob_path)):
+                return "Backup in bucket is not found.", http.client.NOT_FOUND
 
         ghost_databases = []
         uncompleted_backups = []
@@ -1382,8 +1365,8 @@ class NewRestore(flask_restful.Resource):
         if not dry_run:
             worker = pg_restore.PostgreSQLRestoreWorker(
                 requested, force,
-                {"backupId": backup_id, "namespace": namespace, "externalBackupPath": external_backup_path, "trackingId": tracking_id},
-                databases_mapping, owners_mapping, restore_roles, single_transaction, body.get("dbaasClone")
+                {"backupId": backup_id, "namespace": namespace, "trackingId": tracking_id},
+                databases_mapping, owners_mapping, restore_roles, single_transaction, body.get("dbaasClone"), blob_path
             )
             worker.start()
 
@@ -1394,7 +1377,6 @@ class NewRestore(flask_restful.Resource):
             created_iso = ""
 
         storage_name = body.get("storageName") or ""
-        blob_path = blob_path or external_backup_path or ""
 
         dbs_out = []
         for prev in (requested or []):
@@ -1430,18 +1412,13 @@ class NewRestore(flask_restful.Resource):
                                       "creationTime": created_iso} for prev in (requested or []) },
                 "storageName": storage_name,
                 "blobPath": blob_path,
-                "externalBackupPath": external_backup_path or "",
                 "sourceBackupId": backup_id
             }
 
             if dry_run:
                 return enriched, http.client.OK
 
-            try:
-                status_path = backups.build_restore_status_file_path(backup_id, tracking_id, namespace,
-                                                                     backups.build_external_backup_root(external_backup_path) if external_backup_path else None)
-            except TypeError:
-                status_path = backups.build_restore_status_file_path(backup_id, tracking_id, namespace)
+            status_path = backups.build_restore_status_file_path(backup_id, tracking_id, namespace)
 
             try:
                 if hasattr(utils, "write_in_json"):
@@ -1472,6 +1449,9 @@ class NewRestoreStatus(flask_restful.Resource):
     @auth.login_required
     @superuser_authorization
     def get(self, restore_id):
+        if not self.s3:
+            return "S3 is not configured for backup daemon", http.client.FORBIDDEN
+
         if not restore_id:
             return "Restore tracking ID is not specified.", http.client.BAD_REQUEST
 
@@ -1485,24 +1465,16 @@ class NewRestoreStatus(flask_restful.Resource):
             return "Invalid namespace name: %s." % namespace.encode("utf-8"), http.client.BAD_REQUEST
 
         blob_path = normalize_blobPath(request.args.get("blobPath"))
-        external_backup_path = blob_path
-        external_backup_root = backups.build_external_backup_root(external_backup_path) if external_backup_path else None
         storage_name = request.args.get("storageName") or os.environ.get("STORAGE_NAME")
-        status_path = backups.build_restore_status_file_path(backup_id, restore_id, namespace, external_backup_root)
+        status_path = backups.build_restore_status_file_path(backup_id, restore_id, blob_path=blob_path)
 
-        if self.s3:
-            try:
-                raw = json.loads(self.s3.read_object(status_path))
-            except Exception:
-                return "Backup in bucket is not found.", http.client.NOT_FOUND
-        else:
-            if not os.path.isfile(status_path):
-                return "Restore is not found.", http.client.NOT_FOUND
-            with open(status_path) as f:
-                raw = json.load(f)
+        try:
+            raw = json.loads(self.s3.read_object(status_path))
+        except Exception:
+            return "Backup in bucket is not found.", http.client.NOT_FOUND
 
-        if external_backup_path and not (raw.get("blobPath") or raw.get("externalBackupPath")):
-            raw["blobPath"] = external_backup_path
+        if blob_path and not raw.get("blobPath"):
+            raw["blobPath"] = blob_path
         if storage_name and not raw.get("storageName"):
             raw["storageName"] = storage_name
 
@@ -1511,6 +1483,9 @@ class NewRestoreStatus(flask_restful.Resource):
     @auth.login_required
     @superuser_authorization
     def delete(self, restore_id):
+        if not self.s3:
+            return "S3 is not configured for backup daemon", http.client.FORBIDDEN
+
         if not restore_id:
             return {"restoreId": restore_id, "message": "Restore ID is not specified", "status": "Failed"}, http.client.BAD_REQUEST
 
@@ -1545,38 +1520,33 @@ class NewRestoreStatus(flask_restful.Resource):
                 "termination": {"code": term_code, "body": term_body}
             }, http.client.OK
 
-        blob_path = normalize_blobPath(request.args.get("blobPath"))
-        external_backup_path = blob_path or request.args.get("externalBackupPath")
-        if not external_backup_path:
+        blob_path = request.args.get("blobPath")
+        if not blob_path:
             return {
                 "restoreId": restore_id,
                 "message": "blobPath query parameter is required for cleanup (e.g. ?blobPath=tmp/a/b/c).",
                 "status": "Failed"
             }, http.client.BAD_REQUEST
+        blob_path = normalize_blobPath(blob_path)
 
-        external_backup_root = backups.build_external_backup_root(external_backup_path)
-        status_path = backups.build_restore_status_file_path(backup_id, restore_id, namespace, external_backup_root)
-        backup_base = backups.build_backup_path(backup_id, namespace, external_backup_root)
+        status_path = backups.build_restore_status_file_path(backup_id, restore_id, blob_path=blob_path)
+        backup_base = backups.build_backup_path(backup_id, blob_path=blob_path)
         pattern_name = f"{restore_id}"
         pattern_glob = os.path.join(backup_base, pattern_name + "*")
 
         def _exists_file(p: str) -> bool:
-            if self.s3:
-                try:
-                    return self.s3.is_file_exists(p)
-                except Exception:
-                    return False
-            return os.path.isfile(p)
+            try:
+                return self.s3.is_file_exists(p)
+            except Exception:
+                return False
 
         def _prefix_exists() -> bool:
-            if self.s3:
-                if hasattr(self.s3, "is_prefix_exists"):
-                    try:
-                        return self.s3.is_prefix_exists(os.path.join(backup_base, pattern_name))
-                    except Exception:
-                        return False
-                return False
-            return any(glob.glob(pattern_glob))
+            if hasattr(self.s3, "is_prefix_exists"):
+                try:
+                    return self.s3.is_prefix_exists(os.path.join(backup_base, pattern_name))
+                except Exception:
+                    return False
+            return False
 
         existed_status = _exists_file(status_path)
         existed_prefix = _prefix_exists()
@@ -1616,35 +1586,19 @@ class NewRestoreStatus(flask_restful.Resource):
         self.log.info("Terminate response for restore %s: code=%s body=%s", restore_id, term_code, term_body)
 
         try:
-            if self.s3:
-                prefix = os.path.join(backup_base, pattern_name).rstrip("/")
-                self.s3.delete_objects(prefix if prefix.endswith("/") else prefix)
-            else:
-                for p in glob.glob(pattern_glob):
-                    if os.path.isfile(p):
-                        os.remove(p)
-                if os.path.isfile(status_path):
-                    try:
-                        os.remove(status_path)
-                    except FileNotFoundError:
-                        pass
+            prefix = os.path.join(backup_base, pattern_name).rstrip("/")
+            self.s3.delete_objects(prefix if prefix.endswith("/") else prefix)
         except Exception as e:
             self.log.exception("Restore cleanup failed for %s: %s", restore_id, e)
             return {
                 "restoreId": restore_id,
                 "message": f"Termination attempted; cleanup encountered an error: {e}",
-                "status": "Successful",
+                "status": "Failed",
                 "termination": {"code": term_code, "body": term_body}
-            }, http.client.OK
-
-        if term_code == 404:
-            return {"restoreId": restore_id, "message": "Restore is not found.", "status": "Failed",
-                    "termination": {"code": term_code, "body": term_body}}, http.client.NOT_FOUND
+            }, http.client.INTERNAL_SERVER_ERROR
 
         if term_code and 200 <= term_code < 300:
             msg = "Restore terminated successfully. Cleanup completed."
-        elif term_code == 404:
-            msg = "No active restore (already finished or not found). Cleanup completed."
         else:
             msg = "Termination attempted. Cleanup completed."
 
@@ -1655,7 +1609,11 @@ def normalize_blobPath(blob_path):
     # Normalize blob_path by removing a single leading and trailing slash
     if isinstance(blob_path, str):
         if blob_path.startswith("/"):
-            blob_path = blob_path[1:]
+            if not os.getenv("AWS_S3_PREFIX", ""):
+                blob_path = blob_path[1:]
+        else:
+            if os.getenv("AWS_S3_PREFIX", ""):
+                blob_path = "/" + blob_path
         if blob_path.endswith("/"):
             blob_path = blob_path[:-1]
     return blob_path

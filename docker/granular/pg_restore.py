@@ -35,7 +35,7 @@ import storage_s3
 
 class PostgreSQLRestoreWorker(Thread):
 
-    def __init__(self, databases, force, restore_request, databases_mapping, owners_mapping, restore_roles=True, single_transaction=False, dbaas_clone=False):
+    def __init__(self, databases, force, restore_request, databases_mapping, owners_mapping, restore_roles=True, single_transaction=False, dbaas_clone=False, blobPath=None):
         Thread.__init__(self)
 
         self.log = logging.getLogger("PostgreSQLRestoreWorker")
@@ -57,16 +57,16 @@ class PostgreSQLRestoreWorker(Thread):
         self.restore_roles = restore_roles
         self.postgres_version = utils.get_version_of_pgsql_server()
         self.location = configs.backups_storage(self.postgres_version) if self.is_standard_storage \
-            else backups.build_external_backup_root(restore_request.get('externalBackupPath'))
+            else backups.build_external_backup_root(restore_request.get('externalBackupPath')) if restore_request.get('externalBackupPath') is not None else blobPath
         self.external_backup_root = None if self.is_standard_storage else self.location
         self.databases_mapping = databases_mapping
         self.owners_mapping = owners_mapping
         self.bin_path = configs.get_pgsql_bin_path(self.postgres_version)
         self.parallel_jobs = configs.get_parallel_jobs()
         self.s3 = storage_s3.AwsS3Vault() if os.environ['STORAGE_TYPE'] == "s3" else None
-        if self.s3:
-            self.backup_dir = backups.build_backup_path(self.backup_id, self.namespace, self.external_backup_root)
-            self.create_backup_dir(self.backup_dir)
+        self.blob_path = blobPath
+        self.backup_dir = backups.build_backup_path(self.backup_id, self.namespace, self.external_backup_root)
+        self.create_backup_dir(self.backup_dir)
         if configs.get_encryption():
             self.encryption = True
             self.key_name = backups.get_key_name_by_backup_id(self.backup_id,
@@ -95,12 +95,12 @@ class PostgreSQLRestoreWorker(Thread):
 
     def flush_status(self, external_backup_storage=None):
         path = backups.build_restore_status_file_path(self.backup_id, self.tracking_id, self.namespace,
-                                                      external_backup_storage)
+                                                          external_backup_storage)
         utils.write_in_json(path, self.status)
         if self.s3:
             try:
                 # upload status file
-                self.s3.upload_file(path)
+                self.s3.upload_file(path, self.blob_path, self.backup_id)
             except Exception as e:
                 raise e
 
@@ -171,7 +171,7 @@ class PostgreSQLRestoreWorker(Thread):
         self.update_status('status', backups.BackupStatus.IN_PROGRESS, database)
         self.update_status('source', backups.build_database_backup_full_path(
             self.backup_id, database, self.location,
-            self.namespace), database, flush=True)
+            self.namespace, blob_path=self.blob_path), database, flush=True)
 
         if int(self.parallel_jobs) > 1:
             pg_dump_backup_path = backups.build_backup_path(self.backup_id, self.namespace, self.external_backup_root)
@@ -190,14 +190,14 @@ class PostgreSQLRestoreWorker(Thread):
         stdout_path = stdout_path + '.stdout'
         if self.s3:
             try:
-                self.s3.download_file(dump_path)
+                self.s3.download_file(dump_path, self.backup_id, self.blob_path)
                 if self.restore_roles:
-                    self.s3.download_file(roles_backup_path)
+                    self.s3.download_file(roles_backup_path, self.backup_id, self.blob_path)
             except Exception as e:
                 raise e
         self.update_status('path',
                        backups.build_database_backup_full_path(
-                           self.backup_id, database, self.location, self.namespace),
+                           self.backup_id, database, self.location, self.namespace, blob_path=self.blob_path),
                        database=database,
                        flush=True)
         new_bd_name = self.databases_mapping.get(database) or database
@@ -523,7 +523,7 @@ class PostgreSQLRestoreWorker(Thread):
         self.update_status('started', str(datetime.datetime.fromtimestamp(start_timestamp).isoformat()), flush=True)
 
         backup_status_file = backups.build_backup_status_file_path(self.backup_id,
-                                                                   self.namespace, self.external_backup_root)
+                                                                   self.namespace, self.external_backup_root, self.blob_path)
         if self.s3:
             try:
                 status = self.s3.read_object(backup_status_file)
@@ -552,10 +552,10 @@ class PostgreSQLRestoreWorker(Thread):
         for database in self.databases:
             if self.s3:
                 is_backup_exist = self.s3.is_file_exists(backups.build_database_backup_path(self.backup_id, database,
-                                                                                            self.namespace, self.external_backup_root))
+                                                                                            self.namespace, self.external_backup_root, self.blob_path))
             else:
                 if int(self.parallel_jobs) > 1:
-                    pg_dump_backup_path = backups.build_backup_path(self.backup_id, self.namespace, self.external_backup_root)
+                    pg_dump_backup_path = backups.build_backup_path(self.backup_id, self.namespace, self.external_backup_root, self.blob_path)
                     path_for_parallel_flag_backup = os.path.join(pg_dump_backup_path, database)
                     is_backup_exist = os.path.exists(path_for_parallel_flag_backup)
                 else:

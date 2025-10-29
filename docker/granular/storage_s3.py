@@ -61,8 +61,13 @@ class AwsS3Vault:
                             verify=(False if os.getenv("AWS_S3_UNTRUSTED_CERT", "false").lower() == "true" else None))
 
     @retry(stop_max_attempt_number=RETRY_COUNT, wait_fixed=RETRY_WAIT)
-    def upload_file(self, file_path):
-        return self.get_s3_client().upload_file(file_path, self.bucket, self.aws_prefix + file_path)
+    def upload_file(self, file_path, blob_path=None, backup_id=None):
+        if blob_path:
+            file_name = file_path.rsplit('/',1)[1]
+            s3FilePath = self.aws_prefix + f'{blob_path}/{backup_id}/{file_name}'
+            return self.get_s3_client().upload_file(file_path, self.bucket, s3FilePath)
+        else:
+            return self.get_s3_client().upload_file(file_path, self.bucket, self.aws_prefix + file_path)
 
     @retry(stop_max_attempt_number=RETRY_COUNT, wait_fixed=RETRY_WAIT)
     def delete_file(self, filename):
@@ -91,10 +96,17 @@ class AwsS3Vault:
             self.__log.info("Requested {} file not found".format(file_path))
 
     @retry(stop_max_attempt_number=RETRY_COUNT, wait_fixed=RETRY_WAIT)
-    def download_file(self, filename):
-        logging.info("Downloading file {}" .format(self.aws_prefix + filename))
+    def download_file(self, filename, backup_id, blob_path=None):
         try:
-            self.get_s3_client().download_file(self.bucket, self.aws_prefix + filename, filename)
+          if blob_path:
+              only_file_name = filename.rsplit('/',1)[1]
+              file_path = f'{blob_path}/{backup_id}/{only_file_name}'
+              logging.info(f'Downloading file {file_path} to {filename}')
+
+              self.get_s3_client().download_file(self.bucket, self.aws_prefix + file_path, filename)
+          else:
+              logging.info("Downloading file {}" .format(self.aws_prefix + filename))
+              self.get_s3_client().download_file(self.bucket, self.aws_prefix + filename, filename)
         except Exception as e:
             raise e
         return
