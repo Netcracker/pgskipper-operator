@@ -988,8 +988,8 @@ func (rm *ResourceManager) commonLabels(name string) map[string]string {
 		"app.kubernetes.io/name":       name,
 		"app.kubernetes.io/version":    chartVersion,
 		"app.kubernetes.io/component":  "postgresql",
-		"app.kubernetes.io/part-of":    operatorName,
-		"app.kubernetes.io/managed-by": operatorName,
+		"app.kubernetes.io/part-of":    "postgres",
+		"app.kubernetes.io/managed-by": "operator",
 		"app.kubernetes.io/technology": "go",
 	}
 }

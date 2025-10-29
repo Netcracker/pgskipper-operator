@@ -55,9 +55,9 @@ app.kubernetes.io/instance: {{ .Release.Name }}
 app.kubernetes.io/instance: {{ .Release.Name }}
 app.kubernetes.io/name: {{ include "patroni-core.name" . }}
 app.kubernetes.io/version: {{ .Chart.AppVersion | quote }}
-app.kubernetes.io/component: "postgres-operator"
-app.kubernetes.io/part-of: "postgres-operator"
-app.kubernetes.io/managed-by: {{ .Release.Service }}
+app.kubernetes.io/component: "operator"
+app.kubernetes.io/part-of: "postgres"
+app.kubernetes.io/managed-by: "Helm"
 app.kubernetes.io/technology: "go"
 {{- end -}}
 
