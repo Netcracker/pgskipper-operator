@@ -36,8 +36,8 @@ Common labels
 {{- define "patroni-core.labels" -}}
 helm.sh/chart: {{ include "patroni-core.chart" . }}
 {{ include "patroni-core.selectorLabels" . }}
-{{- if .Chart.AppVersion }}
-app.kubernetes.io/version: {{ .Chart.AppVersion | quote }}
+{{- if .Chart.ARTIFACT_DESCRIPTOR_VERSION }}
+app.kubernetes.io/version: {{ .Values.ARTIFACT_DESCRIPTOR_VERSION }}
 {{- end }}
 app.kubernetes.io/managed-by: {{ .Release.Service }}
 {{- end }}
@@ -54,7 +54,7 @@ app.kubernetes.io/instance: {{ .Release.Name }}
 {{- define "kubernetes.labels" -}}
 app.kubernetes.io/instance: {{ .Release.Name }}
 app.kubernetes.io/name: {{ include "patroni-core.name" . }}
-app.kubernetes.io/version: {{ .Chart.AppVersion | quote }}
+app.kubernetes.io/version: {{ .Values.ARTIFACT_DESCRIPTOR_VERSION }}
 app.kubernetes.io/component: "operator"
 app.kubernetes.io/part-of: "postgres"
 app.kubernetes.io/managed-by: "Helm"
