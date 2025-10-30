@@ -1064,9 +1064,8 @@ queries:
       and t1.pid <> tree.pid) as blkd,\n    format(\n      '%s %s%s',\n      lpad('['
       || pid::text || ']', 9, ' '),\n      repeat('.', level - 1) || case when level
       > 1 then ' ' end,\n      left(query, 1000)\n    ) as query,\n    top_blocker_pid,\n
-      \   level\n  from tree\n  group by datname, usename, relname, pid, blocked_by,
-      mode, wait, wait_age, query, wait_event_type, state, tx_age, level, top_blocker_pid\n\n
-      \ union all\n\n  select\n    1 as pg_lock_tree_info,\n    null as pid,\n    '{}'::int[]
+      \   level\n  from tree\n\n union all\n\n  
+      select\n    1 as pg_lock_tree_info,\n    null as pid,\n    '{}'::int[]
       as blocked_by,\n    'No blocking activity' as relname,\n    null as mode,\n
       \   'No blocking activity' as state,\n    null as wait,\n    null as wait_age,\n
       \   null as tx_age,\n    current_database() as datname,\n    null as usename,\n    0 as blkd,\n
