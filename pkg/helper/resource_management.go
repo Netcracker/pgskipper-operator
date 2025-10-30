@@ -979,16 +979,18 @@ func (rm *ResourceManager) commonLabels(name string) map[string]string {
 
 	operatorName := strings.ToLower(os.Getenv("OPERATOR_NAME"))
 
+	component := "postgres"
 	if operatorName == "patroni-services" {
-		operatorName = "postgres-operator"
+		component = "postgres-services"
 	}
 
 	return map[string]string{
+		"name": name,
 		"app.kubernetes.io/instance":   name,
 		"app.kubernetes.io/name":       name,
 		"app.kubernetes.io/version":    chartVersion,
 		"app.kubernetes.io/component":  "postgresql",
-		"app.kubernetes.io/part-of":    "postgres",
+		"app.kubernetes.io/part-of":    component,
 		"app.kubernetes.io/managed-by": "operator",
 		"app.kubernetes.io/technology": "go",
 	}
