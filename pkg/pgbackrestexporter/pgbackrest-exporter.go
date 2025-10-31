@@ -58,8 +58,8 @@ func NewPgBackRestExporterDeployment(spec netcrackev1.PgBackRestExporter, sa str
 					Affinity:           &spec.Affinity,
 					Containers: []corev1.Container{
 						{
-							Name:    deploymentName,
-							Image:   dockerImage,
+							Name:  deploymentName,
+							Image: dockerImage,
 							Ports: []corev1.ContainerPort{
 								{ContainerPort: 9854, Name: "brexporter", Protocol: corev1.ProtocolTCP},
 							},
