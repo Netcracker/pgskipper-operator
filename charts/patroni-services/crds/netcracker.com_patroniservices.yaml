@@ -1358,8 +1358,6 @@ spec:
                     type: string
                   walArchiving:
                     type: boolean
-                required:
-                - compressionLevel
                 type: object
               cloudSql:
                 properties:
