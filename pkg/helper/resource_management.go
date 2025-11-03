@@ -936,7 +936,31 @@ func (rm *ResourceManager) GetPatroniClusterConfig(patroniUrl string) (*ClusterS
 	return &ClusterStatus{}, nil
 }
 
-func (rm *ResourceManager) GetChartVersion() (string, error) {
+func (rm *ResourceManager) GetChartVersion() string {
+	operatorLabels, err := rm.getOperatorLabels()
+	if err != nil {
+		return ""
+	}
+	version, found := operatorLabels["app.kubernetes.io/version"]
+	if !found {
+		return ""
+	}
+	return version
+}
+
+func (rm *ResourceManager) GetDeploymentSessionId() string {
+	operatorLabels, err := rm.getOperatorLabels()
+	if err != nil {
+		return ""
+	}
+	sessionId, found := operatorLabels["deployment.netcracker.com/sessionId"]
+	if !found {
+		return ""
+	}
+	return sessionId
+}
+
+func (rm *ResourceManager) getOperatorLabels() (map[string]string, error) {
 	deploymentName := strings.ToLower(os.Getenv("OPERATOR_NAME"))
 
 	if deploymentName == "patroni-services" {
@@ -945,20 +969,15 @@ func (rm *ResourceManager) GetChartVersion() (string, error) {
 
 	foundDeployment, err := rm.GetDeploymentsByNameRegExp(deploymentName)
 	if err != nil {
-		return "", err
+		return nil, err
 	}
 	if len(foundDeployment) == 0 {
-		return "1.16.0", nil
+		return nil, nil
 	}
 
 	deployment := foundDeployment[0]
 	labels := deployment.Spec.Template.ObjectMeta.Labels
-	version, found := labels["app.kubernetes.io/version"]
-
-	if !found {
-		return "1.16.0", nil
-	}
-	return version, nil
+	return labels, nil
 }
 
 func (rm *ResourceManager) getLabels(meta metav1.ObjectMeta) map[string]string {
@@ -975,7 +994,8 @@ func (rm *ResourceManager) getLabels(meta metav1.ObjectMeta) map[string]string {
 }
 
 func (rm *ResourceManager) commonLabels(name string) map[string]string {
-	chartVersion, _ := rm.GetChartVersion()
+	chartVersion := rm.GetChartVersion()
+	sessionId := rm.GetDeploymentSessionId()
 
 	operatorName := strings.ToLower(os.Getenv("OPERATOR_NAME"))
 
@@ -984,15 +1004,23 @@ func (rm *ResourceManager) commonLabels(name string) map[string]string {
 		component = "postgres-services"
 	}
 
-	return map[string]string{
+	labels := map[string]string{
 		"name": name,
 		"app.kubernetes.io/instance":   name,
 		"app.kubernetes.io/name":       name,
-		"app.kubernetes.io/version":    chartVersion,
+		
 		"app.kubernetes.io/component":  "backend",
 		"app.kubernetes.io/part-of":    component,
 		"app.kubernetes.io/managed-by": "operator",
 		"app.kubernetes.io/managed-by-operator": operatorName,
 		"app.kubernetes.io/technology": "go",
 	}
+	if chartVersion != "" {
+		labels["app.kubernetes.io/version"] = chartVersion
+	}
+	if sessionId != "" {
+		labels["deployment.netcracker.com/sessionId"] = sessionId
+	}
+
+	return labels
 }
