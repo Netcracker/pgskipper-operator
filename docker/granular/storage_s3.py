@@ -39,7 +39,7 @@ class AwsS3Vault:
     __log = logging.getLogger("AwsS3Granular")
 
     def __init__(self, cluster_name=None, cache_enabled=False,
-                 aws_s3_bucket_listing=None):
+                 aws_s3_bucket_listing=None, prefix=None):
 
         self.bucket = bucket or os.getenv("CONTAINER") or os.getenv("AWS_S3_BUCKET") or os.getenv("S3_BUCKET")
         self.console = None
@@ -47,7 +47,10 @@ class AwsS3Vault:
         self.cache_enabled = cache_enabled
         self.cached_state = {}
         self.aws_s3_bucket_listing = aws_s3_bucket_listing
-        self.aws_prefix = os.getenv("AWS_S3_PREFIX", "")
+        if prefix is not None:
+            self.aws_prefix = prefix
+        else:
+            self.aws_prefix = os.getenv("AWS_S3_PREFIX", "")
 
         if not self.bucket or not isinstance(self.bucket, str) or not self.bucket.strip():
             raise ValueError("S3 bucket is not configured. Set one of CONTAINER, AWS_S3_BUCKET, or S3_BUCKET.")
@@ -64,31 +67,31 @@ class AwsS3Vault:
     def upload_file(self, file_path, blob_path=None, backup_id=None):
         if blob_path:
             file_name = file_path.rsplit('/',1)[1]
-            s3FilePath = self.aws_prefix + f'{blob_path}/{backup_id}/{file_name}'
+            s3FilePath = self.get_prefixed_path(f'{blob_path}/{backup_id}/{file_name}')
             return self.get_s3_client().upload_file(file_path, self.bucket, s3FilePath)
         else:
-            return self.get_s3_client().upload_file(file_path, self.bucket, self.aws_prefix + file_path)
+            return self.get_s3_client().upload_file(file_path, self.bucket, self.get_prefixed_path(file_path))
 
     @retry(stop_max_attempt_number=RETRY_COUNT, wait_fixed=RETRY_WAIT)
     def delete_file(self, filename):
-        return self.get_s3_client().delete_object(Bucket=self.bucket, Key=self.aws_prefix + filename)
+        return self.get_s3_client().delete_object(Bucket=self.bucket, Key=self.get_prefixed_path(filename))
 
     @retry(stop_max_attempt_number=RETRY_COUNT, wait_fixed=RETRY_WAIT)
     def delete_objects(self, filename):
-        objects_to_delete = self.get_s3_client().list_objects(Bucket=self.bucket, Prefix=self.aws_prefix + filename)
+        objects_to_delete = self.get_s3_client().list_objects(Bucket=self.bucket, Prefix=self.get_prefixed_path(filename))
         for obj in objects_to_delete.get('Contents', []):
             self.get_s3_client().delete_object(Bucket=self.bucket, Key=obj['Key'])
 
     @retry(stop_max_attempt_number=RETRY_COUNT, wait_fixed=RETRY_WAIT)
     def read_object(self, file_path):
-        self.__log.info("Reading object %s" % self.aws_prefix + file_path)
-        obj = self.get_s3_client().get_object(Bucket=self.bucket, Key=self.aws_prefix + file_path)
+        self.__log.info("Reading object %s" % self.get_prefixed_path(file_path))
+        obj = self.get_s3_client().get_object(Bucket=self.bucket, Key=self.get_prefixed_path(file_path))
         # self.__log.info(obj['Body'].read().decode('utf8'))
         return obj['Body'].read().decode('utf8')
 
     @retry(stop_max_attempt_number=RETRY_COUNT, wait_fixed=RETRY_WAIT)
     def get_file_size(self, file_path):
-        obj = self.get_s3_client().list_objects_v2(Bucket=self.bucket, Prefix=self.aws_prefix + file_path)
+        obj = self.get_s3_client().list_objects_v2(Bucket=self.bucket, Prefix=self.get_prefixed_path(file_path))
         if 'Contents' in obj:
             for field in obj["Contents"]:
                 return field["Size"]
@@ -103,10 +106,10 @@ class AwsS3Vault:
               file_path = f'{blob_path}/{backup_id}/{only_file_name}'
               logging.info(f'Downloading file {file_path} to {filename}')
 
-              self.get_s3_client().download_file(self.bucket, self.aws_prefix + file_path, filename)
+              self.get_s3_client().download_file(self.bucket, self.get_prefixed_path(file_path), filename)
           else:
-              logging.info("Downloading file {}" .format(self.aws_prefix + filename))
-              self.get_s3_client().download_file(self.bucket, self.aws_prefix + filename, filename)
+              logging.info("Downloading file {}" .format(self.get_prefixed_path(filename)))
+              self.get_s3_client().download_file(self.bucket, self.get_prefixed_path(filename), filename)
         except Exception as e:
             raise e
         return
@@ -115,20 +118,20 @@ class AwsS3Vault:
     def is_file_exists(self, file):
         exists = True
         try:
-            self.get_s3_client().head_object(Bucket=self.bucket, Key=self.aws_prefix + file)
+            self.get_s3_client().head_object(Bucket=self.bucket, Key=self.get_prefixed_path(file))
         except botocore.exceptions.ClientError as e:
             exists = False
         return exists
 
     def is_s3_storage_path_exist(self, storage):
-        bucket = self.get_s3_client().list_objects_v2(Bucket=self.bucket, Prefix=self.aws_prefix + storage)
+        bucket = self.get_s3_client().list_objects_v2(Bucket=self.bucket, Prefix=self.get_prefixed_path(storage))
         if 'Contents' in bucket:
             s3_storage_path = bucket['Contents'][0]["Key"]
             return True if storage in s3_storage_path else False
         return False
 
     def get_granular_namespaces(self, storage):
-        bucket = self.get_s3_client().list_objects_v2(Bucket=self.bucket, Prefix=self.aws_prefix + storage)
+        bucket = self.get_s3_client().list_objects_v2(Bucket=self.bucket, Prefix=self.get_prefixed_path(storage))
         namespaces = []
         if 'Contents' in bucket:
             for obj in bucket["Contents"]:
@@ -141,7 +144,7 @@ class AwsS3Vault:
             return namespaces
 
     def get_backup_ids(self, storage, namespace):
-        namespaced_path = self.aws_prefix + storage + "/" + namespace
+        namespaced_path = self.get_prefixed_path(storage + "/" + namespace)
         bucket = self.get_s3_client().list_objects_v2(Bucket=self.bucket, Prefix=namespaced_path)
         backup_ids = []
         if 'Contents' in bucket:
@@ -153,3 +156,11 @@ class AwsS3Vault:
                 else:
                     pass
             return backup_ids
+
+    def get_prefixed_path(self, path):
+        if self.aws_prefix:
+            return self.aws_prefix + path
+        else:
+            if path.startswith("/"):
+                return path[1:]
+            return path

@@ -63,7 +63,10 @@ class PostgreSQLRestoreWorker(Thread):
         self.owners_mapping = owners_mapping
         self.bin_path = configs.get_pgsql_bin_path(self.postgres_version)
         self.parallel_jobs = configs.get_parallel_jobs()
-        self.s3 = storage_s3.AwsS3Vault() if os.environ['STORAGE_TYPE'] == "s3" else None
+        if blobPath:
+            self.s3 = storage_s3.AwsS3Vault(prefix="")
+        else:  
+            self.s3 = storage_s3.AwsS3Vault() if os.environ['STORAGE_TYPE'] == "s3" else None
         self.blob_path = blobPath
         self.backup_dir = backups.build_backup_path(self.backup_id, self.namespace, self.external_backup_root)
         self.create_backup_dir(self.backup_dir)
@@ -117,7 +120,6 @@ class PostgreSQLRestoreWorker(Thread):
                 database_details = {}
                 if self.databases_mapping and self.databases_mapping[database]:
                     database_details['newDatabaseName'] = self.databases_mapping[database]
-                databases_section[database] = database_details
 
             database_details[key] = value
             databases_section[database] = database_details
@@ -378,6 +380,7 @@ class PostgreSQLRestoreWorker(Thread):
                                     if "ROLLBACK" in line:
                                         self.log.error("ROLLBACK")
                                         raise backups.RestoreFailedException(database, "ROLLBACK")
+                                    self.update_status('duration', int(time.time() - db_start), database=database, flush=True)  
                                     self.log.info(self.log_msg("Successful restored"))
                             self.pg_restore_proc = None
                             try:
@@ -484,7 +487,7 @@ class PostgreSQLRestoreWorker(Thread):
             with open(stderr_path, 'r') as f:
                 raise backups.RestoreFailedException(database, '\n'.join(f.readlines()))
         else:
-            self.update_status('duration', int(time.time() - db_start), database=database)
+            self.update_status('duration', int(time.time() - db_start), database=database, flush=True)
 
         if database != new_bd_name:
             self.log.info(self.log_msg("Database '%s' has been successfully restored with new name '%s'." %
