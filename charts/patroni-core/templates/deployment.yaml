@@ -30,6 +30,8 @@ spec:
 {{ .Values.operator.podLabels | toYaml | nindent 8 }}
 {{ else if .Values.podLabels }}
 {{ .Values.podLabels | toYaml | nindent 8 }}
+{{ else }}
+{{ include "kubernetes.labels" . | nindent 8 }}
 {{ end }}
     spec:
       serviceAccountName: patroni-sa
