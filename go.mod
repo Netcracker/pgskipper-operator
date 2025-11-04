@@ -4,7 +4,7 @@ go 1.25.0
 
 require (
 	github.com/Netcracker/pgskipper-operator-core v0.0.57
-	github.com/Netcracker/qubership-credential-manager v0.0.8
+	github.com/Netcracker/qubership-credential-manager v0.0.9
 	github.com/avast/retry-go/v4 v4.6.1
 	github.com/go-co-op/gocron v1.37.0
 	github.com/google/go-cmp v0.7.0

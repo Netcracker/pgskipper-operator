@@ -54,7 +54,12 @@ app.kubernetes.io/instance: {{ .Release.Name }}
 {{- define "kubernetes.labels" -}}
 app.kubernetes.io/instance: {{ .Release.Name }}
 app.kubernetes.io/name: {{ include "patroni-core.name" . }}
+{{- if .Values.ARTIFACT_DESCRIPTOR_VERSION }}
+{{- end }}
 app.kubernetes.io/version: {{ .Values.ARTIFACT_DESCRIPTOR_VERSION }}
+{{- if .Values.DEPLOYMENT_SESSION_ID }}
+deployment.netcracker.com/sessionId: {{ .Values.DEPLOYMENT_SESSION_ID }}
+{{- end }}
 app.kubernetes.io/component: "operator"
 app.kubernetes.io/part-of: "postgres"
 app.kubernetes.io/managed-by: "Helm"
