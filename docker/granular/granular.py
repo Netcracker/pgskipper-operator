@@ -1382,10 +1382,13 @@ class NewRestore(flask_restful.Resource):
         for prev in (requested or []):
             prev_name = prev or ""
             restored_as = databases_mapping.get(prev_name) if isinstance(databases_mapping, dict) else None
+            status = "notStarted" if prev_name else ""
+            if dry_run:
+                status = "Successful"
             dbs_out.append({
                 "previousDatabaseName": prev_name,
                 "databaseName": restored_as or prev_name,
-                "status": "notStarted" if prev_name else "",
+                "status": status,
                 "creationTime": created_iso
             })
 
@@ -1416,7 +1419,8 @@ class NewRestore(flask_restful.Resource):
             }
 
             if dry_run:
-                return enriched, http.client.OK
+                enriched["status"] = "Successful"
+                enriched, http.client.OK
 
             status_path = backups.build_restore_status_file_path(backup_id, tracking_id, namespace)
 
