@@ -3,7 +3,7 @@ module github.com/Netcracker/pgskipper-dbaas-adapter/postgresql-dbaas-adapter
 go 1.23.0
 
 require (
-	github.com/Netcracker/qubership-dbaas-adapter-core v0.10.3
+	github.com/Netcracker/qubership-dbaas-adapter-core v0.11.0
 	github.com/gofiber/fiber/v2 v2.52.5
 	github.com/google/uuid v1.6.0
 	github.com/jackc/pgconn v1.14.3
