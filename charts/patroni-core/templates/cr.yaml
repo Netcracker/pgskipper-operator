@@ -58,14 +58,9 @@ spec:
     {{- if .Values.patroni.podLabels }}
     podLabels:
       {{ toYaml .Values.patroni.podLabels | nindent 6 }}
-      {{- include "kubernetes.labels" . | nindent 6 }}
     {{- else if .Values.podLabels }}
     podLabels:
       {{ toYaml .Values.podLabels | nindent 6 }}
-      {{- include "kubernetes.labels" . | nindent 6 }}
-    {{- else }}
-    podLabels:
-      {{ include "kubernetes.labels" . | nindent 6 }}
     {{- end }}
     {{ if .Values.patroni.podAnnotations }}
     podAnnotations:
@@ -244,14 +239,9 @@ spec:
     {{- if .Values.tests.podLabels }}
     podLabels:
       {{ toYaml .Values.tests.podLabels | nindent 6 }}
-      {{- include "kubernetes.labels" . | nindent 6 }}
     {{- else if .Values.podLabels }}
     podLabels:
       {{ toYaml .Values.podLabels | nindent 6 }}
-      {{- include "kubernetes.labels" . | nindent 6 }}
-    {{- else }}
-    podLabels:
-      {{ include "kubernetes.labels" . | nindent 6 }}
     {{- end }}
     image: {{ template "find_image" (dict "deployName" "postgres_operator_tests" "SERVICE_NAME" "postgres_operator_tests" "vals" .Values "default" .Values.tests.dockerImage) }}
 {{ if .Values.tests.resources }}
