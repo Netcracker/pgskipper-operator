@@ -21,8 +21,8 @@ github.com/Masterminds/semver/v3 v3.1.1/go.mod h1:VPu/7SZ7ePZ3QOrcuXROw5FAcLl4a0
 github.com/NYTimes/gziphandler v0.0.0-20170623195520-56545f4a5d46/go.mod h1:3wb06e3pkSAbeQ52E9H9iFoQsEEwGN64994WTCIhntQ=
 github.com/Netcracker/pgskipper-operator-core v0.0.57 h1:4Luslh5YT1EauThFjNC0yl2IQHZIxnZJeS4bcofQpyQ=
 github.com/Netcracker/pgskipper-operator-core v0.0.57/go.mod h1:dfV3km1hTxmi6KAoKTdc7xBgSF1/NdFdqLSrQnHKq+Y=
-github.com/Netcracker/qubership-credential-manager v0.0.9 h1:xZq9HzJ5LN7F6TatEDk+gizqniMPvrj2QdlFg16MLUI=
-github.com/Netcracker/qubership-credential-manager v0.0.9/go.mod h1:EY5fTjRnjtCzZftbt6YbdiDYMSBWicGokC0rmLE3XGc=
+github.com/Netcracker/qubership-credential-manager v0.0.11 h1:6ZTvgid2F07ZIXpitgGpcKM/E9ksl2E3ppzgEwF2yqY=
+github.com/Netcracker/qubership-credential-manager v0.0.11/go.mod h1:+L+rqzKzm/otrXb29M6bUo9z9yb70XNs+DUEGZSSzAc=
 github.com/PuerkitoBio/purell v1.0.0/go.mod h1:c11w/QuzBsJSee3cPx9rAFu61PvFxuPbtSwDGJws/X0=
 github.com/PuerkitoBio/purell v1.1.0/go.mod h1:c11w/QuzBsJSee3cPx9rAFu61PvFxuPbtSwDGJws/X0=
 github.com/PuerkitoBio/purell v1.1.1/go.mod h1:c11w/QuzBsJSee3cPx9rAFu61PvFxuPbtSwDGJws/X0=

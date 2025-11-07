@@ -1005,15 +1005,15 @@ func (rm *ResourceManager) commonLabels(name string) map[string]string {
 	}
 
 	labels := map[string]string{
-		"name": name,
-		"app.kubernetes.io/instance":   name,
-		"app.kubernetes.io/name":       name,
-		
-		"app.kubernetes.io/component":  "backend",
-		"app.kubernetes.io/part-of":    component,
-		"app.kubernetes.io/managed-by": "operator",
+		"name":                       name,
+		"app.kubernetes.io/instance": name,
+		"app.kubernetes.io/name":     name,
+
+		"app.kubernetes.io/component":           "backend",
+		"app.kubernetes.io/part-of":             component,
+		"app.kubernetes.io/managed-by":          "operator",
 		"app.kubernetes.io/managed-by-operator": operatorName,
-		"app.kubernetes.io/technology": "go",
+		"app.kubernetes.io/technology":          "go",
 	}
 	if chartVersion != "" {
 		labels["app.kubernetes.io/version"] = chartVersion
