@@ -1,4 +1,4 @@
-FROM --platform=$BUILDPLATFORM golang:1.23-alpine3.20 AS builder
+FROM --platform=$BUILDPLATFORM golang:1.25.3-alpine3.22 AS builder
 
 ENV GO111MODULE=on
 
