@@ -183,7 +183,7 @@ func (u *Upgrade) GetInitDbArgs(patroniTemplate string, configMapKey string) (st
 
 func (u *Upgrade) CheckForAbsTimeUsage(pgHost string) error {
 	pgC := pgClient.GetPostgresClient(pgHost)
-	databaseList := helper.GetAllDatabases(pgC)
+	databaseList, _ := helper.GetAllDatabases(pgC)
 	absTimeDatabases := make([]string, 0)
 
 	for _, db := range databaseList {
