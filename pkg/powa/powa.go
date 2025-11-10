@@ -118,7 +118,7 @@ func createPOWATableWithExtension(pg *pgClient.PostgresClient) {
 }
 
 func createPOWAExtensions(pg *pgClient.PostgresClient) {
-	databases := helper.GetAllDatabases(pg)
+	databases, _ := helper.GetAllDatabases(pg)
 	helper.CreateExtensionsForDBs(pg, databases, commonExt)
 }
 

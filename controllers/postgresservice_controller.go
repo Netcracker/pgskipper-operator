@@ -399,8 +399,17 @@ func (r *PostgresServiceReconciler) reconcilePostgresServiceCluster(cr *qubershi
 
 	// configure postgres-exporter user
 	if cr.Spec.PostgresExporter != nil && cr.Spec.PostgresExporter.Install {
-		if err := postgresexporter.SetUpExporter(cr.Spec.PostgresExporter); err != nil { //REWORK
-			return err
+		patroniCore, err := r.helper.GetPatroniCoreCR()
+		if err != nil {
+			r.logger.Error("Can't get PatroniCore CR")
+			panic(err)
+		}
+		if patroniCore.Spec.Patroni.StandbyCluster != nil {
+			r.logger.Info("PatroniCore indicates standby cluster; skipping postgres-exporter setup (read-only)")
+		} else {
+			if err := postgresexporter.SetUpExporter(cr.Spec.PostgresExporter); err != nil { //REWORK
+				return err
+			}
 		}
 	}
 

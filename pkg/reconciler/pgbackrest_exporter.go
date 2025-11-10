@@ -19,6 +19,7 @@ import (
 	patroniv1 "github.com/Netcracker/pgskipper-operator/api/patroni/v1"
 	"github.com/Netcracker/pgskipper-operator/pkg/helper"
 	"github.com/Netcracker/pgskipper-operator/pkg/pgbackrestexporter"
+	"github.com/Netcracker/pgskipper-operator/pkg/util"
 	"go.uber.org/zap"
 )
 
@@ -46,6 +47,9 @@ func (r *PgBackRestExporterReconciler) Reconcile() error {
 		logger.Info("Policies is not empty, setting them to PgBackRest Exporter Deployment")
 		deployment.Spec.Template.Spec.Tolerations = cr.Spec.Policies.Tolerations
 	}
+
+	//Adding SecurityContext
+	deployment.Spec.Template.Spec.Containers[0].SecurityContext = util.GetDefaultSecurityContext()
 
 	if err := r.helper.CreateOrUpdateDeploymentForce(deployment, false); err != nil {
 		logger.Error("error during creation of the PgBackRest Exporter deployment", zap.Error(err))

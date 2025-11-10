@@ -22,6 +22,8 @@ import (
 	"sync"
 	"time"
 
+	goErrors "errors"
+
 	"github.com/Netcracker/pgskipper-operator-core/pkg/storage"
 	v1 "github.com/Netcracker/pgskipper-operator/api/patroni/v1"
 	pgClient "github.com/Netcracker/pgskipper-operator/pkg/client"
@@ -276,7 +278,10 @@ func (r *PatroniReconciler) Reconcile() error {
 			}
 			if localeVersion != newLocaleVersion || cr.Spec.Patroni.ForceCollationVersionUpgrade {
 				logger.Warn(fmt.Sprintf("New os locale version is %s, but previous was %s. A collation version mismatch occured in databases. Run locale fix script", newLocaleVersion, localeVersion))
-				r.runLocaleFixScript(pgVersion, newLocaleVersion, cr.Spec.Patroni.ForceCollationVersionUpgrade)
+				err = r.runLocaleFixScript(pgVersion, newLocaleVersion, cr.Spec.Patroni.ForceCollationVersionUpgrade)
+				if err != nil {
+					return err
+				}
 				r.helper.StoreDataToCM("locale-version", newLocaleVersion)
 			}
 
@@ -571,39 +576,59 @@ func (r *PatroniReconciler) createServicesForEtcdAsDcs() error {
 	return nil
 }
 
-func (r *PatroniReconciler) runLocaleFixScript(pgVersion int64, newLocale string, forced bool) {
+func (r *PatroniReconciler) runLocaleFixScript(pgVersion int64, newLocale string, forced bool) error {
 	pgC := pgClient.GetPostgresClient(r.cluster.PgHost)
 
 	err := helper.WaitUntilRecoveryIsDone(pgC)
 	if err != nil {
 		logger.Error("recovery check failed, during locale update", zap.Error(err))
-		return
+		return err
 	}
 
 	var databaseList []string
 	if forced {
-		databaseList = helper.GetAllDatabases(pgC)
+		databaseList, err = helper.GetAllDatabases(pgC)
 	} else {
-		databaseList = helper.GetDatabasesForLocaleUpdate(pgC, newLocale)
+		databaseList, err = helper.GetDatabasesForLocaleUpdate(pgC, newLocale)
 	}
+	if err != nil {
+		return err
+	}
+
 	logger.Info(fmt.Sprintf("database count for locale fix: %d", len(databaseList)))
 
+	errChan := make(chan error, len(databaseList))
 	wg.Wait()
 	connCount := 0
 	limitPool := 10
 	for _, db := range databaseList {
 		wg.Add(1)
 		connCount++
-		go r.fixCollationVersionForDB(pgC, pgVersion, db)
+		go r.fixCollationVersionForDB(pgC, pgVersion, db, errChan)
 		if connCount >= limitPool {
 			wg.Wait()
 			connCount = 0
 		}
 	}
 	wg.Wait()
+
+	close(errChan)
+	var errors []error
+	for err := range errChan {
+		if err != nil {
+			errors = append(errors, err)
+		}
+	}
+
+	if len(errors) > 0 {
+		msg := fmt.Sprintf("encountered %d errors during collation version fix", len(errors))
+		logger.Error(msg)
+		return goErrors.New(msg)
+	}
+	return nil
 }
 
-func (r *PatroniReconciler) fixCollationVersionForDB(pgClient *pgClient.PostgresClient, pgVersion int64, db string) {
+func (r *PatroniReconciler) fixCollationVersionForDB(pgClient *pgClient.PostgresClient, pgVersion int64, db string, errChan chan<- error) {
 	defer wg.Done()
 
 	var err error
@@ -612,6 +637,7 @@ func (r *PatroniReconciler) fixCollationVersionForDB(pgClient *pgClient.Postgres
 			logger.Info(fmt.Sprintf("fix locale for database: %s - OK", db))
 		} else {
 			logger.Info(fmt.Sprintf("fix locale for database: %s - HAVE PROBLEMS", db))
+			errChan <- fmt.Errorf("failed to fix collation version for database %s: %w", db, err)
 		}
 	}()
 
@@ -650,7 +676,7 @@ func (r *PatroniReconciler) fixCollationVersionForDB(pgClient *pgClient.Postgres
 	}
 }
 
-func fixBrokenIndexes(pgClient *pgClient.PostgresClient, db string, brokenIndNames []string) {
+func fixBrokenIndexes(pgClient *pgClient.PostgresClient, db string, brokenIndNames []string) error {
 	logger.Warn(fmt.Sprintf("Broken indexes found for db: %s", db))
 	indexesFixed := true
 	for _, BrokenIndName := range brokenIndNames {
@@ -673,8 +699,11 @@ func fixBrokenIndexes(pgClient *pgClient.PostgresClient, db string, brokenIndNam
 	if indexesFixed {
 		logger.Info(fmt.Sprintf("Broken indexes fixed for db: %s", db))
 	} else {
-		logger.Warn(fmt.Sprintf("Broken indexes not fixed for db: %s", db))
+		msg := fmt.Sprintf("Broken indexes not fixed for db: %s", db)
+		logger.Warn(msg)
+		return goErrors.New(msg)
 	}
+	return nil
 }
 
 func findBrokenIndexes(pgClient *pgClient.PostgresClient, db string) ([]string, error) {
