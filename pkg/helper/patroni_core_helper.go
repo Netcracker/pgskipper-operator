@@ -448,6 +448,10 @@ func (ph *PatroniHelper) SyncReplicatorPassword(pgHost string) error {
 	if pgC == nil {
 		return errors.New("Can't create Postgres Client")
 	}
+	if inRecovery, err := IsPostgresInRecovery(pgC); err == nil && inRecovery {
+		logger.Info("SyncReplicatorPassword skipped: target Postgres is read-only")
+		return nil
+	}
 
 	if err := pgC.Execute(fmt.Sprintf("alter role replicator with password '%s';", pgClient.EscapeString(password))); err != nil {
 		logger.Error("Error during change password", zap.Error(err))
