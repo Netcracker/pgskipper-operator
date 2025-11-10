@@ -15,6 +15,7 @@
 package helper
 
 import (
+	"slices"
 	"context"
 	"encoding/json"
 	"fmt"
@@ -46,6 +47,8 @@ import (
 )
 
 const kubeSysAnnotations = "kubernetes.io"
+
+var pythonServices = []string{"postgres-backup-daemon"}
 
 type ResourceManager struct {
 	kubeClient    client.Client
@@ -1025,6 +1028,10 @@ func (rm *ResourceManager) commonLabels(name string) map[string]string {
 	}
 	if sessionId != "" {
 		labels["deployment.netcracker.com/sessionId"] = sessionId
+	}
+
+	if slices.Contains(pythonServices, name) {
+			labels["app.kubernetes.io/technology"] = "python"
 	}
 
 	return labels
