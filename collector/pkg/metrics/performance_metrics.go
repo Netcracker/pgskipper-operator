@@ -237,8 +237,13 @@ func (s *Scraper) collectQueriesMetrics(ctx context.Context, pc *postgres.Postgr
 				for _, column := range columns {
 					if !util.Contains(metricFields, column) {
 						rValue := row[column]
-						if column == "short_query" {
-							escaper := strings.NewReplacer(`'`, `\'`, `"`, `\"`, "\n", ` `)
+						if column == "short_query" || column == "query" {
+							escaper := strings.NewReplacer(
+								`\`, `\\`,
+								`"`, `\"`,
+								"\n", `\n`,
+								"\r", `\n`,
+							)
 							rValue = escaper.Replace(fmt.Sprintf("%s", rValue))
 						}
 						labels[column] = fmt.Sprintf("%v", rValue)
