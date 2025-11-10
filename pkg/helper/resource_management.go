@@ -1006,6 +1006,7 @@ func (rm *ResourceManager) commonLabels(name string) map[string]string {
 	component := "postgres"
 	if operatorName == "patroni-services" {
 		component = "postgres-services"
+		operatorName = "postgres-operator"
 	}
 
 	labels := map[string]string{
