@@ -15,7 +15,6 @@
 package helper
 
 import (
-	"slices"
 	"context"
 	"encoding/json"
 	"fmt"
@@ -24,6 +23,7 @@ import (
 	"os"
 	"reflect"
 	"regexp"
+	"slices"
 	"strings"
 	"time"
 
@@ -1031,7 +1031,7 @@ func (rm *ResourceManager) commonLabels(name string) map[string]string {
 	}
 
 	if slices.Contains(pythonServices, name) {
-			labels["app.kubernetes.io/technology"] = "python"
+		labels["app.kubernetes.io/technology"] = "python"
 	}
 
 	return labels

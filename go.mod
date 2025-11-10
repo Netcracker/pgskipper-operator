@@ -1,9 +1,9 @@
 module github.com/Netcracker/pgskipper-operator
 
-go 1.25.3
+go 1.25.4
 
 require (
-	github.com/Netcracker/pgskipper-operator-core v0.0.57
+	github.com/Netcracker/pgskipper-operator-core v0.0.58
 	github.com/Netcracker/qubership-credential-manager v0.0.11
 	github.com/avast/retry-go/v4 v4.6.1
 	github.com/go-co-op/gocron v1.37.0
