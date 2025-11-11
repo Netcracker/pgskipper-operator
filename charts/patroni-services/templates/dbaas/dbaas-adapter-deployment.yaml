@@ -6,7 +6,7 @@ metadata:
   labels:
     app: dbaas-postgres-adapter
     name: dbaas-postgres-adapter
-      {{ include "kubernetes.labels" . | nindent 4 }}
+    {{ include "kubernetes.labels" . | nindent 4 }}
 spec:
   replicas: 1
   selector:

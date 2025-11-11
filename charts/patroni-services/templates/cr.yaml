@@ -32,14 +32,9 @@ spec:
     {{- if .Values.backupDaemon.podLabels }}
     podLabels:
       {{ toYaml .Values.backupDaemon.podLabels | nindent 6 }}
-      {{- include "kubernetes.labels" . | nindent 6 }}
     {{- else if .Values.podLabels }}
     podLabels:
       {{ toYaml .Values.podLabels | nindent 6 }}
-      {{- include "kubernetes.labels" . | nindent 6 }}
-    {{- else }}
-    podLabels:
-      {{ include "kubernetes.labels" . | nindent 6 }}
     {{- end }}
     image: {{ template "find_image" (dict "deployName" "postgres_backup_daemon" "SERVICE_NAME" "postgres_backup_daemon" "vals" .Values "default" .Values.backupDaemon.dockerImage) }}
     compressionLevel: {{ default 5 .Values.backupDaemon.compressionLevel }}
@@ -173,14 +168,9 @@ spec:
     {{- if .Values.metricCollector.podLabels }}
     podLabels:
       {{ toYaml .Values.metricCollector.podLabels | nindent 6 }}
-      {{- include "kubernetes.labels" . | nindent 6 }}
     {{- else if .Values.podLabels }}
     podLabels:
       {{ toYaml .Values.podLabels | nindent 6 }}
-      {{- include "kubernetes.labels" . | nindent 6 }}
-    {{- else }}
-    podLabels:
-      {{ include "kubernetes.labels" . | nindent 6 }}
     {{- end }}
     image: {{ template "find_image" (dict "deployName" "pg_patroni_metric_collector" "SERVICE_NAME" "pg_patroni_metric_collector" "vals" .Values "default" .Values.metricCollector.dockerImage) }}
 {{ if .Values.metricCollector.resources }}
@@ -258,14 +248,9 @@ spec:
     {{- if .Values.powaUI.podLabels }}
     podLabels:
 {{ toYaml .Values.powaUI.podLabels | nindent 6 }}
-{{- include "kubernetes.labels" . | nindent 6 }}
     {{- else if .Values.podLabels }}
     podLabels:
 {{ toYaml .Values.podLabels | nindent 6 }}
-{{- include "kubernetes.labels" . | nindent 6 }}
-    {{- else }}
-    podLabels:
-      {{ include "kubernetes.labels" . | nindent 6 }}
     {{- end }}
     resources:
 {{ toYaml .Values.powaUI.resources | indent 6 }}
@@ -285,14 +270,10 @@ spec:
     {{- if .Values.queryExporter.podLabels }}
     podLabels:
 {{ toYaml .Values.queryExporter.podLabels | nindent 6 }}
-{{- include "kubernetes.labels" . | nindent 6 }}
     {{- else if .Values.podLabels }}
     podLabels:
 {{ toYaml .Values.podLabels | nindent 6 }}
 {{- include "kubernetes.labels" . | nindent 6 }}
-    {{- else }}
-    podLabels:
-      {{ include "kubernetes.labels" . | nindent 6 }}
     {{- end }}
     pgHost: {{ default (printf "%s.%s" "pg-patroni" .Release.Namespace) .Values.queryExporter.pgHost }}
     pgPort: {{ default 5432 .Values.queryExporter.pgPort }}
@@ -365,14 +346,9 @@ spec:
     {{- if .Values.replicationController.podLabels }}
     podLabels:
 {{ toYaml .Values.replicationController.podLabels | nindent 6 }}
-{{- include "kubernetes.labels" . | nindent 6 }}
     {{- else if .Values.podLabels }}
     podLabels:
 {{ toYaml .Values.podLabels | nindent 6 }}
-{{- include "kubernetes.labels" . | nindent 6 }}
-    {{- else }}
-    podLabels:
-      {{ include "kubernetes.labels" . | nindent 6 }}
     {{- end }}
     {{ if not .Values.externalDataBase }}
     {{ if and .Values.tls .Values.tls.enabled }}
@@ -411,14 +387,9 @@ spec:
     {{- if .Values.pgBackRestExporter.podLabels }}
     podLabels:
 {{ toYaml .Values.pgBackRestExporter.podLabels | nindent 6 }}
-{{- include "kubernetes.labels" . | nindent 6 }}
     {{- else if .Values.podLabels }}
     podLabels:
 {{ toYaml .Values.podLabels | nindent 6 }}
-{{- include "kubernetes.labels" . | nindent 6 }}
-    {{- else }}
-    podLabels:
-      {{ include "kubernetes.labels" . | nindent 6 }}
     {{- end }}
     env:
 {{ toYaml .Values.pgBackRestExporter.env | indent 6 }}
@@ -441,14 +412,9 @@ spec:
     {{- if .Values.tests.podLabels }}
     podLabels:
       {{ toYaml .Values.tests.podLabels | nindent 6 }}
-      {{- include "kubernetes.labels" . | nindent 6 }}
     {{- else if .Values.podLabels }}
     podLabels:
       {{ toYaml .Values.podLabels | nindent 6 }}
-      {{- include "kubernetes.labels" . | nindent 6 }}
-    {{- else }}
-    podLabels:
-    {{ include "kubernetes.labels" . | nindent 6 }}
     {{- end }}
     image: {{ template "find_image" (dict "deployName" "postgres_operator_tests" "SERVICE_NAME" "postgres_operator_tests" "vals" .Values "default" .Values.tests.dockerImage) }}
 {{ if .Values.tests.resources }}
