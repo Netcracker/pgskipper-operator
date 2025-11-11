@@ -73,7 +73,7 @@ func NewIntegrationTestsPod(cr *v1.PatroniServices, cluster *patroniv1.PatroniCl
 				{
 					Name:            name,
 					Image:           dockerImage,
-					ImagePullPolicy: "Always",
+					ImagePullPolicy: cr.Spec.ImagePullPolicy,
 					SecurityContext: util.GetDefaultSecurityContext(),
 					Args:            []string{"robot", "-i", tastsTags, "/test_runs/"},
 					Env: []corev1.EnvVar{
@@ -190,7 +190,7 @@ func NewCoreIntegrationTests(cr *patroniv1.PatroniCore, cluster *patroniv1.Patro
 				{
 					Name:            name,
 					Image:           dockerImage,
-					ImagePullPolicy: "Always",
+					ImagePullPolicy: cr.Spec.ImagePullPolicy,
 					SecurityContext: util.GetDefaultSecurityContext(),
 					Args:            []string{"robot", "-i", tastsTags, "/test_runs/"},
 					Env: []corev1.EnvVar{

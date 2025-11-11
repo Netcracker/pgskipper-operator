@@ -50,7 +50,8 @@ type PgBouncerCreds struct {
 	password string
 }
 
-func NewPoolerDeployment(spec v1.Pooler, sa string, creds *PgBouncerCreds, newPatroniName string) *appsv1.Deployment {
+func NewPoolerDeployment(cr *v1.PatroniServices, sa string, creds *PgBouncerCreds, newPatroniName string) *appsv1.Deployment {
+	spec := cr.Spec.Pooler
 	deploymentName := DeploymentName
 	dockerImage := spec.Image
 	dep := &appsv1.Deployment{
@@ -97,10 +98,11 @@ func NewPoolerDeployment(spec v1.Pooler, sa string, creds *PgBouncerCreds, newPa
 					InitContainers:     []corev1.Container{},
 					Containers: []corev1.Container{
 						{
-							Name:    deploymentName,
-							Image:   dockerImage,
-							Command: []string{},
-							Args:    []string{},
+							Name:            deploymentName,
+							ImagePullPolicy: cr.Spec.ImagePullPolicy,
+							Image:           dockerImage,
+							Command:         []string{},
+							Args:            []string{},
 							Env: []corev1.EnvVar{
 								{
 									Name:  "POSTGRESQL_HOST",

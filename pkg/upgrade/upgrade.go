@@ -416,7 +416,7 @@ func (u *Upgrade) ProceedUpgrade(cr *v1.PatroniCore, cluster *v1.PatroniClusterS
 	deploymentIdx, _ := strconv.Atoi(leaderName[len(leaderName)-1:])
 	patroniDeployment := deployment.NewPatroniStatefulset(cr, deploymentIdx, cluster.ClusterName,
 		cluster.PatroniTemplate, cluster.PostgreSQLUserConf, cluster.PatroniLabels)
-	upgradePod := u.getUpgradePod(patroniSpec, leaderName, initDbArgs, cr.Upgrade.DockerUpgradeImage)
+	upgradePod := u.getUpgradePod(cr, leaderName, initDbArgs, cr.Upgrade.DockerUpgradeImage)
 
 	// copy nodeSelector, Volumes, SecurityContext from Deployment
 	upgradePod.Spec.NodeSelector = patroniDeployment.Spec.Template.Spec.NodeSelector
@@ -482,7 +482,8 @@ func (u *Upgrade) ProceedUpgrade(cr *v1.PatroniCore, cluster *v1.PatroniClusterS
 	return nil
 }
 
-func (u *Upgrade) getUpgradePod(patroniSpec *v1.Patroni, leaderName string, initDbArgs string, upgradeImage string) *corev1.Pod {
+func (u *Upgrade) getUpgradePod(cr *v1.PatroniCore, leaderName string, initDbArgs string, upgradeImage string) *corev1.Pod {
+	patroniSpec := cr.Spec.Patroni
 	patroniIdx := leaderName[len(leaderName)-1:]
 	upgradePod := &corev1.Pod{
 		ObjectMeta: metav1.ObjectMeta{
@@ -497,8 +498,8 @@ func (u *Upgrade) getUpgradePod(patroniSpec *v1.Patroni, leaderName string, init
 				{
 					Name:            "pg-upgrade",
 					Image:           upgradeImage,
+					ImagePullPolicy: cr.Spec.ImagePullPolicy,
 					SecurityContext: opUtil.GetDefaultSecurityContext(),
-					ImagePullPolicy: "IfNotPresent",
 					VolumeMounts: []corev1.VolumeMount{
 						{
 							MountPath: "/var/lib/pgsql/data",
@@ -666,7 +667,7 @@ func (u *Upgrade) getUpgradeCheckPod(cr *v1.PatroniCore) *corev1.Pod {
 					Name:            "pg-upgrade-check",
 					Image:           patroniSpec.DockerImage,
 					SecurityContext: opUtil.GetDefaultSecurityContext(),
-					ImagePullPolicy: "IfNotPresent",
+					ImagePullPolicy: cr.Spec.ImagePullPolicy,
 					Command:         []string{"sleep", "infinity"},
 					Resources: corev1.ResourceRequirements{
 						Requests: map[corev1.ResourceName]resource.Quantity{

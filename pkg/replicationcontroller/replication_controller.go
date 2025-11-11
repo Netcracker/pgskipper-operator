@@ -33,7 +33,8 @@ const (
 
 var rcLabels = map[string]string{"name": "logical-replication-controller"}
 
-func NewRCDeployment(spec v1.ReplicationController, sa, clusterName string, pgPort int) *appsv1.Deployment {
+func NewRCDeployment(cr v1.PatroniServices, sa, clusterName string, pgPort int) *appsv1.Deployment {
+	spec := cr.Spec.ReplicationController
 	deploymentName := "logical-replication-controller"
 	dockerImage := spec.Image
 	dep := &appsv1.Deployment{
@@ -59,10 +60,11 @@ func NewRCDeployment(spec v1.ReplicationController, sa, clusterName string, pgPo
 					InitContainers:     []corev1.Container{},
 					Containers: []corev1.Container{
 						{
-							Name:    deploymentName,
-							Image:   dockerImage,
-							Command: []string{},
-							Args:    []string{},
+							Name:            deploymentName,
+							ImagePullPolicy: cr.Spec.ImagePullPolicy,
+							Image:           dockerImage,
+							Command:         []string{},
+							Args:            []string{},
 							Env: []corev1.EnvVar{
 								{
 									Name:  "POSTGRES_HOST",

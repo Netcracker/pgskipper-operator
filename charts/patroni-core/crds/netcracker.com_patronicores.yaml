@@ -90,6 +90,10 @@ spec:
                       type: string
                     type: array
                 type: object
+              imagePullPolicy:
+                description: PullPolicy describes a policy for if/when to pull a container
+                  image
+                type: string
               installationTimestamp:
                 type: string
               integrationTests:

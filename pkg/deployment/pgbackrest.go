@@ -32,7 +32,7 @@ func getPgBackRestContainer(deploymentIdx int, clustername string, patroniCoreSp
 	pgBackRestContainer := corev1.Container{
 		Name:            "pgbackrest-sidecar",
 		Image:           patroniCoreSpec.PgBackRest.DockerImage,
-		ImagePullPolicy: "Always",
+		ImagePullPolicy: patroniCoreSpec.ImagePullPolicy,
 		SecurityContext: util.GetDefaultSecurityContext(),
 		Command:         []string{"sh"},
 		Args:            []string{"/opt/start.sh"},

@@ -36,7 +36,7 @@ spec:
       containers:
         - name: patroni-core-operator
           image: {{ template "find_image" (dict "deployName" "patroni_core" "SERVICE_NAME" "patroni-core" "vals" .Values "default" .Values.operator.image) }}
-          imagePullPolicy: Always
+          imagePullPolicy: {{ default "IfNotPresent" .Values.imagePullPolicy }}
           {{ if .Values.operator.priorityClassName }}
           priorityClassName: {{ .Values.operator.priorityClassName }}
           {{ end }}
