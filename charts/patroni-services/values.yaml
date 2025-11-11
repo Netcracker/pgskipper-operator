@@ -132,6 +132,12 @@ metricCollector:
   #    # The name of the InfluxDB database to store the metrics. This should start with the cloud_ prefix.
   #    database: test"
   # Configuration for prometheus alerts
+  
+  #This variable move from old fashion alerts, descriveb in monitoring/templates/prometheus-rule with small amount of overrides to new fashion, when alerts are deployed as a helm subchart charts/metricsCollector 
+  # and can be fully overrided/added/modified in subchart`s values.yaml`
+  # Any value except v2 will work as an old fashion alerts
+
+  alertsPackVersion: "v1"
   prometheusRules:
     # Threshold for backup storage size for alerting
     backupAlertThreshold: 5
