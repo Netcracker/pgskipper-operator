@@ -6,14 +6,7 @@ metadata:
     name: patroni-core
       {{ include "kubernetes.labels" . | nindent 4 }}
 spec:
-  {{- if .Values.privateRegistry.enabled }}
-  privateRegistry:
-    enabled: true
-    names:
-    {{- range $i, $v := .Values.privateRegistry.secrets }}
-      - {{ $v.name }} 
-    {{- end }}     
-  {{- end }}
+  imagePullPolicy: {{ .Values.imagePullPolicy | default "IfNotPresent" }}
   installationTimestamp: {{ now | unixEpoch | quote }}
   {{ if .Values.serviceAccount.create }}
   serviceAccountName: {{default "patroni-sa" .Values.serviceAccount.name}}

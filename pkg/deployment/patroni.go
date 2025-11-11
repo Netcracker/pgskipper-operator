@@ -292,7 +292,7 @@ func NewPatroniStatefulset(cr *patroniv1.PatroniCore, deploymentIdx int, cluster
 								},
 							},
 							Resources:       *patroniSpec.Resources,
-							ImagePullPolicy: corev1.PullIfNotPresent,
+							ImagePullPolicy: cr.Spec.ImagePullPolicy,
 						},
 					},
 					RestartPolicy:                 corev1.RestartPolicyAlways,

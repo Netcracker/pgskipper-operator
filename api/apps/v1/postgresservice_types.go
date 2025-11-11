@@ -45,6 +45,7 @@ type PatroniServicesSpec struct {
 	PgBackRestExporter    *PgBackRestExporter      `json:"pgBackRestExporter,omitempty"`
 	InstallationTimestamp string                   `json:"installationTimestamp,omitempty"`
 	PrivateRegistry       PrivateRegistry          `json:"privateRegistry,omitempty"`
+	ImagePullPolicy       v1.PullPolicy            `json:"imagePullPolicy,omitempty"`
 }
 
 type PrivateRegistry struct {

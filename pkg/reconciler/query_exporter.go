@@ -46,7 +46,6 @@ func NewQueryExporterReconciler(cr *netcrackev1.PatroniServices, helper *helper.
 
 func (r *QueryExporterReconciler) Reconcile() error {
 	cr := r.cr
-	queryExporterSpec := cr.Spec.QueryExporter
 
 	pgHost := fmt.Sprintf("pg-%s", r.cluster.ClusterName)
 	err := queryexporter.EnsureQueryExporterUser(pgHost)
@@ -55,7 +54,7 @@ func (r *QueryExporterReconciler) Reconcile() error {
 		return err
 	}
 	queryexporter.CreateQueryExporterExtensions(pgHost, defaultDatabase)
-	queryExporterDeployment := queryexporter.NewQueryExporterDeployment(queryExporterSpec, cr.Spec.ServiceAccountName)
+	queryExporterDeployment := queryexporter.NewQueryExporterDeployment(cr, cr.Spec.ServiceAccountName)
 	if cr.Spec.Policies != nil {
 		logger.Info("Policies is not empty, setting them to Query Exporter Deployment")
 		queryExporterDeployment.Spec.Template.Spec.Tolerations = cr.Spec.Policies.Tolerations
@@ -70,7 +69,6 @@ func (r *QueryExporterReconciler) Reconcile() error {
 
 	//Adding SecurityContext
 	queryExporterDeployment.Spec.Template.Spec.Containers[0].SecurityContext = opUtil.GetDefaultSecurityContext()
-
 	if cr.Spec.PrivateRegistry.Enabled {
 		for _, name := range cr.Spec.PrivateRegistry.Names {
 			queryExporterDeployment.Spec.Template.Spec.ImagePullSecrets = append(queryExporterDeployment.Spec.Template.Spec.ImagePullSecrets, corev1.LocalObjectReference{Name: name})

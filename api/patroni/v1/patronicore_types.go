@@ -36,6 +36,7 @@ type PatroniCoreSpec struct {
 	Ldap                  *LdapConfig              `json:"ldap,omitempty"`
 	InstallationTimestamp string                   `json:"installationTimestamp,omitempty"`
 	PrivateRegistry       PrivateRegistry          `json:"privateRegistry,omitempty"`
+	ImagePullPolicy       v1.PullPolicy            `json:"imagePullPolicy,omitempty"`
 }
 
 type PrivateRegistry struct {

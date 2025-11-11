@@ -87,7 +87,7 @@ func (r *BackupDaemonReconciler) Reconcile() error {
 		logger.Info("Policies is not empty, setting them to BackupDaemon Deployment")
 		backupDaemonDeployment.Spec.Template.Spec.Tolerations = cr.Spec.Policies.Tolerations
 	}
-
+	backupDaemonDeployment.Spec.Template.Spec.Containers[0].ImagePullPolicy = cr.Spec.ImagePullPolicy
 	if cr.Spec.PrivateRegistry.Enabled {
 		for _, name := range cr.Spec.PrivateRegistry.Names {
 			backupDaemonDeployment.Spec.Template.Spec.ImagePullSecrets = append(backupDaemonDeployment.Spec.Template.Spec.ImagePullSecrets, corev1.LocalObjectReference{Name: name})
