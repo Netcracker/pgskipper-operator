@@ -15,11 +15,14 @@
 package reconciler
 
 import (
+	"context"
 	"fmt"
 	"strconv"
 	"strings"
 	"sync"
 	"time"
+
+	goErrors "errors"
 
 	"github.com/Netcracker/pgskipper-operator-core/pkg/storage"
 	v1 "github.com/Netcracker/pgskipper-operator/api/patroni/v1"
@@ -37,6 +40,7 @@ import (
 	"go.uber.org/zap"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 )
 
@@ -77,9 +81,11 @@ func (r *PatroniReconciler) Reconcile() error {
 	patroniSpec := cr.Spec.Patroni
 	patroniConfigMap := deployment.ConfigMapForPatroni(r.cluster.ClusterName, r.cluster.PatroniCM, r.cluster.ConfigMapKey)
 	isStandbyClusterPresent := patroni.IsStandbyClusterConfigurationExist(cr)
+	isPgbackrestUsed := cr.Spec.PgBackRest != nil
 
 	if cr.Upgrade != nil && cr.Upgrade.Enabled {
 		logger.Info("Starting an upgrade procedure")
+		time.Sleep(30 * time.Second)
 		if err := r.upgrade.ProceedUpgrade(cr, r.cluster); err != nil {
 			logger.Error("Cannot upgrade patroni", zap.Error(err))
 			return err
@@ -101,17 +107,16 @@ func (r *PatroniReconciler) Reconcile() error {
 		patroni.AddTagsSettings(cr, patroniConfigMap, r.cluster.ConfigMapKey)
 	}
 
+	if isPgbackrestUsed {
+		err := r.preparePgbackRest(cr, patroniConfigMap)
+		if err != nil {
+			return err
+		}
+	}
+
 	if _, err := r.helper.ResourceManager.CreateOrUpdateConfigMap(patroniConfigMap); err != nil {
 		logger.Error(fmt.Sprintf("Cannot create or update config map %s", patroniConfigMap.Name), zap.Error(err))
 		return err
-	}
-
-	if cr.Spec.PgBackRest != nil {
-		pgBackRestCm := deployment.GetPgBackRestCM(cr.Spec.PgBackRest)
-		if _, err := r.helper.ResourceManager.CreateOrUpdateConfigMap(pgBackRestCm); err != nil {
-			logger.Error(fmt.Sprintf("Cannot create or update config map %s", "pgbackrest-config"), zap.Error(err))
-			return err
-		}
 	}
 
 	pgParamsConfigMap := deployment.ConfigMapForPostgreSQL(r.cluster.ClusterName, r.cluster.PatroniPropertiesCM)
@@ -273,8 +278,11 @@ func (r *PatroniReconciler) Reconcile() error {
 			}
 			if localeVersion != newLocaleVersion || cr.Spec.Patroni.ForceCollationVersionUpgrade {
 				logger.Warn(fmt.Sprintf("New os locale version is %s, but previous was %s. A collation version mismatch occured in databases. Run locale fix script", newLocaleVersion, localeVersion))
+				err = r.runLocaleFixScript(pgVersion, newLocaleVersion, cr.Spec.Patroni.ForceCollationVersionUpgrade)
+				if err != nil {
+					return err
+				}
 				r.helper.StoreDataToCM("locale-version", newLocaleVersion)
-				r.runLocaleFixScript(pgVersion)
 			}
 
 		} else {
@@ -286,6 +294,13 @@ func (r *PatroniReconciler) Reconcile() error {
 		replicas := patroniSpec.Replicas
 		for statefulsetIdx := 1; statefulsetIdx <= replicas; statefulsetIdx++ {
 			if err = r.processPatroniStatefulset(cr, statefulsetIdx); err != nil {
+				return err
+			}
+		}
+
+		// Wait for patroni to be ready in case of standby cluster
+		if patroni.IsStandbyClusterConfigurationExist(cr) {
+			if err := opUtil.WaitForPatroni(cr, r.cluster.PatroniMasterSelectors, r.cluster.PatroniReplicasSelector); err != nil {
 				return err
 			}
 		}
@@ -307,11 +322,12 @@ func (r *PatroniReconciler) Reconcile() error {
 	}
 	// Set replicator password from Secret
 	if !cr.Spec.VaultRegistration.DbEngine.Enabled {
-		if err := r.helper.SyncReplicatorPassword(r.cluster.PgHost); err != nil {
+		if isStandbyClusterPresent {
+			logger.Info("Standby detected; skipping replicator password sync")
+		} else if err := r.helper.SyncReplicatorPassword(r.cluster.PgHost); err != nil {
 			return err
 		}
 	}
-
 	// add necessary shared_preload_libraries and settings
 	if cr.Spec.Patroni.Powa.Install {
 		powa.UpdatePgSettings(cr)
@@ -327,6 +343,13 @@ func (r *PatroniReconciler) Reconcile() error {
 	if err := patroni.UpdatePostgreSQLParams(patroniSpec, r.cluster.PatroniUrl); err != nil {
 		logger.Error("Failed to update PostgreSQL Params, exiting", zap.Error(err))
 		return err
+	}
+
+	if cr.Spec.PgBackRest != nil {
+		if err := patroni.SetWalArchivingForPgBackRest(cr, r.cluster.PatroniUrl); err != nil {
+			logger.Error("Failed to update pgBackRest settings, exiting", zap.Error(err))
+			return err
+		}
 	}
 
 	//ldap integration settings
@@ -373,6 +396,30 @@ func (r *PatroniReconciler) Reconcile() error {
 			return err
 		}
 	}
+
+	for _, name := range []string{"patroni-config", "patroni-leader"} {
+		cm, err := r.helper.ResourceManager.GetConfigMap(name)
+		if err != nil {
+			if errors.IsNotFound(err) {
+				continue
+			}
+			logger.Error("Failed to fetch ConfigMap", zap.String("name", cm.Name), zap.Error(err))
+			return err
+		}
+		if cm.Annotations == nil {
+			cm.Annotations = make(map[string]string)
+		}
+		cm.Annotations["argocd.argoproj.io/ignore-resource-updates"] = "true"
+		if patroniSpec.ConfigMapAnnotations != nil {
+			for k, v := range patroniSpec.ConfigMapAnnotations {
+				cm.Annotations[k] = v
+			}
+		}
+		if _, err := r.helper.ResourceManager.CreateOrUpdateConfigMap(cm); err != nil {
+			logger.Error("failed to annotate Patroni ConfigMap", zap.Error(err))
+			return err
+		}
+	}
 	return nil
 }
 
@@ -394,7 +441,7 @@ func (r *PatroniReconciler) processPatroniServices(cr *v1.PatroniCore, patroniSp
 	} else {
 		pgService := reconcileService(r.cluster.PostgresServiceName, r.cluster.PatroniLabels,
 			r.cluster.PatroniMasterSelectors, deployment.GetPortsForPatroniService(r.cluster.ClusterName), false)
-		if err := r.helper.ResourceManager.CreateServiceIfNotExists(pgService); err != nil {
+		if err := r.helper.ResourceManager.CreateOrUpdateService(pgService); err != nil {
 			logger.Error(fmt.Sprintf("Cannot create service %s", pgService.Name), zap.Error(err))
 			return err
 		}
@@ -411,13 +458,20 @@ func (r *PatroniReconciler) processPatroniServices(cr *v1.PatroniCore, patroniSp
 			return err
 		}
 		if cr.Spec.PgBackRest != nil {
-			pgBackRestService := deployment.GetPgBackRestService(r.cluster.PatroniMasterSelectors)
-			if err := r.helper.ResourceManager.CreateServiceIfNotExists(pgBackRestService); err != nil {
-				logger.Error(fmt.Sprintf("Cannot create service %s", pgService.Name), zap.Error(err))
+			pgBackRestService := deployment.GetPgBackRestService(r.cluster.PatroniMasterSelectors, false)
+			if err := r.helper.ResourceManager.CreateOrUpdateService(pgBackRestService); err != nil {
+				logger.Error(fmt.Sprintf("Cannot create service %s", pgBackRestService.Name), zap.Error(err))
 				return err
 			}
+			if cr.Spec.PgBackRest.BackupFromStandby {
+				pgBackRestStandbyService := deployment.GetPgBackRestService(r.cluster.PatroniReplicasSelector, true)
+				if err := r.helper.ResourceManager.CreateOrUpdateService(pgBackRestStandbyService); err != nil {
+					logger.Error(fmt.Sprintf("Cannot create service %s", pgBackRestStandbyService.Name), zap.Error(err))
+					return err
+				}
+			}
 			pgBackRestHeadless := deployment.GetBackrestHeadless()
-			if err := r.helper.ResourceManager.CreateServiceIfNotExists(pgBackRestHeadless); err != nil {
+			if err := r.helper.ResourceManager.CreateOrUpdateService(pgBackRestHeadless); err != nil {
 				logger.Error(fmt.Sprintf("Cannot create service %s", pgBackRestHeadless.Name), zap.Error(err))
 				return err
 			}
@@ -522,59 +576,177 @@ func (r *PatroniReconciler) createServicesForEtcdAsDcs() error {
 	return nil
 }
 
-func (r *PatroniReconciler) runLocaleFixScript(pgVersion int64) {
+func (r *PatroniReconciler) runLocaleFixScript(pgVersion int64, newLocale string, forced bool) error {
 	pgC := pgClient.GetPostgresClient(r.cluster.PgHost)
-	databaseList := helper.GetAllDatabases(pgC)
+
+	err := helper.WaitUntilRecoveryIsDone(pgC)
+	if err != nil {
+		logger.Error("recovery check failed, during locale update", zap.Error(err))
+		return err
+	}
+
+	var databaseList []string
+	if forced {
+		databaseList, err = helper.GetAllDatabases(pgC)
+	} else {
+		databaseList, err = helper.GetDatabasesForLocaleUpdate(pgC, newLocale)
+	}
+	if err != nil {
+		return err
+	}
+
+	logger.Info(fmt.Sprintf("database count for locale fix: %d", len(databaseList)))
+
+	errChan := make(chan error, len(databaseList))
 	wg.Wait()
 	connCount := 0
 	limitPool := 10
 	for _, db := range databaseList {
 		wg.Add(1)
 		connCount++
-		go r.fixCollationVersionForDB(pgC, pgVersion, db)
+		go r.fixCollationVersionForDB(pgC, pgVersion, db, errChan)
 		if connCount >= limitPool {
 			wg.Wait()
 			connCount = 0
 		}
 	}
-}
+	wg.Wait()
 
-func (r *PatroniReconciler) fixCollationVersionForDB(pgClient *pgClient.PostgresClient, pgVersion int64, db string) {
-	defer wg.Done()
-	logger.Info(fmt.Sprintf("fix locale for database: %s", db))
-	isPassed := true
-
-	err := pgClient.ExecuteForDB(db, "REINDEX DATABASE;")
-	if err != nil {
-		isPassed = false
-		logger.Warn(fmt.Sprintf("Cannot reindex database for db: %s", db), zap.Error(err))
+	close(errChan)
+	var errors []error
+	for err := range errChan {
+		if err != nil {
+			errors = append(errors, err)
+		}
 	}
 
-	err = pgClient.ExecuteForDB(db, "REINDEX SYSTEM;")
+	if len(errors) > 0 {
+		msg := fmt.Sprintf("encountered %d errors during collation version fix", len(errors))
+		logger.Error(msg)
+		return goErrors.New(msg)
+	}
+	return nil
+}
+
+func (r *PatroniReconciler) fixCollationVersionForDB(pgClient *pgClient.PostgresClient, pgVersion int64, db string, errChan chan<- error) {
+	defer wg.Done()
+
+	var err error
+	defer func() {
+		if err == nil {
+			logger.Info(fmt.Sprintf("fix locale for database: %s - OK", db))
+		} else {
+			logger.Info(fmt.Sprintf("fix locale for database: %s - HAVE PROBLEMS", db))
+			errChan <- fmt.Errorf("failed to fix collation version for database %s: %w", db, err)
+		}
+	}()
+
+	logger.Info(fmt.Sprintf("fix locale for database: %s", db))
+	err = pgClient.ExecuteForDB(db, fmt.Sprintf("REINDEX DATABASE CONCURRENTLY \"%s\"", db))
 	if err != nil {
-		isPassed = false
+		logger.Warn(fmt.Sprintf("Cannot reindex database for db: %s", db), zap.Error(err))
+		return
+	}
+	err = pgClient.ExecuteForDB(db, fmt.Sprintf("REINDEX SYSTEM \"%s\"", db))
+	if err != nil {
 		logger.Warn(fmt.Sprintf("Cannot reindex system for db: %s", db), zap.Error(err))
+		return
+	}
+	brokenIndNames, err := findBrokenIndexes(pgClient, db)
+	if err != nil {
+		logger.Warn(fmt.Sprintf("Cannot find broken indexes for db: %s", db), zap.Error(err))
+		return
+	}
+
+	if len(brokenIndNames) > 0 {
+		fixBrokenIndexes(pgClient, db, brokenIndNames)
 	}
 
 	if pgVersion >= 15 {
 		err = pgClient.Execute(fmt.Sprintf("ALTER DATABASE \"%s\" REFRESH COLLATION VERSION", db))
 		if err != nil {
-			isPassed = false
 			logger.Warn(fmt.Sprintf("Cannot alter locale version for db: %s", db), zap.Error(err))
+			return
 		}
 	}
 
 	err = r.refreshDependCollationsVersion(pgClient, db)
 	if err != nil {
-		isPassed = false
 		logger.Warn(fmt.Sprintf("Cannot alter dependent collations version for db: %s", db), zap.Error(err))
 	}
+}
 
-	if isPassed {
-		logger.Info(fmt.Sprintf("fix locale for database: %s - OK", db))
-	} else {
-		logger.Info(fmt.Sprintf("fix locale for database: %s - HAVE PROBLEMS", db))
+func fixBrokenIndexes(pgClient *pgClient.PostgresClient, db string, brokenIndNames []string) error {
+	logger.Warn(fmt.Sprintf("Broken indexes found for db: %s", db))
+	indexesFixed := true
+	for _, BrokenIndName := range brokenIndNames {
+		dropIndexQuery := fmt.Sprintf("DROP INDEX IF EXISTS \"%s\"", BrokenIndName)
+		err := pgClient.ExecuteForDB(db, dropIndexQuery)
+		if err != nil {
+			logger.Warn(fmt.Sprintf("Cannot drop index for db: %s", db), zap.Error(err))
+			indexesFixed = false
+		}
+		if strings.Contains(BrokenIndName, "_ccnew") {
+			indexNameOld := strings.Split(BrokenIndName, "_ccnew")[0]
+			err = pgClient.ExecuteForDB(db, fmt.Sprintf("REINDEX INDEX CONCURRENTLY \"%s\"", indexNameOld))
+			if err != nil {
+				logger.Warn(fmt.Sprintf("Cannot reindex index for db: %s", db), zap.Error(err))
+				indexesFixed = false
+			}
+		}
 	}
+
+	if indexesFixed {
+		logger.Info(fmt.Sprintf("Broken indexes fixed for db: %s", db))
+	} else {
+		msg := fmt.Sprintf("Broken indexes not fixed for db: %s", db)
+		logger.Warn(msg)
+		return goErrors.New(msg)
+	}
+	return nil
+}
+
+func findBrokenIndexes(pgClient *pgClient.PostgresClient, db string) ([]string, error) {
+	logger.Debug(fmt.Sprintf("check broken indexes for db: %s", db))
+
+	brokenIndexQuery := `
+		SELECT 
+			n.nspname AS schema_name,
+			c.relname AS index_name
+		FROM 
+			pg_index i
+		JOIN 
+			pg_class c ON i.indexrelid = c.oid
+		JOIN 
+			pg_namespace n ON c.relnamespace = n.oid
+		WHERE 
+			n.nspname NOT IN ('pg_catalog', 'information_schema') AND i.indisvalid = false AND ( c.relname like '%_ccnew%' or c.relname like '%_ccold%')
+		ORDER BY 
+				schema_name, index_name;`
+
+	conn, err := pgClient.GetConnectionToDb(db)
+	if err != nil {
+		return nil, err
+	}
+	defer conn.Close(context.Background())
+
+	rows, err := conn.Query(context.Background(), brokenIndexQuery)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	indexNames := make([]string, 0)
+	var schemaName string
+	var indexName string
+	for rows.Next() {
+		err = rows.Scan(&schemaName, &indexName)
+		if err != nil {
+			return nil, err
+		}
+		indexNames = append(indexNames, fmt.Sprintf("\"%s\".\"%s\"", schemaName, indexName))
+	}
+	return indexNames, nil
 }
 
 func (r *PatroniReconciler) refreshDependCollationsVersion(pgClient *pgClient.PostgresClient, db string) error {
@@ -595,7 +767,13 @@ func (r *PatroniReconciler) refreshDependCollationsVersion(pgClient *pgClient.Po
 // Get all collations with version mismatch for database
 func (r *PatroniReconciler) getCollationsForRefresh(pgClient *pgClient.PostgresClient, db string) ([]string, error) {
 	cForRefresh := make([]string, 0)
-	rows, err := pgClient.QueryForDB(db, `SELECT distinct c.collname AS "Collation"
+	conn, err := pgClient.GetConnectionToDb(db)
+	if err != nil {
+		return nil, err
+	}
+	defer conn.Close(context.Background())
+
+	rows, err := conn.Query(context.Background(), `SELECT distinct c.collname AS "Collation"
              FROM pg_depend d
              JOIN pg_collation c ON (refclassid = 'pg_collation'::regclass AND refobjid = c.oid)
 			 WHERE c.collversion <> pg_collation_actual_version(c.oid) or c.collversion is null;`)
@@ -679,4 +857,54 @@ func (r PatroniReconciler) checkSymlinkAlreadyExist(podName, podIdentity string)
 		return false
 	}
 	return strings.TrimSpace(result) == "true"
+}
+
+func (r *PatroniReconciler) preparePgbackRest(cr *v1.PatroniCore, patroniConfigMap *corev1.ConfigMap) error {
+	// Prepare pgbackrest configuration CM
+	pgBackRestCm := deployment.GetPgBackRestCM(cr)
+	if _, err := r.helper.ResourceManager.CreateOrUpdateConfigMap(pgBackRestCm); err != nil {
+		logger.Error(fmt.Sprintf("Cannot create or update config map %s", "pgbackrest-config"), zap.Error(err))
+		return err
+	}
+
+	// Add pgbackrest section to patroni CM
+	pgbackrest := map[string]string{
+		"command":   patroni.GetCommandForPgbackrest(cr, "pgbackrest --stanza=patroni --type=standby --delta --log-level-file=detail restore"),
+		"keep_data": "true",
+		"no_params": "true",
+	}
+	_, err := patroni.UpdatePgbackRestSettings(patroniConfigMap, pgbackrest, r.cluster.ConfigMapKey)
+	if err != nil {
+		logger.Error("Failed to update pgbackrest settings", zap.Error(err))
+		return err
+	}
+
+	// Generate SSH keys for patroni ssh connection via pgbackrest
+	if cr.Spec.PgBackRest.BackupFromStandby {
+		_, err := r.helper.GetSecret(deployment.SSHKeysSecret)
+		if err != nil {
+			if errors.IsNotFound(err) {
+				logger.Info("Generation of RSA keys for pgbackrest started...")
+				srvPrivateRSA, srvPublicRSA, _ := opUtil.GenerateSSHKeyPair(4096)
+				secretData := map[string][]byte{"id_rsa": []byte(srvPrivateRSA), "id_rsa.pub": []byte(srvPublicRSA)}
+
+				secret := &corev1.Secret{
+					Type: corev1.SecretTypeOpaque,
+					ObjectMeta: metav1.ObjectMeta{
+						Name:      deployment.SSHKeysSecret,
+						Namespace: opUtil.GetNameSpace(),
+						Labels:    r.cluster.PatroniLabels,
+					},
+					Data: secretData,
+				}
+				err := r.helper.CreateSecretIfNotExists(secret)
+				if err != nil {
+					return err
+				}
+			} else {
+				return err
+			}
+		}
+	}
+	return nil
 }

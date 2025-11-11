@@ -78,6 +78,14 @@ func UpdatePostgresClientPassword(pass string) {
 	instance = nil
 }
 
+func (c *PostgresClient) GetConnection() (*pgxpool.Conn, error) {
+	return c.adapter.GetConnection()
+}
+
+func (c *PostgresClient) GetConnectionToDb(dbName string) (*pgx.Conn, error) {
+	return c.adapter.GetConnectionToDb(dbName)
+}
+
 func (c *PostgresClient) Execute(query string) error {
 	conn, err := c.adapter.GetConnection()
 	if err != nil {
@@ -90,39 +98,12 @@ func (c *PostgresClient) Execute(query string) error {
 	return nil
 }
 
-func (c *PostgresClient) Query(query string) (pgx.Rows, error) {
-
-	conn, err := c.adapter.GetConnection()
-	if err != nil {
-		return nil, err
-	}
-	defer conn.Release()
-	if rows, err := conn.Query(context.Background(), query); err == nil {
-		return rows, nil
-	} else {
-		return nil, err
-	}
-}
-
 func (c *PostgresClient) GetUser() string {
 	return c.adapter.User
 }
 
 func (c *PostgresClient) GetDatabase() string {
 	return c.adapter.Database
-}
-
-func (c *PostgresClient) QueryForDB(dbName, query string) (pgx.Rows, error) {
-	conn, err := c.adapter.GetConnectionToDb(dbName)
-	if err != nil {
-		return nil, err
-	}
-	defer conn.Close(context.Background())
-	if rows, err := conn.Query(context.Background(), query); err == nil {
-		return rows, nil
-	} else {
-		return nil, err
-	}
 }
 
 func (c *PostgresClient) ExecuteForDB(dbName, query string) error {

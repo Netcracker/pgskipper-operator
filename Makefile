@@ -35,6 +35,7 @@ gzip-charts:
 	gzip -f -c ./charts/patroni-services/monitoring/cloudsql-grafana-dashboard.json > ./charts/patroni-services/monitoring/cloudsql-grafana-dashboard.json.gz
 	gzip -f -c ./charts/patroni-services/monitoring/postgres-exporter-grafana-dashboard.json > ./charts/patroni-services/monitoring/postgres-exporter-grafana-dashboard.json.gz
 	gzip -f -c ./charts/patroni-services/monitoring/query-exporter-grafana-dashboard.json > ./charts/patroni-services/monitoring/query-exporter-grafana-dashboard.json.gz
+	gzip -f -c ./charts/patroni-services/monitoring/pgbackrest-exporter-grafana-dashboard.json > ./charts/patroni-services/monitoring/pgbackrest-exporter-grafana-dashboard.json.gz
 
 move-charts:
 	@echo "Move helm charts"
@@ -83,7 +84,7 @@ ifeq (, $(shell which controller-gen))
 	CONTROLLER_GEN_TMP_DIR=$$(mktemp -d) ;\
 	cd $$CONTROLLER_GEN_TMP_DIR ;\
 	go mod init tmp ;\
-	go install sigs.k8s.io/controller-tools/cmd/controller-gen@v0.16.3 ;\
+	go install sigs.k8s.io/controller-tools/cmd/controller-gen@v0.19.0 ;\
 	rm -rf $$CONTROLLER_GEN_TMP_DIR ;\
 	}
 CONTROLLER_GEN=$(GOBIN)/controller-gen

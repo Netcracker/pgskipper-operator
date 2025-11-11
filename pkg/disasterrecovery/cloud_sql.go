@@ -271,7 +271,13 @@ func (manager *CloudSQLDRManager) reconfigureCloudSqlProxy(connectionName string
 func (manager *CloudSQLDRManager) waitTillStandbyIsSynced() error {
 	pgC := pgClient.GetPostgresClientForHost(CloudSqlProxyHost)
 	return wait.PollUntilContextTimeout(context.Background(), 5*time.Second, 15*time.Minute, true, func(ctx context.Context) (done bool, err error) {
-		rows, err := pgC.Query(ReplCheckQuery)
+		conn, err := pgC.GetConnection()
+		if err != nil {
+			return false, err
+		}
+		defer conn.Release()
+
+		rows, err := conn.Query(context.Background(), ReplCheckQuery)
 		if err != nil {
 			return false, err
 		}

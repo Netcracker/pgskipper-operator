@@ -15,6 +15,7 @@
 package scheduler
 
 import (
+	"context"
 	"fmt"
 	"strings"
 
@@ -66,7 +67,13 @@ func updateIgnoredReplicationSlots() error {
 
 func getReplicationSlots(client *pgClient.PostgresClient) ([]Slot, error) {
 	slots := make([]Slot, 0)
-	rows, err := client.Query("select slot_name, plugin, slot_type, database from pg_replication_slots;")
+	conn, err := client.GetConnection()
+	if err != nil {
+		return nil, err
+	}
+	defer conn.Release()
+
+	rows, err := conn.Query(context.Background(), "select slot_name, plugin, slot_type, database from pg_replication_slots;")
 	if err != nil {
 		logger.Error("cannot get slots list", zap.Error(err))
 		return nil, err

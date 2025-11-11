@@ -57,6 +57,7 @@ var (
 	patroniCoreOperatorLockCmName = "patroni-core-operator-lock"
 	backRestcontainerName         = "pgbackrest-sidecar"
 	stanzaUpgradeCommand          = "pgbackrest stanza-upgrade"
+	stanzaCreateStandbyCommand    = "pgbackrest stanza-create --no-online"
 	//pgHost                          = util.GetEnv("POSTGRES_HOST", "pg-patroni")
 )
 
@@ -98,12 +99,12 @@ func NewPatroniCoreReconciler(client client.Client, scheme *runtime.Scheme) *Pat
 
 }
 
-//+kubebuilder:rbac:groups=qubership.org,resources=patronicore,verbs=get;list;watch;create;update;patch;delete
-//+kubebuilder:rbac:groups=qubership.org,resources=patronicore/status,verbs=get;update;patch
-//+kubebuilder:rbac:groups=qubership.org,resources=patronicore/finalizers,verbs=update
-//+kubebuilder:rbac:groups=qubership.org,resources=postgresservices,verbs=get;list;watch;create;update;patch;delete
-//+kubebuilder:rbac:groups=qubership.org,resources=postgresservices/status,verbs=get;update;patch
-//+kubebuilder:rbac:groups=qubership.org,resources=postgresservices/finalizers,verbs=update
+//+kubebuilder:rbac:groups=netcracker.com,resources=patronicore,verbs=get;list;watch;create;update;patch;delete
+//+kubebuilder:rbac:groups=netcracker.com,resources=patronicore/status,verbs=get;update;patch
+//+kubebuilder:rbac:groups=netcracker.com,resources=patronicore/finalizers,verbs=update
+//+kubebuilder:rbac:groups=netcracker.com,resources=postgresservices,verbs=get;list;watch;create;update;patch;delete
+//+kubebuilder:rbac:groups=netcracker.com,resources=postgresservices/status,verbs=get;update;patch
+//+kubebuilder:rbac:groups=netcracker.com,resources=postgresservices/finalizers,verbs=update
 
 // Reconcile is part of the main kubernetes reconciliation loop which aims to
 // move the current state of the cluster closer to the desired state.
@@ -196,7 +197,7 @@ func (pr *PatroniCoreReconciler) Reconcile(ctx context.Context, request ctrl.Req
 	}
 
 	pr.logger.Info("Reconcile will be started...")
-	time.Sleep(60 * time.Second)
+	time.Sleep(30 * time.Second)
 
 	if err := credentials.ProcessCreds(pr.helper.GetOwnerReferences()); err != nil {
 		return pr.handleReconcileError(maxReconcileAttempts,
@@ -315,9 +316,16 @@ func (pr *PatroniCoreReconciler) Reconcile(ctx context.Context, request ctrl.Req
 
 	if cr.Spec.PgBackRest != nil && cr.Spec.Patroni != nil {
 		if patroni.IsStandbyClusterConfigurationExist(cr) {
-			pr.logger.Info("It's standby cluster, stanza upgrade will be skipped...")
+			if cr.Spec.PgBackRest.DRS3.Bucket != "" {
+				pr.logger.Info("It's standby cluster with 2 pgbackrest repos, stanza create will be performed...")
+				if err := pr.stanzaUpgrade(true); err != nil {
+					return reconcile.Result{RequeueAfter: time.Minute}, err
+				}
+			} else {
+				pr.logger.Info("It's standby cluster, stanza upgrade will be skipped...")
+			}
 		} else {
-			if err := pr.stanzaUpgrade(); err != nil {
+			if err := pr.stanzaUpgrade(false); err != nil {
 				return reconcile.Result{RequeueAfter: time.Minute}, err
 			}
 		}
@@ -338,7 +346,11 @@ func (pr *PatroniCoreReconciler) Reconcile(ctx context.Context, request ctrl.Req
 	return reconcile.Result{}, nil
 }
 
-func (pr *PatroniCoreReconciler) stanzaUpgrade() error {
+func (pr *PatroniCoreReconciler) stanzaUpgrade(create bool) error {
+	command := stanzaUpgradeCommand
+	if create {
+		command = stanzaCreateStandbyCommand
+	}
 	masterPod, err := pr.helper.ResourceManager.GetPodsByLabel(MasterLabel)
 	if err != nil || len(masterPod.Items) == 0 {
 		pr.logger.Error("Can't get Patroni Leader for stanza upgrade execution", zap.Error(err))
@@ -347,7 +359,7 @@ func (pr *PatroniCoreReconciler) stanzaUpgrade() error {
 	masterPodName := masterPod.Items[0].Name
 	namespace := util.GetNameSpace()
 	pr.logger.Info("executing command to upgrade pgBackRest stanza")
-	stdout, stderr, err := pr.helper.ExecCmdOnPod(masterPodName, namespace, backRestcontainerName, stanzaUpgradeCommand)
+	stdout, stderr, err := pr.helper.ExecCmdOnPod(masterPodName, namespace, backRestcontainerName, command)
 	if err != nil {
 		fmt.Printf("Failed to execute stanza-upgrade command: %v\nStderr: %s\n", err, stderr)
 	} else {

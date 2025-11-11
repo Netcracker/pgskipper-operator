@@ -154,7 +154,11 @@ func (rc *rotationController) waitForDeleteByLabels(podLabels map[string]string)
 func Init() {
 	client, _ := util.GetClient()
 	helper := pghelper.GetHelper()
-	cr, _ := helper.GetPostgresServiceCR()
+	cr, err := helper.GetPostgresServiceCR()
+	if err != nil {
+		logger.Error("cannot fetch CR", zap.Error(err))
+		return
+	}
 	rotController = &rotationController{
 		helper:    helper,
 		k8sClient: client,

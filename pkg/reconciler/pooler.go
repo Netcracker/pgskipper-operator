@@ -45,8 +45,7 @@ func NewPoolerReconciler(cr *qubershipv1.PatroniServices, helper *helper.Helper,
 
 func (r *PoolerReconciler) Reconcile() error {
 	cr := r.cr
-	poolerSpec := cr.Spec.Pooler
-	updated, err := r.helper.CreateOrUpdateConfigMap(pooler.GetConfigMap(poolerSpec))
+	updated, err := r.helper.CreateOrUpdateConfigMap(pooler.GetConfigMap(cr.Spec.Pooler))
 	if err != nil {
 		logger.Error("error during Pooler CM creation", zap.Error(err))
 		return err
@@ -84,8 +83,7 @@ func (r *PoolerReconciler) Reconcile() error {
 		return err
 	}
 
-	poolerDeployment := pooler.NewPoolerDeployment(poolerSpec, cr.Spec.ServiceAccountName, creds, newPatroniName)
-
+	poolerDeployment := pooler.NewPoolerDeployment(cr, cr.Spec.ServiceAccountName, creds, newPatroniName)
 	if cr.Spec.PrivateRegistry.Enabled {
 		for _, name := range cr.Spec.PrivateRegistry.Names {
 			poolerDeployment.Spec.Template.Spec.ImagePullSecrets = append(poolerDeployment.Spec.Template.Spec.ImagePullSecrets, corev1.LocalObjectReference{Name: name})

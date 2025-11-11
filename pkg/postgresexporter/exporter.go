@@ -91,7 +91,7 @@ func ensurePostgresExporterUser(pgHost string) error {
 
 func createExporterUser(creds PostgresExporterCreds, client *pgClient.PostgresClient) error {
 	logger.Info(fmt.Sprintf("Creation of \"%s\" user for postgres-exporter", creds.username))
-	if _, err := client.Query(fmt.Sprintf("CREATE ROLE \"%s\" LOGIN PASSWORD '%s';", creds.username, creds.password)); err != nil {
+	if err := client.Execute(fmt.Sprintf("CREATE ROLE \"%s\" LOGIN PASSWORD '%s';", creds.username, creds.password)); err != nil {
 		logger.Error("cannot create Exporter user", zap.Error(err))
 		return err
 	}
@@ -99,7 +99,7 @@ func createExporterUser(creds PostgresExporterCreds, client *pgClient.PostgresCl
 }
 
 func grantExporterUser(creds PostgresExporterCreds, pg *pgClient.PostgresClient) error {
-	if _, err := pg.Query(fmt.Sprintf("GRANT pg_read_all_data, pg_monitor TO \"%s\";", creds.username)); err != nil {
+	if err := pg.Execute(fmt.Sprintf("GRANT pg_read_all_data, pg_monitor TO \"%s\";", creds.username)); err != nil {
 		logger.Error("cannot modify Exporter user", zap.Error(err))
 		return err
 	}

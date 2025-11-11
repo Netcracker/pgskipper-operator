@@ -94,7 +94,7 @@ func main() {
 		Metrics:                metricsserver.Options{BindAddress: "0"},
 		HealthProbeBindAddress: probeAddr,
 		LeaderElection:         enableLeaderElection,
-		LeaderElectionID:       "3100713b.qubership.org",
+		LeaderElectionID:       "3100713b.netcracker.com",
 		Cache: cache.Options{
 			DefaultNamespaces: map[string]cache.Config{util.GetNameSpace(): {}},
 		},

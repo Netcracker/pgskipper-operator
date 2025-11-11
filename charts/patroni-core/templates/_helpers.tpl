@@ -36,8 +36,8 @@ Common labels
 {{- define "patroni-core.labels" -}}
 helm.sh/chart: {{ include "patroni-core.chart" . }}
 {{ include "patroni-core.selectorLabels" . }}
-{{- if .Chart.AppVersion }}
-app.kubernetes.io/version: {{ .Chart.AppVersion | quote }}
+{{- if .Chart.ARTIFACT_DESCRIPTOR_VERSION }}
+app.kubernetes.io/version: {{ .Values.ARTIFACT_DESCRIPTOR_VERSION }}
 {{- end }}
 app.kubernetes.io/managed-by: {{ .Release.Service }}
 {{- end }}
@@ -54,10 +54,15 @@ app.kubernetes.io/instance: {{ .Release.Name }}
 {{- define "kubernetes.labels" -}}
 app.kubernetes.io/instance: {{ .Release.Name }}
 app.kubernetes.io/name: {{ include "patroni-core.name" . }}
-app.kubernetes.io/version: {{ .Chart.AppVersion | quote }}
-app.kubernetes.io/component: "postgres-operator"
-app.kubernetes.io/part-of: "postgres-operator"
-app.kubernetes.io/managed-by: {{ .Release.Service }}
+{{- if .Values.ARTIFACT_DESCRIPTOR_VERSION }}
+{{- end }}
+app.kubernetes.io/version: {{ .Values.ARTIFACT_DESCRIPTOR_VERSION }}
+{{- if .Values.DEPLOYMENT_SESSION_ID }}
+deployment.netcracker.com/sessionId: {{ .Values.DEPLOYMENT_SESSION_ID }}
+{{- end }}
+app.kubernetes.io/component: "operator"
+app.kubernetes.io/part-of: "postgres"
+app.kubernetes.io/managed-by: "Helm"
 app.kubernetes.io/technology: "go"
 {{- end -}}
 

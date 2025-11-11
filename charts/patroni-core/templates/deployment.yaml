@@ -2,6 +2,14 @@ apiVersion: apps/v1
 kind: Deployment
 metadata:
   name: patroni-core-operator
+  labels:
+    name: patroni-core-operator
+{{ if .Values.operator.podLabels }}
+{{ .Values.operator.podLabels | toYaml | nindent 4 }}
+{{ else if .Values.podLabels }}
+{{ .Values.podLabels | toYaml | nindent 4 }}
+{{ end }}
+{{ include "kubernetes.labels" . | nindent 4 }}
 spec:
   replicas: 1
   strategy:
@@ -36,7 +44,7 @@ spec:
       containers:
         - name: patroni-core-operator
           image: {{ template "find_image" (dict "deployName" "patroni_core" "SERVICE_NAME" "patroni-core" "vals" .Values "default" .Values.operator.image) }}
-          imagePullPolicy: Always
+          imagePullPolicy: {{ default "IfNotPresent" .Values.imagePullPolicy }}
           {{ if .Values.operator.priorityClassName }}
           priorityClassName: {{ .Values.operator.priorityClassName }}
           {{ end }}

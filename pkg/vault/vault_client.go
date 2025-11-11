@@ -15,6 +15,7 @@
 package vault
 
 import (
+	"context"
 	"fmt"
 	"sync"
 
@@ -195,7 +196,7 @@ func GetVaultRoleName(dbRole string) string {
 func createCollectorPgRole(pgHost string) error {
 	client := pgclient.GetPostgresClient(pgHost)
 	// Password hardcode can be ignored, because it's gonna be rotated by vault
-	if _, err := client.Query("CREATE ROLE \"monitoring-user\" with login password 'p@ssWOrD1'"); err != nil {
+	if err := client.Execute("CREATE ROLE \"monitoring-user\" with login password 'p@ssWOrD1'"); err != nil {
 		return err
 	}
 	return nil
@@ -282,7 +283,13 @@ func (c *Client) vaultCreateDbEngine(username string, postgresServiceName string
 	}
 
 	pgClient := pgclient.GetPostgresClient(pgHost)
-	rows, err := pgClient.Query(fmt.Sprintf("SELECT 1 FROM pg_user WHERE usename = '%s'", pgclient.EscapeString(username)))
+	conn, err := pgClient.GetConnection()
+	if err != nil {
+		return false, err
+	}
+	defer conn.Release()
+
+	rows, err := conn.Query(context.Background(), fmt.Sprintf("SELECT 1 FROM pg_user WHERE usename = '%s'", pgclient.EscapeString(username)))
 	if err != nil {
 		logger.Error("error during obtaining vault user", zap.Error(err))
 		return false, err
@@ -294,7 +301,7 @@ func (c *Client) vaultCreateDbEngine(username string, postgresServiceName string
 	}
 
 	password := util.GenerateRandomPassword()
-	_, err = pgClient.Query(fmt.Sprintf("CREATE USER \"%s\" WITH PASSWORD '%s' SUPERUSER", username, password))
+	err = pgClient.Execute(fmt.Sprintf("CREATE USER \"%s\" WITH PASSWORD '%s' SUPERUSER", username, password))
 	if err != nil {
 		logger.Error(fmt.Sprintf("create %s user error", username), zap.Error(err))
 		return false, err

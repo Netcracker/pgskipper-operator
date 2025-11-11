@@ -201,7 +201,13 @@ func CreateExtensionsForDBs(pgC *pgClient.PostgresClient, databases, extensions 
 }
 
 func IsUserExist(username string, pg *pgClient.PostgresClient) bool {
-	rows, err := pg.Query(fmt.Sprintf("SELECT 1 FROM pg_roles WHERE rolname = '%s';", username))
+	conn, err := pg.GetConnection()
+	if err != nil {
+		return true
+	}
+	defer conn.Release()
+
+	rows, err := conn.Query(context.Background(), fmt.Sprintf("SELECT 1 FROM pg_roles WHERE rolname = '%s';", username))
 	if err != nil {
 		logger.Error("error during fetching info about Exporter user")
 		return true
@@ -222,7 +228,7 @@ func AlterUserPassword(pg *pgClient.PostgresClient, username, password string) e
 	username = pgClient.EscapeString(username)
 	password = pgClient.EscapeString(password)
 	logger.Info(fmt.Sprintf("Setting password for user \"%s\"", username))
-	if _, err := pg.Query(fmt.Sprintf("ALTER USER \"%s\" WITH PASSWORD '%s' ;", username, password)); err != nil {
+	if err := pg.Execute(fmt.Sprintf("ALTER USER \"%s\" WITH PASSWORD '%s' ;", username, password)); err != nil {
 		logger.Error(fmt.Sprintf("cannot modify user %s", username), zap.Error(err))
 		return err
 	}
@@ -232,7 +238,7 @@ func AlterUserPassword(pg *pgClient.PostgresClient, username, password string) e
 func (h *Helper) TerminateActiveConnectionsForHost(pgHost string) error {
 	logger.Info("Termination of active connections")
 	pgC := pgClient.GetPostgresClientForHost(pgHost)
-	_, err := pgC.Query(TerminateConnectionsQuery)
+	err := pgC.Execute(TerminateConnectionsQuery)
 	return err
 }
 

@@ -87,7 +87,7 @@ func (r *BackupDaemonReconciler) Reconcile() error {
 		logger.Info("Policies is not empty, setting them to BackupDaemon Deployment")
 		backupDaemonDeployment.Spec.Template.Spec.Tolerations = cr.Spec.Policies.Tolerations
 	}
-
+	backupDaemonDeployment.Spec.Template.Spec.Containers[0].ImagePullPolicy = cr.Spec.ImagePullPolicy
 	if cr.Spec.PrivateRegistry.Enabled {
 		for _, name := range cr.Spec.PrivateRegistry.Names {
 			backupDaemonDeployment.Spec.Template.Spec.ImagePullSecrets = append(backupDaemonDeployment.Spec.Template.Spec.ImagePullSecrets, corev1.LocalObjectReference{Name: name})
@@ -204,6 +204,13 @@ func (r *BackupDaemonReconciler) Reconcile() error {
 				backupDaemonDeployment.Spec.Template.Spec.Containers[0].Env[i].Value = "pgbackrest"
 				break
 			}
+		}
+		if cr.Spec.PgBackRest.BackupFromStandby {
+			logger.Info("Set backup from standby parameter for backup-daemon")
+			envValue = append(envValue, corev1.EnvVar{
+				Name:  "BACKUP_FROM_STANDBY",
+				Value: "true",
+			})
 		}
 		backupDaemonDeployment.Spec.Template.Spec.Containers[0].Env = append(backupDaemonDeployment.Spec.Template.Spec.Containers[0].Env, envValue...)
 	}

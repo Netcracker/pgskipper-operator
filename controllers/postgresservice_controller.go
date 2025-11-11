@@ -111,9 +111,9 @@ func NewPostgresServiceReconciler(client client.Client, scheme *runtime.Scheme) 
 
 }
 
-//+kubebuilder:rbac:groups=qubership.org,resources=postgresservices,verbs=get;list;watch;create;update;patch;delete
-//+kubebuilder:rbac:groups=qubership.org,resources=postgresservices/status,verbs=get;update;patch
-//+kubebuilder:rbac:groups=qubership.org,resources=postgresservices/finalizers,verbs=update
+//+kubebuilder:rbac:groups=netcracker.com,resources=postgresservices,verbs=get;list;watch;create;update;patch;delete
+//+kubebuilder:rbac:groups=netcracker.com,resources=postgresservices/status,verbs=get;update;patch
+//+kubebuilder:rbac:groups=netcracker.com,resources=postgresservices/finalizers,verbs=update
 
 // Reconcile is part of the main kubernetes reconciliation loop which aims to
 // move the current state of the cluster closer to the desired state.
@@ -399,8 +399,17 @@ func (r *PostgresServiceReconciler) reconcilePostgresServiceCluster(cr *qubershi
 
 	// configure postgres-exporter user
 	if cr.Spec.PostgresExporter != nil && cr.Spec.PostgresExporter.Install {
-		if err := postgresexporter.SetUpExporter(cr.Spec.PostgresExporter); err != nil { //REWORK
-			return err
+		patroniCore, err := r.helper.GetPatroniCoreCR()
+		if err != nil {
+			r.logger.Error("Can't get PatroniCore CR")
+			panic(err)
+		}
+		if patroniCore.Spec.Patroni.StandbyCluster != nil {
+			r.logger.Info("PatroniCore indicates standby cluster; skipping postgres-exporter setup (read-only)")
+		} else {
+			if err := postgresexporter.SetUpExporter(cr.Spec.PostgresExporter); err != nil { //REWORK
+				return err
+			}
 		}
 	}
 
@@ -441,6 +450,13 @@ func (r *PostgresServiceReconciler) reconcilePostgresServiceCluster(cr *qubershi
 			if err := exporter.WatchCustomQueries(); err != nil {
 				return err
 			}
+		}
+	}
+
+	// reconcile PgBackRest Exporter
+	if cr.Spec.PgBackRestExporter != nil && cr.Spec.PgBackRestExporter.Install {
+		if err := r.reconcilePgBackRestExporter(cr); err != nil {
+			return err
 		}
 	}
 
@@ -596,6 +612,16 @@ func (r *PostgresServiceReconciler) reconcileRC(cr *qubershipv1.PatroniServices)
 	pRec := reconciler.NewRCReconciler(cr, r.helper, utils.GetPatroniClusterSettings(cr.Spec.Patroni.ClusterName))
 	if err := pRec.Reconcile(); err != nil {
 		r.logger.Error("Can not reconcile Replication Controller", zap.Error(err))
+		return err
+	}
+	return nil
+}
+
+func (r *PostgresServiceReconciler) reconcilePgBackRestExporter(cr *qubershipv1.PatroniServices) error {
+	r.logger.Info("PgBackRest Exporter reconciliation started")
+	pRec := reconciler.NewPgBackRestExporterReconciler(cr, r.helper, utils.GetPatroniClusterSettings(cr.Spec.Patroni.ClusterName))
+	if err := pRec.Reconcile(); err != nil {
+		r.logger.Error("Can not reconcile PgBackRest Exporter", zap.Error(err))
 		return err
 	}
 	return nil

@@ -10,6 +10,8 @@ replicatorPassword: "replicator"
 
 podLabels: {}
 
+imagePullPolicy: IfNotPresent
+
 privateRegistry:
   enabled: false
   secrets:
@@ -178,6 +180,7 @@ backupDaemon:
   # Docker Image that will be used for PostgreSQL Backup Daemon container
   dockerImage: ghcr.io/netcracker/pgskipper-backup-daemon:main
   podLabels: {}
+  compressionLevel: 5
   # If the flag is set as true, the installation procedure will configure Postgres to use the WAL archive and use the backup daemon as storage.
   # This setting can cause major disk usage impact, because each postgres WAL file size is 16MB.
   walArchiving: false
@@ -187,7 +190,10 @@ backupDaemon:
   #  pgHost: pg-patroni.postgres-service
   # The eviction policy for backup daemon: period and action. The default value is 7d/delete.
   evictionPolicy: "7d/delete"
+  backupTimeout: 300
   granularEviction: "3600"
+  encryption: false
+  retainArchiveSettings: false
   # jobFlag: "2"
   # connectTimeout: "5"
   allowPrefix: false
@@ -251,6 +257,25 @@ backupDaemon:
 #     region: "us-east-1"
 #     verifySsl: false
 
+pgBackRestExporter:
+  install: false
+  image: artifactorycn.netcracker.com:17152/woblerr/pgbackrest_exporter:v0.21.0-alpine
+  resources:
+    requests:
+      cpu: 100m
+      memory: 128Mi
+    limits:
+      cpu: 200m
+      memory: 256Mi
+  securityContext:
+  # pgbackrest user id
+    runAsUser: 2001
+  affinity: {}
+  podLabels: {}
+  env:
+    DATABASE_PARALLEL_PROCESSES: "1"
+    DATABASE_COUNT: "true"
+    DATABASE_COUNT_LATEST: "true"
 
 # externalDataBase:
 #   type: RDS|CLOUDSQL

@@ -45,11 +45,8 @@ func NewRCReconciler(cr *netcrackev1.PatroniServices, helper *helper.Helper, clu
 
 func (r *RCReconciler) Reconcile() error {
 	cr := *r.cr
-	rcSpec := cr.Spec.ReplicationController
-
 	srv := replicationcontroller.GetService()
-	rcDeployment := replicationcontroller.NewRCDeployment(rcSpec, cr.Spec.ServiceAccountName, r.cluster.ClusterName, r.cluster.PostgreSQLPort)
-
+	rcDeployment := replicationcontroller.NewRCDeployment(cr, cr.Spec.ServiceAccountName, r.cluster.ClusterName, r.cluster.PostgreSQLPort)
 	if cr.Spec.PrivateRegistry.Enabled {
 		for _, name := range cr.Spec.PrivateRegistry.Names {
 			rcDeployment.Spec.Template.Spec.ImagePullSecrets = append(rcDeployment.Spec.Template.Spec.ImagePullSecrets, corev1.LocalObjectReference{Name: name})
