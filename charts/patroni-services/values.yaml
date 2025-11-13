@@ -30,12 +30,12 @@ serviceAccount:
   name: "postgres-sa"
 
 operatorInit:
-  image: ghcr.io/netcracker/qubership-credential-manager:main
+  image: ghcr.io/netcracker/qubership-credential-manager:v0.0.11
 
 ##  This section describes values for patroni-services deployment
 operator:
   # Docker Image that will be used to Postgres Operator deployment
-  image: ghcr.io/netcracker/pgskipper-operator:main
+  image: ghcr.io/netcracker/pgskipper-operator:1.51.0
   podLabels: {}
   securityContext: {}
   waitTimeout: 10
@@ -111,7 +111,7 @@ metricCollector:
   # Optional flag for Monitoring Agent deployment
   install: true
   # Docker Image that will be used for PostgreSQL Monitoring Agent container
-  dockerImage: ghcr.io/netcracker/pgskipper-monitoring-agent:main
+  dockerImage: ghcr.io/netcracker/pgskipper-monitoring-agent:1.51.0
   podLabels: {}
   databaseConnectionLimits: 250
   securityContext: {}
@@ -178,7 +178,7 @@ backupDaemon:
   # Optional flag for PostgreSQL Backup Daemon deployment
   install: true
   # Docker Image that will be used for PostgreSQL Backup Daemon container
-  dockerImage: ghcr.io/netcracker/pgskipper-backup-daemon:main
+  dockerImage: ghcr.io/netcracker/pgskipper-backup-daemon:1.51.0
   podLabels: {}
   compressionLevel: 5
   # If the flag is set as true, the installation procedure will configure Postgres to use the WAL archive and use the backup daemon as storage.
@@ -445,7 +445,7 @@ tracing:
 
 tests:
   install: true
-  dockerImage: ghcr.io/netcracker/pgskipper-operator-tests:main
+  dockerImage: ghcr.io/netcracker/pgskipper-operator-tests:1.51.0
   podLabels: {}
   # One of "full", "basic"or one from testScenarios
   runTestScenarios: "basic"
