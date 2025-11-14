@@ -22,6 +22,7 @@ import (
 	"github.com/Netcracker/pgskipper-operator-core/pkg/reconciler"
 	qubershipv1 "github.com/Netcracker/pgskipper-operator/api/apps/v1"
 	patroniv1 "github.com/Netcracker/pgskipper-operator/api/patroni/v1"
+	"github.com/Netcracker/pgskipper-operator/pkg/helper"
 	pghelper "github.com/Netcracker/pgskipper-operator/pkg/helper"
 	"github.com/Netcracker/pgskipper-operator/pkg/util"
 	"go.uber.org/zap"
@@ -166,9 +167,8 @@ func Init() {
 	}
 	if err := exposeRotatorPort(client); err != nil {
 		logger.Error("can't expose rotate role port.")
-		// let's assume here, that expose of the port should not break operator
-		// because rotate not main functional
-		//panic(err)
+		// service is used by Site Manager, so we need to handle this error
+		panic(err)
 	}
 	http.HandleFunc("/rotate-roles", rotController.rotate)
 }
@@ -187,8 +187,9 @@ func exposeRotatorPort(client crclient.Client) error {
 			// hence we do not need finalizers rights
 			logger.Info("Operator service not found, creating new one.")
 			oServ = getOperatorService(operatorName, namespace)
-			if err = client.Create(context.TODO(), oServ); err != nil {
+			if err = helper.GetHelper().CreateServiceIfNotExists(oServ); err != nil {
 				logger.Error(fmt.Sprintf("can't create service: %s", operatorName), zap.Error(err))
+				return err
 			}
 		} else {
 			logger.Error("can't get operator service", zap.Error(err))
