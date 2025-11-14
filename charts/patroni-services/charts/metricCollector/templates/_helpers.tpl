@@ -1,15 +1,6 @@
-{{- if and (eq (include "monitoring.install" .) "true") (.Values.metricCollector.prometheusMonitoring) (ne (.Values.metricCollector.prometheusRules.alertsPackVersion) "v2") }}
-apiVersion: monitoring.coreos.com/v1
-kind: PrometheusRule
-metadata:
-  labels:
-    name: prometheus-postgres-service-rules
-      {{ include "monitoring.kubernetes.labels" . | nindent 4 }}
-    prometheus: postgres-service-metric-collector
-    role: alert-rules
-  name: prometheus-postgres-service-rules
-spec:
-  groups:
+{{- define "defaultAlerts" -}}
+{{- if and (eq .Values.alertsPackVersion "v2") (.Values.prometheusMonitoring) }}
+
   - name: {{ .Release.Namespace }}-{{ .Release.Name }}
     rules:
     - alert: PostgreSQL metrics are absent
@@ -490,3 +481,7 @@ spec:
         service: {{ .Release.Name }}
 {{- end }}
 {{ end }}
+
+{{- end }}
+
+

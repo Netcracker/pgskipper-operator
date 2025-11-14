@@ -1,0 +1,998 @@
+---
+# Source: patroni-services/templates/service_account.yaml
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: postgres-sa
+  labels:
+    name: postgres-sa
+      
+    app.kubernetes.io/instance: pgskipper-montemplate
+    app.kubernetes.io/name: patroni-services
+    app.kubernetes.io/version: "1.16.0"
+    app.kubernetes.io/component: "postgres-operator"
+    app.kubernetes.io/part-of: "postgres-operator"
+    app.kubernetes.io/managed-by: Helm
+    app.kubernetes.io/technology: "go"
+---
+# Source: patroni-services/templates/secrets/influx-db-secret.yaml
+apiVersion: v1
+kind: Secret
+metadata:
+  labels:
+    app: monitoring-collector
+    name: monitoring-collector
+      
+    app.kubernetes.io/instance: pgskipper-montemplate
+    app.kubernetes.io/name: patroni-services
+    app.kubernetes.io/version: "1.16.0"
+    app.kubernetes.io/component: "postgres-operator"
+    app.kubernetes.io/part-of: "postgres-operator"
+    app.kubernetes.io/managed-by: Helm
+    app.kubernetes.io/technology: "go"
+  name: influx-db-admin-credentials
+data:
+  
+  password: ""
+  username: ""
+
+type: Opaque
+---
+# Source: patroni-services/templates/secrets/monitoring-secret.yaml
+apiVersion: v1
+kind: Secret
+metadata:
+  labels:
+    app: monitoring-collector
+    name: monitoring-collector
+    
+    app.kubernetes.io/instance: pgskipper-montemplate
+    app.kubernetes.io/name: patroni-services
+    app.kubernetes.io/version: "1.16.0"
+    app.kubernetes.io/component: "postgres-operator"
+    app.kubernetes.io/part-of: "postgres-operator"
+    app.kubernetes.io/managed-by: Helm
+    app.kubernetes.io/technology: "go"
+  name: monitoring-credentials
+data:
+  username: bW9uaXRvcmluZy11c2Vy
+  password: cEBzc1dPckQx
+type: Opaque
+---
+# Source: patroni-services/templates/tests/tests-config.yaml
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: supplementary-tests-config
+  labels:
+    app: patroni-tests
+data:
+  dd_images: ""
+---
+# Source: patroni-services/templates/role.yaml
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  creationTimestamp: null
+  name: postgres-operator
+  labels:
+    name: postgres-operator
+      
+    app.kubernetes.io/instance: pgskipper-montemplate
+    app.kubernetes.io/name: patroni-services
+    app.kubernetes.io/version: "1.16.0"
+    app.kubernetes.io/component: "postgres-operator"
+    app.kubernetes.io/part-of: "postgres-operator"
+    app.kubernetes.io/managed-by: Helm
+    app.kubernetes.io/technology: "go"
+rules:
+- apiGroups:
+  - ""
+  resources:
+  - pods
+  - services
+  - persistentvolumeclaims
+  - configmaps
+  - secrets
+  - serviceaccounts
+  verbs:
+  - create
+  - get
+  - list
+  - patch
+  - update
+  - watch
+  - delete
+- apiGroups: [""]
+  resources: ["pods/exec"]
+  verbs:
+  - get
+  - list
+  - patch
+  - update
+  - watch
+  - delete
+  - create
+- apiGroups: [""]
+  resources: ["pods", "pods/log"]
+  verbs: ["get", "list"]
+- apiGroups:
+  - apps
+  resources:
+  - deployments
+  - deployments/scale
+  - replicasets
+  - statefulsets
+  - statefulsets/scale
+
+  verbs:
+  - create
+  - get
+  - list
+  - patch
+  - update
+  - watch
+  - delete
+- apiGroups:
+  - batch
+  resources:
+  - jobs
+  verbs:
+  - create
+  - get
+  - list
+  - patch
+  - update
+  - watch
+  - delete
+- apiGroups:
+  - netcracker.com
+  resources:
+  - '*'
+  verbs:
+  - create
+  - get
+  - list
+  - patch
+  - update
+  - watch
+  - delete
+---
+# Source: patroni-services/templates/role_binding.yaml
+kind: RoleBinding
+apiVersion: rbac.authorization.k8s.io/v1
+metadata:
+  name: postgres-operator
+  labels:
+    name: postgres-operator
+      
+    app.kubernetes.io/instance: pgskipper-montemplate
+    app.kubernetes.io/name: patroni-services
+    app.kubernetes.io/version: "1.16.0"
+    app.kubernetes.io/component: "postgres-operator"
+    app.kubernetes.io/part-of: "postgres-operator"
+    app.kubernetes.io/managed-by: Helm
+    app.kubernetes.io/technology: "go"
+subjects:
+- kind: ServiceAccount
+  name: postgres-sa
+roleRef:
+  kind: Role
+  name: postgres-operator
+  apiGroup: rbac.authorization.k8s.io
+---
+# Source: patroni-services/templates/deployment.yaml
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: postgres-operator
+spec:
+  replicas: 1
+  strategy:
+    type: Recreate
+  selector:
+    matchLabels:
+      name: postgres-operator
+
+  template:
+    metadata:
+      labels:
+        name: postgres-operator
+
+
+        app.kubernetes.io/instance: pgskipper-montemplate
+        app.kubernetes.io/name: patroni-services
+        app.kubernetes.io/version: "1.16.0"
+        app.kubernetes.io/component: "postgres-operator"
+        app.kubernetes.io/part-of: "postgres-operator"
+        app.kubernetes.io/managed-by: Helm
+        app.kubernetes.io/technology: "go"
+
+    spec:
+      serviceAccountName: postgres-sa
+      
+      
+      containers:
+        - name: patroni-services
+          image: ghcr.io/netcracker/pgskipper-operator:main
+          imagePullPolicy: Always
+          
+          resources:
+            limits:
+              cpu: 50m
+              memory: 50Mi
+            requests:
+              cpu: 50m
+              memory: 50Mi
+          securityContext:
+            
+            allowPrivilegeEscalation: false
+            capabilities:
+              drop: ["ALL"]
+          
+          env:
+            - name: WATCH_NAMESPACE
+              valueFrom:
+                fieldRef:
+                  fieldPath: metadata.namespace
+            - name: NAMESPACE
+              valueFrom:
+                fieldRef:
+                  fieldPath: metadata.namespace
+            - name: POD_NAME
+              valueFrom:
+                fieldRef:
+                  fieldPath: metadata.name
+            - name: OPERATOR_NAME
+              value: "patroni-services"
+            - name: RESOURCE_NAME
+              value: patroni-services
+            - name: PATRONI_CLUSTER_NAME
+              value: patroni
+            - name: WAIT_TIMEOUT
+              value: "10"
+            - name: PG_RECONCILE_RETRIES
+              value: "3"
+            - name: HOST_IP
+              valueFrom:
+                fieldRef:
+                  fieldPath: status.hostIP
+            - name: PG_ADMIN_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: postgres-credentials
+                  key: password
+            - name: PG_ADMIN_USER
+              valueFrom:
+                secretKeyRef:
+                  name: postgres-credentials
+                  key: username
+            - name: PG_REPLICATOR_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: replicator-credentials
+                  key: password
+            - name: GLOBAL_SECURITY_CONTEXT
+              value: "true"
+            - name: CLOUD_PUBLIC_HOST
+              value: k8s.default
+              
+            - name: INTERNAL_TLS_ENABLED
+              value: "false"
+          livenessProbe:
+            httpGet:
+              path: /healthz
+              port: 8081
+              scheme: HTTP
+            initialDelaySeconds: 10
+            timeoutSeconds: 5
+            periodSeconds: 10
+            successThreshold: 1
+            failureThreshold: 10
+          readinessProbe:
+            httpGet:
+              path: /readyz
+              port: 8081
+              scheme: HTTP
+            initialDelaySeconds: 10
+            timeoutSeconds: 5
+            periodSeconds: 10
+            successThreshold: 1
+            failureThreshold: 10
+      volumes:
+      
+      tolerations:
+      securityContext:
+        
+        runAsNonRoot: true
+        seccompProfile:
+          type: "RuntimeDefault"
+---
+# Source: patroni-services/templates/cr.yaml
+apiVersion: netcracker.com/v1
+kind: PatroniServices
+metadata:
+  name: patroni-services
+  labels:
+    name: patroni-services
+      
+    app.kubernetes.io/instance: pgskipper-montemplate
+    app.kubernetes.io/name: patroni-services
+    app.kubernetes.io/version: "1.16.0"
+    app.kubernetes.io/component: "postgres-operator"
+    app.kubernetes.io/part-of: "postgres-operator"
+    app.kubernetes.io/managed-by: Helm
+    app.kubernetes.io/technology: "go"
+spec:
+  installationTimestamp: "1762865184"
+  
+  serviceAccountName: postgres-sa
+
+
+  tls:
+    enabled: false
+    certificateSecretName: pg-cert-services
+
+  patroni:
+    clusterName: patroni
+
+  backupDaemon:
+    
+    podLabels:
+      
+      app.kubernetes.io/instance: pgskipper-montemplate
+      app.kubernetes.io/name: patroni-services
+      app.kubernetes.io/version: "1.16.0"
+      app.kubernetes.io/component: "postgres-operator"
+      app.kubernetes.io/part-of: "postgres-operator"
+      app.kubernetes.io/managed-by: Helm
+      app.kubernetes.io/technology: "go"
+    image: ghcr.io/netcracker/pgskipper-backup-daemon:main
+    compressionLevel: 5
+    walArchiving: false
+    granularEviction: '3600'
+    encryption: false
+    retainArchiveSettings: false
+    backupTimeout: 300
+    allowPrefix: false
+    useEvictionPolicyFirst: "false"
+    evictionBinaryPolicy: 7d/delete
+    archiveEvictionPolicy: "7d"
+    jobFlag: '1'
+    connectTimeout: '5'
+    backupSchedule: 0 0/7 * * *
+    evictionPolicy: 7d/delete
+    pgHost: pg-patroni.default
+    securityContext:
+      
+      runAsNonRoot: true
+      seccompProfile:
+        type: "RuntimeDefault"
+    resources:
+      limits:
+        cpu: 450m
+        memory: 768Mi
+      requests:
+        cpu: 100m
+        memory: 256Mi
+    storage:
+      type: provisioned
+      size: 1Gi
+      
+      
+      
+      
+    
+    
+    
+    sslMode: "prefer"
+    
+    
+  
+  
+
+
+
+  vaultRegistration:
+    dockerImage: banzaicloud/vault-env:1.5.0
+    enabled: false
+    path: default
+    dbEngine:
+      enabled: false
+      name: k8s.default_default_postgresql
+      maxOpenConnections: 5
+      maxIdleConnections: 5
+      maxConnectionLifetime: 5s
+
+
+
+
+  metricCollector:
+    
+    podLabels:
+      
+      app.kubernetes.io/instance: pgskipper-montemplate
+      app.kubernetes.io/name: patroni-services
+      app.kubernetes.io/version: "1.16.0"
+      app.kubernetes.io/component: "postgres-operator"
+      app.kubernetes.io/part-of: "postgres-operator"
+      app.kubernetes.io/managed-by: Helm
+      app.kubernetes.io/technology: "go"
+    image: ghcr.io/netcracker/pgskipper-monitoring-agent:main
+
+    resources:
+      limits:
+        cpu: 300m
+        memory: 256Mi
+      requests:
+        cpu: 150m
+        memory: 170Mi
+
+    
+    
+    
+    sslMode: "prefer"
+    
+    
+    metricsProfile: dev
+    devMetricsTimeout: 10
+    devMetricsInterval: 10
+    collectionInterval: 60
+    telegrafPluginTimeout: 60
+    ocExecTimeout: 10
+    
+    securityContext:
+      
+      runAsNonRoot: true
+      seccompProfile:
+        type: "RuntimeDefault"
+
+
+  tracing:
+    enabled: false
+    host: jaeger-collector.tracing.svc:4317
+
+
+
+  
+  integrationTests:
+    podLabels:
+    
+      app.kubernetes.io/instance: pgskipper-montemplate
+      app.kubernetes.io/name: patroni-services
+      app.kubernetes.io/version: "1.16.0"
+      app.kubernetes.io/component: "postgres-operator"
+      app.kubernetes.io/part-of: "postgres-operator"
+      app.kubernetes.io/managed-by: Helm
+      app.kubernetes.io/technology: "go"
+    image: ghcr.io/netcracker/pgskipper-operator-tests:main
+
+    resources:
+      limits:
+        cpu: 300m
+        memory: 512Mi
+      requests:
+        cpu: 150m
+        memory: 256Mi
+
+    runTestScenarios: basic
+    pgNodeQty: 1
+---
+# Source: patroni-services/templates/monitoring-templates/postgres-tls-status-metric.yaml
+apiVersion: monitoring.coreos.com/v1
+kind: PrometheusRule
+metadata:
+  labels:
+    name: postgres-tls-status-static-metric
+      
+    app.kubernetes.io/instance: pgskipper-montemplate
+    app.kubernetes.io/name: patroni-services
+    app.kubernetes.io/version: "1.16.0"
+    app.kubernetes.io/component: "monitoring"
+    app.kubernetes.io/part-of: "postgres-operator"
+    app.kubernetes.io/managed-by: Helm
+    app.kubernetes.io/technology: "go"
+  name: postgres-tls-status-static-metric
+spec:
+  groups:
+    - name: postgres-tls-status-static-metric-group
+      rules:
+        - expr: '0'
+          labels:
+            application: patroni-services
+            namespace: default
+            service: postgres
+          record: service:tls_status:info
+---
+# Source: patroni-services/templates/monitoring-templates/prometheus-rule.yml
+apiVersion: monitoring.coreos.com/v1
+kind: PrometheusRule
+metadata:
+  labels:
+    name: prometheus-postgres-service-rules
+      
+    app.kubernetes.io/instance: pgskipper-montemplate
+    app.kubernetes.io/name: patroni-services
+    app.kubernetes.io/version: "1.16.0"
+    app.kubernetes.io/component: "monitoring"
+    app.kubernetes.io/part-of: "postgres-operator"
+    app.kubernetes.io/managed-by: Helm
+    app.kubernetes.io/technology: "go"
+    prometheus: postgres-service-metric-collector
+    role: alert-rules
+  name: prometheus-postgres-service-rules
+spec:
+  groups:
+  - name: default-pgskipper-montemplate
+    rules:
+    - alert: PostgreSQL metrics are absent
+      annotations:
+        description: 'PostgreSQL metrics are absent on default.'
+        summary: PostgreSQL metrics are absent
+      expr: absent(ma_pg_patroni_cluster_status{namespace="default"}) == 1
+      for: 3m
+      labels:
+        severity: warning
+        namespace: default
+        service: pgskipper-montemplate
+    - alert: PostgreSQL is Down
+      annotations:
+        description: 'PostgreSQL is Down on default.'
+        summary: PostgreSQL is Down
+      expr: ma_pg_patroni_cluster_status{namespace="default"} == 10 or ma_pg_patroni_cluster_status{namespace="default"} < 0
+      for: 3m
+      labels:
+        severity: critical
+        namespace: default
+        service: pgskipper-montemplate
+    - alert: PostgreSQL is Degraded
+      annotations:
+        description: 'PostgreSQL is Degraded on default.'
+        summary: PostgreSQL is Degraded
+      expr: ma_pg_patroni_cluster_status{namespace="default"} == 6
+      for: 3m
+      labels:
+        severity: warning
+        namespace: default
+        service: pgskipper-montemplate
+    - alert: Space for Postgres backup is less than acceptable critical threshold
+      annotations:
+        description: 'Backup space is less than 5 % free  on default'
+        summary: Space for Postgres backup is less than acceptable critical threshold
+      expr: ma_storage_free_space{namespace="default", service_name='postgres-backup-daemon'} / ma_storage_total_space{namespace="default", service_name='postgres-backup-daemon'} < 5*0.01
+      for: 3m
+      labels:
+        severity: critical
+        namespace: default
+        service: pgskipper-montemplate
+    - alert: Space for Postgres backup is less than acceptable warning threshold
+      annotations:
+        description: 'Backup space is less than 20 % free on default'
+        summary: Space for Postgres backup is less than acceptable warning threshold
+      expr: ma_storage_free_space{namespace="default", service_name='postgres-backup-daemon'} / ma_storage_total_space{namespace="default", service_name='postgres-backup-daemon'} < 20*0.01
+      for: 3m
+      labels:
+        severity: warning
+        namespace: default
+        service: pgskipper-montemplate
+    - alert: Last Postgres backup is failed
+      annotations:
+        description: 'Last backup is failed on default'
+        summary: Targets are down
+      expr: ma_storage_last_failed{namespace="default", service_name="postgres-backup-daemon"} > 0
+      for: 3m
+      labels:
+        severity: warning
+        namespace: default
+        service: pgskipper-montemplate
+    - alert: Last Successful Postgres backup is too old
+      annotations:
+        description: 'Last Successful backup is too old on default'
+        summary: Last Successful Postgres backup is too old
+      expr: time() - (ma_storage_lastSuccessful_metrics_end_backup_timestamp{namespace="default", service_name="postgres-backup-daemon"}/1000) > 86400
+      for: 3m
+      labels:
+        severity: warning
+        namespace: default
+        service: pgskipper-montemplate
+    - alert: PostgreSQL backup agent has problem
+      annotations:
+        description: 'PostgreSQL backup agent has problem on default'
+        summary: PostgreSQL backup agent has problem
+      expr: ma_status{namespace="default", service_name="postgres-backup-daemon"} == 6
+      for: 3m
+      labels:
+        severity: warning
+        namespace: default
+        service: pgskipper-montemplate
+    - alert: Unable to collect metrics from PostgreSQL backup agent
+      annotations:
+        description: 'Unable to collect metrics from PostgreSQL backup agent on default'
+        summary: Unable to collect metrics from PostgreSQL backup agent
+      expr: ma_status{namespace="default", service_name="postgres-backup-daemon"} < 0 or absent(ma_status{namespace="default", service_name="postgres-backup-daemon"}) == 1
+      for: 3m
+      labels:
+        severity: warning
+        namespace: default
+        service: pgskipper-montemplate
+    - alert: Patroni first Node is not running
+      annotations:
+        description: 'Patroni status First Node is not running on default'
+        summary: Patroni first Node is not running
+      expr: ma_pg_patroni_patroni_status{namespace="default", pg_node="node1"} == 0
+      for: 3m
+      labels:
+        severity: warning
+        namespace: default
+        service: pgskipper-montemplate
+    - alert: Patroni fourth Node is not running
+      annotations:
+        description: 'Patroni status Fourth Node is not running on default'
+        summary: Patroni fourth Node is not running
+      expr: ma_pg_patroni_patroni_status{namespace="default", pg_node="node4"} == 0
+      for: 3m
+      labels:
+        severity: warning
+        namespace: default
+        service: pgskipper-montemplate
+    - alert: Patroni second Node is not running
+      annotations:
+        description: 'Patroni status Second Node is not running on default'
+        summary: Patroni second Node is not running
+      expr: ma_pg_patroni_patroni_status{namespace="default", pg_node="node2"} == 0
+      for: 3m
+      labels:
+        severity: warning
+        namespace: default
+        service: pgskipper-montemplate
+    - alert: Patroni third Node is not running
+      annotations:
+        description: 'Patroni status Third Node is not running on default'
+        summary: Patroni third Node is not running
+      expr: ma_pg_patroni_patroni_status{namespace="default", pg_node="node3"} == 0
+      for: 3m
+      labels:
+        severity: warning
+        namespace: default
+        service: pgskipper-montemplate
+    - alert: Postgres First Node Disk is almost full
+      annotations:
+        description: 'Disk space Postgres First Node Disk is almost full on default'
+        summary: Postgres First Node Disk is almost full
+      expr: ma_pg_patroni_metrics_df_pcent{namespace="default", pg_node="node1"} > 90
+      for: 3m
+      labels:
+        severity: warning
+        namespace: default
+        service: pgskipper-montemplate
+    - alert: Postgres Fourth Node Disk is almost full
+      annotations:
+        description: 'Disk space Postgres Fourth Node Disk is almost full on default'
+        summary: Postgres Fourth Node Disk is almost full
+      expr: ma_pg_patroni_metrics_df_pcent{namespace="default", pg_node="node4"} > 90
+      for: 3m
+      labels:
+        severity: warning
+        namespace: default
+        service: pgskipper-montemplate
+    - alert: Postgre Second Node Disk is almost full
+      annotations:
+        description: 'Disk space Postgre Second Node Disk is almost full on default'
+        summary: Postgre Second Node Disk is almost full
+      expr: ma_pg_patroni_metrics_df_pcent{namespace="default", pg_node="node2"} > 90
+      for: 3m
+      labels:
+        severity: warning
+        namespace: default
+        service: pgskipper-montemplate
+    - alert: Postgres Third Node Disk is almost full
+      annotations:
+        description: 'Disk space Postgres Third Node Disk is almost full on default'
+        summary: Postgres Third Node Disk is almost full
+      expr: ma_pg_patroni_metrics_df_pcent{namespace="default", pg_node="node3"} > 90
+      for: 3m
+      labels:
+        severity: warning
+        namespace: default
+        service: pgskipper-montemplate
+    - alert: Locks on First Node more then acceptable threshold
+      annotations:
+        description: 'Locks on First Node more then 500 on default'
+        summary: Locks on First Node more then acceptable threshold
+      expr: ma_pg_metrics_locks{namespace="default", pg_node="node1"} > 500
+      for: 3m
+      labels:
+        severity: warning
+        namespace: default
+        service: pgskipper-montemplate
+    - alert: Locks on Fourth Node more then acceptable threshold
+      annotations:
+        description: 'Locks on Fourth Node more then 500 on default'
+        summary: Locks on Fourth Node more then acceptable threshold
+      expr: ma_pg_metrics_locks{namespace="default", pg_node="node4"} > 500
+      for: 3m
+      labels:
+        severity: warning
+        namespace: default
+        service: pgskipper-montemplate
+    - alert: Locks on Second Node more then acceptable threshold
+      annotations:
+        description: 'Locks on Second Node more then 500 on default'
+        summary: Locks on Second Node more then acceptable threshold
+      expr: ma_pg_metrics_locks{namespace="default", pg_node="node2"} > 500
+      for: 3m
+      labels:
+        severity: warning
+        namespace: default
+        service: pgskipper-montemplate
+    - alert: Locks on Third Node more then acceptable threshold
+      annotations:
+        description: 'Locks on Third Node more then 500 on default'
+        summary: Locks on Third Node more then acceptable threshold
+      expr: ma_pg_metrics_locks{namespace="default", pg_node="node3"} > 500
+      for: 3m
+      labels:
+        severity: warning
+        namespace: default
+        service: pgskipper-montemplate
+    - alert: Memory on Postgres First Node is more than 95% busy
+      annotations:
+        description: 'Memory Postgres First Node is more than 95% busy on default'
+        summary: Memory on Postgres First Node is more than 95% busy
+      expr: container_memory_working_set_bytes{namespace="default", container=~".*-node1"} / container_spec_memory_limit_bytes{namespace="default", container=~".*-node1"} * 100 > 95 and container_spec_memory_limit_bytes{namespace="default", container=~".*-node1"} > -1
+      for: 3m
+      labels:
+        severity: warning
+        namespace: default
+        service: pgskipper-montemplate
+    - alert: Memory on Postgres Fourth Node is more than 95% busy
+      annotations:
+        description: 'Memory Postgres Fourth Node is more than 95% busy on default'
+        summary: Memory on Postgres Fourth Node is more than 95% busy
+      expr: container_memory_working_set_bytes{namespace="default", container=~".*-node4"} / container_spec_memory_limit_bytes{namespace="default", container=~".*-node4"} * 100 > 95 and container_spec_memory_limit_bytes{namespace="default", container=~".*-node4"} > -1
+      for: 3m
+      labels:
+        severity: warning
+        namespace: default
+        service: pgskipper-montemplate
+    - alert: Memory on Postgres Second Node is more than 95% busy
+      annotations:
+        description: 'Memory Postgres Second Node is more than 95% busy on default'
+        summary: Memory on Postgres Second Node is more than 95% busy
+      expr: container_memory_working_set_bytes{namespace="default", container=~".*-node2"} / container_spec_memory_limit_bytes{namespace="default", container=~".*-node2"} * 100 > 95 and container_spec_memory_limit_bytes{namespace="default", container=~".*-node2"} > -1
+      for: 3m
+      labels:
+        severity: warning
+        namespace: default
+        service: pgskipper-montemplate
+    - alert: Memory on Postgres Third Node is more than 95% busy
+      annotations:
+        description: 'Memory Postgres Third Node is more than 95% busy on default'
+        summary: Memory on Postgres Third Node is more than 95% busy
+      expr: container_memory_working_set_bytes{namespace="default", container=~".*-node3"} / container_spec_memory_limit_bytes{namespace="default", container=~".*-node3"} * 100 > 95 and container_spec_memory_limit_bytes{namespace="default", container=~".*-node3"} > -1
+      for: 3m
+      labels:
+        severity: warning
+        namespace: default
+        service: pgskipper-montemplate
+    - alert: There are long running queries on First Node
+      annotations:
+        description: 'There are long running queries First Node. Execution time is more than 3600 second(s) on default'
+        summary: There are long running queries on First Node
+      expr: ma_pg_metrics_query_max_time{namespace="default", pg_node="node1"} > 3600
+      for: 3m
+      labels:
+        severity: warning
+        namespace: default
+        service: pgskipper-montemplate
+    - alert: There are long running queries on Fourth Node
+      annotations:
+        description: 'There are long running queries Fourth Node. Execution time is more than 3600 second(s) on default'
+        summary: There are long running queries on Fourth Node
+      expr: ma_pg_metrics_query_max_time{namespace="default", pg_node="node4"} > 3600
+      for: 3m
+      labels:
+        severity: warning
+        namespace: default
+        service: pgskipper-montemplate
+    - alert: There are long running queries on Second Node
+      annotations:
+        description: 'There are long running queries Second Node. Execution time is more than 3600 second(s) on default'
+        summary: There are long running queries on Second Node
+      expr: ma_pg_metrics_query_max_time{namespace="default", pg_node="node2"} > 3600
+      for: 3m
+      labels:
+        severity: warning
+        namespace: default
+        service: pgskipper-montemplate
+    - alert: There are long running queries on Third Node
+      annotations:
+        description: 'There are long running queries Third Node. Execution time is more than 3600 second(s) on default'
+        summary: There are long running queries on Third Node
+      expr: ma_pg_metrics_query_max_time{namespace="default", pg_node="node3"} > 3600
+      for: 3m
+      labels:
+        severity: warning
+        namespace: default
+        service: pgskipper-montemplate
+    - alert: PostgreSql Large Object Size High
+      annotations:
+        summary: PostgreSQL Large Object Size High
+        description: 'Large object total size has exceeded the warning threshold in namespace default.'
+      expr: ma_pg_large_object_total_size_bytes{namespace="default"} > 1.048576e+08
+      for: 3m
+      labels:
+        severity: warning
+        namespace: default
+        service: pgskipper-montemplate
+    - alert: CPU on Postgres First Node is more than 95% busy
+      annotations:
+        description: 'CPU Postgres First Node is more than 95% busy on default'
+        summary: CPU on Postgres First Node is more than 95% busy
+      expr: max(rate(container_cpu_usage_seconds_total{namespace="default", container=~".*-node1"}[1m])) / max(kube_pod_container_resource_limits_cpu_cores{exported_namespace="default", exported_container=~".*-node1"}) > 0.95
+      for: 3m
+      labels:
+        severity: warning
+        namespace: default
+        service: pgskipper-montemplate
+    - alert: CPU on Postgres Second Node is more than 95% busy
+      annotations:
+        description: 'CPU Postgres Second Node is more than 95% busy on default'
+        summary: CPU on Postgres Second Node is more than 95% busy
+      expr: max(rate(container_cpu_usage_seconds_total{namespace="default", container=~".*-node2"}[1m])) / max(kube_pod_container_resource_limits_cpu_cores{exported_namespace="default", exported_container=~".*-node2"}) > 0.95
+      for: 3m
+      labels:
+        severity: warning
+        namespace: default
+        service: pgskipper-montemplate
+    - alert: CPU on Postgres Third Node is more than 95% busy
+      annotations:
+        description: 'CPU Postgres Third Node is more than 95% busy on default'
+        summary: CPU on Postgres Third Node is more than 95% busy
+      expr: max(rate(container_cpu_usage_seconds_total{namespace="default", container=~".*-node3"}[1m])) / max(kube_pod_container_resource_limits_cpu_cores{exported_namespace="default", exported_container=~".*-node3"}) > 0.95
+      for: 3m
+      labels:
+        severity: warning
+        namespace: default
+        service: pgskipper-montemplate
+    - alert: CPU on Postgres Fourth Node is more than 95% busy
+      annotations:
+        description: 'CPU Postgres Fourth Node is more than 95% busy on default'
+        summary: CPU on Postgres Fourth Node is more than 95% busy
+      expr: max(rate(container_cpu_usage_seconds_total{namespace="default", container=~".*-node4"}[1m])) / max(kube_pod_container_resource_limits_cpu_cores{exported_namespace="default", exported_container=~".*-node4"}) > 0.95
+      for: 3m
+      labels:
+        severity: warning
+        namespace: default
+        service: pgskipper-montemplate
+    - alert: Patroni Replica Is Lagging
+      annotations:
+        description: Patroni Replica Is Lagging
+        summary: >-
+          "Patroni Replica \{\{ \$labels.hostname \}\} Is Lagging in \{\{ \$labels.namespace \}\} namespace"
+      expr: ma_pg_patroni_replication_lag{namespace="default"} > 3.3554432e+07
+      for: 3m
+      labels:
+        severity: warning
+        namespace: default
+        service: pgskipper-montemplate
+    - alert: PostgreSQL Replica Is Lagging
+      annotations:
+        description: PostgreSQL Replica Is Lagging
+        summary: >-
+          "PostgreSQL Replica \{\{ \$labels.hostname \}\} Is Lagging in \{\{ \$labels.namespace \}\} namespace"
+      expr: ma_pg_patroni_replication_state_sent_replay_lag{namespace="default"} > 3.3554432e+07
+      for: 3m
+      labels:
+        severity: warning
+        namespace: default
+        service: pgskipper-montemplate
+    - alert: Patroni Standby Leader Is Not Connected
+      annotations:
+        description: Patroni Standby Leader Is Not Connected
+        summary: >-
+          "Patroni Standby Leader Is Not Connected"
+      expr: ma_pg_patroni_replication_state_sm_replication_state{namespace="default"} == 0
+      for: 3m
+      labels:
+        severity: warning
+        namespace: default
+        service: pgskipper-montemplate
+    - alert: Current overall connections exceed max_connection percentage
+      annotations:
+        description: 'Current overall connections are above the max_connection percentage threshold on default.'
+        summary: Current overall connections exceed max_connection percentage
+      expr: (ma_pg_metrics_current_connections{namespace="default"}/ma_pg_metrics_postgres_max_connections{namespace="default"} * 100) > 90
+      for: 3m
+      labels:
+        severity: critical
+        namespace: default
+        service: pgskipper-montemplate
+    - alert: Current overall connections reached warning max_connection percentage
+      annotations:
+        description: 'Current overall connections reached warning of the max_connection percentage threshold on default.'
+        summary: Current overall connections reached warning max_connection percentage
+      expr: (ma_pg_metrics_current_connections{namespace="default"}/ma_pg_metrics_postgres_max_connections{namespace="default"} * 100) > 80
+      for: 3m
+      labels:
+        severity: warning
+        namespace: default
+        service: pgskipper-montemplate
+    - alert: Current connections exceed max_connection
+      annotations:
+        description: 'Current connections are above the max_connection threshold on default.'
+        summary: Current connections exceed max_connection
+      expr: ma_pg_metrics_current_connections{namespace="default"} >= ma_pg_metrics_postgres_max_connections{namespace="default"}
+      for: 3m
+      labels:
+        severity: critical
+        namespace: default
+        service: pgskipper-montemplate
+    - alert: DB Connection exceeding more than specified limit
+      annotations:
+        description: 'DB Connections exceeding more than specified limit on default.'
+        summary: DB Connection exceeding more than specified limit
+      expr: ma_pg_connection_by_database{namespace="default"} >= 250
+      for: 3m
+      labels:
+        severity: warning
+        namespace: default
+        service: pgskipper-montemplate
+    - alert: Wait event warning threshold for SubtransBuffer or SubtransSLRU
+      annotations:
+        description: 'Wait event SubtransBuffer or SubtransSLRU hit warning threshold 5 on default'
+        summary: Wait event warning threshold for SubtransBuffer or SubtransSLRU
+      expr: wait_event_metric{namespace="default", wait_event="SubtransBuffer"} > 5 or wait_event_metric{namespace="default", wait_event="SubtransSLRU"} > 5
+      for: 3m
+      labels:
+        severity: warning
+        namespace: default
+        service: pgskipper-montemplate
+    - alert: Wait event critical threshold for SubtransBuffer or SubtransSLRU
+      annotations:
+        description: 'Wait event SubtransBuffer or SubtransSLRU hit critical threshold 20 on default'
+        summary: Wait event critical threshold for SubtransBuffer or SubtransSLRU
+      expr: wait_event_metric{namespace="default", wait_event="SubtransBuffer"} > 20 or wait_event_metric{namespace="default", wait_event="SubtransSLRU"} > 20
+      for: 3m
+      labels:
+        severity: critical
+        namespace: default
+        service: pgskipper-montemplate
+    - alert: Pct used warning threshold
+      annotations:
+        description: 'Pct used hit warning threshold 50 on default'
+        summary: Pct used warning threshold
+      expr: pct_used_metric{namespace="default"} > 50
+      for: 3m
+      labels:
+        severity: warning
+        namespace: default
+        service: pgskipper-montemplate
+---
+# Source: patroni-services/templates/monitoring-templates/service-monitor.yaml
+apiVersion: monitoring.coreos.com/v1
+kind: ServiceMonitor
+metadata:
+  name: postgres-service-monitor
+  labels:
+    name: postgres-service-monitor
+    k8s-app: postgres-service-monitor
+    app.kubernetes.io/name: postgres-service-monitor
+    app.kubernetes.io/component: monitoring
+    app.kubernetes.io/part-of: platform-monitoring
+    app.kubernetes.io/managed-by: platform-monitoring-operator
+spec:
+  endpoints:
+  - interval: 60s
+    scrapeTimeout: 20s
+    port: prometheus-port
+    scheme: http
+  jobLabel: k8s-app
+  namespaceSelector:
+    
+    matchNames:
+      - default
+    
+  selector:
+    matchLabels:
+      app: monitoring-collector
