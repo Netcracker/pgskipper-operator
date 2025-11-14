@@ -22,6 +22,7 @@ import (
 	_ "net/http/pprof"
 	"strconv"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/Netcracker/pgskipper-monitoring-agent/collector/pkg/initiate"
@@ -36,7 +37,9 @@ var (
 		"The address to listen on for HTTP requests.")
 	timeout = util.GetEnv("METRIC_COLLECTION_INTERVAL", "60")
 
-	metrics = make([]string, 0)
+	metrics      = make([]string, 0)
+	metricsMutex sync.RWMutex
+	metricsReady bool
 )
 
 func collectMetrics(scraper *pgScraper.Scraper, dr bool) {
@@ -55,17 +58,43 @@ func collectMetrics(scraper *pgScraper.Scraper, dr bool) {
 	}
 
 	scraper.CollectMetricsFromCM()
+	metricsMutex.Lock()
 	metrics = scraper.PrintMetrics()
+	metricsReady = true
+	metricsMutex.Unlock()
 }
 
 func Metrics(w http.ResponseWriter, r *http.Request) {
 	log.Printf("metrics gets requested")
+	metricsMutex.RLock()
+	defer metricsMutex.RUnlock()
 	fmt.Fprintf(w, "%s", strings.Join(metrics, "\n"))
+}
+
+func LivenessProbe(w http.ResponseWriter, r *http.Request) {
+	w.WriteHeader(http.StatusOK)
+	fmt.Fprintf(w, "OK")
+}
+
+func ReadinessProbe(w http.ResponseWriter, r *http.Request) {
+	metricsMutex.RLock()
+	ready := metricsReady
+	metricsMutex.RUnlock()
+
+	if ready {
+		w.WriteHeader(http.StatusOK)
+		fmt.Fprintf(w, "OK")
+	} else {
+		w.WriteHeader(http.StatusServiceUnavailable)
+		fmt.Fprintf(w, "Not ready")
+	}
 }
 
 func HttpHandler() {
 	// Registering our handler functions, and creating paths.
 	http.HandleFunc("/metrics", Metrics)
+	http.HandleFunc("/healthz", LivenessProbe)
+	http.HandleFunc("/ready", ReadinessProbe)
 	log.Println("Started on port", *addr)
 	// Spinning up the server.
 	err := http.ListenAndServe(*addr, nil)
