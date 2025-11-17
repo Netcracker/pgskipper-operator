@@ -19,3 +19,4 @@ dependencies:
   condition: metricCollector.prometheusMonitoring
   version: ~0
   repository: "file://charts/metricCollector"
+  
