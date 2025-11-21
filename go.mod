@@ -1,6 +1,6 @@
 module github.com/Netcracker/pgskipper-operator
 
-go 1.25.2
+go 1.25.4
 
 require (
 	github.com/Netcracker/pgskipper-operator-core v0.0.57
