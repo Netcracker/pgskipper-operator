@@ -90,7 +90,11 @@ BEGIN
 
 	-- get current wal_keep_segments value and determine allowed_slot_delay
 	IF ud_allowed_slot_delay < 0 THEN
-		SELECT INTO allowed_slot_delay setting FROM pg_settings where name='wal_keep_segments';
+    -- try legacy wal_keep_segments (PG <= 12)
+		SELECT setting::integer INTO allowed_slot_delay FROM pg_settings where name='wal_keep_segments';
+
+    IF allowed_slot_delay IS NULL THEN
+      SELECT (setting::integer / 16) INTO allowed_slot_delay FROM pg_settings where name='wal_keep_size';
 	ELSE
 		allowed_slot_delay = ud_allowed_slot_delay;
 	END IF;
