@@ -95,6 +95,7 @@ BEGIN
 
     IF allowed_slot_delay IS NULL THEN
       SELECT (setting::integer / 16) INTO allowed_slot_delay FROM pg_settings where name='wal_keep_size';
+    END IF;
 	ELSE
 		allowed_slot_delay = ud_allowed_slot_delay;
 	END IF;
