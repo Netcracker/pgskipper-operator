@@ -34,8 +34,7 @@ jobs:
         run: |
           helm template pgskipper-montemplates ./charts/patroni-services/. --set metricCollector.install=true --set metricCollector.metricsProfile=dev --set metricCollector.prometheusMonitoring=true --set siteManager.install=true > ./tests/alerts-tests/rules.yaml
           sed -n '/prometheus-rule.yml/,/---/p' -i ./tests/alerts-tests/rules.yaml
-          sed '1,18d' -i ./tests/alerts-tests/rules.yaml
-
+          sed '0,/spec:/d' -i ./tests/alerts-tests/rules.yaml
 
       - name: Check that all necessary tests exists
         run: |

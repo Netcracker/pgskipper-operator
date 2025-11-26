@@ -1,4 +1,4 @@
-{{- if and (eq (include "monitoring.install" .) "true") (.Values.metricCollector.prometheusMonitoring) (ne (.Values.metricCollector.prometheusRules.alertsPackVersion) "v2") }}
+{{- if and (eq (include "monitoring.install" .) "true") (.Values.metricCollector.prometheusMonitoring) (ne (.Values.metricCollector.alertsPackVersion) "v2") }}
 apiVersion: monitoring.coreos.com/v1
 kind: PrometheusRule
 metadata:
@@ -45,7 +45,7 @@ spec:
 {{- if .Values.backupDaemon.install }}
     - alert: Space for Postgres backup is less than acceptable critical threshold
       annotations:
-        description: 'Backup space is less than {{ default 5 .Values.metricCollector.prometheusRules.backupAlertThreshold }} % free  on {{ .Release.Namespace }}'
+        description: 'Backup space is less than {{ default 5 .Values.metricCollector.prometheusRules.backupAlertThreshold }} percent free  on {{ .Release.Namespace }}'
         summary: Space for Postgres backup is less than acceptable critical threshold
       expr: ma_storage_free_space{namespace="{{ default "common" .Release.Namespace }}", service_name='postgres-backup-daemon'} / ma_storage_total_space{namespace="{{ .Release.Namespace }}", service_name='postgres-backup-daemon'} < {{ default 5 .Values.metricCollector.prometheusRules.backupAlertThreshold }}*0.01
       for: {{ default "3m" .Values.metricCollector.prometheusRules.alertDelay }}
@@ -55,7 +55,7 @@ spec:
         service: {{ .Release.Name }}
     - alert: Space for Postgres backup is less than acceptable warning threshold
       annotations:
-        description: 'Backup space is less than {{ default 20 .Values.metricCollector.prometheusRules.backupWarningThreshold }} % free on {{ .Release.Namespace }}'
+        description: 'Backup space is less than {{ default 20 .Values.metricCollector.prometheusRules.backupWarningThreshold }} percent free on {{ .Release.Namespace }}'
         summary: Space for Postgres backup is less than acceptable warning threshold
       expr: ma_storage_free_space{namespace="{{ .Release.Namespace }}", service_name='postgres-backup-daemon'} / ma_storage_total_space{namespace="{{ .Release.Namespace }}", service_name='postgres-backup-daemon'} < {{ default 20 .Values.metricCollector.prometheusRules.backupWarningThreshold }}*0.01
       for: {{ default "3m" .Values.metricCollector.prometheusRules.alertDelay }}
@@ -226,8 +226,8 @@ spec:
         service: {{ .Release.Name }}
     - alert: Memory on Postgres First Node is more than 95% busy
       annotations:
-        description: 'Memory Postgres First Node is more than 95% busy on {{ .Release.Namespace }}'
-        summary: Memory on Postgres First Node is more than 95% busy
+        description: 'Memory Postgres First Node is more than 95 percent busy on {{ .Release.Namespace }}'
+        summary: Memory on Postgres First Node is more than 95 percent busy
       expr: container_memory_working_set_bytes{namespace="{{ .Release.Namespace }}", container=~".*-node1"} / container_spec_memory_limit_bytes{namespace="{{ .Release.Namespace }}", container=~".*-node1"} * 100 > 95 and container_spec_memory_limit_bytes{namespace="{{ .Release.Namespace }}", container=~".*-node1"} > -1
       for: {{ default "3m" .Values.metricCollector.prometheusRules.alertDelay }}
       labels:
@@ -236,8 +236,8 @@ spec:
         service: {{ .Release.Name }}
     - alert: Memory on Postgres Fourth Node is more than 95% busy
       annotations:
-        description: 'Memory Postgres Fourth Node is more than 95% busy on {{ .Release.Namespace }}'
-        summary: Memory on Postgres Fourth Node is more than 95% busy
+        description: 'Memory Postgres Fourth Node is more than 95 percent busy on {{ .Release.Namespace }}'
+        summary: Memory on Postgres Fourth Node is more than 95 percent busy
       expr: container_memory_working_set_bytes{namespace="{{ .Release.Namespace }}", container=~".*-node4"} / container_spec_memory_limit_bytes{namespace="{{ .Release.Namespace }}", container=~".*-node4"} * 100 > 95 and container_spec_memory_limit_bytes{namespace="{{ .Release.Namespace }}", container=~".*-node4"} > -1
       for: {{ default "3m" .Values.metricCollector.prometheusRules.alertDelay }}
       labels:
@@ -246,8 +246,8 @@ spec:
         service: {{ .Release.Name }}
     - alert: Memory on Postgres Second Node is more than 95% busy
       annotations:
-        description: 'Memory Postgres Second Node is more than 95% busy on {{ .Release.Namespace }}'
-        summary: Memory on Postgres Second Node is more than 95% busy
+        description: 'Memory Postgres Second Node is more than 95 percent busy on {{ .Release.Namespace }}'
+        summary: Memory on Postgres Second Node is more than 95 percent busy
       expr: container_memory_working_set_bytes{namespace="{{ .Release.Namespace }}", container=~".*-node2"} / container_spec_memory_limit_bytes{namespace="{{ .Release.Namespace }}", container=~".*-node2"} * 100 > 95 and container_spec_memory_limit_bytes{namespace="{{ .Release.Namespace }}", container=~".*-node2"} > -1
       for: {{ default "3m" .Values.metricCollector.prometheusRules.alertDelay }}
       labels:
@@ -256,8 +256,8 @@ spec:
         service: {{ .Release.Name }}
     - alert: Memory on Postgres Third Node is more than 95% busy
       annotations:
-        description: 'Memory Postgres Third Node is more than 95% busy on {{ .Release.Namespace }}'
-        summary: Memory on Postgres Third Node is more than 95% busy
+        description: 'Memory Postgres Third Node is more than 95 percent busy on {{ .Release.Namespace }}'
+        summary: Memory on Postgres Third Node is more than 95 percent busy
       expr: container_memory_working_set_bytes{namespace="{{ .Release.Namespace }}", container=~".*-node3"} / container_spec_memory_limit_bytes{namespace="{{ .Release.Namespace }}", container=~".*-node3"} * 100 > 95 and container_spec_memory_limit_bytes{namespace="{{ .Release.Namespace }}", container=~".*-node3"} > -1
       for: {{ default "3m" .Values.metricCollector.prometheusRules.alertDelay }}
       labels:
@@ -316,8 +316,8 @@ spec:
         service: {{ .Release.Name }}
     - alert: CPU on Postgres First Node is more than 95% busy
       annotations:
-        description: 'CPU Postgres First Node is more than 95% busy on {{ .Release.Namespace }}'
-        summary: CPU on Postgres First Node is more than 95% busy
+        description: 'CPU Postgres First Node is more than 95 percent busy on {{ .Release.Namespace }}'
+        summary: CPU on Postgres First Node is more than 95 percent busy
       expr: max(rate(container_cpu_usage_seconds_total{namespace="{{ .Release.Namespace }}", container=~".*-node1"}[1m])) / max(kube_pod_container_resource_limits_cpu_cores{exported_namespace="{{ .Release.Namespace }}", exported_container=~".*-node1"}) > 0.95
       for: {{ default "3m" .Values.metricCollector.prometheusRules.alertDelay }}
       labels:
@@ -326,8 +326,8 @@ spec:
         service: {{ .Release.Name }}
     - alert: CPU on Postgres Second Node is more than 95% busy
       annotations:
-        description: 'CPU Postgres Second Node is more than 95% busy on {{ .Release.Namespace }}'
-        summary: CPU on Postgres Second Node is more than 95% busy
+        description: 'CPU Postgres Second Node is more than 95 percent busy on {{ .Release.Namespace }}'
+        summary: CPU on Postgres Second Node is more than 95 percent busy
       expr: max(rate(container_cpu_usage_seconds_total{namespace="{{ .Release.Namespace }}", container=~".*-node2"}[1m])) / max(kube_pod_container_resource_limits_cpu_cores{exported_namespace="{{ .Release.Namespace }}", exported_container=~".*-node2"}) > 0.95
       for: {{ default "3m" .Values.metricCollector.prometheusRules.alertDelay }}
       labels:
@@ -336,8 +336,8 @@ spec:
         service: {{ .Release.Name }}
     - alert: CPU on Postgres Third Node is more than 95% busy
       annotations:
-        description: 'CPU Postgres Third Node is more than 95% busy on {{ .Release.Namespace }}'
-        summary: CPU on Postgres Third Node is more than 95% busy
+        description: 'CPU Postgres Third Node is more than 95 percent busy on {{ .Release.Namespace }}'
+        summary: CPU on Postgres Third Node is more than 95 percent busy
       expr: max(rate(container_cpu_usage_seconds_total{namespace="{{ .Release.Namespace }}", container=~".*-node3"}[1m])) / max(kube_pod_container_resource_limits_cpu_cores{exported_namespace="{{ .Release.Namespace }}", exported_container=~".*-node3"}) > 0.95
       for: {{ default "3m" .Values.metricCollector.prometheusRules.alertDelay }}
       labels:
@@ -346,8 +346,8 @@ spec:
         service: {{ .Release.Name }}
     - alert: CPU on Postgres Fourth Node is more than 95% busy
       annotations:
-        description: 'CPU Postgres Fourth Node is more than 95% busy on {{ .Release.Namespace }}'
-        summary: CPU on Postgres Fourth Node is more than 95% busy
+        description: 'CPU Postgres Fourth Node is more than 95 percent busy on {{ .Release.Namespace }}'
+        summary: CPU on Postgres Fourth Node is more than 95 percent busy
       expr: max(rate(container_cpu_usage_seconds_total{namespace="{{ .Release.Namespace }}", container=~".*-node4"}[1m])) / max(kube_pod_container_resource_limits_cpu_cores{exported_namespace="{{ .Release.Namespace }}", exported_container=~".*-node4"}) > 0.95
       for: {{ default "3m" .Values.metricCollector.prometheusRules.alertDelay }}
       labels:

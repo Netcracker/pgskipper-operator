@@ -118,7 +118,7 @@ tests:
         service_name: postgres-backup-daemon
       exp_annotations:
         summary: "Space for Postgres backup is less than acceptable critical threshold"
-        description: "Backup space is less than 5 % free  on default"    
+        description: "Backup space is less than 5 percent free  on default"    
 
 - interval: 1m
   input_series:
@@ -150,7 +150,7 @@ tests:
         service_name: postgres-backup-daemon
       exp_annotations:
         summary: "Space for Postgres backup is less than acceptable warning threshold"
-        description: "Backup space is less than 20 % free on default"    
+        description: "Backup space is less than 20 percent free on default"    
 
 - interval: 1m
   input_series:
@@ -649,8 +649,8 @@ tests:
         service: pgskipper-montemplates
         container: test-node1
       exp_annotations:
-        summary: "Memory on Postgres First Node is more than 95% busy"
-        description: "Memory Postgres First Node is more than 95% busy on default"  
+        summary: "Memory on Postgres First Node is more than 95 percent busy"
+        description: "Memory Postgres First Node is more than 95 percent busy on default"  
 
 - interval: 1m
   input_series:
@@ -685,8 +685,8 @@ tests:
         service: pgskipper-montemplates
         container: test-node4
       exp_annotations:
-        summary: "Memory on Postgres Fourth Node is more than 95% busy"
-        description: "Memory Postgres Fourth Node is more than 95% busy on default"  
+        summary: "Memory on Postgres Fourth Node is more than 95 percent busy"
+        description: "Memory Postgres Fourth Node is more than 95 percent busy on default"  
 
 - interval: 1m
   input_series:
@@ -721,8 +721,8 @@ tests:
         service: pgskipper-montemplates
         container: test-node2
       exp_annotations:
-        summary: "Memory on Postgres Second Node is more than 95% busy"
-        description: "Memory Postgres Second Node is more than 95% busy on default"  
+        summary: "Memory on Postgres Second Node is more than 95 percent busy"
+        description: "Memory Postgres Second Node is more than 95 percent busy on default"  
 
 - interval: 1m
   input_series:
@@ -757,8 +757,8 @@ tests:
         service: pgskipper-montemplates
         container: test-node3
       exp_annotations:
-        summary: "Memory on Postgres Third Node is more than 95% busy"
-        description: "Memory Postgres Third Node is more than 95% busy on default"  
+        summary: "Memory on Postgres Third Node is more than 95 percent busy"
+        description: "Memory Postgres Third Node is more than 95 percent busy on default"  
 
 - interval: 1m
   input_series:
@@ -929,8 +929,8 @@ tests:
         namespace: default
         service: pgskipper-montemplates
       exp_annotations:
-        summary: "CPU on Postgres First Node is more than 95% busy"
-        description: "CPU Postgres First Node is more than 95% busy on default"  
+        summary: "CPU on Postgres First Node is more than 95 percent busy"
+        description: "CPU Postgres First Node is more than 95 percent busy on default"  
 
 - interval: 1m
   input_series:
@@ -960,8 +960,8 @@ tests:
         namespace: default
         service: pgskipper-montemplates
       exp_annotations:
-        summary: "CPU on Postgres Second Node is more than 95% busy"
-        description: "CPU Postgres Second Node is more than 95% busy on default"  
+        summary: "CPU on Postgres Second Node is more than 95 percent busy"
+        description: "CPU Postgres Second Node is more than 95 percent busy on default"  
 
 - interval: 1m
   input_series:
@@ -991,8 +991,8 @@ tests:
         namespace: default
         service: pgskipper-montemplates
       exp_annotations:
-        summary: "CPU on Postgres Third Node is more than 95% busy"
-        description: "CPU Postgres Third Node is more than 95% busy on default"  
+        summary: "CPU on Postgres Third Node is more than 95 percent busy"
+        description: "CPU Postgres Third Node is more than 95 percent busy on default"  
 
 - interval: 1m
   input_series:
@@ -1022,8 +1022,8 @@ tests:
         namespace: default
         service: pgskipper-montemplates
       exp_annotations:
-        summary: "CPU on Postgres Fourth Node is more than 95% busy"
-        description: "CPU Postgres Fourth Node is more than 95% busy on default"  
+        summary: "CPU on Postgres Fourth Node is more than 95 percent busy"
+        description: "CPU Postgres Fourth Node is more than 95 percent busy on default"  
 
 - interval: 1m
   input_series:

@@ -1,4 +1,4 @@
-{{- if and (eq .Values.alertsPackVersion "v2") (.Values.prometheusMonitoring) }}
+{{- if and (eq .Values.alertsPackVersion "v2") .Values.prometheusMonitoring }}
 apiVersion: operator.victoriametrics.com/v1beta1
 kind: VMRule
 metadata:
@@ -11,31 +11,38 @@ spec:
 {{- $finalConfig := merge $overrideConfig $defaultConfig -}}
 {{- $alertGroups := .Values.ruleGroups -}}
 
-
 {{- range $defaultGroupName, $defaultGroup := $finalConfig }}
+{{- $found := true }}
+{{- if $alertGroups }}
 {{- $found := false }}
 {{- range $alertGroups }}
   {{- if eq $defaultGroupName . }}
-    {{- $found = true }}
+    {{- $found := true }}
   {{- end }}
 {{- end }}
+{{- else }}
+  {{- $found := true }}
+{{- end }}
+
 {{- if $found }}
     - name: {{ $defaultGroupName }}
+    {{- if $defaultGroup.labels }}
       labels:
-{{- range $defaultLabelName, $defaultLabelValue := $defaultGroup.labels }}
-        {{ $defaultLabelName }}: {{ $defaultLabelValue }}
-{{- end }}
-      {{- if $defaultGroup.interval }} 
-      interval: {{ $defaultGroup.interval }} 
+      {{- range $defaultLabelName, $defaultLabelValue := $defaultGroup.labels }}
+              {{ $defaultLabelName }}: {{ $defaultLabelValue }}
       {{- end }}
-      {{- if $defaultGroup.concurrency }} 
-      concurrency: {{ $defaultGroup.concurrency }} 
+    {{- end }}
+      {{- if $defaultGroup.interval }}
+      interval: {{ $defaultGroup.interval }}
+      {{- end }}
+      {{- if $defaultGroup.concurrency }}
+      concurrency: {{ $defaultGroup.concurrency }}
       {{- end }}
       rules:
 {{- range $defaultRuleName, $defaultRule := $defaultGroup.rules }}
         - alert: {{ $defaultRuleName }}
           expr: {{ $defaultRule.expr }}
-          {{- if $defaultRule.for }} 
+          {{- if $defaultRule.for }}
           for: {{ $defaultRule.for }}
           {{- end }}
           labels:

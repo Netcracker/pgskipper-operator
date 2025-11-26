@@ -15,7 +15,7 @@ appVersion: 1.16.0
 
 dependencies:
   # Prometheus alert rules
-- name: metriccollector
+- name: metricCollector
   condition: metricCollector.prometheusMonitoring
   version: ~0
   repository: "file://charts/metricCollector"
