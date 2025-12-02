@@ -10,6 +10,8 @@ replicatorPassword: "replicator"
 
 podLabels: {}
 
+imagePullPolicy: IfNotPresent
+
 privateRegistry:
   enabled: false
   secrets:

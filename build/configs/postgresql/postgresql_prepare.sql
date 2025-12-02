@@ -88,9 +88,9 @@ BEGIN
 	CREATE TEMPORARY TABLE pg_patroni_service_slot_cleaner_passwd_output (tt_id serial PRIMARY KEY NOT NULL, command_output text );
 	COPY pg_patroni_service_slot_cleaner_passwd_output (command_output) FROM PROGRAM 'strings /proc/1/environ | sed -n "s/^PG_ROOT_PASSWORD=\(.*\)/\1/p"';
 
-	-- get current wal_keep_segments value and determine allowed_slot_delay
+	-- get current wal_keep_size value and determine allowed_slot_delay
 	IF ud_allowed_slot_delay < 0 THEN
-		SELECT INTO allowed_slot_delay setting FROM pg_settings where name='wal_keep_segments';
+    SELECT setting::integer INTO allowed_slot_delay FROM pg_settings where name='wal_keep_size';
 	ELSE
 		allowed_slot_delay = ud_allowed_slot_delay;
 	END IF;
@@ -98,8 +98,6 @@ BEGIN
 	-- check if we have pg_xlog_location_diff or not (postgresql 9.6 vs postgresql 10)
 	select into use_old_cmp_function exists(select * from pg_proc where proname = 'pg_xlog_location_diff');
 
-	--todo[anin] 16Mb size per WAL file is used. Honest calculation should get value from pg_settings
-	allowed_slot_delay := allowed_slot_delay * 16 ;
 	RAISE NOTICE 'allowed_slot_delay: % Mb', allowed_slot_delay;
 
 	-- perform slot cleanup for each active replica

@@ -1,4 +1,4 @@
-apiVersion: qubership.org/v1
+apiVersion: netcracker.com/v1
 kind: PatroniServices
 metadata:
   name: patroni-services
@@ -6,14 +6,7 @@ metadata:
     name: patroni-services
       {{ include "kubernetes.labels" . | nindent 4 }}
 spec:
-  {{- if .Values.privateRegistry.enabled }}
-  privateRegistry:
-    enabled: true
-    names:
-    {{- range $i, $v := .Values.privateRegistry.secrets }}
-      - {{ $v.name }}
-    {{- end }}
-  {{- end }}
+  imagePullPolicy: {{ .Values.imagePullPolicy | default "IfNotPresent" }}
   installationTimestamp: {{ now | unixEpoch | quote }}
   {{ if .Values.serviceAccount.create }}
   serviceAccountName: {{default "postgres-sa" .Values.serviceAccount.name}}
@@ -39,20 +32,16 @@ spec:
     {{- if .Values.backupDaemon.podLabels }}
     podLabels:
       {{ toYaml .Values.backupDaemon.podLabels | nindent 6 }}
-      {{- include "kubernetes.labels" . | nindent 6 }}
     {{- else if .Values.podLabels }}
     podLabels:
       {{ toYaml .Values.podLabels | nindent 6 }}
-      {{- include "kubernetes.labels" . | nindent 6 }}
-    {{- else }}
-    podLabels:
-      {{ include "kubernetes.labels" . | nindent 6 }}
     {{- end }}
     image: {{ template "find_image" (dict "deployName" "postgres_backup_daemon" "SERVICE_NAME" "postgres_backup_daemon" "vals" .Values "default" .Values.backupDaemon.dockerImage) }}
     compressionLevel: {{ default 5 .Values.backupDaemon.compressionLevel }}
     walArchiving: {{ default false .Values.backupDaemon.walArchiving }}
     granularEviction: {{ .Values.backupDaemon.granularEviction | squote }}
     encryption: {{.Values.backupDaemon.encryption}}
+    retainArchiveSettings: {{ default false .Values.backupDaemon.retainArchiveSettings }}
     backupTimeout: {{.Values.backupDaemon.backupTimeout}}
     allowPrefix: {{ default false .Values.backupDaemon.allowPrefix }}
     useEvictionPolicyFirst: "{{ .Values.backupDaemon.useEvictionPolicyFirst }}"
@@ -163,14 +152,9 @@ spec:
     {{- if .Values.metricCollector.podLabels }}
     podLabels:
       {{ toYaml .Values.metricCollector.podLabels | nindent 6 }}
-      {{- include "kubernetes.labels" . | nindent 6 }}
     {{- else if .Values.podLabels }}
     podLabels:
       {{ toYaml .Values.podLabels | nindent 6 }}
-      {{- include "kubernetes.labels" . | nindent 6 }}
-    {{- else }}
-    podLabels:
-      {{ include "kubernetes.labels" . | nindent 6 }}
     {{- end }}
     image: {{ template "find_image" (dict "deployName" "pg_patroni_metric_collector" "SERVICE_NAME" "pg_patroni_metric_collector" "vals" .Values "default" .Values.metricCollector.dockerImage) }}
 {{ if .Values.metricCollector.resources }}
@@ -248,14 +232,9 @@ spec:
     {{- if .Values.powaUI.podLabels }}
     podLabels:
 {{ toYaml .Values.powaUI.podLabels | nindent 6 }}
-{{- include "kubernetes.labels" . | nindent 6 }}
     {{- else if .Values.podLabels }}
     podLabels:
 {{ toYaml .Values.podLabels | nindent 6 }}
-{{- include "kubernetes.labels" . | nindent 6 }}
-    {{- else }}
-    podLabels:
-      {{ include "kubernetes.labels" . | nindent 6 }}
     {{- end }}
     resources:
 {{ toYaml .Values.powaUI.resources | indent 6 }}
@@ -275,14 +254,10 @@ spec:
     {{- if .Values.queryExporter.podLabels }}
     podLabels:
 {{ toYaml .Values.queryExporter.podLabels | nindent 6 }}
-{{- include "kubernetes.labels" . | nindent 6 }}
     {{- else if .Values.podLabels }}
     podLabels:
 {{ toYaml .Values.podLabels | nindent 6 }}
 {{- include "kubernetes.labels" . | nindent 6 }}
-    {{- else }}
-    podLabels:
-      {{ include "kubernetes.labels" . | nindent 6 }}
     {{- end }}
     pgHost: {{ default (printf "%s.%s" "pg-patroni" .Release.Namespace) .Values.queryExporter.pgHost }}
     pgPort: {{ default 5432 .Values.queryExporter.pgPort }}
@@ -355,14 +330,9 @@ spec:
     {{- if .Values.replicationController.podLabels }}
     podLabels:
 {{ toYaml .Values.replicationController.podLabels | nindent 6 }}
-{{- include "kubernetes.labels" . | nindent 6 }}
     {{- else if .Values.podLabels }}
     podLabels:
 {{ toYaml .Values.podLabels | nindent 6 }}
-{{- include "kubernetes.labels" . | nindent 6 }}
-    {{- else }}
-    podLabels:
-      {{ include "kubernetes.labels" . | nindent 6 }}
     {{- end }}
     {{ if not .Values.externalDataBase }}
     {{ if and .Values.tls .Values.tls.enabled }}
@@ -384,23 +354,37 @@ spec:
 
 {{ if .Values.pgBackRest }}
   pgBackRest:
-    repoType: {{ .Values.pgBackRest.repoType  | default "rwx" }}
-    repoPath: {{ .Values.pgBackRest.repoPath | default "/var/lib/pgbackrest" }}
     diffSchedule: {{ .Values.pgBackRest.diffSchedule | default "0 0/1 * * *" }}
     incrSchedule: {{ .Values.pgBackRest.incrSchedule | default "0 0/1 * * *" }}
-    fullRetention: {{ .Values.pgBackRest.fullRetention | default 5 }}
-    diffRetention: {{ .Values.pgBackRest.diffRetention | default 3 }}
     backupFromStandby: {{ .Values.pgBackRest.backupFromStandby | default false }}
-    configParams: {{ .Values.pgBackRest.configParams | default (list) | toJson }}
-  {{ if .Values.pgBackRest.rwx }}
-    rwx:
-{{ toYaml .Values.pgBackRest.rwx | indent 6 }}
-  {{ end }}
-  {{ if .Values.pgBackRest.s3 }}
-    s3:
-{{ toYaml .Values.pgBackRest.s3 | indent 6 }}
-  {{ end }}
 {{ end }}
+
+{{- if .Values.pgBackRestExporter.install }}
+  pgBackRestExporter:
+    install: {{ .Values.pgBackRestExporter.install }}
+    image: {{ template "find_image" (dict "deployName" "pgbackrestexporter" "SERVICE_NAME" "pgbackrestexporter" "vals" .Values "default" .Values.pgBackRestExporter.image) }}
+    {{- if .Values.pgBackRestExporter.affinity }}
+    affinity: {{ .Values.pgBackRestExporter.affinity | toJson }}
+    {{- else if .Values.affinity }}
+    affinity: {{ .Values.affinity | toJson }}
+    {{- end }}
+    {{- if .Values.pgBackRestExporter.podLabels }}
+    podLabels:
+{{ toYaml .Values.pgBackRestExporter.podLabels | nindent 6 }}
+    {{- else if .Values.podLabels }}
+    podLabels:
+{{ toYaml .Values.podLabels | nindent 6 }}
+    {{- end }}
+    env:
+{{ toYaml .Values.pgBackRestExporter.env | indent 6 }}
+    resources:
+{{ toYaml .Values.pgBackRestExporter.resources | indent 6 }}
+    securityContext:
+      {{- include "restricted.globalPodSecurityContext" . | nindent 6 }}
+      {{- with .Values.pgBackRestExporter.securityContext }}
+      {{- toYaml . | nindent 6 -}}
+      {{- end }}
+{{- end }}
 
   {{ if .Values.tests.install }}
   integrationTests:
@@ -412,14 +396,9 @@ spec:
     {{- if .Values.tests.podLabels }}
     podLabels:
       {{ toYaml .Values.tests.podLabels | nindent 6 }}
-      {{- include "kubernetes.labels" . | nindent 6 }}
     {{- else if .Values.podLabels }}
     podLabels:
       {{ toYaml .Values.podLabels | nindent 6 }}
-      {{- include "kubernetes.labels" . | nindent 6 }}
-    {{- else }}
-    podLabels:
-    {{ include "kubernetes.labels" . | nindent 6 }}
     {{- end }}
     image: {{ template "find_image" (dict "deployName" "postgres_operator_tests" "SERVICE_NAME" "postgres_operator_tests" "vals" .Values "default" .Values.tests.dockerImage) }}
 {{ if .Values.tests.resources }}

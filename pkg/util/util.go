@@ -25,6 +25,7 @@ import (
 	"net/http"
 	"os"
 	"reflect"
+	"regexp"
 	r "runtime"
 	"strconv"
 	"strings"
@@ -386,10 +387,11 @@ func FindCmInNamespaceByName(namespace string, name string) (*corev1.ConfigMap, 
 }
 
 func GetContainerNameForPatroniPod(podName string) string {
-	if strings.Contains(podName, "node1") {
-		return "pg-patroni-node1"
+	re := regexp.MustCompile(`node(\d+)`)
+	if texts := re.FindStringSubmatch(podName); len(texts) > 1 {
+		return "pg-patroni-node" + texts[1]
 	}
-	return "pg-patroni-node2"
+	return "pg-patroni-node1"
 }
 
 func SliceContains[T comparable](slice []T, value T) bool {

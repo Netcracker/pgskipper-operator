@@ -243,14 +243,6 @@ func NewPatroniStatefulset(cr *patroniv1.PatroniCore, deploymentIdx int, cluster
 									},
 								},
 								{
-									Name: "PG_RESOURCES_LIMIT_MEM",
-									ValueFrom: &corev1.EnvVarSource{
-										ResourceFieldRef: &corev1.ResourceFieldSelector{
-											Resource: "limits.memory",
-										},
-									},
-								},
-								{
 									Name:  "PATRONI_CLUSTER_NAME",
 									Value: clusterName,
 								},
@@ -300,7 +292,7 @@ func NewPatroniStatefulset(cr *patroniv1.PatroniCore, deploymentIdx int, cluster
 								},
 							},
 							Resources:       *patroniSpec.Resources,
-							ImagePullPolicy: corev1.PullIfNotPresent,
+							ImagePullPolicy: cr.Spec.ImagePullPolicy,
 						},
 					},
 					RestartPolicy:                 corev1.RestartPolicyAlways,
@@ -329,8 +321,26 @@ func NewPatroniStatefulset(cr *patroniv1.PatroniCore, deploymentIdx int, cluster
 	}
 	stSet.Spec.Template.ObjectMeta.Annotations["argocd.argoproj.io/ignore-resource-updates"] = "true"
 
-	for k, v := range patroniSpec.PodAnnotations {
-		stSet.Spec.Template.ObjectMeta.Annotations[k] = v
+	if patroniSpec.PodAnnotations != nil {
+		for k, v := range patroniSpec.PodAnnotations {
+			stSet.Spec.Template.ObjectMeta.Annotations[k] = v
+		}
+	}
+
+	if patroniSpec.PatroniResourcesLimitMemory != "" {
+		stSet.Spec.Template.Spec.Containers[0].Env = append(stSet.Spec.Template.Spec.Containers[0].Env, corev1.EnvVar{
+			Name:  "PG_RESOURCES_LIMIT_MEM",
+			Value: patroniSpec.PatroniResourcesLimitMemory,
+		})
+	} else {
+		stSet.Spec.Template.Spec.Containers[0].Env = append(stSet.Spec.Template.Spec.Containers[0].Env, corev1.EnvVar{
+			Name: "PG_RESOURCES_LIMIT_MEM",
+			ValueFrom: &corev1.EnvVarSource{
+				ResourceFieldRef: &corev1.ResourceFieldSelector{
+					Resource: "limits.memory",
+				},
+			},
+		})
 	}
 
 	// TLS Section

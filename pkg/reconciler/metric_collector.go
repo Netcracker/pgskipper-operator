@@ -71,7 +71,7 @@ func (r *MetricCollectorReconciler) Reconcile() error {
 
 	// apply deployment
 	monitoringDeployment := reconciler.NewMonitoringDeployment(mcSpec, r.cluster.ClusterName, cr.Spec.ServiceAccountName)
-
+	monitoringDeployment.Spec.Template.Spec.Containers[0].ImagePullPolicy = cr.Spec.ImagePullPolicy
 	if cr.Spec.PrivateRegistry.Enabled {
 		for _, name := range cr.Spec.PrivateRegistry.Names {
 			monitoringDeployment.Spec.Template.Spec.ImagePullSecrets = append(monitoringDeployment.Spec.Template.Spec.ImagePullSecrets, corev1.LocalObjectReference{Name: name})

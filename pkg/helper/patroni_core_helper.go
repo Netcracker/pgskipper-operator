@@ -178,7 +178,14 @@ func (ph *PatroniHelper) isExpectedReplicationCount(pgHost string, count int) bo
 	if pgC == nil {
 		return false
 	}
-	if rows, err := pgC.Query(query); err == nil {
+	conn, err := pgC.GetConnection()
+	if err != nil {
+		return false
+	}
+	defer conn.Release()
+
+	if rows, err := conn.Query(context.Background(), query); err == nil {
+		defer rows.Close()
 		var pids []int
 		for rows.Next() {
 			var pid int
@@ -243,25 +250,108 @@ func (ph *PatroniHelper) WaitUntilReconcileIsDone() error {
 	return err
 }
 
-func GetAllDatabases(pgC *pgClient.PostgresClient) (databases []string) {
+func GetAllDatabases(pgC *pgClient.PostgresClient) (databases []string, err error) {
+	return GetFilteredDatabaseslist(pgC, "")
+}
+
+func GetDatabasesForLocaleUpdate(pgC *pgClient.PostgresClient, newLocale string) (databases []string, err error) {
+	return GetFilteredDatabaseslist(pgC, fmt.Sprintf("datcollversion <> '%s'", newLocale))
+}
+
+func GetFilteredDatabaseslist(pgC *pgClient.PostgresClient, condition string) (databases []string, err error) {
 	if pgC == nil {
 		logger.Warn("not able to get databases list, postgresql is empty")
-		return
+		return nil, errors.New("postgresql client is empty")
 	}
-	rows, err := pgC.Query("SELECT datname FROM pg_database where datname not in ('template0');")
+	conn, err := pgC.GetConnection()
+	if err != nil {
+		return nil, err
+	}
+	defer conn.Release()
+
+	dbQuery := "SELECT datname FROM pg_database where datname not in ('template0')"
+	if condition != "" {
+		dbQuery = fmt.Sprintf("%s and %s", dbQuery, condition)
+	}
+
+	rows, err := conn.Query(context.Background(), dbQuery)
 	if err != nil {
 		logger.Error("cannot get database list", zap.Error(err))
-		return
+		return nil, err
 	}
+	defer rows.Close()
 
 	for rows.Next() {
 		var db string
 		if err = rows.Scan(&db); err != nil {
 			logger.Error("cannot read database from databases list", zap.Error(err))
+			return nil, err
 		}
 		databases = append(databases, db)
 	}
-	return
+
+	// Check for errors that occurred during iteration
+	if err = rows.Err(); err != nil {
+		logger.Error("error occurred during database list iteration", zap.Error(err))
+		return nil, err
+	}
+
+	return databases, nil
+}
+
+func IsPostgresInRecovery(pgC *pgClient.PostgresClient) (bool, error) {
+	if pgC == nil {
+		logger.Warn("not able to get postgres recovery state, client is empty")
+		return false, nil
+	}
+
+	conn, err := pgC.GetConnection()
+	if err != nil {
+		return false, err
+	}
+	defer conn.Release()
+
+	dbQuery := "select pg_is_in_recovery();"
+
+	rows, err := conn.Query(context.Background(), dbQuery)
+	if err != nil {
+		logger.Error("cannot get postgres recovery state", zap.Error(err))
+		return false, err
+	}
+	defer rows.Close()
+
+	isInRecovery := false
+	for rows.Next() {
+		if err = rows.Scan(&isInRecovery); err != nil {
+			logger.Error("cannot read recovery state from database", zap.Error(err))
+			continue
+		}
+	}
+
+	return isInRecovery, nil
+}
+
+func WaitUntilRecoveryIsDone(pgC *pgClient.PostgresClient) error {
+	err := wait.PollUntilContextTimeout(context.Background(), 5*time.Second, 10*time.Minute, true, func(ctx context.Context) (done bool, err error) {
+		isInRecovery, err := IsPostgresInRecovery(pgC)
+		if err != nil {
+			logger.Error("cannot get postgres recovery state, during recovery wait", zap.Error(err))
+			return false, err
+		}
+		if isInRecovery {
+			logger.Info("postgres is in recovery, waiting for it to finish")
+			return false, nil
+		}
+		return true, nil
+	})
+
+	if err != nil {
+		logger.Error("cannot wait for recovery to finish", zap.Error(err))
+		return err
+	}
+
+	logger.Info("postgres is not in recovery")
+	return nil
 }
 
 func UpdatePreloadLibraries(cr *qubershipv1.PatroniCore, preloadLibraries []string) {
@@ -359,7 +449,12 @@ func (ph *PatroniHelper) SyncReplicatorPassword(pgHost string) error {
 	if pgC == nil {
 		return errors.New("Can't create Postgres Client")
 	}
-	if _, err := pgC.Query(fmt.Sprintf("alter role replicator with password '%s';", pgClient.EscapeString(password))); err != nil {
+	if inRecovery, err := IsPostgresInRecovery(pgC); err == nil && inRecovery {
+		logger.Info("SyncReplicatorPassword skipped: target Postgres is read-only")
+		return nil
+	}
+
+	if err := pgC.Execute(fmt.Sprintf("alter role replicator with password '%s';", pgClient.EscapeString(password))); err != nil {
 		logger.Error("Error during change password", zap.Error(err))
 		return err
 	}
@@ -377,7 +472,7 @@ func (ph *PatroniHelper) TerminateActiveConnections(pgHost string) error {
 		logger.Warn("not able to drop active connections, postgresql is not working, skipping")
 		return nil
 	}
-	_, err := pgC.Query(TerminateConnectionsQuery)
+	err := pgC.Execute(TerminateConnectionsQuery)
 	return err
 }
 
@@ -392,7 +487,7 @@ func (ph *PatroniHelper) CreatePgAdminRole(pgHost string) error {
 
 	query := "CREATE ROLE pgadminrole WITH LOGIN;"
 
-	_, err := pgC.Query(query)
+	err := pgC.Execute(query)
 	if err != nil {
 		logger.Error("Error during creating role 'pgadminrole'", zap.Error(err))
 		return err
@@ -560,7 +655,12 @@ func (ph *PatroniHelper) GetLocaleVersion(podName string) string {
 
 	versionCM, err := util.FindCmInNamespaceByName(namespace, "deployment-info")
 	if err != nil || versionCM.Data["locale-version"] == "" {
-		return ph.GetLocaleVersionFromPod(podName)
+		version := ph.GetLocaleVersionFromPod(podName)
+		if version != "" {
+			versionCM.Data["locale-version"] = version
+			ph.CreateOrUpdateConfigMap(versionCM)
+		}
+		return version
 	}
 	return strings.TrimSpace(versionCM.Data["locale-version"])
 }

@@ -183,18 +183,11 @@ func (u *Upgrade) GetInitDbArgs(patroniTemplate string, configMapKey string) (st
 
 func (u *Upgrade) CheckForAbsTimeUsage(pgHost string) error {
 	pgC := pgClient.GetPostgresClient(pgHost)
-	databaseList := helper.GetAllDatabases(pgC)
+	databaseList, _ := helper.GetAllDatabases(pgC)
 	absTimeDatabases := make([]string, 0)
 
-	checkForAbsTimeQuery := "SELECT 1 FROM information_schema.columns WHERE data_type = 'abstime' AND table_schema <> 'pg_catalog';"
-
 	for _, db := range databaseList {
-		rows, err := pgC.QueryForDB(db, checkForAbsTimeQuery)
-		if err != nil {
-			logger.Warn(fmt.Sprintf("Cannot check incompatible data type 'abstime' on database %s", db), zap.Error(err))
-		}
-
-		if rows.Next() {
+		if u.IfAbsTimeIsUsed(pgC, db) {
 			absTimeDatabases = append(absTimeDatabases, db)
 		}
 	}
@@ -204,6 +197,25 @@ func (u *Upgrade) CheckForAbsTimeUsage(pgHost string) error {
 	}
 
 	return nil
+}
+
+func (u *Upgrade) IfAbsTimeIsUsed(pgC *pgClient.PostgresClient, db string) bool {
+	conn, err := pgC.GetConnectionToDb(db)
+	if err != nil {
+		return false
+	}
+	defer conn.Close(context.Background())
+
+	checkForAbsTimeQuery := "SELECT 1 FROM information_schema.columns WHERE data_type = 'abstime' AND table_schema <> 'pg_catalog';"
+	rows, err := conn.Query(context.Background(), checkForAbsTimeQuery)
+	if err != nil {
+		logger.Warn(fmt.Sprintf("Cannot check incompatible data type 'abstime' on database %s", db), zap.Error(err))
+	}
+
+	if rows.Next() {
+		return true
+	}
+	return false
 }
 
 func (u *Upgrade) decideInitDbArgs(cr *v1.PatroniCore, cluster *v1.PatroniClusterSettings) (args string, err error) {
@@ -277,7 +289,13 @@ func (u *Upgrade) CheckForPreparedTransactions(pgHost string) error {
 	pgC := pgClient.GetPostgresClient(pgHost)
 	checkForPreparedTxQuery := "SELECT DISTINCT database FROM pg_prepared_xacts;"
 
-	rows, err := pgC.Query(checkForPreparedTxQuery)
+	conn, err := pgC.GetConnection()
+	if err != nil {
+		return err
+	}
+	defer conn.Release()
+
+	rows, err := conn.Query(context.Background(), checkForPreparedTxQuery)
 	if err != nil {
 		logger.Error("Failed to check for prepared transactions", zap.Error(err))
 		return fmt.Errorf("failed to check for prepared transactions: %w", err)
@@ -398,7 +416,7 @@ func (u *Upgrade) ProceedUpgrade(cr *v1.PatroniCore, cluster *v1.PatroniClusterS
 	deploymentIdx, _ := strconv.Atoi(leaderName[len(leaderName)-1:])
 	patroniDeployment := deployment.NewPatroniStatefulset(cr, deploymentIdx, cluster.ClusterName,
 		cluster.PatroniTemplate, cluster.PostgreSQLUserConf, cluster.PatroniLabels)
-	upgradePod := u.getUpgradePod(patroniSpec, leaderName, initDbArgs, cr.Upgrade.DockerUpgradeImage)
+	upgradePod := u.getUpgradePod(cr, leaderName, initDbArgs, cr.Upgrade.DockerUpgradeImage)
 
 	// copy nodeSelector, Volumes, SecurityContext from Deployment
 	upgradePod.Spec.NodeSelector = patroniDeployment.Spec.Template.Spec.NodeSelector
@@ -464,7 +482,8 @@ func (u *Upgrade) ProceedUpgrade(cr *v1.PatroniCore, cluster *v1.PatroniClusterS
 	return nil
 }
 
-func (u *Upgrade) getUpgradePod(patroniSpec *v1.Patroni, leaderName string, initDbArgs string, upgradeImage string) *corev1.Pod {
+func (u *Upgrade) getUpgradePod(cr *v1.PatroniCore, leaderName string, initDbArgs string, upgradeImage string) *corev1.Pod {
+	patroniSpec := cr.Spec.Patroni
 	patroniIdx := leaderName[len(leaderName)-1:]
 	upgradePod := &corev1.Pod{
 		ObjectMeta: metav1.ObjectMeta{
@@ -479,8 +498,8 @@ func (u *Upgrade) getUpgradePod(patroniSpec *v1.Patroni, leaderName string, init
 				{
 					Name:            "pg-upgrade",
 					Image:           upgradeImage,
+					ImagePullPolicy: cr.Spec.ImagePullPolicy,
 					SecurityContext: opUtil.GetDefaultSecurityContext(),
-					ImagePullPolicy: "IfNotPresent",
 					VolumeMounts: []corev1.VolumeMount{
 						{
 							MountPath: "/var/lib/pgsql/data",
@@ -648,7 +667,7 @@ func (u *Upgrade) getUpgradeCheckPod(cr *v1.PatroniCore) *corev1.Pod {
 					Name:            "pg-upgrade-check",
 					Image:           patroniSpec.DockerImage,
 					SecurityContext: opUtil.GetDefaultSecurityContext(),
-					ImagePullPolicy: "IfNotPresent",
+					ImagePullPolicy: cr.Spec.ImagePullPolicy,
 					Command:         []string{"sleep", "infinity"},
 					Resources: corev1.ResourceRequirements{
 						Requests: map[corev1.ResourceName]resource.Quantity{

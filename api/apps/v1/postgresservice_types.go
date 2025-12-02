@@ -41,8 +41,10 @@ type PatroniServicesSpec struct {
 	QueryExporter         QueryExporter          `json:"queryExporter,omitempty"`
 	Tls                   *Tls                   `json:"tls,omitempty"`
 	PgBackRest            *PgBackRest            `json:"pgBackRest,omitempty"`
+	PgBackRestExporter    *PgBackRestExporter    `json:"pgBackRestExporter,omitempty"`
 	InstallationTimestamp string                 `json:"installationTimestamp,omitempty"`
 	PrivateRegistry       PrivateRegistry        `json:"privateRegistry,omitempty"`
+	ImagePullPolicy       v1.PullPolicy          `json:"imagePullPolicy,omitempty"`
 }
 
 type PrivateRegistry struct {
@@ -232,16 +234,20 @@ type Tls struct {
 }
 
 type PgBackRest struct {
-	DockerImage       string         `json:"dockerImage,omitempty"`
-	RepoType          string         `json:"repoType,omitempty"`
-	RepoPath          string         `json:"repoPath,omitempty"`
-	DiffSchedule      string         `json:"diffSchedule,omitempty"`
-	IncrSchedule      string         `json:"incrSchedule,omitempty"`
-	S3                S3             `json:"s3,omitempty"`
-	Rwx               *types.Storage `json:"rwx,omitempty"`
-	BackupFromStandby bool           `json:"backupFromStandby,omitempty"`
+	DiffSchedule      string `json:"diffSchedule,omitempty"`
+	IncrSchedule      string `json:"incrSchedule,omitempty"`
+	BackupFromStandby bool   `json:"backupFromStandby,omitempty"`
 }
 
+type PgBackRestExporter struct {
+	Install         bool                    `json:"install,omitempty"`
+	Image           string                  `json:"image,omitempty"`
+	Resources       v1.ResourceRequirements `json:"resources,omitempty"`
+	SecurityContext *v1.PodSecurityContext  `json:"securityContext,omitempty"`
+	Affinity        v1.Affinity             `json:"affinity,omitempty"`
+	PodLabels       map[string]string       `json:"podLabels,omitempty"`
+	Env             map[string]string       `json:"env,omitempty"`
+}
 type S3 struct {
 	Bucket    string `json:"bucket,omitempty"`
 	Endpoint  string `json:"endpoint,omitempty"`

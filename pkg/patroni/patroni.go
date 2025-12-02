@@ -50,26 +50,40 @@ type Members map[string]interface{}
 func SetWalArchiving(spec qubershipv1.PatroniServicesSpec, patroniUrl string) error {
 	postgreSQLParams := map[string]interface{}{}
 	recoveryParams := map[string]string{}
-	patroniParams := map[string]interface{}{}
 	if spec.PgBackRest != nil {
-		logger.Info("pgBackRest feature is turned On, settings archive_command and restore_command for pgBackRest option")
-		postgreSQLParams["archive_mode"] = constants.ArchiveModeOn
-		postgreSQLParams["archive_command"] = constants.PgBackRestArchiveCommand
-
-		recoveryParams["restore_command"] = constants.PgBackRestRestoreCommand
-		postgreSQLParams["create_replica_methods"] = []string{"pgbackrest"}
-		recoveryParams["recovery_target_timeline"] = "latest"
+		logger.Info("pgBackRest feature is turned On, skipping wal archiving settings")
+		return nil
 	} else if spec.BackupDaemon.WalArchiving {
 		logger.Info("WAL Archiving is turned On, settings archive_command and restore_command")
 		postgreSQLParams["archive_mode"] = constants.ArchiveModeOn
 		postgreSQLParams["archive_command"] = constants.ArchiveCommand
 		recoveryParams["restore_command"] = constants.RestoreCommand
-	} else {
+	} else if !spec.BackupDaemon.RetainArchiveSettings {
 		logger.Info("WAL Archiving is turned Off, omitting archive_command and restore_command")
 		postgreSQLParams["archive_mode"] = constants.ArchiveModeOff
 		postgreSQLParams["archive_command"] = ""
 		recoveryParams["restore_command"] = ""
 	}
+
+	return setArchivingConfiguration(postgreSQLParams, recoveryParams, patroniUrl)
+}
+
+func SetWalArchivingForPgBackRest(cr *patroniv1.PatroniCore, patroniUrl string) error {
+	postgreSQLParams := map[string]interface{}{}
+	recoveryParams := map[string]string{}
+	if cr.Spec.PgBackRest != nil {
+		logger.Info("pgBackRest feature is turned On, settings archive_command and restore_command for pgBackRest option")
+		postgreSQLParams["archive_mode"] = constants.ArchiveModeOn
+		postgreSQLParams["archive_command"] = constants.PgBackRestArchiveCommand
+
+		recoveryParams["restore_command"] = GetCommandForPgbackrest(cr, constants.PgBackRestRestoreCommand)
+	}
+
+	return setArchivingConfiguration(postgreSQLParams, recoveryParams, patroniUrl)
+}
+
+func setArchivingConfiguration(postgreSQLParams map[string]interface{}, recoveryParams map[string]string, patroniUrl string) error {
+	patroniParams := map[string]interface{}{}
 
 	patroniParams["parameters"] = postgreSQLParams
 	patroniParams["recovery_conf"] = recoveryParams
@@ -77,14 +91,7 @@ func SetWalArchiving(spec qubershipv1.PatroniServicesSpec, patroniUrl string) er
 	patchData := map[string]interface{}{
 		"postgresql": patroniParams,
 	}
-	if spec.PgBackRest != nil {
-		patchData = map[string]interface{}{
-			"postgresql": map[string]interface{}{
-				"parameters":    postgreSQLParams,
-				"recovery_conf": recoveryParams,
-			},
-		}
-	}
+
 	// send update to patroni
 	if err := UpdatePatroniConfig(patchData, patroniUrl); err != nil {
 		logger.Error("Failed to patch postgresql params via patroni", zap.Error(err))
@@ -303,10 +310,19 @@ func GetStandbyClusterConfigurationWithHost(cr *patroniv1.PatroniCore, host stri
 
 	if cr.Spec.PgBackRest != nil {
 		standbyClusterConfiguration["create_replica_methods"] = []string{"pgbackrest", "basebackup"}
-		standbyClusterConfiguration["restore_command"] = "pgbackrest --stanza=patroni --delta --log-level-file=detail restore"
+		standbyClusterConfiguration["restore_command"] = GetCommandForPgbackrest(cr, constants.PgBackRestRestoreCommand)
 	}
 
 	return standbyClusterConfiguration
+}
+
+func GetCommandForPgbackrest(cr *patroniv1.PatroniCore, command string) string {
+	if IsStandbyClusterConfigurationExist(cr) {
+		if cr.Spec.PgBackRest.DRS3.Bucket != "" {
+			return fmt.Sprintf(`%s --repo=2`, command)
+		}
+	}
+	return command
 }
 
 func updateStandbyClusterSettings(configMap *corev1.ConfigMap, settings interface{}, configMapKey string) *corev1.ConfigMap {

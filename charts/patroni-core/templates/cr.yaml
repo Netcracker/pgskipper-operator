@@ -1,4 +1,4 @@
-apiVersion: qubership.org/v1
+apiVersion: netcracker.com/v1
 kind: PatroniCore
 metadata:
   name: patroni-core
@@ -6,14 +6,7 @@ metadata:
     name: patroni-core
       {{ include "kubernetes.labels" . | nindent 4 }}
 spec:
-  {{- if .Values.privateRegistry.enabled }}
-  privateRegistry:
-    enabled: true
-    names:
-    {{- range $i, $v := .Values.privateRegistry.secrets }}
-      - {{ $v.name }}
-    {{- end }}
-  {{- end }}
+  imagePullPolicy: {{ .Values.imagePullPolicy | default "IfNotPresent" }}
   installationTimestamp: {{ now | unixEpoch | quote }}
   {{ if .Values.serviceAccount.create }}
   serviceAccountName: {{default "patroni-sa" .Values.serviceAccount.name}}
@@ -58,19 +51,18 @@ spec:
     {{- if .Values.patroni.podLabels }}
     podLabels:
       {{ toYaml .Values.patroni.podLabels | nindent 6 }}
-      {{- include "kubernetes.labels" . | nindent 6 }}
     {{- else if .Values.podLabels }}
     podLabels:
       {{ toYaml .Values.podLabels | nindent 6 }}
-      {{- include "kubernetes.labels" . | nindent 6 }}
-    {{- else }}
-    podLabels:
-      {{ include "kubernetes.labels" . | nindent 6 }}
     {{- end }}
+    {{ if .Values.patroni.podAnnotations }}
     podAnnotations:
       {{- toYaml .Values.patroni.podAnnotations | nindent 6 }}
+    {{ end }}
+    {{ if .Values.patroni.configMapAnnotations }}
     configMapAnnotations:
       {{- toYaml .Values.patroni.configMapAnnotations | nindent 6 }}
+    {{ end }}
     replicas: {{ ( include "postgres.replicasCount" . ) }}
     image: {{ template "find_image" (dict "deployName" "pg_patroni" "SERVICE_NAME" "pg_patroni" "vals" .Values "default" .Values.patroni.dockerImage) }}
     patroniParams:
@@ -98,17 +90,16 @@ spec:
 {{ toYaml .Values.patroni.pgHba | indent 6}}
   {{- end }}
     resources:
-  {{ if .Values.patroni.resources.unlimited }}
+  {{- if .Values.patroni.resources.unlimited }}
       limits: {}
       requests:
 {{ toYaml .Values.patroni.resources.requests | indent 8}}
     unlimited: {{ .Values.patroni.resources.unlimited }}
-  {{ else }}
-      limits:
-{{ toYaml .Values.patroni.resources.limits | indent 8}}
-      requests:
-{{ toYaml .Values.patroni.resources.requests | indent 8}}
-  {{ end }}
+  {{- else }}
+      limits: {{- toYaml .Values.patroni.resources.limits | nindent 8 }}
+      requests: {{- toYaml .Values.patroni.resources.requests | nindent 8 }}
+  {{- end }}
+    patroniResourcesLimitMemory: {{ .Values.patroni.patroniResourcesLimitMemory | default "" | quote }}
     storage:
       type: {{ default "pv" .Values.patroni.storage.type }}
       size: {{ default "10Gi" .Values.patroni.storage.size }}
@@ -183,6 +174,8 @@ spec:
     repoPath: {{ .Values.pgBackRest.repoPath | default "/var/lib/pgbackrest" }}
     diffSchedule: {{ .Values.pgBackRest.diffSchedule | default "0 0/1 * * *" }}
     incrSchedule: {{ .Values.pgBackRest.incrSchedule | default "0 0/1 * * *" }}
+    fullRetention: {{ .Values.pgBackRest.fullRetention | default 5 }}
+    diffRetention: {{ .Values.pgBackRest.diffRetention | default 3 }}
     backupFromStandby: {{ .Values.pgBackRest.backupFromStandby | default false }}
   {{ if .Values.pgBackRest.rwx }}
     rwx:
@@ -192,6 +185,10 @@ spec:
     s3:
 {{ toYaml .Values.pgBackRest.s3 | indent 6 }}
   {{ end }}
+{{ if .Values.pgBackRest.drS3 }}
+    drS3:
+{{ toYaml .Values.pgBackRest.drS3 | indent 6 }}
+{{ end }}
 {{- if .Values.pgBackRest.resources }}
     resources:
 {{ toYaml .Values.pgBackRest.resources | indent 6 }}
@@ -219,14 +216,9 @@ spec:
     {{- if .Values.tests.podLabels }}
     podLabels:
       {{ toYaml .Values.tests.podLabels | nindent 6 }}
-      {{- include "kubernetes.labels" . | nindent 6 }}
     {{- else if .Values.podLabels }}
     podLabels:
       {{ toYaml .Values.podLabels | nindent 6 }}
-      {{- include "kubernetes.labels" . | nindent 6 }}
-    {{- else }}
-    podLabels:
-      {{ include "kubernetes.labels" . | nindent 6 }}
     {{- end }}
     image: {{ template "find_image" (dict "deployName" "postgres_operator_tests" "SERVICE_NAME" "postgres_operator_tests" "vals" .Values "default" .Values.tests.dockerImage) }}
 {{ if .Values.tests.resources }}

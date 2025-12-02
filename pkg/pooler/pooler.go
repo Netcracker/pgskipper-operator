@@ -50,7 +50,8 @@ type PgBouncerCreds struct {
 	password string
 }
 
-func NewPoolerDeployment(spec v1.Pooler, sa string, creds *PgBouncerCreds, newPatroniName string) *appsv1.Deployment {
+func NewPoolerDeployment(cr *v1.PatroniServices, sa string, creds *PgBouncerCreds, newPatroniName string) *appsv1.Deployment {
+	spec := cr.Spec.Pooler
 	deploymentName := DeploymentName
 	dockerImage := spec.Image
 	dep := &appsv1.Deployment{
@@ -97,10 +98,11 @@ func NewPoolerDeployment(spec v1.Pooler, sa string, creds *PgBouncerCreds, newPa
 					InitContainers:     []corev1.Container{},
 					Containers: []corev1.Container{
 						{
-							Name:    deploymentName,
-							Image:   dockerImage,
-							Command: []string{},
-							Args:    []string{},
+							Name:            deploymentName,
+							ImagePullPolicy: cr.Spec.ImagePullPolicy,
+							Image:           dockerImage,
+							Command:         []string{},
+							Args:            []string{},
 							Env: []corev1.EnvVar{
 								{
 									Name:  "POSTGRESQL_HOST",
@@ -248,11 +250,19 @@ func GetPgBouncerCreds() (*PgBouncerCreds, error) {
 }
 
 func createAuthFunctions(client *pgClient.PostgresClient, creds *PgBouncerCreds) error {
-	rows, err := client.Query("SELECT datname FROM pg_database;")
+	conn, err := client.GetConnection()
+	if err != nil {
+		return err
+	}
+	defer conn.Release()
+
+	rows, err := conn.Query(context.Background(), "SELECT datname FROM pg_database;")
 	if err != nil {
 		logger.Error("cannot get database list", zap.Error(err))
 		return err
 	}
+	defer rows.Close()
+
 	databases := make([]string, 0)
 	for rows.Next() {
 		var db string

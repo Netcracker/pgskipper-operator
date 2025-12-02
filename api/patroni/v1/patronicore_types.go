@@ -35,6 +35,7 @@ type PatroniCoreSpec struct {
 	Ldap                  *LdapConfig         `json:"ldap,omitempty"`
 	InstallationTimestamp string              `json:"installationTimestamp,omitempty"`
 	PrivateRegistry       PrivateRegistry     `json:"privateRegistry,omitempty"`
+	ImagePullPolicy       v1.PullPolicy       `json:"imagePullPolicy,omitempty"`
 }
 
 type PrivateRegistry struct {
@@ -109,6 +110,7 @@ type Patroni struct {
 	External                     *External                `json:"external,omitempty"`
 	PodAnnotations               map[string]string        `json:"podAnnotations,omitempty"`
 	ConfigMapAnnotations         map[string]string        `json:"configMapAnnotations,omitempty"`
+	PatroniResourcesLimitMemory  string                   `json:"patroniResourcesLimitMemory,omitempty"`
 }
 
 type External struct {
@@ -208,6 +210,7 @@ type PgBackRest struct {
 	DiffSchedule      string                   `json:"diffSchedule,omitempty"`
 	IncrSchedule      string                   `json:"incrSchedule,omitempty"`
 	S3                S3                       `json:"s3,omitempty"`
+	DRS3              S3                       `json:"drS3,omitempty"`
 	Rwx               *types.Storage           `json:"rwx,omitempty"`
 	Resources         *v1.ResourceRequirements `json:"resources,omitempty"`
 	FullRetention     int                      `json:"fullRetention,omitempty"`

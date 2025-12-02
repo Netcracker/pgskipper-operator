@@ -6,7 +6,7 @@ metadata:
   labels:
     app: dbaas-postgres-adapter
     name: dbaas-postgres-adapter
-      {{ include "kubernetes.labels" . | nindent 4 }}
+    {{ include "kubernetes.labels" . | nindent 4 }}
 spec:
   replicas: 1
   selector:
@@ -63,7 +63,11 @@ spec:
       initContainers:
         - name: init-dbaas-postgres-adapter
           image: {{ template "find_image" (dict "deployName" "postgresql_dbaas_adapter" "SERVICE_NAME" "postgresql_dbaas_adapter" "vals" .Values "default" .Values.dbaas.dockerImage) }}
-          imagePullPolicy: Always
+          imagePullPolicy: {{ default "IfNotPresent" .Values.imagePullPolicy }}
+          {{- if or .Values.vaultRegistration.enabled .Values.vaultRegistration.dbEngine.enabled }}
+          command:
+            - /vault/vault-env
+          {{- end }}
           args:
             - init
           securityContext:
@@ -208,7 +212,7 @@ spec:
             failureThreshold: 10
           terminationMessagePath: /dev/termination-log
           terminationMessagePolicy: File
-          imagePullPolicy: IfNotPresent
+          imagePullPolicy: {{ default "IfNotPresent" .Values.imagePullPolicy }}
       {{- if .Values.privateRegistry.enabled }}
       imagePullSecrets:
         {{- range $i, $v := .Values.privateRegistry.secrets }}
