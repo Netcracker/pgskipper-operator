@@ -64,10 +64,6 @@ spec:
         - name: init-dbaas-postgres-adapter
           image: {{ template "find_image" (dict "deployName" "postgresql_dbaas_adapter" "SERVICE_NAME" "postgresql_dbaas_adapter" "vals" .Values "default" .Values.dbaas.dockerImage) }}
           imagePullPolicy: {{ default "IfNotPresent" .Values.imagePullPolicy }}
-          {{- if or .Values.vaultRegistration.enabled .Values.vaultRegistration.dbEngine.enabled }}
-          command:
-            - /vault/vault-env
-          {{- end }}
           args:
             - init
           securityContext:
