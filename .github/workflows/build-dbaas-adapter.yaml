@@ -40,7 +40,7 @@ jobs:
           username: ${GITHUB_ACTOR}
           password: ${{secrets.GITHUB_TOKEN}}
       - name: Run Tests
-        run: make test
+        run: cd dbaas-adapter && make test
   multiplatform_build:
     strategy:
       fail-fast: false
