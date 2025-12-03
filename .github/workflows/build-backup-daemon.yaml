@@ -26,8 +26,8 @@ jobs:
       matrix:
         component:
           - name: pgskipper-docker-backup-daemon
-            file: Dockerfile
-            context: ./docker-backup-daemon
+            file: docker-backup-daemon/Dockerfile
+            context: ""
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
