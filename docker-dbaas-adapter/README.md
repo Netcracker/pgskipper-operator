@@ -6,3 +6,5 @@ Component provides REST API for logical database management.
 
 * `./adapter` - directory with dbaas adapter source code.
 * `./build` - directory with dbaas adapter build files.
+
+t33st
