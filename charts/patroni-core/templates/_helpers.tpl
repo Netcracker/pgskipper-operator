@@ -97,26 +97,7 @@ capabilities:
 {{- end }}
 {{- end -}}
 
-{{- define "patroni-core-operator.vaultEnvs" }}
-{{- if or .Values.vaultRegistration.enabled .Values.vaultRegistration.dbEngine.enabled }}
-            - name: VAULT_ADDR
-              value: {{ default "http://vault-service.vault:8200" .Values.vaultRegistration.url }}
-            - name: VAULT_TOKEN
-              valueFrom:
-                secretKeyRef:
-                  name: vault-secret
-                  key: token
-            - name: PAAS_PLATFORM
-              value: {{ default "kubernetes" .Values.vaultRegistration.paasPlatform }}
-            - name: PAAS_VERSION
-              value: {{ default "1.14" .Values.vaultRegistration.paasVersion | quote }}
-            - name: OPENSHIFT_SERVER
-            {{- if and .Values.CLOUD_PROTOCOL .Values.CLOUD_API_HOST .Values.CLOUD_API_PORT }}
-              value: {{ printf "%s://%s:%v" .Values.CLOUD_PROTOCOL .Values.CLOUD_API_HOST .Values.CLOUD_API_PORT }}
-            {{- else }}
-              value: "https://kubernetes.default:443"
-            {{- end }}
-{{- else }}
+{{- define "patroni-core-operator.platformEnvs" }}
             - name: PAAS_PLATFORM
               value: "kubernetes"
             - name: PAAS_VERSION
@@ -124,11 +105,11 @@ capabilities:
             - name: OPENSHIFT_SERVER
               value: "https://kubernetes.default:443"
 {{- end }}
-{{- end }}
+
 
 {{- define "find_image" -}}
   {{- $image := .default -}}
-  
+
   {{ printf "%s" $image }}
 {{- end -}}
 

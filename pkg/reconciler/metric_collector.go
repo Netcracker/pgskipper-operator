@@ -26,7 +26,6 @@ import (
 	"github.com/Netcracker/pgskipper-operator/pkg/helper"
 	opUtil "github.com/Netcracker/pgskipper-operator/pkg/util"
 	"github.com/Netcracker/pgskipper-operator/pkg/util/constants"
-	"github.com/Netcracker/pgskipper-operator/pkg/vault"
 	"github.com/Netcracker/qubership-credential-manager/pkg/manager"
 	"go.uber.org/zap"
 	corev1 "k8s.io/api/core/v1"
@@ -36,20 +35,18 @@ import (
 var monitoringSecrets = []string{"monitoring-user"}
 
 type MetricCollectorReconciler struct {
-	cr          *qubershipv1.PatroniServices
-	helper      *helper.Helper
-	vaultClient *vault.Client
-	scheme      *runtime.Scheme
-	cluster     *patroniv1.PatroniClusterSettings
+	cr      *qubershipv1.PatroniServices
+	helper  *helper.Helper
+	scheme  *runtime.Scheme
+	cluster *patroniv1.PatroniClusterSettings
 }
 
-func NewMetricCollectorReconciler(cr *qubershipv1.PatroniServices, helper *helper.Helper, vaultClient *vault.Client, scheme *runtime.Scheme, cluster *patroniv1.PatroniClusterSettings) *MetricCollectorReconciler {
+func NewMetricCollectorReconciler(cr *qubershipv1.PatroniServices, helper *helper.Helper, scheme *runtime.Scheme, cluster *patroniv1.PatroniClusterSettings) *MetricCollectorReconciler {
 	return &MetricCollectorReconciler{
-		cr:          cr,
-		helper:      helper,
-		vaultClient: vaultClient,
-		scheme:      scheme,
-		cluster:     cluster,
+		cr:      cr,
+		helper:  helper,
+		scheme:  scheme,
+		cluster: cluster,
 	}
 }
 
@@ -70,16 +67,6 @@ func (r *MetricCollectorReconciler) Reconcile() error {
 		}
 	}
 
-	pgSecret, err := r.helper.GetSecret(reconciler.MetricCollectorUserCredentials)
-	if err != nil {
-		return err
-	}
-
-	// Process vault role secret
-	if err := r.vaultClient.ProcessRoleSecret(pgSecret); err != nil {
-		return err
-	}
-
 	externalDatabase := cr.Spec.ExternalDataBase != nil
 
 	// apply deployment
@@ -92,7 +79,7 @@ func (r *MetricCollectorReconciler) Reconcile() error {
 	}
 
 	// Add Secret Hash
-	err = manager.AddCredHashToPodTemplate(credentials.PostgresSecretNames, &monitoringDeployment.Spec.Template)
+	err := manager.AddCredHashToPodTemplate(credentials.PostgresSecretNames, &monitoringDeployment.Spec.Template)
 	if err != nil {
 		logger.Error(fmt.Sprintf("can't add secret HASH to annotations for %s", monitoringDeployment.Name), zap.Error(err))
 		return err
@@ -106,8 +93,6 @@ func (r *MetricCollectorReconciler) Reconcile() error {
 		logger.Info("Policies is not empty, setting them to Monitoring Agent Deployment")
 		monitoringDeployment.Spec.Template.Spec.Tolerations = cr.Spec.Policies.Tolerations
 	}
-	// Vault Section
-	r.vaultClient.ProcessVaultSection(monitoringDeployment, vault.MetricEntrypoint, append(Secrets, monitoringSecrets...))
 
 	if externalDatabase && isExtTypeSupported(cr.Spec.ExternalDataBase.Type) {
 		logger.Info("External DB section is not empty, proceeding with env configuration")

@@ -32,7 +32,6 @@ import (
 	"github.com/Netcracker/pgskipper-operator/pkg/scheduler"
 	"github.com/Netcracker/pgskipper-operator/pkg/upgrade"
 	utils "github.com/Netcracker/pgskipper-operator/pkg/util"
-	"github.com/Netcracker/pgskipper-operator/pkg/vault"
 	"go.uber.org/zap"
 	"k8s.io/apimachinery/pkg/api/errors"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
@@ -69,7 +68,6 @@ type PatroniCoreReconciler struct {
 	Scheme       *runtime.Scheme
 	helper       *helper.PatroniHelper
 	upgrade      *upgrade.Upgrade
-	vaultClient  *vault.Client
 	cluster      qubershipv1.PatroniCore
 	appsCluster  appsv1.PatroniServices
 	namespace    string
@@ -91,7 +89,6 @@ func NewPatroniCoreReconciler(client client.Client, scheme *runtime.Scheme) *Pat
 		cluster:     qubershipv1.PatroniCore{},
 		appsCluster: appsv1.PatroniServices{},
 		upgrade:     upgrade.Init(client),
-		vaultClient: vault.NewClient(),
 		namespace:   namespace,
 		logger:      *logger,
 		resVersions: map[string]string{},
@@ -250,8 +247,6 @@ func (pr *PatroniCoreReconciler) Reconcile(ctx context.Context, request ctrl.Req
 
 	scheduler.StopAndClear()
 
-	// update Cr for Vault client
-	pr.vaultClient.UpdateCr(cr.Kind)
 	if err := pr.reconcilePatroniCoreCluster(cr); err != nil {
 		switch err.(type) {
 		case *deployerrors.TestsError:
@@ -417,7 +412,7 @@ func (pr *PatroniCoreReconciler) reconcilePatroni(cr *qubershipv1.PatroniCore) e
 			return nil
 		}
 	}
-	pRec := reconciler.NewPatroniReconciler(cr, pr.helper, pr.vaultClient, pr.upgrade, pr.Scheme, utils.GetPatroniClusterSettings(cr.Spec.Patroni.ClusterName))
+	pRec := reconciler.NewPatroniReconciler(cr, pr.helper, pr.upgrade, pr.Scheme, utils.GetPatroniClusterSettings(cr.Spec.Patroni.ClusterName))
 	if err := pRec.Reconcile(); err != nil {
 		pr.logger.Error("Can not synchronize desired Patroni state to cluster", zap.Error(err))
 		return err
@@ -464,8 +459,6 @@ func (pr *PatroniCoreReconciler) AddExcludeLabelToCm(c client.Client, cmName str
 func (pr *PatroniCoreReconciler) createTestsPods(cr *qubershipv1.PatroniCore) error {
 	if cr.Spec.IntegrationTests != nil {
 		integrationTestsPod := deployment.NewCoreIntegrationTests(cr, utils.GetPatroniClusterSettings(cr.Spec.Patroni.ClusterName))
-		// Vault Section
-		pr.vaultClient.ProcessPodVaultSection(integrationTestsPod, reconciler.Secrets)
 		state, err := utils.GetPodPhase(integrationTestsPod)
 		if err != nil {
 			return err

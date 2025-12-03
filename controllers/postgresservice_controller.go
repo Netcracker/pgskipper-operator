@@ -32,7 +32,6 @@ import (
 	"github.com/Netcracker/pgskipper-operator/pkg/upgrade"
 	utils "github.com/Netcracker/pgskipper-operator/pkg/util"
 	"github.com/Netcracker/pgskipper-operator/pkg/util/constants"
-	"github.com/Netcracker/pgskipper-operator/pkg/vault"
 	"go.uber.org/zap"
 	"k8s.io/apimachinery/pkg/api/errors"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
@@ -66,7 +65,6 @@ type PostgresServiceReconciler struct {
 	Scheme       *runtime.Scheme
 	helper       *helper.Helper
 	upgrade      *upgrade.Upgrade
-	vaultClient  *vault.Client
 	cluster      qubershipv1.PatroniServices
 	namespace    string
 	errorCounter int
@@ -103,7 +101,6 @@ func NewPostgresServiceReconciler(client client.Client, scheme *runtime.Scheme) 
 		helper:      helper.GetHelper(),
 		cluster:     qubershipv1.PatroniServices{},
 		upgrade:     upgrade.Init(client),
-		vaultClient: vault.NewClient(),
 		namespace:   namespace,
 		logger:      *logger,
 		resVersions: map[string]string{},
@@ -235,17 +232,6 @@ func (r *PostgresServiceReconciler) Reconcile(ctx context.Context, request ctrl.
 
 	scheduler.StopAndClear()
 
-	// update Cr for Vault client
-	r.vaultClient.UpdateCr(cr.Kind)
-
-	// update Postgres Password
-	vaultRolesExist := r.vaultClient.IsVaultRolesExist()
-	if vaultRolesExist {
-		if err := r.vaultClient.UpdatePgClientPass(); err != nil {
-			return reconcile.Result{}, err
-		}
-	}
-
 	if err := r.reconcilePostgresServiceCluster(cr); err != nil {
 		switch err.(type) {
 		case *deployerrors.TestsError:
@@ -288,11 +274,6 @@ func (r *PostgresServiceReconciler) Reconcile(ctx context.Context, request ctrl.
 	if err != nil {
 		r.logger.Error("cannot start watcher", zap.Error(err))
 		return reconcile.Result{RequeueAfter: time.Minute}, err
-	}
-
-	// Enable rotation controller
-	if cr.Spec.VaultRegistration.DbEngine.Enabled {
-		vault.EnableRotationController(r.vaultClient)
 	}
 
 	if err := r.helper.UpdatePGService(); err != nil {
@@ -465,19 +446,12 @@ func (r *PostgresServiceReconciler) reconcilePostgresServiceCluster(cr *qubershi
 		r.logger.Info("Tests Spec is empty, skipping reconciliation")
 	}
 
-	// And delete secrets, that uploaded to vault
-	if err := r.vaultClient.DeleteSecret(vault.DeletionLabels); err != nil {
-		r.logger.Error("Cannot delete secret", zap.Error(err))
-		return err
-	}
 	return nil
 }
 
 func (r *PostgresServiceReconciler) createTestsPods(cr *qubershipv1.PatroniServices) error {
 	if cr.Spec.IntegrationTests != nil {
 		integrationTestsPod := deployment.NewIntegrationTestsPod(cr, utils.GetPatroniClusterSettings(cr.Spec.Patroni.ClusterName))
-		// Vault Section
-		r.vaultClient.ProcessPodVaultSection(integrationTestsPod, reconciler.Secrets)
 		state, err := utils.GetPodPhase(integrationTestsPod)
 		if err != nil {
 			return err
@@ -528,7 +502,7 @@ func (r *PostgresServiceReconciler) createTestsPods(cr *qubershipv1.PatroniServi
 
 func (r *PostgresServiceReconciler) reconcileBackupDaemon(cr *qubershipv1.PatroniServices) error {
 	r.logger.Info("Backup Daemon Spec is not empty, proceeding with reconcile")
-	bRec := reconciler.NewBackupDaemonReconciler(cr, r.helper, r.vaultClient, utils.GetPatroniClusterSettings(cr.Spec.Patroni.ClusterName))
+	bRec := reconciler.NewBackupDaemonReconciler(cr, r.helper, utils.GetPatroniClusterSettings(cr.Spec.Patroni.ClusterName))
 	if err := bRec.Reconcile(); err != nil {
 		r.logger.Error("Can not synchronize Backup Daemon state to cluster", zap.Error(err))
 		return err
@@ -538,7 +512,7 @@ func (r *PostgresServiceReconciler) reconcileBackupDaemon(cr *qubershipv1.Patron
 
 func (r *PostgresServiceReconciler) reconcileMetricCollector(cr *qubershipv1.PatroniServices) error {
 	r.logger.Info("Metric Collector Spec is not empty, proceeding with reconcile")
-	mcRec := reconciler.NewMetricCollectorReconciler(cr, r.helper, r.vaultClient, r.Scheme, utils.GetPatroniClusterSettings(cr.Spec.Patroni.ClusterName))
+	mcRec := reconciler.NewMetricCollectorReconciler(cr, r.helper, r.Scheme, utils.GetPatroniClusterSettings(cr.Spec.Patroni.ClusterName))
 	if err := mcRec.Reconcile(); err != nil {
 		r.logger.Error("Can not synchronize Metric Collector state to cluster", zap.Error(err))
 		return err

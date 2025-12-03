@@ -25,8 +25,13 @@ import (
 	"github.com/Netcracker/pgskipper-operator/pkg/util"
 	"go.uber.org/zap"
 	corev1 "k8s.io/api/core/v1"
+	"k8s.io/apimachinery/pkg/api/errors"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
+	"k8s.io/apimachinery/pkg/util/intstr"
 )
+
+const operatorName = "postgres-operator"
 
 var (
 	log        = util.GetLogger()
@@ -81,6 +86,9 @@ func InitDRManager() {
 	if err := util.ExecuteWithRetries(pgManager.setStatus); err != nil {
 		log.Warn("not able to set SM status with retries, ", zap.Error(err))
 	}
+	if err := ensureOperatorService(helper); err != nil {
+		log.Error("Can not ensure operator service", zap.Error(err))
+	}
 
 	// Check if status running, then operator was restarted while site manager status was running, we decide to fail it
 	if cr.Status.SiteManagerStatus.Status == "running" {
@@ -95,6 +103,103 @@ func InitDRManager() {
 	http.Handle("/sitemanager", helper.Middleware(http.HandlerFunc(pgManager.processSiteManagerRequest)))
 	http.Handle("/health", helper.Middleware(http.HandlerFunc(pgManager.processHealthRequest)))
 	http.Handle("/pre-configure", helper.Middleware(http.HandlerFunc(pgManager.processPreConfigureRequest)))
+}
+
+func ensureOperatorService(helper *k8sHelper.Helper) error {
+	client, _ := util.GetClient()
+	namespace := util.GetNameSpace()
+
+	oServ := &corev1.Service{}
+	err := client.Get(context.Background(), types.NamespacedName{
+		Name: operatorName, Namespace: namespace,
+	}, oServ)
+	if err != nil {
+		if errors.IsNotFound(err) {
+			// this is almost copy 'n paste of /operator-framework/operator-sdk@v0.8.0/pkg/metrics/metrics.go#initOperatorService
+			// but this does not set ownerReference to the service
+			// hence we do not need finalizers rights
+			log.Info("Operator service not found, creating new one.")
+			oServ = getOperatorService(operatorName, namespace)
+			if err = helper.CreateServiceIfNotExists(oServ); err != nil {
+				log.Error(fmt.Sprintf("can't create service: %s", operatorName), zap.Error(err))
+				return err
+			}
+		} else {
+			log.Error("can't get operator service", zap.Error(err))
+			return err
+		}
+		return err
+	}
+	for _, port := range oServ.Spec.Ports {
+		// checking if site manager already exists
+		if port.Name == "site-manager" || port.Port == 8080 {
+			log.Info("Site manager port exists, no need to update, exiting.")
+			return nil
+		}
+	}
+	oServ.Spec.Ports = append(oServ.Spec.Ports, corev1.ServicePort{
+		Name:     "site-manager",
+		Protocol: corev1.ProtocolTCP,
+		Port:     8080,
+		TargetPort: intstr.IntOrString{
+			Type:   intstr.Int,
+			IntVal: 8080,
+		},
+	})
+
+	if err = client.Update(context.TODO(), oServ); err != nil {
+		log.Error(fmt.Sprintf("can't update service: %s", operatorName), zap.Error(err))
+		return err
+	}
+
+	return nil
+}
+
+func getOperatorService(operatorName string, namespace string) *corev1.Service {
+	label := map[string]string{"name": operatorName}
+	return &corev1.Service{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      operatorName,
+			Namespace: namespace,
+			Labels:    label,
+		},
+		TypeMeta: metav1.TypeMeta{
+			Kind:       "Service",
+			APIVersion: "v1",
+		},
+		Spec: corev1.ServiceSpec{
+			Ports: []corev1.ServicePort{
+				{
+					Port:     8383,
+					Protocol: corev1.ProtocolTCP,
+					TargetPort: intstr.IntOrString{
+						Type:   intstr.Int,
+						IntVal: 8383,
+					},
+					Name: "metrics",
+				},
+				{
+					Port:     8080,
+					Protocol: corev1.ProtocolTCP,
+					TargetPort: intstr.IntOrString{
+						Type:   intstr.Int,
+						IntVal: 8080,
+					},
+					Name: "site-manager",
+				},
+				{
+					Port:     8443,
+					Protocol: corev1.ProtocolTCP,
+					TargetPort: intstr.IntOrString{
+						Type:   intstr.Int,
+						IntVal: 8443,
+					},
+					Name: "web-tls",
+				},
+			},
+			Selector: label,
+		},
+	}
 }
 
 func getCloudSqlCm(helper *k8sHelper.Helper) *corev1.ConfigMap {

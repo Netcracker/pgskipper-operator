@@ -23,20 +23,19 @@ import (
 // PatroniCoreSpec defines the desired state of PatroniCore
 // +k8s:openapi-gen=true
 type PatroniCoreSpec struct {
-	Patroni               *Patroni                 `json:"patroni,omitempty"`
-	AuthSecret            string                   `json:"authSecret,omitempty"`
-	IntegrationTests      *IntegrationTests        `json:"integrationTests,omitempty"`
-	ConsulRegistration    *ConsulRegistration      `json:"consulRegistration,omitempty"`
-	VaultRegistration     *types.VaultRegistration `json:"vaultRegistration,omitempty"`
-	Policies              *Policies                `json:"policies,omitempty"`
-	ServiceAccountName    string                   `json:"serviceAccountName,omitempty"`
-	CloudSql              *types.CloudSql          `json:"cloudSql,omitempty"`
-	Tls                   *Tls                     `json:"tls,omitempty"`
-	PgBackRest            *PgBackRest              `json:"pgBackRest,omitempty"`
-	Ldap                  *LdapConfig              `json:"ldap,omitempty"`
-	InstallationTimestamp string                   `json:"installationTimestamp,omitempty"`
-	PrivateRegistry       PrivateRegistry          `json:"privateRegistry,omitempty"`
-	ImagePullPolicy       v1.PullPolicy            `json:"imagePullPolicy,omitempty"`
+	Patroni               *Patroni            `json:"patroni,omitempty"`
+	AuthSecret            string              `json:"authSecret,omitempty"`
+	IntegrationTests      *IntegrationTests   `json:"integrationTests,omitempty"`
+	ConsulRegistration    *ConsulRegistration `json:"consulRegistration,omitempty"`
+	Policies              *Policies           `json:"policies,omitempty"`
+	ServiceAccountName    string              `json:"serviceAccountName,omitempty"`
+	CloudSql              *types.CloudSql     `json:"cloudSql,omitempty"`
+	Tls                   *Tls                `json:"tls,omitempty"`
+	PgBackRest            *PgBackRest         `json:"pgBackRest,omitempty"`
+	Ldap                  *LdapConfig         `json:"ldap,omitempty"`
+	InstallationTimestamp string              `json:"installationTimestamp,omitempty"`
+	PrivateRegistry       PrivateRegistry     `json:"privateRegistry,omitempty"`
+	ImagePullPolicy       v1.PullPolicy       `json:"imagePullPolicy,omitempty"`
 }
 
 type PrivateRegistry struct {
@@ -100,7 +99,6 @@ type Patroni struct {
 	PodLabels                    map[string]string        `json:"podLabels,omitempty"`
 	PgHba                        []string                 `json:"pgHba,omitempty"`
 	Powa                         Powa                     `json:"powa,omitempty"`
-	VaultRegistration            *types.VaultRegistration `json:"vaultRegistration,omitempty"`
 	SecurityContext              *v1.PodSecurityContext   `json:"securityContext,omitempty"`
 	Unlimited                    bool                     `json:"unlimited,omitempty"`
 	PgWalStorageAutoManage       bool                     `json:"pgWalStorageAutoManage,omitempty"`

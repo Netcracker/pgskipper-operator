@@ -204,11 +204,6 @@ func (in *PatroniServicesSpec) DeepCopyInto(out *PatroniServicesSpec) {
 		*out = new(IntegrationTests)
 		(*in).DeepCopyInto(*out)
 	}
-	if in.VaultRegistration != nil {
-		in, out := &in.VaultRegistration, &out.VaultRegistration
-		*out = new(apiv1.VaultRegistration)
-		**out = **in
-	}
 	if in.Policies != nil {
 		in, out := &in.Policies, &out.Policies
 		*out = new(Policies)

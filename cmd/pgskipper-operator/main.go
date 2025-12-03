@@ -20,7 +20,6 @@ import (
 
 	site "github.com/Netcracker/pgskipper-operator/pkg/disasterrecovery"
 	"github.com/Netcracker/pgskipper-operator/pkg/helper"
-	"github.com/Netcracker/pgskipper-operator/pkg/vault"
 	"github.com/Netcracker/qubership-credential-manager/pkg/hook"
 
 	"net/http"
@@ -118,7 +117,6 @@ func main() {
 
 		}
 		//Init section
-		vault.Init()
 		site.InitDRManager()
 	}
 	//+kubebuilder:scaffold:builder

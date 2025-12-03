@@ -52,11 +52,6 @@ spec:
           configMap:
             name: dbaas-postgres-adapter.extensions-config
             defaultMode: 420
-        {{- if or .Values.vaultRegistration.enabled .Values.vaultRegistration.dbEngine.enabled }}
-        - name: vault-env
-          emptyDir:
-            medium: Memory
-        {{- end }}
         {{- if not .Values.externalDataBase }}
         {{- if and .Values.tls .Values.tls.enabled }}
         - name: tls-cert
@@ -66,55 +61,20 @@ spec:
         {{- end }}
         {{- end }}
       initContainers:
-        {{- if or .Values.vaultRegistration.enabled .Values.vaultRegistration.dbEngine.enabled }}
-        - name: copy-vault-env
-          image: {{ template "find_image" (dict "deployName" "vault_env" "SERVICE_NAME" "vault_env" "vals" .Values "default" .Values.vaultRegistration.dockerImage) }}
-          command:
-            - sh
-            - '-c'
-            - cp /usr/local/bin/vault-env /vault/
-          resources:
-            limits:
-              cpu: 50m
-              memory: 50Mi
-            requests:
-              cpu: 50m
-              memory: 50Mi
-          securityContext:
-            {{- include "restricted.globalContainerSecurityContext" . | nindent 12 }}
-          volumeMounts:
-            - name: vault-env
-              mountPath: /vault
-          terminationMessagePath: /dev/termination-log
-          terminationMessagePolicy: File
-          imagePullPolicy: {{ default "IfNotPresent" .Values.imagePullPolicy }}
-        {{- end }}
         - name: init-dbaas-postgres-adapter
           image: {{ template "find_image" (dict "deployName" "postgresql_dbaas_adapter" "SERVICE_NAME" "postgresql_dbaas_adapter" "vals" .Values "default" .Values.dbaas.dockerImage) }}
           imagePullPolicy: {{ default "IfNotPresent" .Values.imagePullPolicy }}
-          {{- if or .Values.vaultRegistration.enabled .Values.vaultRegistration.dbEngine.enabled }}
-          command:
-            - /vault/vault-env
-          {{- end }}
           args:
-            {{- if or .Values.vaultRegistration.enabled .Values.vaultRegistration.dbEngine.enabled }}
-            - sh
-            - /usr/local/bin/entrypoint
-            {{- end }}
             - init
           securityContext:
             {{- include "restricted.globalContainerSecurityContext" . | nindent 12 }}
           volumeMounts:
               - name: dbaas-default-extensions-mount
                 mountPath: /app/extensions
-              {{- if or .Values.vaultRegistration.enabled .Values.vaultRegistration.dbEngine.enabled }}
-              - name: vault-env
-                mountPath: /vault
-              {{- end }}
           resources:
 {{ .Values.dbaas.resources | toYaml | indent 12 }}
           env:
-  {{- template "postgres-dbaas.vaultEnvs" . }}
+  {{- template "postgres-dbaas.pgAdminEnvs" . }}
             - name: POSTGRES_DATABASE
               value: {{ default "postgres" .Values.dbaas.dbName }}
             - name: POSTGRES_HOST
@@ -144,15 +104,6 @@ spec:
       containers:
         - name: dbaas-postgres-adapter
           image: {{ template "find_image" (dict "deployName" "postgresql_dbaas_adapter" "SERVICE_NAME" "postgresql_dbaas_adapter" "vals" .Values "default" .Values.dbaas.dockerImage) }}
-          {{- if or .Values.vaultRegistration.enabled .Values.vaultRegistration.dbEngine.enabled }}
-          command:
-            - /vault/vault-env
-          {{- end }}
-          args:
-            {{- if or .Values.vaultRegistration.enabled .Values.vaultRegistration.dbEngine.enabled }}
-            - sh
-            - /usr/local/bin/entrypoint
-            {{- end }}
           ports:
             - name: web
               containerPort: 8080
@@ -160,10 +111,10 @@ spec:
           securityContext:
             {{- include "restricted.globalContainerSecurityContext" . | nindent 12 }}
           env:
-{{- template "postgres-dbaas.vaultEnvs" . }}
+{{- template "postgres-dbaas.pgAdminEnvs" . }}
             - name: POSTGRES_DATABASE
               value: {{ default "postgres" .Values.dbaas.dbName }}
-{{- template "postgres-dbaas.vaultEnvsReg" . }}
+{{- template "postgres-dbaas.aggregatorEnvsReg" . }}
             - name: DBAAS_ADAPTER_ADDRESS
               value: {{ default (printf "http://dbaas-postgres-adapter.%s:8080" .Release.Namespace) .Values.dbaas.adapter.address }}
             - name: DBAAS_AGGREGATOR_REGISTRATION_ADDRESS
@@ -204,15 +155,7 @@ spec:
             - name: EXTENSIONS
               value: {{ join "," .Values.dbaas.extensions }}
             {{- end }}
-            {{- if or .Values.dbaas.vaultIntegration.enabled }}
-            - name: VAULT_ENABLED
-              value: {{ default "false" .Values.dbaas.vaultIntegration.enabled | quote }}
-            - name: VAULT_ROTATION_PERIOD
-              value: {{ default "86400" .Values.dbaas.vaultIntegration.rotationPeriod | quote }}
-            - name: VAULT_DB_ENGINE_NAME
-              value: {{ .Values.vaultRegistration.dbEngine.name | default (printf "%s_%s_postgresql" .Values.CLOUD_PUBLIC_HOST .Release.Namespace) }}
-              {{- end }}
-              {{ if .Values.externalDataBase }}
+            {{ if .Values.externalDataBase }}
             - name: EXTERNAL_POSTGRESQL
               value: {{ default "" .Values.externalDataBase.type }}
               {{- end }}
@@ -229,10 +172,6 @@ spec:
               mountPath: /app/config
             - name: dbaas-default-extensions-mount
               mountPath: /app/extensions
-  {{- if or .Values.vaultRegistration.enabled .Values.vaultRegistration.dbEngine.enabled }}
-            - name: vault-env
-              mountPath: /vault
-  {{- end }}
   {{- if not .Values.externalDataBase }}
   {{- if and .Values.tls .Values.tls.enabled }}
             - name: tls-cert
@@ -273,8 +212,8 @@ spec:
       {{- if .Values.privateRegistry.enabled }}
       imagePullSecrets:
         {{- range $i, $v := .Values.privateRegistry.secrets }}
-        - name: {{ $v.name }} 
-        {{- end }}     
+        - name: {{ $v.name }}
+        {{- end }}
       {{- end }}
       tolerations:
         {{- range $tKey, $t := .Values.policies.tolerations }}
