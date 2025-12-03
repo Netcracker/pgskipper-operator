@@ -32,6 +32,7 @@ ADD ./scripts/* /
 
 RUN echo "deb [trusted=yes] http://apt.postgresql.org/pub/repos/apt jammy-pgdg main" >> /etc/apt/sources.list.d/pgdg.list
 RUN ls -la /etc/apt/
+RUN wget --quiet -O - https://www.postgresql.org/media/keys/ACCC4CF8.asc | gpg --dearmor > /etc/apt/trusted.gpg.d/postgresql.gpg
 RUN apt-get -y update
 RUN apt-get -o DPkg::Options::="--force-confnew" -y dist-upgrade
 RUN apt-get update && \
