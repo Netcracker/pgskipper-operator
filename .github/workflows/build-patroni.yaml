@@ -26,16 +26,16 @@ jobs:
       matrix:
         component:
           - name: pgskipper-docker-patroni-17
-            file: Dockerfile
-            context: ./docker-patroni
+            file: docker-patroni/Dockerfile
+            context: docker-patroni
             pg_version: "17"
           - name: pgskipper-docker-patroni-16
-            file: Dockerfile
-            context: ./docker-patroni
+            file: docker-patroni/Dockerfile
+            context: docker-patroni
             pg_version: "16"
           - name: pgskipper-docker-patroni-15
-            file: Dockerfile
-            context: ./docker-patroni
+            file: docker-patroni/Dockerfile
+            context: docker-patroni
             pg_version: "15"
     runs-on: ubuntu-24.04
     steps:

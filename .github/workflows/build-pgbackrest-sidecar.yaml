@@ -26,8 +26,8 @@ jobs:
       matrix:
         component:
           - name: pgskipper-docker-pgbackrest-sidecar
-            file: build/Dockerfile
-            context: ./docker-pgbackrest-sidecar
+            file: docker-pgbackrest-sidecar/build/Dockerfile
+            context: docker-pgbackrest-sidecar
     runs-on: ubuntu-24.04
     steps:
       - name: Validate

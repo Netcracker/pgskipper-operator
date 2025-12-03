@@ -47,8 +47,8 @@ jobs:
       matrix:
         component:
           - name: pgskipper-docker-dbaas-adapter
-            file: build/Dockerfile
-            context: ./docker-dbaas-adapter
+            file: docker-dbaas-adapter/build/Dockerfile
+            context: docker-dbaas-adapter
     runs-on: ubuntu-24.04
     steps:
       - name: Validate

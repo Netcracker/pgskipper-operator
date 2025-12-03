@@ -28,7 +28,7 @@ jobs:
       matrix:
         component:
           - name: pgskipper-operator
-            file: build/Dockerfile
+            file: operator/build/Dockerfile
             context: operator
           - name: pgskipper-operator-tests
             file: tests/Dockerfile

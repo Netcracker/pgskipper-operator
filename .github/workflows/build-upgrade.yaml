@@ -26,8 +26,8 @@ jobs:
       matrix:
         component:
           - name: pgskipper-docker-upgrade
-            file: Dockerfile
-            context: ./docker-upgrade
+            file: docker-upgrade/Dockerfile
+            context: docker-upgrade
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
