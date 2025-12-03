@@ -982,7 +982,7 @@ func (rm *ResourceManager) getOperatorLabels() (map[string]string, error) {
 	}
 
 	deployment := foundDeployment[0]
-	labels := deployment.Spec.Template.ObjectMeta.Labels
+	labels := deployment.Spec.Template.Labels
 	return labels, nil
 }
 
