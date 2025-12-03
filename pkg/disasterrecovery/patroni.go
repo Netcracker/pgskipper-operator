@@ -369,14 +369,15 @@ func (m *PatroniDRManager) clearStandbyClusterConfigInCR() error {
 
 func (m *PatroniDRManager) updateExternalService(mode string) {
 	log.Info("Site Manager: Update external service")
-	if mode == "standby" {
+	switch mode {
+	case "standby":
 		if cr, err := m.helper.GetPostgresServiceCR(); err == nil {
 			activeHost := cr.Spec.SiteManager.ActiveClusterHost
 			extService := m.helper.GetService("pg-"+m.cluster.ClusterName+"-external", namespace)
 			extService.Spec.ExternalName = activeHost
 			_ = m.helper.UpdateService(extService)
 		}
-	} else if mode == "active" {
+	case "active":
 		extService := m.helper.GetService("pg-"+m.cluster.ClusterName+"-external", namespace)
 		extService.Spec.ExternalName = fmt.Sprintf("pg-%s.%s.svc.cluster.local", m.cluster.ClusterName, namespace)
 		_ = m.helper.UpdateService(extService)

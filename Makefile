@@ -50,7 +50,7 @@ vet:
 
 compile:
 	CGO_ENABLED=0 go build -o ./build/_output/bin/postgres-operator \
- 				-gcflags all=-trimpath=${GOPATH} -asmflags all=-trimpath=${GOPATH} ./cmd/pgskipper-operator
+				-gcflags all=-trimpath=${GOPATH} -asmflags all=-trimpath=${GOPATH} ./cmd/pgskipper-operator
 
 docker-build:
 	$(foreach docker_tag,$(DOCKER_NAMES),docker build --file="${DOCKER_FILE}" --pull -t $(docker_tag) ./;)
@@ -67,18 +67,18 @@ clean:
 # Generate code
 generate: controller-gen
 	$(CONTROLLER_GEN) crd:crdVersions={v1} \
-					  object:headerFile="generator/boilerplate.go.txt" \
-					  paths="./api/common/v1"
+					object:headerFile="generator/boilerplate.go.txt" \
+					paths="./api/common/v1"
 
 	$(CONTROLLER_GEN) crd:crdVersions={v1} \
-					  object:headerFile="generator/boilerplate.go.txt" \
-					  paths="./api/apps/v1" \
-					  output:crd:artifacts:config=charts/patroni-services/crds/
+					object:headerFile="generator/boilerplate.go.txt" \
+					paths="./api/apps/v1" \
+					output:crd:artifacts:config=charts/patroni-services/crds/
 
 	$(CONTROLLER_GEN) crd:crdVersions={v1} \
-					  object:headerFile="generator/boilerplate.go.txt" \
-					  paths="./api/patroni/v1" \
-					  output:crd:artifacts:config=charts/patroni-core/crds/
+					object:headerFile="generator/boilerplate.go.txt" \
+					paths="./api/patroni/v1" \
+					output:crd:artifacts:config=charts/patroni-core/crds/
 # Find or download controller-gen
 # download controller-gen if necessary
 controller-gen:

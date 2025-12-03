@@ -21,12 +21,11 @@ import (
 	"github.com/Netcracker/pgskipper-operator/pkg/deployerrors"
 	"github.com/Netcracker/pgskipper-operator/pkg/deployment"
 	"github.com/Netcracker/pgskipper-operator/pkg/helper"
-	"github.com/Netcracker/pgskipper-operator/pkg/util"
 	opUtil "github.com/Netcracker/pgskipper-operator/pkg/util"
 	"go.uber.org/zap"
 )
 
-var logger = util.GetLogger()
+var logger = opUtil.GetLogger()
 
 type Creator struct {
 	cr      *qubershipv1.PatroniServices
@@ -73,7 +72,7 @@ func (r *Creator) CreateTestsPods() error {
 				logger.Info("Policies is not empty, setting them to Test Pod")
 				integrationTestsPod.Spec.Tolerations = cr.Spec.Policies.Tolerations
 			}
-			if err := r.helper.ResourceManager.CreatePod(integrationTestsPod); err != nil {
+			if err := r.helper.CreatePod(integrationTestsPod); err != nil {
 				return err
 			}
 		}

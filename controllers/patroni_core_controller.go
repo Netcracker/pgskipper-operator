@@ -274,7 +274,7 @@ func (pr *PatroniCoreReconciler) Reconcile(ctx context.Context, request ctrl.Req
 		return reconcile.Result{RequeueAfter: time.Minute}, err
 	}
 
-	if err := pr.helper.ResourceManager.UpdatePatroniConfigMaps(); err != nil {
+	if err := pr.helper.UpdatePatroniConfigMaps(); err != nil {
 		pr.logger.Error("error during update of patroni config maps", zap.Error(err))
 		// will not return err because there is a slight chance, that
 		// update could happen at the same time when patroni will update leader/config info
@@ -349,7 +349,7 @@ func (pr *PatroniCoreReconciler) stanzaUpgrade(create bool) error {
 	if create {
 		command = stanzaCreateStandbyCommand
 	}
-	masterPod, err := pr.helper.ResourceManager.GetPodsByLabel(MasterLabel)
+	masterPod, err := pr.helper.GetPodsByLabel(MasterLabel)
 	if err != nil || len(masterPod.Items) == 0 {
 		pr.logger.Error("Can't get Patroni Leader for stanza upgrade execution", zap.Error(err))
 		return err
@@ -443,12 +443,12 @@ func (pr *PatroniCoreReconciler) AddExcludeLabelToCm(c client.Client, cmName str
 		pr.logger.Info(fmt.Sprintf("ConfigMap %s not found", cmName))
 		return nil
 	}
-	if foundCm.ObjectMeta.Labels == nil {
-		foundCm.ObjectMeta.Labels = make(map[string]string)
-		foundCm.ObjectMeta.Labels["velero.io/exclude-from-backup"] = "true"
+	if foundCm.Labels == nil {
+		foundCm.Labels = make(map[string]string)
+		foundCm.Labels["velero.io/exclude-from-backup"] = "true"
 		err = c.Update(context.TODO(), foundCm)
 		if err != nil {
-			pr.logger.Error(fmt.Sprintf("Failed to update configMap %s", foundCm.ObjectMeta.Name), zap.Error(err))
+			pr.logger.Error(fmt.Sprintf("Failed to update configMap %s", foundCm.Name), zap.Error(err))
 			return err
 		}
 	}
@@ -464,7 +464,7 @@ func (pr *PatroniCoreReconciler) createTestsPods(cr *qubershipv1.PatroniCore) er
 		}
 		if state != "Running" {
 			if state != "NotFound" {
-				if err := pr.helper.ResourceManager.DeletePodWithWaiting(integrationTestsPod); err != nil {
+				if err := pr.helper.DeletePodWithWaiting(integrationTestsPod); err != nil {
 					pr.logger.Error("Error deleting pod with tests. Let's try to continue.", zap.Error(err))
 				}
 			}
@@ -472,7 +472,7 @@ func (pr *PatroniCoreReconciler) createTestsPods(cr *qubershipv1.PatroniCore) er
 				pr.logger.Info("Policies is not empty, setting them to Test Pod")
 				integrationTestsPod.Spec.Tolerations = cr.Spec.Policies.Tolerations
 			}
-			if err := pr.helper.ResourceManager.CreatePod(integrationTestsPod); err != nil {
+			if err := pr.helper.CreatePod(integrationTestsPod); err != nil {
 				return err
 			}
 		}

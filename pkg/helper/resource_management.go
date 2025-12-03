@@ -30,11 +30,11 @@ import (
 	qubershipv1 "github.com/Netcracker/pgskipper-operator/api/apps/v1"
 	patroniv1 "github.com/Netcracker/pgskipper-operator/api/patroni/v1"
 	"github.com/Netcracker/pgskipper-operator/pkg/util"
-	opUtil "github.com/Netcracker/pgskipper-operator/pkg/util"
 	"go.uber.org/zap"
 	appsv1 "k8s.io/api/apps/v1"
 	k8sauth "k8s.io/api/authentication/v1"
 	corev1 "k8s.io/api/core/v1"
+	discoveryv1 "k8s.io/api/discovery/v1"
 	"k8s.io/apimachinery/pkg/api/equality"
 	"k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/api/meta"
@@ -238,28 +238,28 @@ func (rm *ResourceManager) IsPodReady(pod corev1.Pod) bool {
 }
 
 func (rm *ResourceManager) CreatePod(pod *corev1.Pod) error {
-	logger.Info(fmt.Sprintf("Creating pod %v", pod.ObjectMeta.Name))
-	pod.ObjectMeta.OwnerReferences = rm.GetOwnerReferences()
+	logger.Info(fmt.Sprintf("Creating pod %v", pod.Name))
+	pod.OwnerReferences = rm.GetOwnerReferences()
 	err := rm.kubeClient.Create(context.TODO(), pod)
 	if err != nil {
-		logger.Error(fmt.Sprintf("Failed to create Pod %v", pod.ObjectMeta.Name), zap.Error(err))
+		logger.Error(fmt.Sprintf("Failed to create Pod %v", pod.Name), zap.Error(err))
 		return err
 	}
 	return nil
 }
 
 func (rm *ResourceManager) UpdateService(service *corev1.Service) error {
-	service.ObjectMeta.OwnerReferences = rm.GetOwnerReferences()
+	service.OwnerReferences = rm.GetOwnerReferences()
 	err := rm.kubeClient.Update(context.TODO(), service)
 	if err != nil {
-		logger.Error(fmt.Sprintf("Failed to update service %v", service.ObjectMeta.Name), zap.Error(err))
+		logger.Error(fmt.Sprintf("Failed to update service %v", service.Name), zap.Error(err))
 		return err
 	}
 	return nil
 }
 
 func (rm *ResourceManager) UpdateDaemonSet(ds *appsv1.DaemonSet) (err error) {
-	ds.ObjectMeta.OwnerReferences = rm.GetOwnerReferences()
+	ds.OwnerReferences = rm.GetOwnerReferences()
 	if err := rm.kubeClient.Update(context.TODO(), ds); err != nil {
 		return err
 	}
@@ -274,24 +274,24 @@ func (rm *ResourceManager) CreateOrUpdateConfigMap(cm *corev1.ConfigMap) (bool, 
 		Name: cm.Name, Namespace: cm.Namespace,
 	}, foundCm)
 	if err != nil && errors.IsNotFound(err) {
-		logger.Info(fmt.Sprintf("Creating %s configMap", cm.ObjectMeta.Name))
-		cm.ObjectMeta.OwnerReferences = rm.GetOwnerReferences()
-		cm.ObjectMeta.Labels = rm.getLabels(cm.ObjectMeta)
+		logger.Info(fmt.Sprintf("Creating %s configMap", cm.Name))
+		cm.OwnerReferences = rm.GetOwnerReferences()
+		cm.Labels = rm.getLabels(cm.ObjectMeta)
 		err = rm.kubeClient.Create(context.TODO(), cm)
 		if err != nil {
-			logger.Error(fmt.Sprintf("Failed to create configMap %s", cm.ObjectMeta.Name), zap.Error(err))
+			logger.Error(fmt.Sprintf("Failed to create configMap %s", cm.Name), zap.Error(err))
 			return false, err
 		}
 	} else {
 		if !reflect.DeepEqual(foundCm, cm) || !reflect.DeepEqual(foundCm.Data, cm.Data) {
-			logger.Info(fmt.Sprintf("Updating %s k8s cm", cm.ObjectMeta.Name))
-			cm.ObjectMeta.OwnerReferences = rm.GetOwnerReferences()
-			if cm.ObjectMeta.Name != "patroni-leader" && cm.ObjectMeta.Name != "patroni-config" {
-				cm.ObjectMeta.Labels = rm.getLabels(cm.ObjectMeta)
+			logger.Info(fmt.Sprintf("Updating %s k8s cm", cm.Name))
+			cm.OwnerReferences = rm.GetOwnerReferences()
+			if cm.Name != "patroni-leader" && cm.Name != "patroni-config" {
+				cm.Labels = rm.getLabels(cm.ObjectMeta)
 			}
 			err = rm.kubeClient.Update(context.TODO(), cm)
 			if err != nil {
-				logger.Error(fmt.Sprintf("Failed to update cm %v", cm.ObjectMeta.Name), zap.Error(err))
+				logger.Error(fmt.Sprintf("Failed to update cm %v", cm.Name), zap.Error(err))
 				return false, err
 			}
 			return true, nil
@@ -306,24 +306,24 @@ func (rm *ResourceManager) CreateOrUpdateService(service *corev1.Service) error 
 		Name: service.Name, Namespace: service.Namespace,
 	}, foundSrv)
 	if err != nil && errors.IsNotFound(err) {
-		logger.Info(fmt.Sprintf("Creating %s k8s service", service.ObjectMeta.Name))
-		service.ObjectMeta.OwnerReferences = rm.GetOwnerReferences()
-		service.ObjectMeta.Labels = rm.getLabels(service.ObjectMeta)
+		logger.Info(fmt.Sprintf("Creating %s k8s service", service.Name))
+		service.OwnerReferences = rm.GetOwnerReferences()
+		service.Labels = rm.getLabels(service.ObjectMeta)
 		err = rm.kubeClient.Create(context.TODO(), service)
 		if err != nil {
-			logger.Error(fmt.Sprintf("Failed to create service %v", service.ObjectMeta.Name), zap.Error(err))
+			logger.Error(fmt.Sprintf("Failed to create service %v", service.Name), zap.Error(err))
 			return err
 		}
 	} else {
 		if !reflect.DeepEqual(foundSrv, service) {
-			logger.Info(fmt.Sprintf("Updating %s k8s service", service.ObjectMeta.Name))
-			service.ObjectMeta.OwnerReferences = rm.GetOwnerReferences()
-			service.ObjectMeta.Labels = rm.getLabels(service.ObjectMeta)
+			logger.Info(fmt.Sprintf("Updating %s k8s service", service.Name))
+			service.OwnerReferences = rm.GetOwnerReferences()
+			service.Labels = rm.getLabels(service.ObjectMeta)
 			// Service update requires resource version
 			service.ResourceVersion = foundSrv.ResourceVersion
 			err = rm.kubeClient.Update(context.TODO(), service)
 			if err != nil {
-				logger.Error(fmt.Sprintf("Failed to update service %v", service.ObjectMeta.Name), zap.Error(err))
+				logger.Error(fmt.Sprintf("Failed to update service %v", service.Name), zap.Error(err))
 				return err
 			}
 		}
@@ -352,40 +352,40 @@ func (rm *ResourceManager) CreateOrUpdateDeploymentForce(deployment *appsv1.Depl
 }
 
 func (rm *ResourceManager) CreateOrUpdateDeployment(deployment *appsv1.Deployment, waitStability bool) error {
-	err, deploymentBefore := rm.FindDeployment(deployment)
+	deploymentBefore, err := rm.FindDeployment(deployment)
 	oldGeneration, deplRevision := deployment.Generation, int64(0)
 	if err != nil && errors.IsNotFound(err) {
-		logger.Info(fmt.Sprintf("Creating %s k8s deployment", deployment.ObjectMeta.Name))
-		deployment.ObjectMeta.OwnerReferences = rm.GetOwnerReferences()
-		deployment.ObjectMeta.Labels = rm.getLabels(deployment.ObjectMeta)
+		logger.Info(fmt.Sprintf("Creating %s k8s deployment", deployment.Name))
+		deployment.OwnerReferences = rm.GetOwnerReferences()
+		deployment.Labels = rm.getLabels(deployment.ObjectMeta)
 		err = rm.kubeClient.Create(context.TODO(), deployment)
 		if err != nil {
-			logger.Error(fmt.Sprintf("Failed to create deployment %v", deployment.ObjectMeta.Name), zap.Error(err))
+			logger.Error(fmt.Sprintf("Failed to create deployment %v", deployment.Name), zap.Error(err))
 			return err
 		}
 	} else {
 		copySystemAnnotations(&deploymentBefore.Spec.Template, &deployment.Spec.Template)
-		logger.Info(fmt.Sprintf("Updating %s k8s deployment", deployment.ObjectMeta.Name))
-		deployment.ObjectMeta.OwnerReferences = rm.GetOwnerReferences()
-		deployment.ObjectMeta.Labels = rm.getLabels(deployment.ObjectMeta)
+		logger.Info(fmt.Sprintf("Updating %s k8s deployment", deployment.Name))
+		deployment.OwnerReferences = rm.GetOwnerReferences()
+		deployment.Labels = rm.getLabels(deployment.ObjectMeta)
 		err = rm.kubeClient.Update(context.TODO(), deployment)
 		if err != nil {
-			logger.Error(fmt.Sprintf("Failed to update deployment %v", deployment.ObjectMeta.Name), zap.Error(err))
+			logger.Error(fmt.Sprintf("Failed to update deployment %v", deployment.Name), zap.Error(err))
 			return err
 		}
 	}
 	// Wait for patroni and Monitoring-collector deployment stability
 	if waitStability {
-		_, deploymentAfter := rm.FindDeployment(deployment)
-		depBeforeHash := opUtil.HashJson(deploymentBefore.Spec)
-		depAfterHash := opUtil.HashJson(deploymentAfter.Spec)
+		deploymentAfter, _ := rm.FindDeployment(deployment)
+		depBeforeHash := util.HashJson(deploymentBefore.Spec)
+		depAfterHash := util.HashJson(deploymentAfter.Spec)
 		if depBeforeHash != depAfterHash {
 			logger.Info("Deployment.Spec hash has differences")
 			deplRevision++
 		} else {
 			logger.Info("Deployment.Spec hash has no differences")
 		}
-		if err := opUtil.WaitForStabilityDepl(*deployment, deplRevision, oldGeneration); err != nil {
+		if err := util.WaitForStabilityDepl(*deployment, deplRevision, oldGeneration); err != nil {
 			logger.Error(fmt.Sprintf("Failed to wait for stable deployment: %s", deployment.Name), zap.Error(err))
 			return err
 		}
@@ -418,56 +418,56 @@ func copySystemAnnotationsToMap(source, target map[string]string) bool {
 func (rm *ResourceManager) CreateOrUpdateStatefulset(statefulSet *appsv1.StatefulSet, waitStability bool) error {
 
 	// Adding label to patroni statefulset for velero backup and restore
-	statefulSet.ObjectMeta.Labels["clone-mode-type"] = "data"
+	statefulSet.Labels["clone-mode-type"] = "data"
 
-	err, statefulSetBefore := rm.FindStatefulSet(statefulSet)
+	statefulSetBefore, err := rm.FindStatefulSet(statefulSet)
 	oldGeneration, stSetRevision := statefulSet.Generation, statefulSet.Status.CurrentRevision
 
 	if err != nil && errors.IsNotFound(err) {
-		logger.Info(fmt.Sprintf("Creating %s k8s StatefulSet", statefulSet.ObjectMeta.Name))
-		statefulSet.ObjectMeta.Labels = rm.getLabels(statefulSet.ObjectMeta)
-		statefulSet.ObjectMeta.OwnerReferences = rm.GetOwnerReferences()
+		logger.Info(fmt.Sprintf("Creating %s k8s StatefulSet", statefulSet.Name))
+		statefulSet.Labels = rm.getLabels(statefulSet.ObjectMeta)
+		statefulSet.OwnerReferences = rm.GetOwnerReferences()
 		err = rm.kubeClient.Create(context.TODO(), statefulSet)
 		if err != nil {
-			logger.Error(fmt.Sprintf("Failed to create StatefulSet %v", statefulSet.ObjectMeta.Name), zap.Error(err))
+			logger.Error(fmt.Sprintf("Failed to create StatefulSet %v", statefulSet.Name), zap.Error(err))
 			return err
 		}
 	} else {
 		if !equality.Semantic.DeepEqual(statefulSetBefore.Spec, statefulSet.Spec) {
-			logger.Info(fmt.Sprintf("Updating %s k8s StatefulSet", statefulSet.ObjectMeta.Name))
+			logger.Info(fmt.Sprintf("Updating %s k8s StatefulSet", statefulSet.Name))
 			err = rm.kubeClient.Delete(context.TODO(), statefulSetBefore)
 			if err != nil {
-				logger.Error(fmt.Sprintf("Failed to delete StatefulSet %v", statefulSetBefore.ObjectMeta.Name), zap.Error(err))
+				logger.Error(fmt.Sprintf("Failed to delete StatefulSet %v", statefulSetBefore.Name), zap.Error(err))
 				return err
 			}
-			statefulSet.ObjectMeta.Labels = rm.getLabels(statefulSet.ObjectMeta)
-			statefulSet.ObjectMeta.OwnerReferences = rm.GetOwnerReferences()
-			statefulSet.ObjectMeta.ResourceVersion = ""
+			statefulSet.Labels = rm.getLabels(statefulSet.ObjectMeta)
+			statefulSet.OwnerReferences = rm.GetOwnerReferences()
+			statefulSet.ResourceVersion = ""
 			oldGeneration = 0
 
 			err = rm.kubeClient.Create(context.TODO(), statefulSet)
 
-			_, statefulSetAfter := rm.FindStatefulSet(statefulSet)
+			statefulSetAfter, _ := rm.FindStatefulSet(statefulSet)
 			stSetRevision = statefulSetAfter.Status.CurrentRevision
 
 			if err != nil {
-				logger.Error(fmt.Sprintf("Failed to create StatefulSet %v", statefulSet.ObjectMeta.Name), zap.Error(err))
+				logger.Error(fmt.Sprintf("Failed to create StatefulSet %v", statefulSet.Name), zap.Error(err))
 				return err
 			}
 		}
 	}
 	// Wait for patroni and Monitoring-collector deployment stability
 	if waitStability {
-		_, stSetAfter := rm.FindStatefulSet(statefulSet)
-		stSetBeforeHash := opUtil.HashJson(statefulSetBefore.Spec)
-		stSetAfterHash := opUtil.HashJson(stSetAfter.Spec)
+		stSetAfter, _ := rm.FindStatefulSet(statefulSet)
+		stSetBeforeHash := util.HashJson(statefulSetBefore.Spec)
+		stSetAfterHash := util.HashJson(stSetAfter.Spec)
 		if stSetBeforeHash != stSetAfterHash {
 			logger.Info("StatefulSet.Spec hash has differences")
 			stSetRevision = stSetAfter.Status.CurrentRevision
 		} else {
 			logger.Info("StatefulSet.Spec hash has no differences")
 		}
-		if err := opUtil.WaitForStabilityStatefulSet(*statefulSet, stSetRevision, oldGeneration); err != nil {
+		if err := util.WaitForStabilityStatefulSet(*statefulSet, stSetRevision, oldGeneration); err != nil {
 			logger.Error(fmt.Sprintf("Failed to wait for stable StatefulSet: %s", statefulSet.Name), zap.Error(err))
 			return err
 		}
@@ -475,20 +475,20 @@ func (rm *ResourceManager) CreateOrUpdateStatefulset(statefulSet *appsv1.Statefu
 	return nil
 }
 
-func (rm *ResourceManager) FindDeployment(deployment *appsv1.Deployment) (error, *appsv1.Deployment) {
+func (rm *ResourceManager) FindDeployment(deployment *appsv1.Deployment) (*appsv1.Deployment, error) {
 	foundDepl := &appsv1.Deployment{}
 	err := rm.kubeClient.Get(context.TODO(), types.NamespacedName{
 		Name: deployment.Name, Namespace: deployment.Namespace,
 	}, foundDepl)
-	return err, foundDepl
+	return foundDepl, err
 }
 
-func (rm *ResourceManager) FindStatefulSet(statefulset *appsv1.StatefulSet) (error, *appsv1.StatefulSet) {
+func (rm *ResourceManager) FindStatefulSet(statefulset *appsv1.StatefulSet) (*appsv1.StatefulSet, error) {
 	foundStSet := &appsv1.StatefulSet{}
 	err := rm.kubeClient.Get(context.TODO(), types.NamespacedName{
 		Name: statefulset.Name, Namespace: statefulset.Namespace,
 	}, foundStSet)
-	return err, foundStSet
+	return foundStSet, err
 }
 
 func (rm *ResourceManager) CreatePvcIfNotExists(pvc *corev1.PersistentVolumeClaim) error {
@@ -496,20 +496,20 @@ func (rm *ResourceManager) CreatePvcIfNotExists(pvc *corev1.PersistentVolumeClai
 	err := rm.kubeClient.Get(context.TODO(), types.NamespacedName{
 		Name: pvc.Name, Namespace: pvc.Namespace,
 	}, foundPvc)
-	logger.Info(fmt.Sprintf("Start to check if pvc %s exists", pvc.ObjectMeta.Name))
+	logger.Info(fmt.Sprintf("Start to check if pvc %s exists", pvc.Name))
 	if err != nil && errors.IsNotFound(err) {
-		logger.Info(fmt.Sprintf("Creating %s PVC", pvc.ObjectMeta.Name))
+		logger.Info(fmt.Sprintf("Creating %s PVC", pvc.Name))
 		err = rm.kubeClient.Create(context.TODO(), pvc)
 		if err != nil {
-			logger.Error(fmt.Sprintf("Failed to create pvc %s", pvc.ObjectMeta.Name), zap.Error(err))
+			logger.Error(fmt.Sprintf("Failed to create pvc %s", pvc.Name), zap.Error(err))
 			return err
 		}
 	} else {
-		logger.Info(fmt.Sprintf("PVC %s exists, clearing owner reference...", pvc.ObjectMeta.Name))
+		logger.Info(fmt.Sprintf("PVC %s exists, clearing owner reference...", pvc.Name))
 		foundPvc.OwnerReferences = nil
 		err := rm.kubeClient.Update(context.TODO(), foundPvc)
 		if err != nil {
-			logger.Error(fmt.Sprintf("Failed to clear Owner Reference for %s", pvc.ObjectMeta.Name), zap.Error(err))
+			logger.Error(fmt.Sprintf("Failed to clear Owner Reference for %s", pvc.Name), zap.Error(err))
 			return err
 		}
 	}
@@ -522,12 +522,12 @@ func (rm *ResourceManager) CreateSecretIfNotExists(secret *corev1.Secret) error 
 		Name: secret.Name, Namespace: secret.Namespace,
 	}, foundSecret)
 	if err != nil && errors.IsNotFound(err) {
-		logger.Info(fmt.Sprintf("Creating %s secret", secret.ObjectMeta.Name))
-		secret.ObjectMeta.OwnerReferences = rm.GetOwnerReferences()
-		secret.ObjectMeta.Labels = rm.getLabels(secret.ObjectMeta)
+		logger.Info(fmt.Sprintf("Creating %s secret", secret.Name))
+		secret.OwnerReferences = rm.GetOwnerReferences()
+		secret.Labels = rm.getLabels(secret.ObjectMeta)
 		err = rm.kubeClient.Create(context.TODO(), secret)
 		if err != nil {
-			logger.Error(fmt.Sprintf("Failed to create secret %s", secret.ObjectMeta.Name), zap.Error(err))
+			logger.Error(fmt.Sprintf("Failed to create secret %s", secret.Name), zap.Error(err))
 			return err
 		}
 	}
@@ -540,24 +540,24 @@ func (rm *ResourceManager) CreateOrUpdateSecret(secret *corev1.Secret) error {
 		Name: secret.Name, Namespace: secret.Namespace,
 	}, foundSecret)
 	if err != nil && errors.IsNotFound(err) {
-		logger.Info(fmt.Sprintf("Creating %s secret", secret.ObjectMeta.Name))
-		secret.ObjectMeta.OwnerReferences = rm.GetOwnerReferences()
-		secret.ObjectMeta.Labels = rm.getLabels(secret.ObjectMeta)
+		logger.Info(fmt.Sprintf("Creating %s secret", secret.Name))
+		secret.OwnerReferences = rm.GetOwnerReferences()
+		secret.Labels = rm.getLabels(secret.ObjectMeta)
 		err = rm.kubeClient.Create(context.TODO(), secret)
 		if err != nil {
-			logger.Error(fmt.Sprintf("Failed to create secret %s", secret.ObjectMeta.Name), zap.Error(err))
+			logger.Error(fmt.Sprintf("Failed to create secret %s", secret.Name), zap.Error(err))
 			return err
 		}
 	} else {
 		if !reflect.DeepEqual(foundSecret, secret) {
-			logger.Info(fmt.Sprintf("Updating %s k8s secret", secret.ObjectMeta.Name))
-			secret.ObjectMeta.OwnerReferences = rm.GetOwnerReferences()
-			secret.ObjectMeta.Labels = rm.getLabels(secret.ObjectMeta)
+			logger.Info(fmt.Sprintf("Updating %s k8s secret", secret.Name))
+			secret.OwnerReferences = rm.GetOwnerReferences()
+			secret.Labels = rm.getLabels(secret.ObjectMeta)
 			// Service update requires resource version
 			secret.ResourceVersion = foundSecret.ResourceVersion
 			err = rm.kubeClient.Update(context.TODO(), secret)
 			if err != nil {
-				logger.Error(fmt.Sprintf("Failed to update secret %v", secret.ObjectMeta.Name), zap.Error(err))
+				logger.Error(fmt.Sprintf("Failed to update secret %v", secret.Name), zap.Error(err))
 				return err
 			}
 		}
@@ -565,17 +565,17 @@ func (rm *ResourceManager) CreateOrUpdateSecret(secret *corev1.Secret) error {
 	return nil
 }
 
-func (rm *ResourceManager) CreateEndpointIfNotExists(endpoint *corev1.Endpoints) error {
-	foundEndpoint := &corev1.Endpoints{}
+func (rm *ResourceManager) CreateEndpointSliceIfNotExists(endpointSlice *discoveryv1.EndpointSlice) error {
+	foundEndpointSlice := &discoveryv1.EndpointSlice{}
 	err := rm.kubeClient.Get(context.TODO(), types.NamespacedName{
-		Name: endpoint.Name, Namespace: endpoint.Namespace,
-	}, foundEndpoint)
+		Name: endpointSlice.Name, Namespace: endpointSlice.Namespace,
+	}, foundEndpointSlice)
 	if err != nil && errors.IsNotFound(err) {
-		logger.Info(fmt.Sprintf("Creating %s k8s service", endpoint.ObjectMeta.Name))
-		endpoint.ObjectMeta.OwnerReferences = rm.GetOwnerReferences()
-		err = rm.kubeClient.Create(context.TODO(), endpoint)
+		logger.Info(fmt.Sprintf("Creating %s k8s EndpointSlice", endpointSlice.Name))
+		endpointSlice.OwnerReferences = rm.GetOwnerReferences()
+		err = rm.kubeClient.Create(context.TODO(), endpointSlice)
 		if err != nil {
-			logger.Error(fmt.Sprintf("Failed to create service %s", endpoint.ObjectMeta.Name), zap.Error(err))
+			logger.Error(fmt.Sprintf("Failed to create EndpointSlice %s", endpointSlice.Name), zap.Error(err))
 			return err
 		}
 	} else if err != nil {
@@ -610,11 +610,11 @@ func (rm *ResourceManager) DeletePod(pod *corev1.Pod) error {
 		Name: pod.Name, Namespace: pod.Namespace,
 	}, foundPod)
 	if err != nil && !errors.IsNotFound(err) {
-		logger.Error(fmt.Sprintf("ERROR DELETE POD %v ", foundPod.ObjectMeta.Name), zap.Error(err))
+		logger.Error(fmt.Sprintf("ERROR DELETE POD %v ", foundPod.Name), zap.Error(err))
 		return err
 	}
 	if err := rm.kubeClient.Delete(context.TODO(), foundPod); err != nil {
-		logger.Error(fmt.Sprintf("ERROR DELETE POD %v", foundPod.ObjectMeta.Name), zap.Error(err))
+		logger.Error(fmt.Sprintf("ERROR DELETE POD %v", foundPod.Name), zap.Error(err))
 		return err
 	}
 
@@ -626,7 +626,7 @@ func (rm *ResourceManager) DeletePodWithWaiting(pod *corev1.Pod) error {
 	if err != nil {
 		return err
 	}
-	err = opUtil.WaitDeletePod(pod)
+	err = util.WaitDeletePod(pod)
 	if err != nil {
 		return err
 	}
@@ -639,14 +639,14 @@ func (rm *ResourceManager) DeleteDeployment(deploymentName string) error {
 		Name: deploymentName, Namespace: util.GetNameSpace(),
 	}, foundDeployment)
 	if err != nil && !errors.IsNotFound(err) {
-		logger.Error(fmt.Sprintf("error during Deployment deletion %v ", foundDeployment.ObjectMeta.Name), zap.Error(err))
+		logger.Error(fmt.Sprintf("error during Deployment deletion %v ", foundDeployment.Name), zap.Error(err))
 		return err
 	} else if err != nil {
 		logger.Info(fmt.Sprintf("Deployment %s is not exist", deploymentName))
 		return nil
 	}
 	if err := rm.kubeClient.Delete(context.TODO(), foundDeployment); err != nil {
-		logger.Error(fmt.Sprintf("error during Deployment deletion %v", foundDeployment.ObjectMeta.Name), zap.Error(err))
+		logger.Error(fmt.Sprintf("error during Deployment deletion %v", foundDeployment.Name), zap.Error(err))
 		return err
 	}
 	err = rm.WaitTillDeploymentDeleted(foundDeployment)
@@ -675,8 +675,8 @@ func (rm *ResourceManager) UpdatePGService() error {
 	var svcNames = []string{"postgres-operator", "dbaas-postgres-adapter"}
 	for _, svcName := range svcNames {
 		svc := rm.GetService(svcName, util.GetNameSpace())
-		svc.ObjectMeta.OwnerReferences = rm.GetOwnerReferences()
-		svc.ObjectMeta.Labels = rm.getLabels(svc.ObjectMeta)
+		svc.OwnerReferences = rm.GetOwnerReferences()
+		svc.Labels = rm.getLabels(svc.ObjectMeta)
 		if err := rm.UpdateService(svc); err != nil {
 			logger.Error("error during update of pgService in resource_management.go", zap.Error(err))
 			return err
@@ -692,7 +692,7 @@ func (rm *ResourceManager) UpdatePatroniConfigMaps() error {
 		if err != nil {
 			return err
 		}
-		cmap.ObjectMeta.OwnerReferences = rm.GetOwnerReferences()
+		cmap.OwnerReferences = rm.GetOwnerReferences()
 		if _, err := rm.CreateOrUpdateConfigMap(cmap); err != nil {
 			logger.Error("error during update of patroni configMap in resource_management.go", zap.Error(err))
 			return err
@@ -748,11 +748,11 @@ func (rm *ResourceManager) CreateServiceIfNotExists(service *corev1.Service) err
 		Name: service.Name, Namespace: service.Namespace,
 	}, foundService)
 	if err != nil && errors.IsNotFound(err) {
-		logger.Info(fmt.Sprintf("Creating %s k8s service", service.ObjectMeta.Name))
-		service.ObjectMeta.Labels = rm.getLabels(service.ObjectMeta)
+		logger.Info(fmt.Sprintf("Creating %s k8s service", service.Name))
+		service.Labels = rm.getLabels(service.ObjectMeta)
 		err = rm.kubeClient.Create(context.TODO(), service)
 		if err != nil {
-			logger.Error(fmt.Sprintf("Failed to create service %s", service.ObjectMeta.Name), zap.Error(err))
+			logger.Error(fmt.Sprintf("Failed to create service %s", service.Name), zap.Error(err))
 			return err
 		}
 	} else if err != nil {
@@ -767,11 +767,11 @@ func (rm *ResourceManager) CreateConfigMapIfNotExists(cm *corev1.ConfigMap) erro
 		Name: cm.Name, Namespace: cm.Namespace,
 	}, foundCm)
 	if err != nil && errors.IsNotFound(err) {
-		logger.Info(fmt.Sprintf("Creating %s configMap", cm.ObjectMeta.Name))
-		cm.ObjectMeta.Labels = rm.getLabels(cm.ObjectMeta)
+		logger.Info(fmt.Sprintf("Creating %s configMap", cm.Name))
+		cm.Labels = rm.getLabels(cm.ObjectMeta)
 		err = rm.kubeClient.Create(context.TODO(), cm)
 		if err != nil {
-			logger.Error(fmt.Sprintf("Failed to create configMap %s", cm.ObjectMeta.Name), zap.Error(err))
+			logger.Error(fmt.Sprintf("Failed to create configMap %s", cm.Name), zap.Error(err))
 			return err
 		}
 	}
@@ -878,7 +878,7 @@ func (rm *ResourceManager) UpdatePatroniReplicas(replicas int32, clusterName str
 	for idx := 0; idx < len(stSetsToUpdate); idx++ {
 		err := rm.kubeClient.Update(context.TODO(), stSetsToUpdate[idx])
 		if err != nil {
-			logger.Error(fmt.Sprintf("Failed to update statefulsets %v to scale to %v", stSetsToUpdate[idx].ObjectMeta.Name, replicas), zap.Error(err))
+			logger.Error(fmt.Sprintf("Failed to update statefulsets %v to scale to %v", stSetsToUpdate[idx].Name, replicas), zap.Error(err))
 			return err
 		}
 	}
@@ -982,7 +982,7 @@ func (rm *ResourceManager) getOperatorLabels() (map[string]string, error) {
 	}
 
 	deployment := foundDeployment[0]
-	labels := deployment.Spec.Template.ObjectMeta.Labels
+	labels := deployment.Spec.Template.Labels
 	return labels, nil
 }
 

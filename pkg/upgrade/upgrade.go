@@ -133,13 +133,13 @@ func (u *Upgrade) UpdateUpgradeToDone() error {
 func (u *Upgrade) CleanInitializeKey(clusterName string) error {
 	var cm *corev1.ConfigMap
 	cmName := fmt.Sprintf("%s-config", clusterName)
-	cm, err := u.helper.ResourceManager.GetConfigMap(cmName)
+	cm, err := u.helper.GetConfigMap(cmName)
 	if err != nil {
 		logger.Error(fmt.Sprintf("Can't get configmap %s-config", cmName), zap.Error(err))
 		return err
 	}
-	cm.ObjectMeta.Annotations["initialize"] = ""
-	delete(cm.ObjectMeta.Annotations, "initialize")
+	cm.Annotations["initialize"] = ""
+	delete(cm.Annotations, "initialize")
 	if err = u.client.Update(context.TODO(), cm); err != nil {
 		logger.Error(fmt.Sprintf("Could not update %s config map", cmName), zap.Error(err))
 		return err
@@ -150,7 +150,7 @@ func (u *Upgrade) CleanInitializeKey(clusterName string) error {
 func (u *Upgrade) GetInitDbArgs(patroniTemplate string, configMapKey string) (string, error) {
 	var cm *corev1.ConfigMap
 	cmName := patroniTemplate
-	cm, err := u.helper.ResourceManager.GetConfigMap(cmName)
+	cm, err := u.helper.GetConfigMap(cmName)
 	if err != nil {
 		logger.Error(fmt.Sprintf("Can't get configmap %s", cmName), zap.Error(err))
 		return "", err
@@ -203,7 +203,12 @@ func (u *Upgrade) IfAbsTimeIsUsed(pgC *pgClient.PostgresClient, db string) bool 
 	if err != nil {
 		return false
 	}
-	defer conn.Close(context.Background())
+	defer func() {
+		err := conn.Close(context.Background())
+		if err != nil {
+			logger.Warn("Error closing connection", zap.Error(err))
+		}
+	}()
 
 	checkForAbsTimeQuery := "SELECT 1 FROM information_schema.columns WHERE data_type = 'abstime' AND table_schema <> 'pg_catalog';"
 	rows, err := conn.Query(context.Background(), checkForAbsTimeQuery)
@@ -237,7 +242,7 @@ func (u *Upgrade) applyCleanerInitContainer(leaderName string, patroniSpec *v1.P
 	var err error
 	cleanerInitContainer := u.GetCleanerInitContainer(patroniSpec.DockerImage)
 	patroniDeploymentName := fmt.Sprintf("pg-%s-node", cluster.ClusterName)
-	if deploymentList, err = u.helper.ResourceManager.GetStatefulsetByNameRegExp(patroniDeploymentName); err != nil {
+	if deploymentList, err = u.helper.GetStatefulsetByNameRegExp(patroniDeploymentName); err != nil {
 		logger.Error("Can't get Patroni Deployments", zap.Error(err))
 		return err
 	}
@@ -251,7 +256,7 @@ func (u *Upgrade) applyCleanerInitContainer(leaderName string, patroniSpec *v1.P
 		dep.Spec.Template.Spec.Containers[0].Image = patroniSpec.DockerImage
 		dep.Spec.Replicas = &replicas
 
-		if err := u.helper.ResourceManager.CreateOrUpdateStatefulset(dep, true); err != nil {
+		if err := u.helper.CreateOrUpdateStatefulset(dep, true); err != nil {
 			logger.Error("Can't update Patroni deployment", zap.Error(err))
 			return err
 		}
@@ -322,7 +327,7 @@ func (u *Upgrade) CheckForPreparedTransactions(pgHost string) error {
 
 func (u *Upgrade) ProceedUpgrade(cr *v1.PatroniCore, cluster *v1.PatroniClusterSettings) error {
 
-	masterPod, err := u.helper.ResourceManager.GetPodsByLabel(cluster.PatroniMasterSelectors)
+	masterPod, err := u.helper.GetPodsByLabel(cluster.PatroniMasterSelectors)
 	if err != nil || len(masterPod.Items) == 0 {
 		logger.Error("Can't get Patroni Leader for pg_dumpall execution, failing major upgrade", zap.Error(err))
 		return err
@@ -380,7 +385,7 @@ func (u *Upgrade) ProceedUpgrade(cr *v1.PatroniCore, cluster *v1.PatroniClusterS
 	}
 
 	//deleting powa pod
-	if err := u.helper.ResourceManager.DeletePodsByLabel(powaUILabels); err != nil {
+	if err := u.helper.DeletePodsByLabel(powaUILabels); err != nil {
 		return err
 	}
 
@@ -392,7 +397,7 @@ func (u *Upgrade) ProceedUpgrade(cr *v1.PatroniCore, cluster *v1.PatroniClusterS
 	}
 
 	// wait until all patroni pods will power off
-	patroniPods, err := u.helper.ResourceManager.GetNamespacePodListBySelectors(cluster.PatroniCommonLabels)
+	patroniPods, err := u.helper.GetNamespacePodListBySelectors(cluster.PatroniCommonLabels)
 	if err != nil {
 		return err
 	}
@@ -424,7 +429,7 @@ func (u *Upgrade) ProceedUpgrade(cr *v1.PatroniCore, cluster *v1.PatroniClusterS
 	upgradePod.Spec.SecurityContext = patroniDeployment.Spec.Template.Spec.SecurityContext
 
 	// create pod and wait till completed
-	if err := u.helper.ResourceManager.CreatePod(upgradePod); err != nil {
+	if err := u.helper.CreatePod(upgradePod); err != nil {
 		return err
 	}
 
@@ -442,7 +447,7 @@ func (u *Upgrade) ProceedUpgrade(cr *v1.PatroniCore, cluster *v1.PatroniClusterS
 	}
 
 	// upgrade completed, apply patroni deployment
-	if err := u.helper.ResourceManager.CreateOrUpdateStatefulset(patroniDeployment, true); err != nil {
+	if err := u.helper.CreateOrUpdateStatefulset(patroniDeployment, true); err != nil {
 		logger.Error("Can't update Patroni deployment", zap.Error(err))
 		return err
 	}
@@ -460,7 +465,7 @@ func (u *Upgrade) ProceedUpgrade(cr *v1.PatroniCore, cluster *v1.PatroniClusterS
 	}
 
 	// Store pg version after upgrade
-	updatedMasterPod, err := u.helper.ResourceManager.GetPodsByLabel(cluster.PatroniMasterSelectors)
+	updatedMasterPod, err := u.helper.GetPodsByLabel(cluster.PatroniMasterSelectors)
 	if err != nil {
 		logger.Info("Can not get master pod")
 	}
@@ -597,7 +602,7 @@ func (u *Upgrade) getPgVersionContainer(targetDockerImage string) []corev1.Conta
 
 func (u *Upgrade) ScalePowaDeployment(replicas int32) error {
 	powaDeploymentName := "powa-ui"
-	deploymentsToUpdate, err := u.helper.ResourceManager.GetDeploymentsByNameRegExp(powaDeploymentName)
+	deploymentsToUpdate, err := u.helper.GetDeploymentsByNameRegExp(powaDeploymentName)
 	if err != nil {
 		return err
 	}
@@ -609,7 +614,7 @@ func (u *Upgrade) ScalePowaDeployment(replicas int32) error {
 	for _, dep := range deploymentsToUpdate {
 		logger.Info(fmt.Sprintf("Scale %v to %v", dep.Name, replicas))
 		dep.Spec.Replicas = &replicas
-		if err := u.helper.ResourceManager.CreateOrUpdateDeployment(dep, true); err != nil {
+		if err := u.helper.CreateOrUpdateDeployment(dep, true); err != nil {
 			logger.Error("Can't update powa-ui deployment", zap.Error(err))
 			return err
 		}
@@ -643,7 +648,7 @@ func (u *Upgrade) RunUpgradePatroniPod(cr *v1.PatroniCore, cluster *v1.PatroniCl
 		}
 	}
 	// create pod and wait till completed
-	if err := u.helper.ResourceManager.CreatePod(upgradeCheckPod); err != nil {
+	if err := u.helper.CreatePod(upgradeCheckPod); err != nil {
 		return nil, err
 	}
 	if err := u.waitTillPodIsRunning(upgradeCheckPod); err != nil {
@@ -688,7 +693,7 @@ func (u *Upgrade) getUpgradeCheckPod(cr *v1.PatroniCore) *corev1.Pod {
 
 func (u *Upgrade) CheckUpgrade(cr *v1.PatroniCore, cluster *v1.PatroniClusterSettings) bool {
 
-	masterPod, err := u.helper.ResourceManager.GetPodsByLabel(cluster.PatroniMasterSelectors)
+	masterPod, err := u.helper.GetPodsByLabel(cluster.PatroniMasterSelectors)
 	if err != nil || len(masterPod.Items) == 0 {
 		logger.Error("Can't check is major upgrade required. Master pod is not available", zap.Error(err))
 		return false
@@ -697,7 +702,7 @@ func (u *Upgrade) CheckUpgrade(cr *v1.PatroniCore, cluster *v1.PatroniClusterSet
 	u.helper.StoreDataToCM("pg-version", currentVersion)
 	upgradeCheckPod, _ := u.RunUpgradePatroniPod(cr, cluster)
 	targetVersion := u.helper.GetPGVersionFromPod(upgradeCheckPod.Name)
-	if err := u.helper.ResourceManager.DeletePod(upgradeCheckPod); err != nil {
+	if err := u.helper.DeletePod(upgradeCheckPod); err != nil {
 		logger.Warn("Can't delete pg-upgrade-check-pod", zap.Error(err))
 	}
 

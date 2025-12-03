@@ -66,7 +66,7 @@ func GetPatroniHelper() *PatroniHelper {
 func (ph *PatroniHelper) UpdatePatroniCore(service *qubershipv1.PatroniCore) error {
 	err := ph.kubeClient.Update(context.TODO(), service)
 	if err != nil {
-		logger.Error(fmt.Sprintf("Failed to update PatroniCore %v", service.ObjectMeta.Name), zap.Error(err))
+		logger.Error(fmt.Sprintf("Failed to update PatroniCore %v", service.Name), zap.Error(err))
 		return err
 	}
 	return nil
@@ -79,9 +79,9 @@ func (ph *PatroniHelper) AddNameAndUID(name string, uid types.UID, kind string) 
 		logger.Error(message, zap.Error(err))
 		return err
 	}
-	ph.ResourceManager.name = name
-	ph.ResourceManager.uid = uid
-	ph.ResourceManager.kind = kind
+	ph.name = name
+	ph.uid = uid
+	ph.kind = kind
 	return nil
 }
 
@@ -103,7 +103,7 @@ func (ph *PatroniHelper) GetCustomResource() qubershipv1.PatroniCore {
 func (ph *PatroniHelper) UpdatePostgresService(service *qubershipv1.PatroniCore) error {
 	err := ph.kubeClient.Update(context.TODO(), service)
 	if err != nil {
-		logger.Error(fmt.Sprintf("Failed to update PatroniCore %v", service.ObjectMeta.Name), zap.Error(err))
+		logger.Error(fmt.Sprintf("Failed to update PatroniCore %v", service.Name), zap.Error(err))
 		return err
 	}
 	return nil
@@ -242,8 +242,8 @@ func (ph *PatroniHelper) WaitUntilReconcileIsDone() error {
 			return false, nil
 		}
 		if strings.ToLower(cr.Status.Conditions[0].Type) == "failed" {
-			logger.Error("Recocile status failed, please fix your cluster and try again", zap.Error(err))
-			return true, genericerror.New("Reconcile status failed")
+			logger.Error("recocile status failed, please fix your cluster and try again", zap.Error(err))
+			return true, genericerror.New("reconcile status failed")
 		}
 		return true, nil
 	})
@@ -536,11 +536,11 @@ func (ph *PatroniHelper) getStandbyClusterConfigurationFromSiteManager() map[str
 
 func (ph *PatroniHelper) DeleteCleanerInitContainer(clusterName string) error {
 	patroniDeploymentName := fmt.Sprintf("pg-%s-node", clusterName)
-	if satefulsetsList, err := ph.ResourceManager.GetStatefulsetByNameRegExp(patroniDeploymentName); err != nil {
+	if satefulsetsList, err := ph.GetStatefulsetByNameRegExp(patroniDeploymentName); err != nil {
 		logger.Error("Can't get Patroni Deployments", zap.Error(err))
 		return err
 	} else {
-		return ph.ResourceManager.DeleteInitContainer(satefulsetsList, "pg-cleaner")
+		return ph.DeleteInitContainer(satefulsetsList, "pg-cleaner")
 	}
 }
 
@@ -584,7 +584,7 @@ func (ph *PatroniHelper) IsPatroniClusterDegradedDuringUpdate(config *ClusterSta
 	expectedMembersCount := ph.ifExpectedCountOfMembers(expectedMembersNum, *config)
 	isExpectedReplicationCount := ph.isExpectedReplicationCount(pgHost, expectedMembersNum-1)
 	logger.Info(fmt.Sprintf("Check Is Patroni Cluster Degraded: isExpectedReplicationCount: %t; expectedMembersCount: %t;", isExpectedReplicationCount, expectedMembersCount))
-	return !(isExpectedReplicationCount && expectedMembersCount)
+	return !isExpectedReplicationCount || !expectedMembersCount
 }
 
 func (ph *PatroniHelper) IsPatroniClusterHealthy(config *ClusterStatus) bool {
@@ -610,7 +610,7 @@ func (ph *PatroniHelper) IsPatroniClusterDegraded(config *ClusterStatus, pgHost 
 	expectedMembersCount := ph.ifExpectedCountOfMembers(expectedMembersNum, *config)
 	isExpectedReplicationCount := ph.isExpectedReplicationCount(pgHost, expectedMembersNum-1)
 	logger.Info(fmt.Sprintf("Check Is Patroni Cluster Degraded: isExpectedReplicationCount: %t; expectedMembersCount: %t;", isExpectedReplicationCount, expectedMembersCount))
-	return !(isExpectedReplicationCount && expectedMembersCount)
+	return !isExpectedReplicationCount || !expectedMembersCount
 }
 
 func (ph *PatroniHelper) StoreDataToCM(key string, value string) {
@@ -658,7 +658,10 @@ func (ph *PatroniHelper) GetLocaleVersion(podName string) string {
 		version := ph.GetLocaleVersionFromPod(podName)
 		if version != "" {
 			versionCM.Data["locale-version"] = version
-			ph.CreateOrUpdateConfigMap(versionCM)
+			_, err := ph.CreateOrUpdateConfigMap(versionCM)
+			if err != nil {
+				logger.Error("Failed to create or update config map deployment-info", zap.Error(err))
+			}
 		}
 		return version
 	}

@@ -457,7 +457,7 @@ func (r *PostgresServiceReconciler) createTestsPods(cr *qubershipv1.PatroniServi
 		}
 		if state != "Running" {
 			if state != "NotFound" {
-				if err := r.helper.ResourceManager.DeletePodWithWaiting(integrationTestsPod); err != nil {
+				if err := r.helper.DeletePodWithWaiting(integrationTestsPod); err != nil {
 					r.logger.Error("Error deleting pod with tests. Let's try to continue.", zap.Error(err))
 				}
 			}
@@ -465,7 +465,7 @@ func (r *PostgresServiceReconciler) createTestsPods(cr *qubershipv1.PatroniServi
 				r.logger.Info("Policies is not empty, setting them to Test Pod")
 				integrationTestsPod.Spec.Tolerations = cr.Spec.Policies.Tolerations
 			}
-			if err := r.helper.ResourceManager.CreatePod(integrationTestsPod); err != nil {
+			if err := r.helper.CreatePod(integrationTestsPod); err != nil {
 				return err
 			}
 		}
@@ -596,12 +596,12 @@ func (r *PostgresServiceReconciler) AddExcludeLabelToCm(c client.Client, cmName 
 		r.logger.Info(fmt.Sprintf("ConfigMap %s not found", cmName))
 		return nil
 	}
-	if foundCm.ObjectMeta.Labels == nil {
-		foundCm.ObjectMeta.Labels = make(map[string]string)
-		foundCm.ObjectMeta.Labels["velero.io/exclude-from-backup"] = "true"
+	if foundCm.Labels == nil {
+		foundCm.Labels = make(map[string]string)
+		foundCm.Labels["velero.io/exclude-from-backup"] = "true"
 		err = c.Update(context.TODO(), foundCm)
 		if err != nil {
-			r.logger.Error(fmt.Sprintf("Failed to update configMap %s", foundCm.ObjectMeta.Name), zap.Error(err))
+			r.logger.Error(fmt.Sprintf("Failed to update configMap %s", foundCm.Name), zap.Error(err))
 			return err
 		}
 	}
