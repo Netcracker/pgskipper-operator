@@ -355,9 +355,9 @@ func (rm *ResourceManager) CreateOrUpdateDeployment(deployment *appsv1.Deploymen
 	deploymentBefore, err := rm.FindDeployment(deployment)
 	oldGeneration, deplRevision := deployment.Generation, int64(0)
 	if err != nil && errors.IsNotFound(err) {
-		logger.Info(fmt.Sprintf("Creating %s k8s deployment", deployment.ObjectMeta.Name))
-		deployment.ObjectMeta.OwnerReferences = rm.GetOwnerReferences()
-		deployment.ObjectMeta.Labels = rm.getLabels(deployment.ObjectMeta)
+		logger.Info(fmt.Sprintf("Creating %s k8s deployment", deployment.Name))
+		deployment.OwnerReferences = rm.GetOwnerReferences()
+		deployment.Labels = rm.getLabels(deployment.ObjectMeta)
 		err = rm.kubeClient.Create(context.TODO(), deployment)
 		if err != nil {
 			logger.Error(fmt.Sprintf("Failed to create deployment %v", deployment.Name), zap.Error(err))
@@ -365,9 +365,9 @@ func (rm *ResourceManager) CreateOrUpdateDeployment(deployment *appsv1.Deploymen
 		}
 	} else {
 		copySystemAnnotations(&deploymentBefore.Spec.Template, &deployment.Spec.Template)
-		logger.Info(fmt.Sprintf("Updating %s k8s deployment", deployment.ObjectMeta.Name))
-		deployment.ObjectMeta.OwnerReferences = rm.GetOwnerReferences()
-		deployment.ObjectMeta.Labels = rm.getLabels(deployment.ObjectMeta)
+		logger.Info(fmt.Sprintf("Updating %s k8s deployment", deployment.Name))
+		deployment.OwnerReferences = rm.GetOwnerReferences()
+		deployment.Labels = rm.getLabels(deployment.ObjectMeta)
 		err = rm.kubeClient.Update(context.TODO(), deployment)
 		if err != nil {
 			logger.Error(fmt.Sprintf("Failed to update deployment %v", deployment.Name), zap.Error(err))

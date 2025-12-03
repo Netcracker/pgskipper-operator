@@ -39,11 +39,11 @@ spec:
           - name: APPLICATION_NAME
             valueFrom:
               fieldRef:
-                fieldPath: metadata.labels['app.kubernetes.io/part-of'] 
+                fieldPath: metadata.labels['app.kubernetes.io/part-of']
           - name: SESSION_ID
             valueFrom:
               fieldRef:
-                fieldPath: metadata.labels['deployment.netcracker.com/sessionId']          
+                fieldPath: metadata.labels['deployment.netcracker.com/sessionId']
         resources:
           {{ toYaml .Values.operatorInit.resources | nindent 10 }}
         securityContext:

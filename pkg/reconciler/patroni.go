@@ -683,18 +683,18 @@ func findBrokenIndexes(pgClient *pgClient.PostgresClient, db string) ([]string, 
 	logger.Debug(fmt.Sprintf("check broken indexes for db: %s", db))
 
 	brokenIndexQuery := `
-		SELECT 
+		SELECT
 			n.nspname AS schema_name,
 			c.relname AS index_name
-		FROM 
+		FROM
 			pg_index i
-		JOIN 
+		JOIN
 			pg_class c ON i.indexrelid = c.oid
-		JOIN 
+		JOIN
 			pg_namespace n ON c.relnamespace = n.oid
-		WHERE 
+		WHERE
 			n.nspname NOT IN ('pg_catalog', 'information_schema') AND i.indisvalid = false AND ( c.relname like '%_ccnew%' or c.relname like '%_ccold%')
-		ORDER BY 
+		ORDER BY
 				schema_name, index_name;`
 
 	conn, err := pgClient.GetConnectionToDb(db)
@@ -755,7 +755,7 @@ func (r *PatroniReconciler) getCollationsForRefresh(pgClient *pgClient.PostgresC
 	rows, err := conn.Query(context.Background(), `SELECT distinct c.collname AS "Collation"
 			FROM pg_depend d
 			JOIN pg_collation c ON (refclassid = 'pg_collation'::regclass AND refobjid = c.oid)
-            WHERE c.collversion <> pg_collation_actual_version(c.oid) or c.collversion is null;`)
+			WHERE c.collversion <> pg_collation_actual_version(c.oid) or c.collversion is null;`)
 	if err != nil {
 		logger.Error(fmt.Sprintf("error during fetching collations for database %s", db))
 		return nil, err
