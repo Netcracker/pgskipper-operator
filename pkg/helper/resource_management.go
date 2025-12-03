@@ -376,9 +376,9 @@ func (rm *ResourceManager) CreateOrUpdateDeployment(deployment *appsv1.Deploymen
 	}
 	// Wait for patroni and Monitoring-collector deployment stability
 	if waitStability {
-		_, deploymentAfter := rm.FindDeployment(deployment)
-		depBeforeHash := opUtil.HashJson(deploymentBefore.Spec)
-		depAfterHash := opUtil.HashJson(deploymentAfter.Spec)
+		deploymentAfter, _ := rm.FindDeployment(deployment)
+		depBeforeHash := util.HashJson(deploymentBefore.Spec)
+		depAfterHash := util.HashJson(deploymentAfter.Spec)
 		if depBeforeHash != depAfterHash {
 			logger.Info("Deployment.Spec hash has differences")
 			deplRevision++
@@ -458,9 +458,9 @@ func (rm *ResourceManager) CreateOrUpdateStatefulset(statefulSet *appsv1.Statefu
 	}
 	// Wait for patroni and Monitoring-collector deployment stability
 	if waitStability {
-		_, stSetAfter := rm.FindStatefulSet(statefulSet)
-		stSetBeforeHash := opUtil.HashJson(statefulSetBefore.Spec)
-		stSetAfterHash := opUtil.HashJson(stSetAfter.Spec)
+		stSetAfter, _ := rm.FindStatefulSet(statefulSet)
+		stSetBeforeHash := util.HashJson(statefulSetBefore.Spec)
+		stSetAfterHash := util.HashJson(stSetAfter.Spec)
 		if stSetBeforeHash != stSetAfterHash {
 			logger.Info("StatefulSet.Spec hash has differences")
 			stSetRevision = stSetAfter.Status.CurrentRevision

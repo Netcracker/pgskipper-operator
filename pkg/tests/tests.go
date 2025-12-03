@@ -21,7 +21,6 @@ import (
 	"github.com/Netcracker/pgskipper-operator/pkg/deployerrors"
 	"github.com/Netcracker/pgskipper-operator/pkg/deployment"
 	"github.com/Netcracker/pgskipper-operator/pkg/helper"
-	"github.com/Netcracker/pgskipper-operator/pkg/reconciler"
 	opUtil "github.com/Netcracker/pgskipper-operator/pkg/util"
 	"go.uber.org/zap"
 )
