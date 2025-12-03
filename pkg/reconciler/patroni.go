@@ -632,7 +632,9 @@ func (r *PatroniReconciler) fixCollationVersionForDB(pgClient *pgClient.Postgres
 	}
 
 	if len(brokenIndNames) > 0 {
-		fixBrokenIndexes(pgClient, db, brokenIndNames)
+		if err = fixBrokenIndexes(pgClient, db, brokenIndNames); err != nil {
+			return
+		}
 	}
 
 	if pgVersion >= 15 {
@@ -701,7 +703,9 @@ func findBrokenIndexes(pgClient *pgClient.PostgresClient, db string) ([]string, 
 	if err != nil {
 		return nil, err
 	}
-	defer conn.Close(context.Background())
+	defer func() {
+		_ = conn.Close(context.Background())
+	}()
 
 	rows, err := conn.Query(context.Background(), brokenIndexQuery)
 	if err != nil {

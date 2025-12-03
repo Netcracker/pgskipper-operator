@@ -424,9 +424,9 @@ func (rm *ResourceManager) CreateOrUpdateStatefulset(statefulSet *appsv1.Statefu
 	oldGeneration, stSetRevision := statefulSet.Generation, statefulSet.Status.CurrentRevision
 
 	if err != nil && errors.IsNotFound(err) {
-		logger.Info(fmt.Sprintf("Creating %s k8s StatefulSet", statefulSet.ObjectMeta.Name))
-		statefulSet.ObjectMeta.Labels = rm.getLabels(statefulSet.ObjectMeta)
-		statefulSet.ObjectMeta.OwnerReferences = rm.GetOwnerReferences()
+		logger.Info(fmt.Sprintf("Creating %s k8s StatefulSet", statefulSet.Name))
+		statefulSet.Labels = rm.getLabels(statefulSet.ObjectMeta)
+		statefulSet.OwnerReferences = rm.GetOwnerReferences()
 		err = rm.kubeClient.Create(context.TODO(), statefulSet)
 		if err != nil {
 			logger.Error(fmt.Sprintf("Failed to create StatefulSet %v", statefulSet.Name), zap.Error(err))
@@ -440,9 +440,9 @@ func (rm *ResourceManager) CreateOrUpdateStatefulset(statefulSet *appsv1.Statefu
 				logger.Error(fmt.Sprintf("Failed to delete StatefulSet %v", statefulSetBefore.Name), zap.Error(err))
 				return err
 			}
-			statefulSet.ObjectMeta.Labels = rm.getLabels(statefulSet.ObjectMeta)
-			statefulSet.ObjectMeta.OwnerReferences = rm.GetOwnerReferences()
-			statefulSet.ObjectMeta.ResourceVersion = ""
+			statefulSet.Labels = rm.getLabels(statefulSet.ObjectMeta)
+			statefulSet.OwnerReferences = rm.GetOwnerReferences()
+			statefulSet.ResourceVersion = ""
 			oldGeneration = 0
 
 			err = rm.kubeClient.Create(context.TODO(), statefulSet)
