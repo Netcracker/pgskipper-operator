@@ -6,7 +6,7 @@ on:
     branches:
       - '**'
     paths:
-      - 'dbaas-adapter/**'
+      - 'services/dbaas-adapter/**'
   workflow_dispatch:
     inputs:
       publish_docker:

@@ -6,7 +6,7 @@ on:
     branches:
       - '**'
     paths:
-      - 'query-exporter/**'
+      - 'services/query-exporter/**'
   workflow_dispatch:
     inputs:
       publish_docker:

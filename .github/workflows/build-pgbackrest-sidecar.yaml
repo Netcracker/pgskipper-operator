@@ -6,7 +6,7 @@ on:
     branches:
       - '**'
     paths:
-      - 'pgbackrest-sidecar/**'
+      - 'services/pgbackrest-sidecar/**'
   workflow_dispatch:
     inputs:
       publish_docker:

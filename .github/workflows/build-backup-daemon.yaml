@@ -6,7 +6,7 @@ on:
     branches:
       - '**'
     paths:
-      - 'backup-daemon/**'
+      - 'services/backup-daemon/**'
   workflow_dispatch:
     inputs:
       publish_docker:

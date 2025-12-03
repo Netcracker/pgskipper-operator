@@ -6,7 +6,7 @@ on:
     branches:
       - '**'
     paths:
-      - 'upgrade/**'
+      - 'services/upgrade/**'
   workflow_dispatch:
     inputs:
       publish_docker:

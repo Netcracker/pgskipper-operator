@@ -6,7 +6,7 @@ on:
     branches:
       - '**'
     paths:
-      - 'monitoring-agent/**'
+      - 'services/monitoring-agent/**'
   workflow_dispatch:
     inputs:
       publish_docker:

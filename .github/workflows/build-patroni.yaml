@@ -6,7 +6,7 @@ on:
     branches:
       - '**'
     paths:
-      - 'patroni/**'
+      - 'services/patroni/**'
   workflow_dispatch:
     inputs:
       publish_docker:
