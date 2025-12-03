@@ -1,1 +1,2 @@
 # qubership-query-exporter
+test
