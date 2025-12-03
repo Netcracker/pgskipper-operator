@@ -68,6 +68,10 @@ clean:
 generate: controller-gen
 	$(CONTROLLER_GEN) crd:crdVersions={v1} \
 					  object:headerFile="generator/boilerplate.go.txt" \
+					  paths="./api/common/v1"
+
+	$(CONTROLLER_GEN) crd:crdVersions={v1} \
+					  object:headerFile="generator/boilerplate.go.txt" \
 					  paths="./api/apps/v1" \
 					  output:crd:artifacts:config=charts/patroni-services/crds/
 

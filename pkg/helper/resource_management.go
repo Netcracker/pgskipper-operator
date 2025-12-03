@@ -27,7 +27,6 @@ import (
 	"strings"
 	"time"
 
-	coreUtil "github.com/Netcracker/pgskipper-operator-core/pkg/util"
 	qubershipv1 "github.com/Netcracker/pgskipper-operator/api/apps/v1"
 	patroniv1 "github.com/Netcracker/pgskipper-operator/api/patroni/v1"
 	"github.com/Netcracker/pgskipper-operator/pkg/util"
@@ -378,8 +377,8 @@ func (rm *ResourceManager) CreateOrUpdateDeployment(deployment *appsv1.Deploymen
 	// Wait for patroni and Monitoring-collector deployment stability
 	if waitStability {
 		_, deploymentAfter := rm.FindDeployment(deployment)
-		depBeforeHash := coreUtil.HashJson(deploymentBefore.Spec)
-		depAfterHash := coreUtil.HashJson(deploymentAfter.Spec)
+		depBeforeHash := opUtil.HashJson(deploymentBefore.Spec)
+		depAfterHash := opUtil.HashJson(deploymentAfter.Spec)
 		if depBeforeHash != depAfterHash {
 			logger.Info("Deployment.Spec hash has differences")
 			deplRevision++
@@ -460,8 +459,8 @@ func (rm *ResourceManager) CreateOrUpdateStatefulset(statefulSet *appsv1.Statefu
 	// Wait for patroni and Monitoring-collector deployment stability
 	if waitStability {
 		_, stSetAfter := rm.FindStatefulSet(statefulSet)
-		stSetBeforeHash := coreUtil.HashJson(statefulSetBefore.Spec)
-		stSetAfterHash := coreUtil.HashJson(stSetAfter.Spec)
+		stSetBeforeHash := opUtil.HashJson(statefulSetBefore.Spec)
+		stSetAfterHash := opUtil.HashJson(stSetAfter.Spec)
 		if stSetBeforeHash != stSetAfterHash {
 			logger.Info("StatefulSet.Spec hash has differences")
 			stSetRevision = stSetAfter.Status.CurrentRevision

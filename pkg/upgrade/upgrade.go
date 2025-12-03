@@ -23,7 +23,6 @@ import (
 	"strings"
 	"time"
 
-	"github.com/Netcracker/pgskipper-operator-core/pkg/util"
 	v1 "github.com/Netcracker/pgskipper-operator/api/patroni/v1"
 	pgClient "github.com/Netcracker/pgskipper-operator/pkg/client"
 	"github.com/Netcracker/pgskipper-operator/pkg/deployment"
@@ -41,8 +40,8 @@ import (
 )
 
 var (
-	namespace     = util.GetNameSpace()
-	logger        = util.GetLogger()
+	namespace     = opUtil.GetNameSpace()
+	logger        = opUtil.GetLogger()
 	MasterLabel   = map[string]string{"pgtype": "master"}
 	UpgradeLabels = map[string]string{"app": "pg-major-upgrade"}
 	powaUILabels  = map[string]string{"name": "powa"}
@@ -329,7 +328,7 @@ func (u *Upgrade) ProceedUpgrade(cr *v1.PatroniCore, cluster *v1.PatroniClusterS
 		return err
 	}
 	masterPodName := masterPod.Items[0].Name
-	namespace := util.GetNameSpace()
+	namespace := opUtil.GetNameSpace()
 
 	command := "grep \"shared_preload_libraries\" /var/lib/pgsql/data/postgresql_${POD_IDENTITY}/postgresql.conf || echo \"not found\""
 	result, _, err := u.helper.ExecCmdOnPatroniPod(masterPodName, namespace, command)
@@ -488,8 +487,8 @@ func (u *Upgrade) getUpgradePod(cr *v1.PatroniCore, leaderName string, initDbArg
 	upgradePod := &corev1.Pod{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      "pg-major-upgrade-" + strconv.Itoa(int(time.Now().Unix())),
-			Labels:    util.Merge(UpgradeLabels, patroniSpec.PodLabels),
-			Namespace: util.GetNameSpace(),
+			Labels:    opUtil.Merge(UpgradeLabels, patroniSpec.PodLabels),
+			Namespace: opUtil.GetNameSpace(),
 		},
 		Spec: corev1.PodSpec{
 			InitContainers: u.getPgVersionContainer(patroniSpec.DockerImage),
@@ -658,7 +657,7 @@ func (u *Upgrade) getUpgradeCheckPod(cr *v1.PatroniCore) *corev1.Pod {
 	upgradeCheckPod := &corev1.Pod{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      "pg-major-upgrade-check-" + strconv.Itoa(int(time.Now().Unix())),
-			Namespace: util.GetNameSpace(),
+			Namespace: opUtil.GetNameSpace(),
 		},
 		Spec: corev1.PodSpec{
 			RestartPolicy: corev1.RestartPolicyNever,

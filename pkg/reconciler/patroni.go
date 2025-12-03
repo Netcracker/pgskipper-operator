@@ -24,7 +24,6 @@ import (
 
 	goErrors "errors"
 
-	"github.com/Netcracker/pgskipper-operator-core/pkg/storage"
 	v1 "github.com/Netcracker/pgskipper-operator/api/patroni/v1"
 	pgClient "github.com/Netcracker/pgskipper-operator/pkg/client"
 	"github.com/Netcracker/pgskipper-operator/pkg/credentials"
@@ -33,6 +32,7 @@ import (
 	"github.com/Netcracker/pgskipper-operator/pkg/patroni"
 	"github.com/Netcracker/pgskipper-operator/pkg/powa"
 	"github.com/Netcracker/pgskipper-operator/pkg/queryexporter"
+	"github.com/Netcracker/pgskipper-operator/pkg/storage"
 	"github.com/Netcracker/pgskipper-operator/pkg/upgrade"
 	opUtil "github.com/Netcracker/pgskipper-operator/pkg/util"
 	"github.com/Netcracker/qubership-credential-manager/pkg/manager"

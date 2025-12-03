@@ -15,7 +15,7 @@
 package v1
 
 import (
-	types "github.com/Netcracker/pgskipper-operator-core/api/v1"
+	commonv1 "github.com/Netcracker/pgskipper-operator/api/common/v1"
 	v1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
@@ -23,28 +23,28 @@ import (
 // PatroniServicesSpec defines the desired state of PatroniServices
 // +k8s:openapi-gen=true
 type PatroniServicesSpec struct {
-	Patroni               *Patroni               `json:"patroni,omitempty"`
-	BackupDaemon          *types.BackupDaemon    `json:"backupDaemon,omitempty"`
-	MetricCollector       *types.MetricCollector `json:"metricCollector,omitempty"`
-	AuthSecret            string                 `json:"authSecret,omitempty"`
-	IntegrationTests      *IntegrationTests      `json:"integrationTests,omitempty"`
-	Policies              *Policies              `json:"policies,omitempty"`
-	ServiceAccountName    string                 `json:"serviceAccountName,omitempty"`
-	CloudSql              *types.CloudSql        `json:"cloudSql,omitempty"`
-	SiteManager           *SiteManager           `json:"siteManager,omitempty"`
-	PowaUI                PowaUI                 `json:"powaUI,omitempty"`
-	ReplicationController ReplicationController  `json:"replicationController,omitempty"`
-	Pooler                Pooler                 `json:"connectionPooler,omitempty"`
-	Tracing               *Tracing               `json:"tracing,omitempty"`
-	ExternalDataBase      *ExternalDataBase      `json:"externalDataBase,omitempty"`
-	PostgresExporter      *PostgresExporter      `json:"postgresExporter,omitempty"`
-	QueryExporter         QueryExporter          `json:"queryExporter,omitempty"`
-	Tls                   *Tls                   `json:"tls,omitempty"`
-	PgBackRest            *PgBackRest            `json:"pgBackRest,omitempty"`
-	PgBackRestExporter    *PgBackRestExporter    `json:"pgBackRestExporter,omitempty"`
-	InstallationTimestamp string                 `json:"installationTimestamp,omitempty"`
-	PrivateRegistry       PrivateRegistry        `json:"privateRegistry,omitempty"`
-	ImagePullPolicy       v1.PullPolicy          `json:"imagePullPolicy,omitempty"`
+	Patroni               *Patroni              `json:"patroni,omitempty"`
+	BackupDaemon          *BackupDaemon         `json:"backupDaemon,omitempty"`
+	MetricCollector       *MetricCollector      `json:"metricCollector,omitempty"`
+	AuthSecret            string                `json:"authSecret,omitempty"`
+	IntegrationTests      *IntegrationTests     `json:"integrationTests,omitempty"`
+	Policies              *Policies             `json:"policies,omitempty"`
+	ServiceAccountName    string                `json:"serviceAccountName,omitempty"`
+	CloudSql              *commonv1.CloudSql    `json:"cloudSql,omitempty"`
+	SiteManager           *SiteManager          `json:"siteManager,omitempty"`
+	PowaUI                PowaUI                `json:"powaUI,omitempty"`
+	ReplicationController ReplicationController `json:"replicationController,omitempty"`
+	Pooler                Pooler                `json:"connectionPooler,omitempty"`
+	Tracing               *Tracing              `json:"tracing,omitempty"`
+	ExternalDataBase      *ExternalDataBase     `json:"externalDataBase,omitempty"`
+	PostgresExporter      *PostgresExporter     `json:"postgresExporter,omitempty"`
+	QueryExporter         QueryExporter         `json:"queryExporter,omitempty"`
+	Tls                   *Tls                  `json:"tls,omitempty"`
+	PgBackRest            *PgBackRest           `json:"pgBackRest,omitempty"`
+	PgBackRestExporter    *PgBackRestExporter   `json:"pgBackRestExporter,omitempty"`
+	InstallationTimestamp string                `json:"installationTimestamp,omitempty"`
+	PrivateRegistry       PrivateRegistry       `json:"privateRegistry,omitempty"`
+	ImagePullPolicy       v1.PullPolicy         `json:"imagePullPolicy,omitempty"`
 }
 
 type PrivateRegistry struct {
@@ -255,6 +255,71 @@ type S3 struct {
 	Secret    string `json:"secret,omitempty"`
 	Region    string `json:"region,omitempty"`
 	VerifySsl bool   `json:"verifySsl,omitempty"`
+}
+
+type BackupDaemon struct {
+	Resources              *v1.ResourceRequirements `json:"resources,omitempty"`
+	DockerImage            string                   `json:"image,omitempty"`
+	Affinity               v1.Affinity              `json:"affinity,omitempty"`
+	Storage                commonv1.Storage         `json:"storage,omitempty"`
+	PgHost                 string                   `json:"pgHost,omitempty"`
+	EvictionPolicy         string                   `json:"evictionPolicy,omitempty"`
+	BackupSchedule         string                   `json:"backupSchedule,omitempty"`
+	GranularEviction       string                   `json:"granularEviction,omitempty"`
+	JobFlag                string                   `json:"jobFlag,omitempty"`
+	ConnectTimeout         string                   `json:"connectTimeout,omitempty"`
+	GranularBackupSchedule string                   `json:"granularBackupSchedule,omitempty"`
+	DatabasesToSchedule    string                   `json:"databasesToSchedule,omitempty"`
+	WalArchiving           bool                     `json:"walArchiving,omitempty"`
+	AllowPrefix            bool                     `json:"allowPrefix,omitempty"`
+	ExcludedExtensions     string                   `json:"excludedExtensions,omitempty"`
+	CompressionLevel       int                      `json:"compressionLevel,omitempty"`
+	Encryption             bool                     `json:"encryption,omitempty"`
+	RetainArchiveSettings  bool                     `json:"retainArchiveSettings,omitempty"`
+	BackupTimeout          int                      `json:"backupTimeout,omitempty"`
+	UseEvictionPolicyFirst string                   `json:"useEvictionPolicyFirst,omitempty"`
+	EvictionBinaryPolicy   string                   `json:"evictionBinaryPolicy,omitempty"`
+	ArchiveEvictionPolicy  string                   `json:"archiveEvictionPolicy,omitempty"`
+	SecurityContext        v1.PodSecurityContext    `json:"securityContext,omitempty"`
+	PriorityClassName      string                   `json:"priorityClassName,omitempty"`
+	S3Storage              *S3Storage               `json:"s3Storage,omitempty"`
+	PodLabels              map[string]string        `json:"podLabels,omitempty"`
+	ExternalPv             *ExternalPv              `json:"externalPv,omitempty"`
+	SslMode                string                   `json:"sslMode,omitempty"`
+}
+
+type MetricCollector struct {
+	Resources             *v1.ResourceRequirements `json:"resources,omitempty"`
+	DockerImage           string                   `json:"image,omitempty"`
+	Affinity              v1.Affinity              `json:"affinity,omitempty"`
+	InfluxDbHost          string                   `json:"influxDbHost,omitempty"`
+	InfluxDatabase        string                   `json:"influxDatabase,omitempty"`
+	MetricsProfile        string                   `json:"metricsProfile,omitempty"`
+	CollectionInterval    int                      `json:"collectionInterval,omitempty"`
+	SecurityContext       v1.PodSecurityContext    `json:"securityContext,omitempty"`
+	TelegrafPluginTimeout int                      `json:"telegrafPluginTimeout,omitempty"`
+	DevMetricsTimeout     int                      `json:"devMetricsTimeout,omitempty"`
+	DevMetricsInterval    int                      `json:"devMetricsInterval,omitempty"`
+	PriorityClassName     string                   `json:"priorityClassName,omitempty"`
+	OcExecTimeout         int                      `json:"ocExecTimeout,omitempty"`
+	PodLabels             map[string]string        `json:"podLabels,omitempty"`
+	SslMode               string                   `json:"sslMode,omitempty"`
+}
+
+type S3Storage struct {
+	Url             string `json:"url,omitempty"`
+	AccessKeyId     string `json:"accessKeyId,omitempty"`
+	SecretAccessKey string `json:"secretAccessKey,omitempty"`
+	Bucket          string `json:"bucket,omitempty"`
+	Prefix          string `json:"prefix,omitempty"`
+	UntrustedCert   bool   `json:"untrustedCert,omitempty"`
+	Region          string `json:"region,omitempty"`
+}
+
+type ExternalPv struct {
+	Name         string `json:"name,omitempty"`
+	Capacity     string `json:"capacity,omitempty"`
+	StorageClass string `json:"storageClass,omitempty"`
 }
 
 func init() {
