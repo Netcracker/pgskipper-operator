@@ -36,8 +36,8 @@ Common labels
 {{- define "patroni-core.labels" -}}
 helm.sh/chart: {{ include "patroni-core.chart" . }}
 {{ include "patroni-core.selectorLabels" . }}
-{{- if .Chart.AppVersion }}
-app.kubernetes.io/version: {{ .Chart.AppVersion | quote }}
+{{- if .Chart.ARTIFACT_DESCRIPTOR_VERSION }}
+app.kubernetes.io/version: {{ .Values.ARTIFACT_DESCRIPTOR_VERSION }}
 {{- end }}
 app.kubernetes.io/managed-by: {{ .Release.Service }}
 {{- end }}
@@ -54,10 +54,15 @@ app.kubernetes.io/instance: {{ .Release.Name }}
 {{- define "kubernetes.labels" -}}
 app.kubernetes.io/instance: {{ .Release.Name }}
 app.kubernetes.io/name: {{ include "patroni-core.name" . }}
-app.kubernetes.io/version: {{ .Chart.AppVersion | quote }}
-app.kubernetes.io/component: "postgres-operator"
-app.kubernetes.io/part-of: "postgres-operator"
-app.kubernetes.io/managed-by: {{ .Release.Service }}
+{{- if .Values.ARTIFACT_DESCRIPTOR_VERSION }}
+{{- end }}
+app.kubernetes.io/version: {{ .Values.ARTIFACT_DESCRIPTOR_VERSION }}
+{{- if .Values.DEPLOYMENT_SESSION_ID }}
+deployment.netcracker.com/sessionId: {{ .Values.DEPLOYMENT_SESSION_ID }}
+{{- end }}
+app.kubernetes.io/component: "operator"
+app.kubernetes.io/part-of: "postgres"
+app.kubernetes.io/managed-by: "Helm"
 app.kubernetes.io/technology: "go"
 {{- end -}}
 
@@ -92,26 +97,7 @@ capabilities:
 {{- end }}
 {{- end -}}
 
-{{- define "patroni-core-operator.vaultEnvs" }}
-{{- if or .Values.vaultRegistration.enabled .Values.vaultRegistration.dbEngine.enabled }}
-            - name: VAULT_ADDR
-              value: {{ default "http://vault-service.vault:8200" .Values.vaultRegistration.url }}
-            - name: VAULT_TOKEN
-              valueFrom:
-                secretKeyRef:
-                  name: vault-secret
-                  key: token
-            - name: PAAS_PLATFORM
-              value: {{ default "kubernetes" .Values.vaultRegistration.paasPlatform }}
-            - name: PAAS_VERSION
-              value: {{ default "1.14" .Values.vaultRegistration.paasVersion | quote }}
-            - name: OPENSHIFT_SERVER
-            {{- if and .Values.CLOUD_PROTOCOL .Values.CLOUD_API_HOST .Values.CLOUD_API_PORT }}
-              value: {{ printf "%s://%s:%v" .Values.CLOUD_PROTOCOL .Values.CLOUD_API_HOST .Values.CLOUD_API_PORT }}
-            {{- else }}
-              value: "https://kubernetes.default:443"
-            {{- end }}
-{{- else }}
+{{- define "patroni-core-operator.platformEnvs" }}
             - name: PAAS_PLATFORM
               value: "kubernetes"
             - name: PAAS_VERSION
@@ -119,7 +105,7 @@ capabilities:
             - name: OPENSHIFT_SERVER
               value: "https://kubernetes.default:443"
 {{- end }}
-{{- end }}
+
 
 {{- define "find_image" -}}
   {{- $image := .default -}}

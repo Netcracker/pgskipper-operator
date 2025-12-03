@@ -23,7 +23,6 @@ import (
 	"strings"
 	"time"
 
-	"github.com/Netcracker/pgskipper-operator-core/pkg/util"
 	v1 "github.com/Netcracker/pgskipper-operator/api/patroni/v1"
 	pgClient "github.com/Netcracker/pgskipper-operator/pkg/client"
 	"github.com/Netcracker/pgskipper-operator/pkg/deployment"
@@ -41,8 +40,8 @@ import (
 )
 
 var (
-	namespace     = util.GetNameSpace()
-	logger        = util.GetLogger()
+	namespace     = opUtil.GetNameSpace()
+	logger        = opUtil.GetLogger()
 	MasterLabel   = map[string]string{"pgtype": "master"}
 	UpgradeLabels = map[string]string{"app": "pg-major-upgrade"}
 	powaUILabels  = map[string]string{"name": "powa"}
@@ -183,7 +182,7 @@ func (u *Upgrade) GetInitDbArgs(patroniTemplate string, configMapKey string) (st
 
 func (u *Upgrade) CheckForAbsTimeUsage(pgHost string) error {
 	pgC := pgClient.GetPostgresClient(pgHost)
-	databaseList := helper.GetAllDatabases(pgC)
+	databaseList, _ := helper.GetAllDatabases(pgC)
 	absTimeDatabases := make([]string, 0)
 
 	for _, db := range databaseList {
@@ -334,7 +333,7 @@ func (u *Upgrade) ProceedUpgrade(cr *v1.PatroniCore, cluster *v1.PatroniClusterS
 		return err
 	}
 	masterPodName := masterPod.Items[0].Name
-	namespace := util.GetNameSpace()
+	namespace := opUtil.GetNameSpace()
 
 	command := "grep \"shared_preload_libraries\" /var/lib/pgsql/data/postgresql_${POD_IDENTITY}/postgresql.conf || echo \"not found\""
 	result, _, err := u.helper.ExecCmdOnPatroniPod(masterPodName, namespace, command)
@@ -421,7 +420,7 @@ func (u *Upgrade) ProceedUpgrade(cr *v1.PatroniCore, cluster *v1.PatroniClusterS
 	deploymentIdx, _ := strconv.Atoi(leaderName[len(leaderName)-1:])
 	patroniDeployment := deployment.NewPatroniStatefulset(cr, deploymentIdx, cluster.ClusterName,
 		cluster.PatroniTemplate, cluster.PostgreSQLUserConf, cluster.PatroniLabels)
-	upgradePod := u.getUpgradePod(patroniSpec, leaderName, initDbArgs, cr.Upgrade.DockerUpgradeImage)
+	upgradePod := u.getUpgradePod(cr, leaderName, initDbArgs, cr.Upgrade.DockerUpgradeImage)
 
 	// copy nodeSelector, Volumes, SecurityContext from Deployment
 	upgradePod.Spec.NodeSelector = patroniDeployment.Spec.Template.Spec.NodeSelector
@@ -487,13 +486,14 @@ func (u *Upgrade) ProceedUpgrade(cr *v1.PatroniCore, cluster *v1.PatroniClusterS
 	return nil
 }
 
-func (u *Upgrade) getUpgradePod(patroniSpec *v1.Patroni, leaderName string, initDbArgs string, upgradeImage string) *corev1.Pod {
+func (u *Upgrade) getUpgradePod(cr *v1.PatroniCore, leaderName string, initDbArgs string, upgradeImage string) *corev1.Pod {
+	patroniSpec := cr.Spec.Patroni
 	patroniIdx := leaderName[len(leaderName)-1:]
 	upgradePod := &corev1.Pod{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      "pg-major-upgrade-" + strconv.Itoa(int(time.Now().Unix())),
-			Labels:    util.Merge(UpgradeLabels, patroniSpec.PodLabels),
-			Namespace: util.GetNameSpace(),
+			Labels:    opUtil.Merge(UpgradeLabels, patroniSpec.PodLabels),
+			Namespace: opUtil.GetNameSpace(),
 		},
 		Spec: corev1.PodSpec{
 			InitContainers: u.getPgVersionContainer(patroniSpec.DockerImage),
@@ -502,8 +502,8 @@ func (u *Upgrade) getUpgradePod(patroniSpec *v1.Patroni, leaderName string, init
 				{
 					Name:            "pg-upgrade",
 					Image:           upgradeImage,
+					ImagePullPolicy: cr.Spec.ImagePullPolicy,
 					SecurityContext: opUtil.GetDefaultSecurityContext(),
-					ImagePullPolicy: "IfNotPresent",
 					VolumeMounts: []corev1.VolumeMount{
 						{
 							MountPath: "/var/lib/pgsql/data",
@@ -662,7 +662,7 @@ func (u *Upgrade) getUpgradeCheckPod(cr *v1.PatroniCore) *corev1.Pod {
 	upgradeCheckPod := &corev1.Pod{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      "pg-major-upgrade-check-" + strconv.Itoa(int(time.Now().Unix())),
-			Namespace: util.GetNameSpace(),
+			Namespace: opUtil.GetNameSpace(),
 		},
 		Spec: corev1.PodSpec{
 			RestartPolicy: corev1.RestartPolicyNever,
@@ -671,7 +671,7 @@ func (u *Upgrade) getUpgradeCheckPod(cr *v1.PatroniCore) *corev1.Pod {
 					Name:            "pg-upgrade-check",
 					Image:           patroniSpec.DockerImage,
 					SecurityContext: opUtil.GetDefaultSecurityContext(),
-					ImagePullPolicy: "IfNotPresent",
+					ImagePullPolicy: cr.Spec.ImagePullPolicy,
 					Command:         []string{"sleep", "infinity"},
 					Resources: corev1.ResourceRequirements{
 						Requests: map[corev1.ResourceName]resource.Quantity{

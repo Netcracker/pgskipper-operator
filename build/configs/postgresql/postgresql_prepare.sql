@@ -152,11 +152,11 @@ BEGIN
     COPY pg_patroni_service_slot_cleaner_passwd_output (command_output)
     FROM PROGRAM 'strings /proc/1/environ | sed -n "s/^PG_ROOT_PASSWORD=\(.*\)/\1/p"';
 
-    -- get current wal_keep_segments value and determine allowed_slot_delay
+    -- get current wal_keep_size value and determine allowed_slot_delay
     IF ud_allowed_slot_delay < 0 THEN
         SELECT INTO allowed_slot_delay setting
         FROM pg_settings
-        WHERE name='wal_keep_segments';
+        WHERE name='wal_keep_size';
     ELSE
         allowed_slot_delay = ud_allowed_slot_delay;
     END IF;
@@ -172,7 +172,6 @@ BEGIN
 
     --todo[anin] 16Mb size per WAL file is used.
     --Honest calculation should get value from pg_settings
-    allowed_slot_delay := allowed_slot_delay * 16;
     RAISE NOTICE 'allowed_slot_delay: % Mb', allowed_slot_delay;
 
     -- perform slot cleanup for each active replica

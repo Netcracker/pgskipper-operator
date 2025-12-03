@@ -23,10 +23,10 @@ import (
 	"os"
 	"reflect"
 	"regexp"
+	"slices"
 	"strings"
 	"time"
 
-	coreUtil "github.com/Netcracker/pgskipper-operator-core/pkg/util"
 	qubershipv1 "github.com/Netcracker/pgskipper-operator/api/apps/v1"
 	patroniv1 "github.com/Netcracker/pgskipper-operator/api/patroni/v1"
 	"github.com/Netcracker/pgskipper-operator/pkg/util"
@@ -37,6 +37,7 @@ import (
 	discoveryv1 "k8s.io/api/discovery/v1"
 	"k8s.io/apimachinery/pkg/api/equality"
 	"k8s.io/apimachinery/pkg/api/errors"
+	"k8s.io/apimachinery/pkg/api/meta"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/apimachinery/pkg/util/wait"
@@ -45,6 +46,8 @@ import (
 )
 
 const kubeSysAnnotations = "kubernetes.io"
+
+var pythonServices = []string{"postgres-backup-daemon"}
 
 type ResourceManager struct {
 	kubeClient    client.Client
@@ -73,7 +76,7 @@ func (rm *ResourceManager) GetPatroniCoreCR() (*patroniv1.PatroniCore, error) {
 	if err := rm.kubeClient.Get(context.TODO(), types.NamespacedName{
 		Name: "patroni-core", Namespace: namespace,
 	}, cr); err != nil {
-		if errors.IsNotFound(err) {
+		if errors.IsNotFound(err) || meta.IsNoMatchError(err) {
 			logger.Info("Custom Resource patroni-core not found")
 			return cr, nil
 		}
@@ -352,8 +355,9 @@ func (rm *ResourceManager) CreateOrUpdateDeployment(deployment *appsv1.Deploymen
 	deploymentBefore, err := rm.FindDeployment(deployment)
 	oldGeneration, deplRevision := deployment.Generation, int64(0)
 	if err != nil && errors.IsNotFound(err) {
-		logger.Info(fmt.Sprintf("Creating %s k8s deployment", deployment.Name))
-		deployment.OwnerReferences = rm.GetOwnerReferences()
+		logger.Info(fmt.Sprintf("Creating %s k8s deployment", deployment.ObjectMeta.Name))
+		deployment.ObjectMeta.OwnerReferences = rm.GetOwnerReferences()
+		deployment.ObjectMeta.Labels = rm.getLabels(deployment.ObjectMeta)
 		err = rm.kubeClient.Create(context.TODO(), deployment)
 		if err != nil {
 			logger.Error(fmt.Sprintf("Failed to create deployment %v", deployment.Name), zap.Error(err))
@@ -361,8 +365,9 @@ func (rm *ResourceManager) CreateOrUpdateDeployment(deployment *appsv1.Deploymen
 		}
 	} else {
 		copySystemAnnotations(&deploymentBefore.Spec.Template, &deployment.Spec.Template)
-		logger.Info(fmt.Sprintf("Updating %s k8s deployment", deployment.Name))
-		deployment.OwnerReferences = rm.GetOwnerReferences()
+		logger.Info(fmt.Sprintf("Updating %s k8s deployment", deployment.ObjectMeta.Name))
+		deployment.ObjectMeta.OwnerReferences = rm.GetOwnerReferences()
+		deployment.ObjectMeta.Labels = rm.getLabels(deployment.ObjectMeta)
 		err = rm.kubeClient.Update(context.TODO(), deployment)
 		if err != nil {
 			logger.Error(fmt.Sprintf("Failed to update deployment %v", deployment.Name), zap.Error(err))
@@ -371,9 +376,9 @@ func (rm *ResourceManager) CreateOrUpdateDeployment(deployment *appsv1.Deploymen
 	}
 	// Wait for patroni and Monitoring-collector deployment stability
 	if waitStability {
-		deploymentAfter, _ := rm.FindDeployment(deployment)
-		depBeforeHash := coreUtil.HashJson(deploymentBefore.Spec)
-		depAfterHash := coreUtil.HashJson(deploymentAfter.Spec)
+		_, deploymentAfter := rm.FindDeployment(deployment)
+		depBeforeHash := opUtil.HashJson(deploymentBefore.Spec)
+		depAfterHash := opUtil.HashJson(deploymentAfter.Spec)
 		if depBeforeHash != depAfterHash {
 			logger.Info("Deployment.Spec hash has differences")
 			deplRevision++
@@ -419,8 +424,9 @@ func (rm *ResourceManager) CreateOrUpdateStatefulset(statefulSet *appsv1.Statefu
 	oldGeneration, stSetRevision := statefulSet.Generation, statefulSet.Status.CurrentRevision
 
 	if err != nil && errors.IsNotFound(err) {
-		logger.Info(fmt.Sprintf("Creating %s k8s StatefulSet", statefulSet.Name))
-		statefulSet.OwnerReferences = rm.GetOwnerReferences()
+		logger.Info(fmt.Sprintf("Creating %s k8s StatefulSet", statefulSet.ObjectMeta.Name))
+		statefulSet.ObjectMeta.Labels = rm.getLabels(statefulSet.ObjectMeta)
+		statefulSet.ObjectMeta.OwnerReferences = rm.GetOwnerReferences()
 		err = rm.kubeClient.Create(context.TODO(), statefulSet)
 		if err != nil {
 			logger.Error(fmt.Sprintf("Failed to create StatefulSet %v", statefulSet.Name), zap.Error(err))
@@ -434,8 +440,9 @@ func (rm *ResourceManager) CreateOrUpdateStatefulset(statefulSet *appsv1.Statefu
 				logger.Error(fmt.Sprintf("Failed to delete StatefulSet %v", statefulSetBefore.Name), zap.Error(err))
 				return err
 			}
-			statefulSet.OwnerReferences = rm.GetOwnerReferences()
-			statefulSet.ResourceVersion = ""
+			statefulSet.ObjectMeta.Labels = rm.getLabels(statefulSet.ObjectMeta)
+			statefulSet.ObjectMeta.OwnerReferences = rm.GetOwnerReferences()
+			statefulSet.ObjectMeta.ResourceVersion = ""
 			oldGeneration = 0
 
 			err = rm.kubeClient.Create(context.TODO(), statefulSet)
@@ -451,9 +458,9 @@ func (rm *ResourceManager) CreateOrUpdateStatefulset(statefulSet *appsv1.Statefu
 	}
 	// Wait for patroni and Monitoring-collector deployment stability
 	if waitStability {
-		stSetAfter, _ := rm.FindStatefulSet(statefulSet)
-		stSetBeforeHash := coreUtil.HashJson(statefulSetBefore.Spec)
-		stSetAfterHash := coreUtil.HashJson(stSetAfter.Spec)
+		_, stSetAfter := rm.FindStatefulSet(statefulSet)
+		stSetBeforeHash := opUtil.HashJson(statefulSetBefore.Spec)
+		stSetAfterHash := opUtil.HashJson(stSetAfter.Spec)
 		if stSetBeforeHash != stSetAfterHash {
 			logger.Info("StatefulSet.Spec hash has differences")
 			stSetRevision = stSetAfter.Status.CurrentRevision
@@ -935,7 +942,31 @@ func (rm *ResourceManager) GetPatroniClusterConfig(patroniUrl string) (*ClusterS
 	return &ClusterStatus{}, nil
 }
 
-func (rm *ResourceManager) GetChartVersion() (string, error) {
+func (rm *ResourceManager) GetChartVersion() string {
+	operatorLabels, err := rm.getOperatorLabels()
+	if err != nil {
+		return ""
+	}
+	version, found := operatorLabels["app.kubernetes.io/version"]
+	if !found {
+		return ""
+	}
+	return version
+}
+
+func (rm *ResourceManager) GetDeploymentSessionId() string {
+	operatorLabels, err := rm.getOperatorLabels()
+	if err != nil {
+		return ""
+	}
+	sessionId, found := operatorLabels["deployment.netcracker.com/sessionId"]
+	if !found {
+		return ""
+	}
+	return sessionId
+}
+
+func (rm *ResourceManager) getOperatorLabels() (map[string]string, error) {
 	deploymentName := strings.ToLower(os.Getenv("OPERATOR_NAME"))
 
 	if deploymentName == "patroni-services" {
@@ -944,20 +975,15 @@ func (rm *ResourceManager) GetChartVersion() (string, error) {
 
 	foundDeployment, err := rm.GetDeploymentsByNameRegExp(deploymentName)
 	if err != nil {
-		return "", err
+		return nil, err
 	}
 	if len(foundDeployment) == 0 {
-		return "1.16.0", nil
+		return nil, nil
 	}
 
 	deployment := foundDeployment[0]
-	labels := deployment.Spec.Template.Labels
-	version, found := labels["app.kubernetes.io/version"]
-
-	if !found {
-		return "1.16.0", nil
-	}
-	return version, nil
+	labels := deployment.Spec.Template.ObjectMeta.Labels
+	return labels, nil
 }
 
 func (rm *ResourceManager) getLabels(meta metav1.ObjectMeta) map[string]string {
@@ -974,21 +1000,38 @@ func (rm *ResourceManager) getLabels(meta metav1.ObjectMeta) map[string]string {
 }
 
 func (rm *ResourceManager) commonLabels(name string) map[string]string {
-	chartVersion, _ := rm.GetChartVersion()
+	chartVersion := rm.GetChartVersion()
+	sessionId := rm.GetDeploymentSessionId()
 
 	operatorName := strings.ToLower(os.Getenv("OPERATOR_NAME"))
 
+	component := "postgres"
 	if operatorName == "patroni-services" {
+		component = "postgres-services"
 		operatorName = "postgres-operator"
 	}
 
-	return map[string]string{
-		"app.kubernetes.io/instance":   name,
-		"app.kubernetes.io/name":       name,
-		"app.kubernetes.io/version":    chartVersion,
-		"app.kubernetes.io/component":  "postgresql",
-		"app.kubernetes.io/part-of":    operatorName,
-		"app.kubernetes.io/managed-by": operatorName,
-		"app.kubernetes.io/technology": "go",
+	labels := map[string]string{
+		"name":                       name,
+		"app.kubernetes.io/instance": name,
+		"app.kubernetes.io/name":     name,
+
+		"app.kubernetes.io/component":           "backend",
+		"app.kubernetes.io/part-of":             component,
+		"app.kubernetes.io/managed-by":          "operator",
+		"app.kubernetes.io/managed-by-operator": operatorName,
+		"app.kubernetes.io/technology":          "go",
 	}
+	if chartVersion != "" {
+		labels["app.kubernetes.io/version"] = chartVersion
+	}
+	if sessionId != "" {
+		labels["deployment.netcracker.com/sessionId"] = sessionId
+	}
+
+	if slices.Contains(pythonServices, name) {
+		labels["app.kubernetes.io/technology"] = "python"
+	}
+
+	return labels
 }

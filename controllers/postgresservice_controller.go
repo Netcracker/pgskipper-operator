@@ -32,7 +32,6 @@ import (
 	"github.com/Netcracker/pgskipper-operator/pkg/upgrade"
 	utils "github.com/Netcracker/pgskipper-operator/pkg/util"
 	"github.com/Netcracker/pgskipper-operator/pkg/util/constants"
-	"github.com/Netcracker/pgskipper-operator/pkg/vault"
 	"go.uber.org/zap"
 	"k8s.io/apimachinery/pkg/api/errors"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
@@ -45,7 +44,6 @@ import (
 
 	"fmt"
 
-	"github.com/Netcracker/pgskipper-operator-core/pkg/util"
 	qubershipv1 "github.com/Netcracker/pgskipper-operator/api/apps/v1"
 	"github.com/Netcracker/qubership-credential-manager/pkg/informer"
 	"github.com/Netcracker/qubership-credential-manager/pkg/manager"
@@ -66,7 +64,6 @@ type PostgresServiceReconciler struct {
 	Scheme       *runtime.Scheme
 	helper       *helper.Helper
 	upgrade      *upgrade.Upgrade
-	vaultClient  *vault.Client
 	cluster      qubershipv1.PatroniServices
 	namespace    string
 	errorCounter int
@@ -94,8 +91,8 @@ type PatroniClusterSettings struct {
 }
 
 func NewPostgresServiceReconciler(client client.Client, scheme *runtime.Scheme) *PostgresServiceReconciler {
-	namespace := util.GetNameSpace()
-	logger := util.GetLogger()
+	namespace := utils.GetNameSpace()
+	logger := utils.GetLogger()
 	logger.Info(fmt.Sprintf("Scheme: %v", scheme.Name()))
 	return &PostgresServiceReconciler{
 		Client:      client,
@@ -103,7 +100,6 @@ func NewPostgresServiceReconciler(client client.Client, scheme *runtime.Scheme) 
 		helper:      helper.GetHelper(),
 		cluster:     qubershipv1.PatroniServices{},
 		upgrade:     upgrade.Init(client),
-		vaultClient: vault.NewClient(),
 		namespace:   namespace,
 		logger:      *logger,
 		resVersions: map[string]string{},
@@ -111,9 +107,9 @@ func NewPostgresServiceReconciler(client client.Client, scheme *runtime.Scheme) 
 
 }
 
-//+kubebuilder:rbac:groups=qubership.org,resources=postgresservices,verbs=get;list;watch;create;update;patch;delete
-//+kubebuilder:rbac:groups=qubership.org,resources=postgresservices/status,verbs=get;update;patch
-//+kubebuilder:rbac:groups=qubership.org,resources=postgresservices/finalizers,verbs=update
+//+kubebuilder:rbac:groups=netcracker.com,resources=postgresservices,verbs=get;list;watch;create;update;patch;delete
+//+kubebuilder:rbac:groups=netcracker.com,resources=postgresservices/status,verbs=get;update;patch
+//+kubebuilder:rbac:groups=netcracker.com,resources=postgresservices/finalizers,verbs=update
 
 // Reconcile is part of the main kubernetes reconciliation loop which aims to
 // move the current state of the cluster closer to the desired state.
@@ -150,9 +146,10 @@ func (r *PostgresServiceReconciler) Reconcile(ctx context.Context, request ctrl.
 	}
 
 	newResVersion := cr.ResourceVersion
-	newCrHash := util.HashJson(cr.Spec)
+	newCrHash := utils.HashJson(cr.Spec)
 	if (r.resVersions[cr.Name] == newResVersion ||
-		r.crHash == newCrHash) && len(cr.Status.Conditions) != 0 && cr.Status.Conditions[0].Type != Failed {
+		r.crHash == newCrHash) && (len(cr.Status.Conditions) != 0 &&
+		(cr.Status.Conditions[0].Type != Failed || (cr.Status.Conditions[0].Type == Failed && r.errorCounter == 0))) {
 		InfoMsg := "ResourceVersion didn't change, skipping reconcile loop"
 		if cr.Spec.ExternalDataBase != nil {
 			r.logger.Info(InfoMsg)
@@ -181,7 +178,7 @@ func (r *PostgresServiceReconciler) Reconcile(ctx context.Context, request ctrl.
 	}
 	r.crHash = newCrHash
 
-	maxReconcileAttempts, errStrConv := strconv.Atoi(util.GetEnv("PG_RECONCILE_RETRIES", "1"))
+	maxReconcileAttempts, errStrConv := strconv.Atoi(utils.GetEnv("PG_RECONCILE_RETRIES", "1"))
 	if errStrConv != nil {
 		//Adding a logger here to show that reconcile retries were not set by end user
 		r.logger.Info("Reconcile retries were not set, setting default value as 2")
@@ -207,7 +204,7 @@ func (r *PostgresServiceReconciler) Reconcile(ctx context.Context, request ctrl.
 			switch err.(type) {
 			case *deployerrors.TestsError:
 				{
-					return r.handleTestReconcileError(err, "Error during tests run", maxReconcileAttempts, newCrHash)
+					return r.handleReconcileError(err, "Error during tests run", maxReconcileAttempts, newCrHash)
 				}
 			default:
 				{
@@ -234,43 +231,15 @@ func (r *PostgresServiceReconciler) Reconcile(ctx context.Context, request ctrl.
 
 	scheduler.StopAndClear()
 
-	// update Cr for Vault client
-	r.vaultClient.UpdateCr(cr.Kind)
-
-	// update Postgres Password
-	vaultRolesExist := r.vaultClient.IsVaultRolesExist()
-	if vaultRolesExist {
-		if err := r.vaultClient.UpdatePgClientPass(); err != nil {
-			return reconcile.Result{}, err
-		}
-	}
-
 	if err := r.reconcilePostgresServiceCluster(cr); err != nil {
 		switch err.(type) {
 		case *deployerrors.TestsError:
 			{
-				return r.handleTestReconcileError(err, "Error during tests run", maxReconcileAttempts, newCrHash)
+				return r.handleReconcileError(err, "Error during tests run", maxReconcileAttempts, newCrHash)
 			}
 		case error:
 			{
-				r.errorCounter++
-
-				if r.errorCounter < maxReconcileAttempts {
-					r.logger.Error(fmt.Sprintf("Error counter: %d, let's try to run the reconcile again", r.errorCounter))
-					r.reason = "ReconcilePatroniServicesClusterFailed"
-					r.message = "Postgres-operator service reconcile cycle failed"
-					if err := r.updateStatus(Failed, "ReconcilePatroniServicesClusterFailed",
-						fmt.Sprintf("Postgres service reconcile cycle failed. Error: %s", err.Error())); err != nil {
-						r.logger.Error("Cannot update CR status", zap.Error(err))
-						return reconcile.Result{RequeueAfter: time.Minute}, err
-					}
-					return reconcile.Result{RequeueAfter: time.Minute}, err
-				}
-
-				r.logger.Error(fmt.Sprintf("Failed reconcile attempts: %d, updating crHash, resVersions", r.errorCounter))
-				r.crHash = newCrHash
-				r.errorCounter = 0
-				return reconcile.Result{RequeueAfter: time.Minute}, err
+				return r.handleReconcileError(err, "Error during reconcile cycle", maxReconcileAttempts, newCrHash)
 			}
 
 		default:
@@ -306,11 +275,6 @@ func (r *PostgresServiceReconciler) Reconcile(ctx context.Context, request ctrl.
 		return reconcile.Result{RequeueAfter: time.Minute}, err
 	}
 
-	// Enable rotation controller
-	if cr.Spec.VaultRegistration.DbEngine.Enabled {
-		vault.EnableRotationController(r.vaultClient)
-	}
-
 	if err := r.helper.UpdatePGService(); err != nil {
 		r.logger.Error("error during update of pg services", zap.Error(err))
 		return reconcile.Result{RequeueAfter: time.Minute}, err
@@ -332,25 +296,15 @@ func (r *PostgresServiceReconciler) Reconcile(ctx context.Context, request ctrl.
 	return reconcile.Result{}, nil
 }
 
-func (r *PostgresServiceReconciler) handleTestReconcileError(err error, errMsg string, maxReconcileAttempts int, newCrHash string) (ctrl.Result, error) {
+func (r *PostgresServiceReconciler) handleReconcileError(err error, errMsg string, maxReconcileAttempts int, newCrHash string) (ctrl.Result, error) {
 	r.errorCounter++
 	if r.errorCounter < maxReconcileAttempts {
 		r.logger.Error(errMsg, zap.Error(err))
-		r.logger.Error(fmt.Sprintf("Error counter for tests run: %d, let's try to run the reconcile again", r.errorCounter))
-		r.reason = "PostgresClusterTestsFailed"
-		r.message = "Postgres-operator service reconcile cycle failed"
-		if err := r.updateStatus(Failed, "PostgresClusterTestsFailed", err.Error()); err != nil {
-			r.logger.Error("Cannot update CR status", zap.Error(err))
-			return reconcile.Result{RequeueAfter: time.Minute}, err
-		}
-		return reconcile.Result{}, err
+		r.logger.Error(fmt.Sprintf("Error counter for reconcile run: %d, let's try to run the reconcile again", r.errorCounter))
+		return r.failReconcile("PostgresClusterTestsFailed", err, true)
 	}
 
-	r.logger.Error(fmt.Sprintf("Failed reconcile attempts: %d, updating crHash, resVersions", r.errorCounter))
-	r.logger.Error("Reconciliation cycle failed due to test pod ended with error")
-	r.crHash = newCrHash
-	r.errorCounter = 0
-	return reconcile.Result{RequeueAfter: time.Minute}, err
+	return r.stopReconcile(newCrHash, "No reconcile attempts left", err)
 }
 
 func (r *PostgresServiceReconciler) reconcilePostgresServiceCluster(cr *qubershipv1.PatroniServices) error {
@@ -399,8 +353,22 @@ func (r *PostgresServiceReconciler) reconcilePostgresServiceCluster(cr *qubershi
 
 	// configure postgres-exporter user
 	if cr.Spec.PostgresExporter != nil && cr.Spec.PostgresExporter.Install {
-		if err := postgresexporter.SetUpExporter(cr.Spec.PostgresExporter); err != nil { //REWORK
-			return err
+		skipInstall := false
+		if cr.Spec.ExternalDataBase == nil {
+			patroniCore, err := r.helper.GetPatroniCoreCR()
+			if err != nil {
+				r.logger.Error("Can't get PatroniCore CR")
+				panic(err)
+			}
+			if patroniCore.Spec.Patroni.StandbyCluster != nil {
+				r.logger.Info("PatroniCore indicates standby cluster; skipping postgres-exporter setup (read-only)")
+				skipInstall = true
+			}
+		}
+		if !skipInstall {
+			if err := postgresexporter.SetUpExporter(cr.Spec.PostgresExporter); err != nil {
+				return err
+			}
 		}
 	}
 
@@ -444,6 +412,13 @@ func (r *PostgresServiceReconciler) reconcilePostgresServiceCluster(cr *qubershi
 		}
 	}
 
+	// reconcile PgBackRest Exporter
+	if cr.Spec.PgBackRestExporter != nil && cr.Spec.PgBackRestExporter.Install {
+		if err := r.reconcilePgBackRestExporter(cr); err != nil {
+			return err
+		}
+	}
+
 	// Reconcile IntegrationTests
 	if cr.Spec.IntegrationTests != nil {
 		r.logger.Info("Tests Spec is not empty, proceeding with reconcile")
@@ -470,19 +445,12 @@ func (r *PostgresServiceReconciler) reconcilePostgresServiceCluster(cr *qubershi
 		r.logger.Info("Tests Spec is empty, skipping reconciliation")
 	}
 
-	// And delete secrets, that uploaded to vault
-	if err := r.vaultClient.DeleteSecret(vault.DeletionLabels); err != nil {
-		r.logger.Error("Cannot delete secret", zap.Error(err))
-		return err
-	}
 	return nil
 }
 
 func (r *PostgresServiceReconciler) createTestsPods(cr *qubershipv1.PatroniServices) error {
 	if cr.Spec.IntegrationTests != nil {
 		integrationTestsPod := deployment.NewIntegrationTestsPod(cr, utils.GetPatroniClusterSettings(cr.Spec.Patroni.ClusterName))
-		// Vault Section
-		r.vaultClient.ProcessPodVaultSection(integrationTestsPod, reconciler.Secrets)
 		state, err := utils.GetPodPhase(integrationTestsPod)
 		if err != nil {
 			return err
@@ -533,7 +501,7 @@ func (r *PostgresServiceReconciler) createTestsPods(cr *qubershipv1.PatroniServi
 
 func (r *PostgresServiceReconciler) reconcileBackupDaemon(cr *qubershipv1.PatroniServices) error {
 	r.logger.Info("Backup Daemon Spec is not empty, proceeding with reconcile")
-	bRec := reconciler.NewBackupDaemonReconciler(cr, r.helper, r.vaultClient, utils.GetPatroniClusterSettings(cr.Spec.Patroni.ClusterName))
+	bRec := reconciler.NewBackupDaemonReconciler(cr, r.helper, utils.GetPatroniClusterSettings(cr.Spec.Patroni.ClusterName))
 	if err := bRec.Reconcile(); err != nil {
 		r.logger.Error("Can not synchronize Backup Daemon state to cluster", zap.Error(err))
 		return err
@@ -543,7 +511,7 @@ func (r *PostgresServiceReconciler) reconcileBackupDaemon(cr *qubershipv1.Patron
 
 func (r *PostgresServiceReconciler) reconcileMetricCollector(cr *qubershipv1.PatroniServices) error {
 	r.logger.Info("Metric Collector Spec is not empty, proceeding with reconcile")
-	mcRec := reconciler.NewMetricCollectorReconciler(cr, r.helper, r.vaultClient, r.Scheme, utils.GetPatroniClusterSettings(cr.Spec.Patroni.ClusterName))
+	mcRec := reconciler.NewMetricCollectorReconciler(cr, r.helper, r.Scheme, utils.GetPatroniClusterSettings(cr.Spec.Patroni.ClusterName))
 	if err := mcRec.Reconcile(); err != nil {
 		r.logger.Error("Can not synchronize Metric Collector state to cluster", zap.Error(err))
 		return err
@@ -596,6 +564,16 @@ func (r *PostgresServiceReconciler) reconcileRC(cr *qubershipv1.PatroniServices)
 	pRec := reconciler.NewRCReconciler(cr, r.helper, utils.GetPatroniClusterSettings(cr.Spec.Patroni.ClusterName))
 	if err := pRec.Reconcile(); err != nil {
 		r.logger.Error("Can not reconcile Replication Controller", zap.Error(err))
+		return err
+	}
+	return nil
+}
+
+func (r *PostgresServiceReconciler) reconcilePgBackRestExporter(cr *qubershipv1.PatroniServices) error {
+	r.logger.Info("PgBackRest Exporter reconciliation started")
+	pRec := reconciler.NewPgBackRestExporterReconciler(cr, r.helper, utils.GetPatroniClusterSettings(cr.Spec.Patroni.ClusterName))
+	if err := pRec.Reconcile(); err != nil {
+		r.logger.Error("Can not reconcile PgBackRest Exporter", zap.Error(err))
 		return err
 	}
 	return nil
@@ -658,7 +636,7 @@ func (r *PostgresServiceReconciler) processExternalResources(cr *qubershipv1.Pat
 	hostCM := &corev1.ConfigMap{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      "postgres-external",
-			Namespace: util.GetNameSpace(),
+			Namespace: utils.GetNameSpace(),
 		},
 		Data: map[string]string{"connectionName": conn},
 	}
@@ -677,7 +655,7 @@ func (r *PostgresServiceReconciler) processExternalResources(cr *qubershipv1.Pat
 	restoreConfigCM := &corev1.ConfigMap{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      "external-restore-config",
-			Namespace: util.GetNameSpace(),
+			Namespace: utils.GetNameSpace(),
 		},
 		Data: restoreData,
 	}
@@ -687,4 +665,27 @@ func (r *PostgresServiceReconciler) processExternalResources(cr *qubershipv1.Pat
 	}
 
 	return nil
+}
+
+func (r *PostgresServiceReconciler) stopReconcile(newCrHash string, reason string, err error) (ctrl.Result, error) {
+	r.logger.Error(fmt.Sprintf("Failed reconcile attempts: %d, updating crHash, resVersions", r.errorCounter))
+	r.crHash = newCrHash
+	r.errorCounter = 0
+	return r.failReconcile(reason, err, false)
+}
+
+func (r *PostgresServiceReconciler) failReconcile(reason string, err error, requeue bool) (ctrl.Result, error) {
+	r.reason = reason
+	r.message = "Postgres-operator service reconcile cycle failed"
+	if err := r.updateStatus(Failed, reason,
+		fmt.Sprintf("Postgres service reconcile cycle failed. Error: %s", err.Error())); err != nil {
+		r.logger.Error("Cannot update CR status", zap.Error(err))
+		return reconcile.Result{RequeueAfter: time.Minute}, err
+	}
+	requireAfter := time.Duration(0)
+	if requeue {
+		requireAfter = time.Minute
+	}
+
+	return reconcile.Result{RequeueAfter: requireAfter, Requeue: requeue}, err
 }

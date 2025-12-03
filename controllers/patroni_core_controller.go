@@ -32,7 +32,6 @@ import (
 	"github.com/Netcracker/pgskipper-operator/pkg/scheduler"
 	"github.com/Netcracker/pgskipper-operator/pkg/upgrade"
 	utils "github.com/Netcracker/pgskipper-operator/pkg/util"
-	"github.com/Netcracker/pgskipper-operator/pkg/vault"
 	"go.uber.org/zap"
 	"k8s.io/apimachinery/pkg/api/errors"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
@@ -43,7 +42,6 @@ import (
 
 	"fmt"
 
-	"github.com/Netcracker/pgskipper-operator-core/pkg/util"
 	appsv1 "github.com/Netcracker/pgskipper-operator/api/apps/v1"
 	qubershipv1 "github.com/Netcracker/pgskipper-operator/api/patroni/v1"
 	"github.com/Netcracker/qubership-credential-manager/pkg/informer"
@@ -69,7 +67,6 @@ type PatroniCoreReconciler struct {
 	Scheme       *runtime.Scheme
 	helper       *helper.PatroniHelper
 	upgrade      *upgrade.Upgrade
-	vaultClient  *vault.Client
 	cluster      qubershipv1.PatroniCore
 	appsCluster  appsv1.PatroniServices
 	namespace    string
@@ -82,8 +79,8 @@ type PatroniCoreReconciler struct {
 }
 
 func NewPatroniCoreReconciler(client client.Client, scheme *runtime.Scheme) *PatroniCoreReconciler {
-	namespace := util.GetNameSpace()
-	logger := util.GetLogger()
+	namespace := utils.GetNameSpace()
+	logger := utils.GetLogger()
 	return &PatroniCoreReconciler{
 		Client:      client,
 		Scheme:      scheme,
@@ -91,7 +88,6 @@ func NewPatroniCoreReconciler(client client.Client, scheme *runtime.Scheme) *Pat
 		cluster:     qubershipv1.PatroniCore{},
 		appsCluster: appsv1.PatroniServices{},
 		upgrade:     upgrade.Init(client),
-		vaultClient: vault.NewClient(),
 		namespace:   namespace,
 		logger:      *logger,
 		resVersions: map[string]string{},
@@ -99,12 +95,12 @@ func NewPatroniCoreReconciler(client client.Client, scheme *runtime.Scheme) *Pat
 
 }
 
-//+kubebuilder:rbac:groups=qubership.org,resources=patronicore,verbs=get;list;watch;create;update;patch;delete
-//+kubebuilder:rbac:groups=qubership.org,resources=patronicore/status,verbs=get;update;patch
-//+kubebuilder:rbac:groups=qubership.org,resources=patronicore/finalizers,verbs=update
-//+kubebuilder:rbac:groups=qubership.org,resources=postgresservices,verbs=get;list;watch;create;update;patch;delete
-//+kubebuilder:rbac:groups=qubership.org,resources=postgresservices/status,verbs=get;update;patch
-//+kubebuilder:rbac:groups=qubership.org,resources=postgresservices/finalizers,verbs=update
+//+kubebuilder:rbac:groups=netcracker.com,resources=patronicore,verbs=get;list;watch;create;update;patch;delete
+//+kubebuilder:rbac:groups=netcracker.com,resources=patronicore/status,verbs=get;update;patch
+//+kubebuilder:rbac:groups=netcracker.com,resources=patronicore/finalizers,verbs=update
+//+kubebuilder:rbac:groups=netcracker.com,resources=postgresservices,verbs=get;list;watch;create;update;patch;delete
+//+kubebuilder:rbac:groups=netcracker.com,resources=postgresservices/status,verbs=get;update;patch
+//+kubebuilder:rbac:groups=netcracker.com,resources=postgresservices/finalizers,verbs=update
 
 // Reconcile is part of the main kubernetes reconciliation loop which aims to
 // move the current state of the cluster closer to the desired state.
@@ -154,9 +150,10 @@ func (pr *PatroniCoreReconciler) Reconcile(ctx context.Context, request ctrl.Req
 	}
 
 	newResVersion := cr.ResourceVersion
-	newCrHash := util.HashJson(cr.Spec)
+	newCrHash := utils.HashJson(cr.Spec)
 	if (pr.resVersions[cr.Name] == newResVersion ||
-		pr.crHash == newCrHash) && len(cr.Status.Conditions) != 0 && cr.Status.Conditions[0].Type != Failed {
+		pr.crHash == newCrHash) && (len(cr.Status.Conditions) != 0 &&
+		(cr.Status.Conditions[0].Type != Failed || (cr.Status.Conditions[0].Type == Failed && pr.errorCounter == 0))) {
 		areCredsChanged, err := manager.AreCredsChanged(credentials.PostgresSecretNames)
 		if err != nil {
 			return reconcile.Result{}, err
@@ -183,7 +180,7 @@ func (pr *PatroniCoreReconciler) Reconcile(ctx context.Context, request ctrl.Req
 	}
 	pr.crHash = newCrHash
 
-	maxReconcileAttempts, errStrConv := strconv.Atoi(util.GetEnv("PG_RECONCILE_RETRIES", "1"))
+	maxReconcileAttempts, errStrConv := strconv.Atoi(utils.GetEnv("PG_RECONCILE_RETRIES", "1"))
 	if errStrConv != nil {
 		//Adding a logger here to show that reconcile retries were not set by end user
 		pr.logger.Info("Reconcile retries were not set, setting default value as 2")
@@ -203,6 +200,7 @@ func (pr *PatroniCoreReconciler) Reconcile(ctx context.Context, request ctrl.Req
 		return pr.handleReconcileError(maxReconcileAttempts,
 			"CanNotActualizeCredsOnCluster",
 			newCrHash,
+			"Error during actualization of creds on cluster",
 			err)
 	}
 
@@ -212,12 +210,13 @@ func (pr *PatroniCoreReconciler) Reconcile(ctx context.Context, request ctrl.Req
 			switch err.(type) {
 			case *deployerrors.TestsError:
 				{
-					return pr.handleTestReconcileError(err, "Error during tests run", maxReconcileAttempts, newCrHash)
+					return pr.handleReconcileError(maxReconcileAttempts, "ReconcilePostgresServiceClusterFailed", "Error during tests run", newCrHash, err)
 				}
 			case error:
 				{
 					return pr.handleReconcileError(maxReconcileAttempts,
 						"ReconcilePostgresServiceClusterFailed",
+						"Error during reconcile cycle",
 						newCrHash,
 						err)
 				}
@@ -247,18 +246,17 @@ func (pr *PatroniCoreReconciler) Reconcile(ctx context.Context, request ctrl.Req
 
 	scheduler.StopAndClear()
 
-	// update Cr for Vault client
-	pr.vaultClient.UpdateCr(cr.Kind)
 	if err := pr.reconcilePatroniCoreCluster(cr); err != nil {
 		switch err.(type) {
 		case *deployerrors.TestsError:
 			{
-				return pr.handleTestReconcileError(err, "Error during tests run", maxReconcileAttempts, newCrHash)
+				return pr.handleReconcileError(maxReconcileAttempts, "ReconcilePatroniCoreClusterFailed", "Error during tests run", newCrHash, err)
 			}
 		case error:
 			{
 				return pr.handleReconcileError(maxReconcileAttempts,
 					"ReconcilePatroniCoreClusterFailed",
+					"Error during reconcile cycle",
 					newCrHash,
 					err)
 			}
@@ -357,7 +355,7 @@ func (pr *PatroniCoreReconciler) stanzaUpgrade(create bool) error {
 		return err
 	}
 	masterPodName := masterPod.Items[0].Name
-	namespace := util.GetNameSpace()
+	namespace := utils.GetNameSpace()
 	pr.logger.Info("executing command to upgrade pgBackRest stanza")
 	stdout, stderr, err := pr.helper.ExecCmdOnPod(masterPodName, namespace, backRestcontainerName, command)
 	if err != nil {
@@ -366,23 +364,6 @@ func (pr *PatroniCoreReconciler) stanzaUpgrade(create bool) error {
 		fmt.Printf("stanza-upgrade command succeeded:\n%s\n", stdout)
 	}
 	return nil
-}
-
-func (pr *PatroniCoreReconciler) handleTestReconcileError(err error, errMsg string, maxReconcileAttempts int, newCrHash string) (ctrl.Result, error) {
-	pr.errorCounter++
-	if pr.errorCounter < maxReconcileAttempts {
-		pr.logger.Error(errMsg, zap.Error(err))
-		pr.logger.Error(fmt.Sprintf("Error counter for tests run: %d, let's try to run the reconcile again", pr.errorCounter))
-		pr.reason = "PatroniCoreTestsFailed"
-		pr.message = "PatroniCore service reconcile cycle failed"
-		if err := pr.updateStatus(Failed, "PatroniCoreTestsFailed", err.Error()); err != nil {
-			pr.logger.Error("Cannot update CR status", zap.Error(err))
-			return reconcile.Result{RequeueAfter: time.Minute}, err
-		}
-		return reconcile.Result{}, err
-	}
-	pr.logger.Error("Reconciliation cycle failed due to test pod ended with error")
-	return pr.stopReconcile(newCrHash, err)
 }
 
 func (pr *PatroniCoreReconciler) reconcilePatroniCoreCluster(cr *qubershipv1.PatroniCore) error {
@@ -430,7 +411,7 @@ func (pr *PatroniCoreReconciler) reconcilePatroni(cr *qubershipv1.PatroniCore) e
 			return nil
 		}
 	}
-	pRec := reconciler.NewPatroniReconciler(cr, pr.helper, pr.vaultClient, pr.upgrade, pr.Scheme, utils.GetPatroniClusterSettings(cr.Spec.Patroni.ClusterName))
+	pRec := reconciler.NewPatroniReconciler(cr, pr.helper, pr.upgrade, pr.Scheme, utils.GetPatroniClusterSettings(cr.Spec.Patroni.ClusterName))
 	if err := pRec.Reconcile(); err != nil {
 		pr.logger.Error("Can not synchronize desired Patroni state to cluster", zap.Error(err))
 		return err
@@ -477,8 +458,6 @@ func (pr *PatroniCoreReconciler) AddExcludeLabelToCm(c client.Client, cmName str
 func (pr *PatroniCoreReconciler) createTestsPods(cr *qubershipv1.PatroniCore) error {
 	if cr.Spec.IntegrationTests != nil {
 		integrationTestsPod := deployment.NewCoreIntegrationTests(cr, utils.GetPatroniClusterSettings(cr.Spec.Patroni.ClusterName))
-		// Vault Section
-		pr.vaultClient.ProcessPodVaultSection(integrationTestsPod, reconciler.Secrets)
 		state, err := utils.GetPodPhase(integrationTestsPod)
 		if err != nil {
 			return err
@@ -527,25 +506,33 @@ func (pr *PatroniCoreReconciler) createTestsPods(cr *qubershipv1.PatroniCore) er
 	return nil
 }
 
-func (pr *PatroniCoreReconciler) stopReconcile(newCrHash string, err error) (ctrl.Result, error) {
+func (pr *PatroniCoreReconciler) stopReconcile(newCrHash string, reason string, err error) (ctrl.Result, error) {
 	pr.logger.Error(fmt.Sprintf("Failed reconcile attempts: %d, updating crHash, resVersions", pr.errorCounter))
 	pr.crHash = newCrHash
 	pr.errorCounter = 0
-	return reconcile.Result{RequeueAfter: time.Minute}, err
+	return pr.failReconcile(reason, err, false)
 }
 
-func (pr *PatroniCoreReconciler) handleReconcileError(maxAttempts int, reason, newCrHash string, err error) (ctrl.Result, error) {
+func (pr *PatroniCoreReconciler) handleReconcileError(maxAttempts int, reason, errMsg, newCrHash string, err error) (ctrl.Result, error) {
 	pr.errorCounter++
 	if pr.errorCounter < maxAttempts {
+		pr.logger.Error(errMsg, zap.Error(err))
 		pr.logger.Error(fmt.Sprintf("Error counter: %d, let's try to run the reconcile again", pr.errorCounter))
-		pr.reason = reason
-		pr.message = "PatroniCore service reconcile cycle failed"
-		if err := pr.updateStatus(Failed, reason,
-			fmt.Sprintf("Postgres service reconcile cycle failed. Error: %s", err.Error())); err != nil {
-			pr.logger.Error("Cannot update CR status", zap.Error(err))
-			return reconcile.Result{RequeueAfter: time.Minute}, err
-		}
-		return reconcile.Result{RequeueAfter: time.Minute}, err
+		return pr.failReconcile(reason, err, true)
 	}
-	return pr.stopReconcile(newCrHash, err)
+	return pr.stopReconcile(newCrHash, "No reconcile attempts left", err)
+}
+
+func (pr *PatroniCoreReconciler) failReconcile(reason string, err error, requeue bool) (ctrl.Result, error) {
+	pr.reason = reason
+	pr.message = "PatroniCore service reconcile cycle failed"
+	if err := pr.updateStatus(Failed, reason,
+		fmt.Sprintf("Postgres service reconcile cycle failed. Error: %s", err.Error())); err != nil {
+		pr.logger.Error("Cannot update CR status", zap.Error(err))
+	}
+	requireAfter := time.Duration(0)
+	if requeue {
+		requireAfter = time.Minute
+	}
+	return reconcile.Result{RequeueAfter: requireAfter, Requeue: requeue}, err
 }

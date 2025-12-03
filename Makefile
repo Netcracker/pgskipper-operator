@@ -35,6 +35,7 @@ gzip-charts:
 	gzip -f -c ./charts/patroni-services/monitoring/cloudsql-grafana-dashboard.json > ./charts/patroni-services/monitoring/cloudsql-grafana-dashboard.json.gz
 	gzip -f -c ./charts/patroni-services/monitoring/postgres-exporter-grafana-dashboard.json > ./charts/patroni-services/monitoring/postgres-exporter-grafana-dashboard.json.gz
 	gzip -f -c ./charts/patroni-services/monitoring/query-exporter-grafana-dashboard.json > ./charts/patroni-services/monitoring/query-exporter-grafana-dashboard.json.gz
+	gzip -f -c ./charts/patroni-services/monitoring/pgbackrest-exporter-grafana-dashboard.json > ./charts/patroni-services/monitoring/pgbackrest-exporter-grafana-dashboard.json.gz
 
 move-charts:
 	@echo "Move helm charts"
@@ -66,9 +67,13 @@ clean:
 # Generate code
 generate: controller-gen
 	$(CONTROLLER_GEN) crd:crdVersions={v1} \
-					object:headerFile="generator/boilerplate.go.txt" \
-					paths="./api/apps/v1" \
-					output:crd:artifacts:config=charts/patroni-services/crds/
+					  object:headerFile="generator/boilerplate.go.txt" \
+					  paths="./api/common/v1"
+
+	$(CONTROLLER_GEN) crd:crdVersions={v1} \
+					  object:headerFile="generator/boilerplate.go.txt" \
+					  paths="./api/apps/v1" \
+					  output:crd:artifacts:config=charts/patroni-services/crds/
 
 	$(CONTROLLER_GEN) crd:crdVersions={v1} \
 					object:headerFile="generator/boilerplate.go.txt" \
@@ -83,7 +88,7 @@ ifeq (, $(shell which controller-gen))
 	CONTROLLER_GEN_TMP_DIR=$$(mktemp -d) ;\
 	cd $$CONTROLLER_GEN_TMP_DIR ;\
 	go mod init tmp ;\
-	go install sigs.k8s.io/controller-tools/cmd/controller-gen@v0.16.3 ;\
+	go install sigs.k8s.io/controller-tools/cmd/controller-gen@v0.19.0 ;\
 	rm -rf $$CONTROLLER_GEN_TMP_DIR ;\
 	}
 CONTROLLER_GEN=$(GOBIN)/controller-gen

@@ -10,6 +10,8 @@ replicatorPassword: "replicator"
 
 podLabels: {}
 
+imagePullPolicy: IfNotPresent
+
 privateRegistry:
   enabled: false
   secrets:
@@ -66,17 +68,6 @@ operator:
 #  checkTimeout: "1s"
 #  deregisterAfter: "100s"
 
-vaultRegistration:
-  dockerImage: banzaicloud/vault-env:1.5.0
-  enabled: false
-  #  path: /postgres
-  #  url: http://localhost:8200
-  #  token: vaultToken
-  #  paasPlatform: "kubernetes"
-  #  paasVersion: "1.14"
-  dbEngine:
-    enabled: false
-#    name: "postgresql"
 
 policies:
   tolerations:
@@ -255,6 +246,25 @@ backupDaemon:
 #     region: "us-east-1"
 #     verifySsl: false
 
+pgBackRestExporter:
+  install: false
+  image: artifactorycn.netcracker.com:17152/woblerr/pgbackrest_exporter:v0.21.0-alpine
+  resources:
+    requests:
+      cpu: 100m
+      memory: 128Mi
+    limits:
+      cpu: 200m
+      memory: 256Mi
+  securityContext:
+  # pgbackrest user id
+    runAsUser: 2001
+  affinity: {}
+  podLabels: {}
+  env:
+    DATABASE_PARALLEL_PROCESSES: "1"
+    DATABASE_COUNT: "true"
+    DATABASE_COUNT_LATEST: "true"
 
 # externalDataBase:
 #   type: RDS|CLOUDSQL
@@ -305,11 +315,6 @@ dbaas:
   adapter:
     username: "dbaas-aggregator"
     password: "dbaas-aggregator"
-  vaultIntegration:
-    enabled: false
-    address: "http://vault-service.vault:8200"
-    role: "postgres-sa"
-    rotationPeriod: 86400
   #  extensions:
   #    - "postgres_fdw"
   #    - "pgcrypto"
@@ -368,7 +373,7 @@ queryExporter:
 
 powaUI:
   install: false
-  dockerImage: powateam/powa-web:5.0.1
+  dockerImage: powateam/powa-web:5.0.2
   #  podLabels: {}
 
   ingress:

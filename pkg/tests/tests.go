@@ -23,40 +23,35 @@ import (
 	"github.com/Netcracker/pgskipper-operator/pkg/helper"
 	"github.com/Netcracker/pgskipper-operator/pkg/reconciler"
 	opUtil "github.com/Netcracker/pgskipper-operator/pkg/util"
-	"github.com/Netcracker/pgskipper-operator/pkg/vault"
 	"go.uber.org/zap"
 )
 
 var logger = opUtil.GetLogger()
 
 type Creator struct {
-	cr          *qubershipv1.PatroniServices
-	helper      *helper.Helper
-	vaultClient *vault.Client
-	cluster     *patroniv1.PatroniClusterSettings
+	cr      *qubershipv1.PatroniServices
+	helper  *helper.Helper
+	cluster *patroniv1.PatroniClusterSettings
 }
 
 type PatroniCoreCreator struct {
-	cr          *patroniv1.PatroniCore
-	helper      *helper.PatroniHelper
-	vaultClient *vault.Client
-	cluster     *patroniv1.PatroniClusterSettings
+	cr      *patroniv1.PatroniCore
+	helper  *helper.PatroniHelper
+	cluster *patroniv1.PatroniClusterSettings
 }
 
-func NewCreator(cr *qubershipv1.PatroniServices, helper *helper.Helper, vaultClient *vault.Client) *Creator {
+func NewCreator(cr *qubershipv1.PatroniServices, helper *helper.Helper) *Creator {
 	return &Creator{
-		cr:          cr,
-		helper:      helper,
-		vaultClient: vaultClient,
+		cr:     cr,
+		helper: helper,
 	}
 }
 
-func NewCreatorPatroniCore(cr *patroniv1.PatroniCore, helper *helper.PatroniHelper, vaultClient *vault.Client, cluster *patroniv1.PatroniClusterSettings) *PatroniCoreCreator {
+func NewCreatorPatroniCore(cr *patroniv1.PatroniCore, helper *helper.PatroniHelper, cluster *patroniv1.PatroniClusterSettings) *PatroniCoreCreator {
 	return &PatroniCoreCreator{
-		cr:          cr,
-		helper:      helper,
-		vaultClient: vaultClient,
-		cluster:     cluster,
+		cr:      cr,
+		helper:  helper,
+		cluster: cluster,
 	}
 }
 
@@ -64,8 +59,6 @@ func (r *Creator) CreateTestsPods() error {
 	cr := r.cr
 	if cr.Spec.IntegrationTests != nil {
 		integrationTestsPod := deployment.NewIntegrationTestsPod(cr, r.cluster)
-		// Vault Section
-		r.vaultClient.ProcessPodVaultSection(integrationTestsPod, reconciler.Secrets)
 		state, err := opUtil.GetPodPhase(integrationTestsPod)
 		if err != nil {
 			return err

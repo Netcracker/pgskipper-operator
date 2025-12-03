@@ -106,28 +106,9 @@ Create the name of the service account to use
 {{- end -}}
 
 {{/*
-Vault operator envs
+K8s Platform envs
 */}}
-{{- define "postgres-operator.vaultEnvs" }}
-{{- if or .Values.vaultRegistration.enabled .Values.vaultRegistration.dbEngine.enabled }}
-            - name: VAULT_ADDR
-              value: {{ default "http://vault-service.vault:8200" .Values.vaultRegistration.url }}
-            - name: VAULT_TOKEN
-              valueFrom:
-                secretKeyRef:
-                  name: vault-secret-services
-                  key: token
-            - name: PAAS_PLATFORM
-              value: {{ default "kubernetes" .Values.vaultRegistration.paasPlatform }}
-            - name: PAAS_VERSION
-              value: {{ default "1.14" .Values.vaultRegistration.paasVersion | quote }}
-            - name: OPENSHIFT_SERVER
-            {{- if and .Values.CLOUD_PROTOCOL .Values.CLOUD_API_HOST .Values.CLOUD_API_PORT }}
-              value: {{ printf "%s://%s:%v" .Values.CLOUD_PROTOCOL .Values.CLOUD_API_HOST .Values.CLOUD_API_PORT }}
-            {{- else }}
-              value: "https://kubernetes.default:443"
-            {{- end }}
-{{- else }}
+{{- define "postgres-operator.platformEnvs" }}
             - name: PAAS_PLATFORM
               value: "kubernetes"
             - name: PAAS_VERSION
@@ -135,37 +116,11 @@ Vault operator envs
             - name: OPENSHIFT_SERVER
               value: "https://kubernetes.default:443"
 {{- end }}
-{{- end }}
 
 {{/*
-Vault env variables for DBaaS
+POSTGRES ADMIN env variables for DBaaS
 */}}
-{{- define "postgres-dbaas.vaultEnvs" }}
-{{- if or .Values.vaultRegistration.enabled .Values.vaultRegistration.dbEngine.enabled }}
-            {{- if and .Values.vaultRegistration.enabled ( not .Values.vaultRegistration.dbEngine.enabled) }}
-            - name: POSTGRES_ADMIN_PASSWORD
-              value: {{ printf "vault:%s/postgres-credentials#password" ( .Values.vaultRegistration.path | default .Release.Namespace ) }}
-            - name: POSTGRES_ADMIN_USERNAME
-              value: {{ printf "vault:%s/postgres-credentials#username" ( .Values.vaultRegistration.path | default .Release.Namespace ) }}
-            {{- else }}
-            - name: POSTGRES_ADMIN_PASSWORD
-              value: {{ printf "vault:database/static-creds/%s_%s_patroni-sa_postgres#password" .Values.CLOUD_PUBLIC_HOST .Release.Namespace }}
-            - name: POSTGRES_ADMIN_USERNAME
-              value: {{ printf "vault:database/static-creds/%s_%s_patroni-sa_postgres#username" .Values.CLOUD_PUBLIC_HOST .Release.Namespace }}
-            {{- end }}
-            - name: VAULT_SKIP_VERIFY
-              value: "True"
-            - name: VAULT_ADDR
-              value: {{ .Values.vaultRegistration.url }}
-            - name: VAULT_PATH
-              value: {{ printf "%s_%s" .Values.CLOUD_PUBLIC_HOST .Release.Namespace }}
-            - name: VAULT_ROLE
-              value: {{ .Values.serviceAccount.name }}
-            - name: VAULT_IGNORE_MISSING_SECRETS
-              value: "True"
-            - name: VAULT_ENV_PASSTHROUGH
-              value: "VAULT_ADDR,VAULT_ROLE,VAULT_SKIP_VERIFY,VAULT_PATH,VAULT_ENABLED"
-{{- else }}
+{{- define "postgres-dbaas.pgAdminEnvs" }}
             - name: POSTGRES_ADMIN_PASSWORD
               valueFrom:
                 secretKeyRef:
@@ -177,18 +132,11 @@ Vault env variables for DBaaS
                   name: postgres-credentials
                   key: username
 {{- end }}
-{{- end }}
 
 {{/*
-Vault env variables for DBaaS
+Aggregator Registration env variables for DBaaS
 */}}
-{{- define "postgres-dbaas.vaultEnvsReg" }}
-{{- if .Values.vaultRegistration.enabled }}
-            - name: DBAAS_AGGREGATOR_REGISTRATION_USERNAME
-              value: {{ printf "vault:%s/dbaas-aggregator-registration-credentials#username" ( .Values.vaultRegistration.path | default .Release.Namespace ) }}
-            - name: DBAAS_AGGREGATOR_REGISTRATION_PASSWORD
-              value: {{ printf "vault:%s/dbaas-aggregator-registration-credentials#password" ( .Values.vaultRegistration.path | default .Release.Namespace ) }}
-{{- else }}
+{{- define "postgres-dbaas.aggregatorEnvsReg" }}
             - name: DBAAS_AGGREGATOR_REGISTRATION_USERNAME
               valueFrom:
                 secretKeyRef:
@@ -199,7 +147,6 @@ Vault env variables for DBaaS
                 secretKeyRef:
                   name: dbaas-aggregator-registration-credentials
                   key: password
-{{- end }}
 {{- end }}
 
 {{- define "find_image" -}}
@@ -229,7 +176,7 @@ Vault env variables for DBaaS
               value: {{ include "postgres.smServiceAccount" . }}
             - name: SM_HTTP_AUTH
               value: "true"
-            {{- if .Values.siteManager.httpAuth.smSecureAuth -}}
+            {{- if .Values.siteManager.httpAuth.smSecureAuth }}
             - name: SM_CUSTOM_AUDIENCE
               value: {{ .Values.siteManager.httpAuth.customAudience }}
             {{- end -}}

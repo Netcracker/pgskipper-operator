@@ -1,4 +1,4 @@
-apiVersion: qubership.org/v1
+apiVersion: netcracker.com/v1
 kind: PatroniCore
 metadata:
   name: patroni-core
@@ -6,14 +6,7 @@ metadata:
     name: patroni-core
       {{ include "kubernetes.labels" . | nindent 4 }}
 spec:
-  {{- if .Values.privateRegistry.enabled }}
-  privateRegistry:
-    enabled: true
-    names:
-    {{- range $i, $v := .Values.privateRegistry.secrets }}
-      - {{ $v.name }}
-    {{- end }}
-  {{- end }}
+  imagePullPolicy: {{ .Values.imagePullPolicy | default "IfNotPresent" }}
   installationTimestamp: {{ now | unixEpoch | quote }}
   {{ if .Values.serviceAccount.create }}
   serviceAccountName: {{default "patroni-sa" .Values.serviceAccount.name}}
@@ -58,14 +51,9 @@ spec:
     {{- if .Values.patroni.podLabels }}
     podLabels:
       {{ toYaml .Values.patroni.podLabels | nindent 6 }}
-      {{- include "kubernetes.labels" . | nindent 6 }}
     {{- else if .Values.podLabels }}
     podLabels:
       {{ toYaml .Values.podLabels | nindent 6 }}
-      {{- include "kubernetes.labels" . | nindent 6 }}
-    {{- else }}
-    podLabels:
-      {{ include "kubernetes.labels" . | nindent 6 }}
     {{- end }}
     {{ if .Values.patroni.podAnnotations }}
     podAnnotations:
@@ -102,17 +90,16 @@ spec:
 {{ toYaml .Values.patroni.pgHba | indent 6}}
   {{- end }}
     resources:
-  {{ if .Values.patroni.resources.unlimited }}
+  {{- if .Values.patroni.resources.unlimited }}
       limits: {}
       requests:
 {{ toYaml .Values.patroni.resources.requests | indent 8}}
     unlimited: {{ .Values.patroni.resources.unlimited }}
-  {{ else }}
-      limits:
-{{ toYaml .Values.patroni.resources.limits | indent 8}}
-      requests:
-{{ toYaml .Values.patroni.resources.requests | indent 8}}
-  {{ end }}
+  {{- else }}
+      limits: {{- toYaml .Values.patroni.resources.limits | nindent 8 }}
+      requests: {{- toYaml .Values.patroni.resources.requests | nindent 8 }}
+  {{- end }}
+    patroniResourcesLimitMemory: {{ .Values.patroni.patroniResourcesLimitMemory | default "" | quote }}
     storage:
       type: {{ default "pv" .Values.patroni.storage.type }}
       size: {{ default "10Gi" .Values.patroni.storage.size }}
@@ -180,22 +167,6 @@ spec:
   consulRegistration:
 {{ toYaml .Values.consulRegistration | indent 4 }}
 {{ end }}
-{{ if .Values.vaultRegistration }}
-  vaultRegistration:
-    dockerImage: {{ template "find_image" (dict "deployName" "vault_env" "SERVICE_NAME" "vault_env" "vals" .Values "default" .Values.vaultRegistration.dockerImage) }}
-    enabled: {{ .Values.vaultRegistration.enabled }}
-    path: {{ .Values.vaultRegistration.path | default .Release.Namespace }}
-  {{- if .Values.vaultRegistration.url }}
-    url: {{ .Values.vaultRegistration.url }}
-  {{- end }}
-    dbEngine:
-      enabled: {{ .Values.vaultRegistration.dbEngine.enabled }}
-      name: {{ .Values.vaultRegistration.dbEngine.name | default (printf "%s_%s_postgresql" .Values.CLOUD_PUBLIC_HOST .Release.Namespace) }}
-      maxOpenConnections: {{ .Values.vaultRegistration.dbEngine.maxOpenConnections | default 5 }}
-      maxIdleConnections: {{ .Values.vaultRegistration.dbEngine.maxIdleConnections | default 5 }}
-      maxConnectionLifetime: {{ .Values.vaultRegistration.dbEngine.maxConnectionLifetime | default "5s" }}
-
-{{ end }}
 {{ if .Values.pgBackRest }}
   pgBackRest:
     dockerImage: {{ template "find_image" (dict "deployName" "pgbackrest_sidecar" "SERVICE_NAME" "pgbackrest_sidecar" "vals" .Values "default" .Values.pgBackRest.dockerImage) }}
@@ -203,6 +174,8 @@ spec:
     repoPath: {{ .Values.pgBackRest.repoPath | default "/var/lib/pgbackrest" }}
     diffSchedule: {{ .Values.pgBackRest.diffSchedule | default "0 0/1 * * *" }}
     incrSchedule: {{ .Values.pgBackRest.incrSchedule | default "0 0/1 * * *" }}
+    fullRetention: {{ .Values.pgBackRest.fullRetention | default 5 }}
+    diffRetention: {{ .Values.pgBackRest.diffRetention | default 3 }}
     backupFromStandby: {{ .Values.pgBackRest.backupFromStandby | default false }}
   {{ if .Values.pgBackRest.rwx }}
     rwx:
@@ -243,14 +216,9 @@ spec:
     {{- if .Values.tests.podLabels }}
     podLabels:
       {{ toYaml .Values.tests.podLabels | nindent 6 }}
-      {{- include "kubernetes.labels" . | nindent 6 }}
     {{- else if .Values.podLabels }}
     podLabels:
       {{ toYaml .Values.podLabels | nindent 6 }}
-      {{- include "kubernetes.labels" . | nindent 6 }}
-    {{- else }}
-    podLabels:
-      {{ include "kubernetes.labels" . | nindent 6 }}
     {{- end }}
     image: {{ template "find_image" (dict "deployName" "postgres_operator_tests" "SERVICE_NAME" "postgres_operator_tests" "vals" .Values "default" .Values.tests.dockerImage) }}
 {{ if .Values.tests.resources }}

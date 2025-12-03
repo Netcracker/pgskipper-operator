@@ -20,7 +20,6 @@ import (
 
 	site "github.com/Netcracker/pgskipper-operator/pkg/disasterrecovery"
 	"github.com/Netcracker/pgskipper-operator/pkg/helper"
-	"github.com/Netcracker/pgskipper-operator/pkg/vault"
 	"github.com/Netcracker/qubership-credential-manager/pkg/hook"
 
 	"net/http"
@@ -94,7 +93,7 @@ func main() {
 		Metrics:                metricsserver.Options{BindAddress: "0"},
 		HealthProbeBindAddress: probeAddr,
 		LeaderElection:         enableLeaderElection,
-		LeaderElectionID:       "3100713b.qubership.org",
+		LeaderElectionID:       "3100713b.netcracker.com",
 		Cache: cache.Options{
 			DefaultNamespaces: map[string]cache.Config{util.GetNameSpace(): {}},
 		},
@@ -118,7 +117,6 @@ func main() {
 
 		}
 		//Init section
-		vault.Init()
 		site.InitDRManager()
 	}
 	//+kubebuilder:scaffold:builder

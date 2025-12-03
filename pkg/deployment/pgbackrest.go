@@ -16,12 +16,13 @@ package deployment
 
 import (
 	"fmt"
+	"strings"
+
 	v1 "github.com/Netcracker/pgskipper-operator/api/patroni/v1"
 	"github.com/Netcracker/pgskipper-operator/pkg/patroni"
 	"github.com/Netcracker/pgskipper-operator/pkg/util"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"strings"
 )
 
 const SSHKeysSecret = "pgbackrest-keys"
@@ -31,7 +32,7 @@ func getPgBackRestContainer(deploymentIdx int, clustername string, patroniCoreSp
 	pgBackRestContainer := corev1.Container{
 		Name:            "pgbackrest-sidecar",
 		Image:           patroniCoreSpec.PgBackRest.DockerImage,
-		ImagePullPolicy: "Always",
+		ImagePullPolicy: patroniCoreSpec.ImagePullPolicy,
 		SecurityContext: util.GetDefaultSecurityContext(),
 		Command:         []string{"sh"},
 		Args:            []string{"/opt/start.sh"},

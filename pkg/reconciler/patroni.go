@@ -22,7 +22,8 @@ import (
 	"sync"
 	"time"
 
-	"github.com/Netcracker/pgskipper-operator-core/pkg/storage"
+	goErrors "errors"
+
 	v1 "github.com/Netcracker/pgskipper-operator/api/patroni/v1"
 	pgClient "github.com/Netcracker/pgskipper-operator/pkg/client"
 	"github.com/Netcracker/pgskipper-operator/pkg/credentials"
@@ -31,9 +32,9 @@ import (
 	"github.com/Netcracker/pgskipper-operator/pkg/patroni"
 	"github.com/Netcracker/pgskipper-operator/pkg/powa"
 	"github.com/Netcracker/pgskipper-operator/pkg/queryexporter"
+	"github.com/Netcracker/pgskipper-operator/pkg/storage"
 	"github.com/Netcracker/pgskipper-operator/pkg/upgrade"
 	opUtil "github.com/Netcracker/pgskipper-operator/pkg/util"
-	"github.com/Netcracker/pgskipper-operator/pkg/vault"
 	"github.com/Netcracker/qubership-credential-manager/pkg/manager"
 	"go.uber.org/zap"
 	corev1 "k8s.io/api/core/v1"
@@ -55,22 +56,20 @@ var commands = []string{
 }
 
 type PatroniReconciler struct {
-	cr          *v1.PatroniCore
-	helper      *helper.PatroniHelper
-	vaultClient *vault.Client
-	upgrade     *upgrade.Upgrade
-	scheme      *runtime.Scheme
-	cluster     *v1.PatroniClusterSettings
+	cr      *v1.PatroniCore
+	helper  *helper.PatroniHelper
+	upgrade *upgrade.Upgrade
+	scheme  *runtime.Scheme
+	cluster *v1.PatroniClusterSettings
 }
 
-func NewPatroniReconciler(cr *v1.PatroniCore, helper *helper.PatroniHelper, vaultClient *vault.Client, upgrade *upgrade.Upgrade, scheme *runtime.Scheme, cluster *v1.PatroniClusterSettings) *PatroniReconciler {
+func NewPatroniReconciler(cr *v1.PatroniCore, helper *helper.PatroniHelper, upgrade *upgrade.Upgrade, scheme *runtime.Scheme, cluster *v1.PatroniClusterSettings) *PatroniReconciler {
 	return &PatroniReconciler{
-		cr:          cr,
-		helper:      helper,
-		vaultClient: vaultClient,
-		upgrade:     upgrade,
-		scheme:      scheme,
-		cluster:     cluster,
+		cr:      cr,
+		helper:  helper,
+		upgrade: upgrade,
+		scheme:  scheme,
+		cluster: cluster,
 	}
 }
 
@@ -131,17 +130,6 @@ func (r *PatroniReconciler) Reconcile() error {
 			return err
 		}
 
-		if err := r.vaultClient.ProcessRoleSecret(pgSecret); err != nil {
-			return err
-		}
-	}
-
-	vaultRolesExist := r.vaultClient.IsVaultRolesExist()
-
-	if vaultRolesExist {
-		if err := r.vaultClient.UpdatePgClientPass(); err != nil {
-			return err
-		}
 	}
 
 	// find possible deployments by pods
@@ -276,7 +264,10 @@ func (r *PatroniReconciler) Reconcile() error {
 			}
 			if localeVersion != newLocaleVersion || cr.Spec.Patroni.ForceCollationVersionUpgrade {
 				logger.Warn(fmt.Sprintf("New os locale version is %s, but previous was %s. A collation version mismatch occured in databases. Run locale fix script", newLocaleVersion, localeVersion))
-				r.runLocaleFixScript(pgVersion, newLocaleVersion, cr.Spec.Patroni.ForceCollationVersionUpgrade)
+				err = r.runLocaleFixScript(pgVersion, newLocaleVersion, cr.Spec.Patroni.ForceCollationVersionUpgrade)
+				if err != nil {
+					return err
+				}
 				r.helper.StoreDataToCM("locale-version", newLocaleVersion)
 			}
 
@@ -316,14 +307,11 @@ func (r *PatroniReconciler) Reconcile() error {
 		}
 	}
 	// Set replicator password from Secret
-	if !cr.Spec.VaultRegistration.DbEngine.Enabled && !isStandbyClusterPresent {
-		if err := r.helper.SyncReplicatorPassword(r.cluster.PgHost); err != nil {
-			return err
-		}
-	} else if isStandbyClusterPresent {
+	if isStandbyClusterPresent {
 		logger.Info("Standby detected; skipping replicator password sync")
+	} else if err := r.helper.SyncReplicatorPassword(r.cluster.PgHost); err != nil {
+		return err
 	}
-
 	// add necessary shared_preload_libraries and settings
 	if cr.Spec.Patroni.Powa.Install {
 		powa.UpdatePgSettings(cr)
@@ -379,11 +367,6 @@ func (r *PatroniReconciler) Reconcile() error {
 	}
 
 	if err := opUtil.WaitForPatroni(cr, r.cluster.PatroniMasterSelectors, r.cluster.PatroniReplicasSelector); err != nil {
-		return err
-	}
-
-	// Activating Vault PostgreSQL plugin if it enabled
-	if err := r.vaultClient.PrepareDbEngine(vaultRolesExist, r.cluster); err != nil {
 		return err
 	}
 
@@ -456,7 +439,7 @@ func (r *PatroniReconciler) processPatroniServices(cr *v1.PatroniCore, patroniSp
 		if cr.Spec.PgBackRest != nil {
 			pgBackRestService := deployment.GetPgBackRestService(r.cluster.PatroniMasterSelectors, false)
 			if err := r.helper.CreateOrUpdateService(pgBackRestService); err != nil {
-				logger.Error(fmt.Sprintf("Cannot create service %s", pgService.Name), zap.Error(err))
+				logger.Error(fmt.Sprintf("Cannot create service %s", pgBackRestService.Name), zap.Error(err))
 				return err
 			}
 			if cr.Spec.PgBackRest.BackupFromStandby {
@@ -484,7 +467,6 @@ func (r *PatroniReconciler) processPatroniStatefulset(cr *v1.PatroniCore, deploy
 		return err
 	}
 
-	vaultRolesExist := r.vaultClient.IsVaultRolesExist()
 	patroniSpec := cr.Spec.Patroni
 	pvc := storage.NewPvc(fmt.Sprintf("%s-data-%v", opUtil.GetPatroniClusterName(cr.Spec.Patroni.ClusterName), deploymentIdx), patroniSpec.Storage, deploymentIdx)
 	if err := r.helper.CreatePvcIfNotExists(pvc); err != nil {
@@ -529,12 +511,6 @@ func (r *PatroniReconciler) processPatroniStatefulset(cr *v1.PatroniCore, deploy
 		return err
 	}
 
-	// Vault Section
-	// For DbEngine case this section processed later for patroni
-	if vaultRolesExist || (cr.Spec.VaultRegistration.Enabled && !cr.Spec.VaultRegistration.DbEngine.Enabled) {
-		r.vaultClient.ProcessVaultSectionStatefulset(patroniDeployment, vault.PatroniEntrypoint, Secrets)
-	}
-
 	if err := r.helper.CreateOrUpdateStatefulset(patroniDeployment, true); err != nil {
 		logger.Error(fmt.Sprintf("Cannot create or update deployment %s", patroniDeployment.Name), zap.Error(err))
 		return err
@@ -573,39 +549,59 @@ func (r *PatroniReconciler) createServicesForEtcdAsDcs() error {
 	return nil
 }
 
-func (r *PatroniReconciler) runLocaleFixScript(pgVersion int64, newLocale string, forced bool) {
+func (r *PatroniReconciler) runLocaleFixScript(pgVersion int64, newLocale string, forced bool) error {
 	pgC := pgClient.GetPostgresClient(r.cluster.PgHost)
 
 	err := helper.WaitUntilRecoveryIsDone(pgC)
 	if err != nil {
 		logger.Error("recovery check failed, during locale update", zap.Error(err))
-		return
+		return err
 	}
 
 	var databaseList []string
 	if forced {
-		databaseList = helper.GetAllDatabases(pgC)
+		databaseList, err = helper.GetAllDatabases(pgC)
 	} else {
-		databaseList = helper.GetDatabasesForLocaleUpdate(pgC, newLocale)
+		databaseList, err = helper.GetDatabasesForLocaleUpdate(pgC, newLocale)
 	}
+	if err != nil {
+		return err
+	}
+
 	logger.Info(fmt.Sprintf("database count for locale fix: %d", len(databaseList)))
 
+	errChan := make(chan error, len(databaseList))
 	wg.Wait()
 	connCount := 0
 	limitPool := 10
 	for _, db := range databaseList {
 		wg.Add(1)
 		connCount++
-		go r.fixCollationVersionForDB(pgC, pgVersion, db)
+		go r.fixCollationVersionForDB(pgC, pgVersion, db, errChan)
 		if connCount >= limitPool {
 			wg.Wait()
 			connCount = 0
 		}
 	}
 	wg.Wait()
+
+	close(errChan)
+	var errors []error
+	for err := range errChan {
+		if err != nil {
+			errors = append(errors, err)
+		}
+	}
+
+	if len(errors) > 0 {
+		msg := fmt.Sprintf("encountered %d errors during collation version fix", len(errors))
+		logger.Error(msg)
+		return goErrors.New(msg)
+	}
+	return nil
 }
 
-func (r *PatroniReconciler) fixCollationVersionForDB(pgClient *pgClient.PostgresClient, pgVersion int64, db string) {
+func (r *PatroniReconciler) fixCollationVersionForDB(pgClient *pgClient.PostgresClient, pgVersion int64, db string, errChan chan<- error) {
 	defer wg.Done()
 
 	var err error
@@ -614,11 +610,12 @@ func (r *PatroniReconciler) fixCollationVersionForDB(pgClient *pgClient.Postgres
 			logger.Info(fmt.Sprintf("fix locale for database: %s - OK", db))
 		} else {
 			logger.Info(fmt.Sprintf("fix locale for database: %s - HAVE PROBLEMS", db))
+			errChan <- fmt.Errorf("failed to fix collation version for database %s: %w", db, err)
 		}
 	}()
 
 	logger.Info(fmt.Sprintf("fix locale for database: %s", db))
-	err = pgClient.ExecuteForDB(db, fmt.Sprintf("REINDEX DATABASE \"%s\"", db))
+	err = pgClient.ExecuteForDB(db, fmt.Sprintf("REINDEX DATABASE CONCURRENTLY \"%s\"", db))
 	if err != nil {
 		logger.Warn(fmt.Sprintf("Cannot reindex database for db: %s", db), zap.Error(err))
 		return
@@ -627,6 +624,15 @@ func (r *PatroniReconciler) fixCollationVersionForDB(pgClient *pgClient.Postgres
 	if err != nil {
 		logger.Warn(fmt.Sprintf("Cannot reindex system for db: %s", db), zap.Error(err))
 		return
+	}
+	brokenIndNames, err := findBrokenIndexes(pgClient, db)
+	if err != nil {
+		logger.Warn(fmt.Sprintf("Cannot find broken indexes for db: %s", db), zap.Error(err))
+		return
+	}
+
+	if len(brokenIndNames) > 0 {
+		fixBrokenIndexes(pgClient, db, brokenIndNames)
 	}
 
 	if pgVersion >= 15 {
@@ -641,6 +647,79 @@ func (r *PatroniReconciler) fixCollationVersionForDB(pgClient *pgClient.Postgres
 	if err != nil {
 		logger.Warn(fmt.Sprintf("Cannot alter dependent collations version for db: %s", db), zap.Error(err))
 	}
+}
+
+func fixBrokenIndexes(pgClient *pgClient.PostgresClient, db string, brokenIndNames []string) error {
+	logger.Warn(fmt.Sprintf("Broken indexes found for db: %s", db))
+	indexesFixed := true
+	for _, BrokenIndName := range brokenIndNames {
+		dropIndexQuery := fmt.Sprintf("DROP INDEX IF EXISTS \"%s\"", BrokenIndName)
+		err := pgClient.ExecuteForDB(db, dropIndexQuery)
+		if err != nil {
+			logger.Warn(fmt.Sprintf("Cannot drop index for db: %s", db), zap.Error(err))
+			indexesFixed = false
+		}
+		if strings.Contains(BrokenIndName, "_ccnew") {
+			indexNameOld := strings.Split(BrokenIndName, "_ccnew")[0]
+			err = pgClient.ExecuteForDB(db, fmt.Sprintf("REINDEX INDEX CONCURRENTLY \"%s\"", indexNameOld))
+			if err != nil {
+				logger.Warn(fmt.Sprintf("Cannot reindex index for db: %s", db), zap.Error(err))
+				indexesFixed = false
+			}
+		}
+	}
+
+	if indexesFixed {
+		logger.Info(fmt.Sprintf("Broken indexes fixed for db: %s", db))
+	} else {
+		msg := fmt.Sprintf("Broken indexes not fixed for db: %s", db)
+		logger.Warn(msg)
+		return goErrors.New(msg)
+	}
+	return nil
+}
+
+func findBrokenIndexes(pgClient *pgClient.PostgresClient, db string) ([]string, error) {
+	logger.Debug(fmt.Sprintf("check broken indexes for db: %s", db))
+
+	brokenIndexQuery := `
+		SELECT 
+			n.nspname AS schema_name,
+			c.relname AS index_name
+		FROM 
+			pg_index i
+		JOIN 
+			pg_class c ON i.indexrelid = c.oid
+		JOIN 
+			pg_namespace n ON c.relnamespace = n.oid
+		WHERE 
+			n.nspname NOT IN ('pg_catalog', 'information_schema') AND i.indisvalid = false AND ( c.relname like '%_ccnew%' or c.relname like '%_ccold%')
+		ORDER BY 
+				schema_name, index_name;`
+
+	conn, err := pgClient.GetConnectionToDb(db)
+	if err != nil {
+		return nil, err
+	}
+	defer conn.Close(context.Background())
+
+	rows, err := conn.Query(context.Background(), brokenIndexQuery)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	indexNames := make([]string, 0)
+	var schemaName string
+	var indexName string
+	for rows.Next() {
+		err = rows.Scan(&schemaName, &indexName)
+		if err != nil {
+			return nil, err
+		}
+		indexNames = append(indexNames, fmt.Sprintf("\"%s\".\"%s\"", schemaName, indexName))
+	}
+	return indexNames, nil
 }
 
 func (r *PatroniReconciler) refreshDependCollationsVersion(pgClient *pgClient.PostgresClient, db string) error {
@@ -660,6 +739,7 @@ func (r *PatroniReconciler) refreshDependCollationsVersion(pgClient *pgClient.Po
 
 // Get all collations with version mismatch for database
 func (r *PatroniReconciler) getCollationsForRefresh(pgClient *pgClient.PostgresClient, db string) ([]string, error) {
+
 	cForRefresh := make([]string, 0)
 	conn, err := pgClient.GetConnectionToDb(db)
 	if err != nil {
@@ -675,7 +755,7 @@ func (r *PatroniReconciler) getCollationsForRefresh(pgClient *pgClient.PostgresC
 	rows, err := conn.Query(context.Background(), `SELECT distinct c.collname AS "Collation"
 			FROM pg_depend d
 			JOIN pg_collation c ON (refclassid = 'pg_collation'::regclass AND refobjid = c.oid)
-			WHERE c.collversion <> pg_collation_actual_version(c.oid) or c.collversion is null;`)
+            WHERE c.collversion <> pg_collation_actual_version(c.oid) or c.collversion is null;`)
 	if err != nil {
 		logger.Error(fmt.Sprintf("error during fetching collations for database %s", db))
 		return nil, err
@@ -690,6 +770,7 @@ func (r *PatroniReconciler) getCollationsForRefresh(pgClient *pgClient.PostgresC
 		}
 		cForRefresh = append(cForRefresh, collation)
 	}
+
 	return cForRefresh, nil
 }
 

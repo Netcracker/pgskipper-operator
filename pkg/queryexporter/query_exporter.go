@@ -47,7 +47,8 @@ type QueryExporterCreds struct {
 	password string
 }
 
-func NewQueryExporterDeployment(spec v1.QueryExporter, sa string) *appsv1.Deployment {
+func NewQueryExporterDeployment(cr *v1.PatroniServices, sa string) *appsv1.Deployment {
+	spec := cr.Spec.QueryExporter
 	deploymentName := "query-exporter"
 	dockerImage := spec.Image
 	dep := &appsv1.Deployment{
@@ -82,8 +83,9 @@ func NewQueryExporterDeployment(spec v1.QueryExporter, sa string) *appsv1.Deploy
 							Ports: []corev1.ContainerPort{
 								{ContainerPort: 8080, Name: "web", Protocol: corev1.ProtocolTCP},
 							},
-							VolumeMounts: getVolumeMounts(),
-							Resources:    spec.Resources,
+							VolumeMounts:    getVolumeMounts(),
+							Resources:       spec.Resources,
+							ImagePullPolicy: cr.Spec.ImagePullPolicy,
 						},
 					},
 					SecurityContext: spec.SecurityContext,

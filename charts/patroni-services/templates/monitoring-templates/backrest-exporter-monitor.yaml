@@ -1,0 +1,31 @@
+{{- if .Values.pgBackRestExporter.install }}
+apiVersion: monitoring.coreos.com/v1
+kind: ServiceMonitor
+metadata:
+  name: backrest-exporter-monitor
+  labels:
+    name: backrest-exporter-monitor
+    k8s-app: backrest-exporter-monitor
+    app.kubernetes.io/name: backrest-exporter-monitor
+    app.kubernetes.io/component: monitoring
+    app.kubernetes.io/part-of: platform-monitoring
+    app.kubernetes.io/managed-by: platform-monitoring-operator
+spec:
+  endpoints:
+  - interval: {{ .Values.metricCollector.collectionInterval }}s
+    scrapeTimeout: {{ default "20" .Values.metricCollector.scrapeTimeout }}s
+    port: brexporter
+    scheme: http
+  jobLabel: k8s-app
+  namespaceSelector:
+    {{ if  .Release.Namespace }}
+    matchNames:
+      - {{ .Release.Namespace }}
+    {{ else }}
+    matchNames:
+      - {{ default "postgres-service" .Values.NAMESPACE }}
+    {{ end }}
+  selector:
+    matchLabels:
+      app: pgbackrest-exporter
+{{ end }}

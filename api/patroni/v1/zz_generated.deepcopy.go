@@ -5,7 +5,7 @@
 package v1
 
 import (
-	apiv1 "github.com/Netcracker/pgskipper-operator-core/api/v1"
+	commonv1 "github.com/Netcracker/pgskipper-operator/api/common/v1"
 	corev1 "k8s.io/api/core/v1"
 	runtime "k8s.io/apimachinery/pkg/runtime"
 )
@@ -162,7 +162,7 @@ func (in *Patroni) DeepCopyInto(out *Patroni) {
 	}
 	if in.Storage != nil {
 		in, out := &in.Storage, &out.Storage
-		*out = new(apiv1.Storage)
+		*out = new(commonv1.Storage)
 		(*in).DeepCopyInto(*out)
 	}
 	in.Affinity.DeepCopyInto(&out.Affinity)
@@ -202,11 +202,6 @@ func (in *Patroni) DeepCopyInto(out *Patroni) {
 		copy(*out, *in)
 	}
 	out.Powa = in.Powa
-	if in.VaultRegistration != nil {
-		in, out := &in.VaultRegistration, &out.VaultRegistration
-		*out = new(apiv1.VaultRegistration)
-		**out = **in
-	}
 	if in.SecurityContext != nil {
 		in, out := &in.SecurityContext, &out.SecurityContext
 		*out = new(corev1.PodSecurityContext)
@@ -214,7 +209,7 @@ func (in *Patroni) DeepCopyInto(out *Patroni) {
 	}
 	if in.PgWalStorage != nil {
 		in, out := &in.PgWalStorage, &out.PgWalStorage
-		*out = new(apiv1.Storage)
+		*out = new(commonv1.Storage)
 		(*in).DeepCopyInto(*out)
 	}
 	if in.External != nil {
@@ -377,11 +372,6 @@ func (in *PatroniCoreSpec) DeepCopyInto(out *PatroniCoreSpec) {
 		*out = new(ConsulRegistration)
 		(*in).DeepCopyInto(*out)
 	}
-	if in.VaultRegistration != nil {
-		in, out := &in.VaultRegistration, &out.VaultRegistration
-		*out = new(apiv1.VaultRegistration)
-		**out = **in
-	}
 	if in.Policies != nil {
 		in, out := &in.Policies, &out.Policies
 		*out = new(Policies)
@@ -389,7 +379,7 @@ func (in *PatroniCoreSpec) DeepCopyInto(out *PatroniCoreSpec) {
 	}
 	if in.CloudSql != nil {
 		in, out := &in.CloudSql, &out.CloudSql
-		*out = new(apiv1.CloudSql)
+		*out = new(commonv1.CloudSql)
 		**out = **in
 	}
 	if in.Tls != nil {
@@ -462,7 +452,7 @@ func (in *PgBackRest) DeepCopyInto(out *PgBackRest) {
 	out.DRS3 = in.DRS3
 	if in.Rwx != nil {
 		in, out := &in.Rwx, &out.Rwx
-		*out = new(apiv1.Storage)
+		*out = new(commonv1.Storage)
 		(*in).DeepCopyInto(*out)
 	}
 	if in.Resources != nil {
