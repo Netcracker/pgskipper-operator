@@ -1,0 +1,130 @@
+diff --git a/Dockerfile b/Dockerfile
+index 1c7a3d1..2995ba6 100644
+--- a/Dockerfile
++++ b/Dockerfile
+@@ -1,8 +1,8 @@
+-FROM ubuntu:22.04
++FROM ubuntu:24.04
+ 
+ USER root
+ 
+-ARG PG_VERSION=15  # Default to 15 if not provided
++ARG PG_VERSION=18  # Default to 15 if not provided
+ 
+ ENV POD_IDENTITY="node1" \
+     PATRONI_TTL=60 \
+@@ -30,7 +30,7 @@ COPY ./scripts/postgresql.conf /tmp/postgresql.conf
+ COPY ./scripts/fix_permission.sh /usr/libexec/fix-permissions
+ ADD ./scripts/* /
+ 
+-RUN echo "deb [trusted=yes] http://apt.postgresql.org/pub/repos/apt jammy-pgdg main" >> /etc/apt/sources.list.d/pgdg.list
++RUN echo "deb [trusted=yes] http://apt.postgresql.org/pub/repos/apt noble-pgdg main" >> /etc/apt/sources.list.d/pgdg.list
+ RUN ls -la /etc/apt/
+ RUN apt-get -y update
+ RUN apt-get -o DPkg::Options::="--force-confnew" -y dist-upgrade
+@@ -38,10 +38,6 @@ RUN apt-get update && \
+     apt-get install -y --allow-downgrades gcc-12 cpp-12 gcc-12-base libgcc-12-dev libstdc++6 libgcc-s1 libnsl2
+ RUN apt-get --no-install-recommends install -y python3.11 python3-pip python3-dev libpq-dev cython3 wget curl
+ 
+-# rename 'tape' group to 'postgres' and creating postgres user - hask for ubuntu
+-RUN groupmod -n postgres tape
+-RUN adduser -uid 26 -gid 26 postgres
+-
+ # Install pgbackrest 2.55.1 from source
+ RUN apt-get --no-install-recommends install -y \
+     build-essential \
+@@ -87,15 +83,25 @@ RUN apt-get --no-install-recommends install -y postgresql-$PG_VERSION postgresql
+     postgresql-$PG_VERSION-cron postgresql-$PG_VERSION-repack postgresql-$PG_VERSION-pgaudit postgresql-$PG_VERSION-pg-stat-kcache postgresql-$PG_VERSION-pg-qualstats postgresql-$PG_VERSION-set-user postgresql-$PG_VERSION-postgis \
+     postgresql-$PG_VERSION-pg-wait-sampling postgresql-$PG_VERSION-pg-track-settings postgresql-$PG_VERSION-pg-hint-plan postgresql-$PG_VERSION-pgnodemx postgresql-$PG_VERSION-decoderbufs postgresql-$PG_VERSION-pglogical postgresql-$PG_VERSION-pgvector
+ 
++# Ensure postgres user exists with UID 26 (postgresql packages create the user, but may not have UID 26)
++RUN POSTGRES_UID=$(id -u postgres 2>/dev/null || echo "") && \
++    if [ -z "$POSTGRES_UID" ]; then \
++        groupadd -g 26 postgres && \
++        useradd -u 26 -g 26 -d /var/lib/pgsql -s /bin/bash postgres; \
++    elif [ "$POSTGRES_UID" != "26" ]; then \
++        groupmod -g 26 postgres 2>/dev/null || groupadd -g 26 postgres; \
++        usermod -u 26 -g 26 postgres; \
++    fi
+ 
+ # Install LDAP utilities including openldap-clients and necessary libraries
+ RUN apt-get update && apt-get install -y \
+     ldap-utils \
+-    libldap-2.5-0 \
+     libsasl2-modules-gssapi-mit \
+     libldap-common \
+     && rm -rf /var/lib/apt/lists/*
+ 
++COPY pg-oidc-validator-pgdg18.deb pg-oidc-validator-pgdg18.deb
++RUN dpkg -i pg-oidc-validator-pgdg18.deb
+ 
+ RUN localedef -i en_US -f UTF-8 en_US.UTF-8 && \
+     localedef -i es_PE -f UTF-8 es_PE.UTF-8 && \
+@@ -111,19 +117,20 @@ RUN apt update && apt-get install -y git make gcc && \
+     cd pgsentinel && \
+     git checkout 0218c2147daab0d2dbbf08433cb480163d321839 && \
+     cd src && make install && \
+-    cd ../.. && git clone --depth 1 --branch REL14_0 https://github.com/ossc-db/pg_dbms_stats.git && \
+-    cd pg_dbms_stats && sed -i 's/$(MAJORVERSION)/14/g' Makefile && \
+-    make install && \
++    # cd ../.. && git clone --depth 1 --branch REL14_0 https://github.com/ossc-db/pg_dbms_stats.git && \
++    # cd pg_dbms_stats && sed -i 's/$(MAJORVERSION)/14/g' Makefile && \
++    # make install && \
+     apt-get purge -y --auto-remove git make gcc && \
+     cd .. && rm -rf pgsentinel
+ 
+ RUN apt-get install -y alien vmtouch openssh-server
+ 
+ RUN cat /root/.pip/pip.conf
+-RUN python3 -m pip install -U setuptools==78.1.1 wheel==0.38.0
+-RUN python3 -m pip install psutil patroni[kubernetes,etcd]==3.3.5 psycopg2-binary==2.9.5 requests python-dateutil urllib3 six prettytable --no-cache
++RUN python3 -m pip install -U setuptools
++RUN python3 -m pip install psutil patroni[kubernetes,etcd]==3.3.5 psycopg2-binary requests python-dateutil urllib3 six prettytable --no-cache
+ # Explicitly install patched libaom3 version
+ RUN apt-get --no-install-recommends install -y libaom3=3.3.0-1ubuntu0.1 || apt-get --no-install-recommends install -y libaom3
++RUN apt-get install -y libpq-oauth
+ RUN mv /var/lib/postgresql /var/lib/pgsql
+ 
+ RUN sed -i "s/postgres:!/postgres:*/" /etc/shadow && \
+@@ -148,7 +155,9 @@ RUN chgrp 0 /etc &&  \
+     chmod +x /*.py && \
+     chmod +x /*.sh && \
+     chmod 777 /opt/scripts/archive_wal.sh && \
+-    ln -s /usr/bin/python3 /usr/bin/python
++    ln -s /usr/bin/python3 /usr/bin/python && \
++    chmod -R 777 /usr/local/share/ca-certificates && \
++    chmod -R 777 /etc/ssl/certs
+ 
+ RUN chmod 777 /var/lib/pgbackrest && \
+     chmod 777 /var/log/pgbackrest && \
+diff --git a/scripts/utils.py b/scripts/utils.py
+index b8cb11d..d4070fd 100644
+--- a/scripts/utils.py
++++ b/scripts/utils.py
+@@ -21,7 +21,7 @@ import logging
+ 
+ import time
+ 
+-comment_pattern = re.compile("\s*#.*")
++comment_pattern = re.compile(r"\s*#.*")
+ 
+ 
+ def read_property_file(filename):
+@@ -41,7 +41,7 @@ def read_property_file(filename):
+                     param_value = param_value.strip()
+                 else:
+                     if param_value[:1] == '%':
+-                        param_value = "\{}".format(param_value)
++                        param_value = "\\{}".format(param_value)
+                     param_value = param_value.lstrip()
+                     param_value = param_value.rstrip('\n')
+                 result[param_name] = param_value
+@@ -49,7 +49,7 @@ def read_property_file(filename):
+     return result
+ 
+ def is_ipv4(host):
+-    p = re.compile("^(?:[0-9]{1,3}\.){3}[0-9]{1,3}$")
++    p = re.compile(r"^(?:[0-9]{1,3}\.){3}[0-9]{1,3}$")
+     return p.match(host)
+ 
+ def get_host_ip():

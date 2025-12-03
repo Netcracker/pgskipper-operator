@@ -1,0 +1,16 @@
+# Default ignored files
+/shelf/
+/.idea/workspace.xml
+# Datasource local storage ignored files
+/dataSources/
+/dataSources.local.xml
+# Editor-based HTTP Client requests
+/httpRequests/
+# Idea files
+.idea
+# Build artifacts
+/query_exporter
+/query_exporter.log
+/query_exporter.zip
+/local_test_config.yaml
+build/_output

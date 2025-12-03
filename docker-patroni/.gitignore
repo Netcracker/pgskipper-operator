@@ -1,0 +1,22 @@
+# To ignore oc config file.
+ansible/.tmp
+
+# For failed run artifacts.
+ansible/*.retry
+
+# Test results.
+ansible/tests
+
+# Pv cleaner results.
+ansible/pv_cleaner_results
+
+# Build output.
+target
+
+pg15/scripts
+pg15/docs
+pg15/maintenance
+
+pg16/scripts
+pg16/docs
+pg16/maintenance
