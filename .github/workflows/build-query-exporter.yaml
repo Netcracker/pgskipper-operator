@@ -26,8 +26,8 @@ jobs:
       matrix:
         component:
           - name: qubership-docker-query-exporter
-            file: query-exporter/build/Dockerfile
-            context: query-exporter
+            file: services/query-exporter/build/Dockerfile
+            context: services/query-exporter
     runs-on: ubuntu-24.04
     steps:
       - name: Validate

@@ -26,8 +26,8 @@ jobs:
       matrix:
         component:
           - name: pgskipper-docker-monitoring-agent
-            file: monitoring-agent/Dockerfile
-            context: monitoring-agent
+            file: services/monitoring-agent/Dockerfile
+            context: services/monitoring-agent
     runs-on: ubuntu-24.04
     steps:
       - name: Validate

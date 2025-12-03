@@ -40,15 +40,15 @@ jobs:
           username: ${GITHUB_ACTOR}
           password: ${{secrets.GITHUB_TOKEN}}
       - name: Run Tests
-        run: cd dbaas-adapter && make test
+        run: cd services/dbaas-adapter && make test
   multiplatform_build:
     strategy:
       fail-fast: false
       matrix:
         component:
           - name: pgskipper-docker-dbaas-adapter
-            file: dbaas-adapter/build/Dockerfile
-            context: dbaas-adapter
+            file: services/dbaas-adapter/build/Dockerfile
+            context: services/dbaas-adapter
     runs-on: ubuntu-24.04
     steps:
       - name: Validate
