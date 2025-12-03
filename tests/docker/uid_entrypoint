@@ -1,17 +1,16 @@
-#!/bin/sh
+#!/bin/bash
 cur_user=$(id -u)
-if [[ "$cur_user" != "26" ]]
-then
-  if ! whoami &> /dev/null; then
-    if [ -w /etc/passwd ]; then
-      echo "${USER_NAME:-postgres}:x:$(id -u):0:${USER_NAME:-postgres} user:${HOME}:/sbin/nologin" >> /etc/passwd
-    fi
-  fi
+if [[ "$cur_user" != "26" ]]; then
+	if ! whoami &>/dev/null; then
+		if [ -w /etc/passwd ]; then
+			echo "${USER_NAME:-postgres}:x:$(id -u):0:${USER_NAME:-postgres} user:${HOME}:/sbin/nologin" >>/etc/passwd
+		fi
+	fi
 fi
 
 if [[ "${STATEFULSET}" =~ ^[Tt]rue$ ]]; then
-    echo "Copying statefulset specific robot tests"
-    cp -R /test_runs/statefulset/* /test_runs/
+	echo "Copying statefulset specific robot tests"
+	cp -R /test_runs/statefulset/* /test_runs/
 fi
 
 exec "$@"
