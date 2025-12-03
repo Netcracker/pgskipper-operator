@@ -6,7 +6,7 @@ on:
     branches:
       - '**'
     paths:
-      - 'docker-monitoring-agent/**'
+      - 'monitoring-agent/**'
   workflow_dispatch:
     inputs:
       publish_docker:
@@ -26,8 +26,8 @@ jobs:
       matrix:
         component:
           - name: pgskipper-docker-monitoring-agent
-            file: docker-monitoring-agent/Dockerfile
-            context: docker-monitoring-agent
+            file: monitoring-agent/Dockerfile
+            context: monitoring-agent
     runs-on: ubuntu-24.04
     steps:
       - name: Validate

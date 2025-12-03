@@ -6,7 +6,7 @@ on:
     branches:
       - '**'
     paths:
-      - 'docker-upgrade/**'
+      - 'upgrade/**'
   workflow_dispatch:
     inputs:
       publish_docker:
@@ -26,8 +26,8 @@ jobs:
       matrix:
         component:
           - name: pgskipper-docker-upgrade
-            file: docker-upgrade/Dockerfile
-            context: docker-upgrade
+            file: upgrade/Dockerfile
+            context: upgrade
     runs-on: ubuntu-latest
     steps:
       - name: Checkout

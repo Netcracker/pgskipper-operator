@@ -5,6 +5,8 @@ on:
   push:
     branches:
       - '**'
+    paths:
+      - 'query-exporter/**'
   workflow_dispatch:
     inputs:
       publish_docker:
@@ -24,8 +26,8 @@ jobs:
       matrix:
         component:
           - name: qubership-docker-query-exporter
-            file: docker-query-exporter/build/Dockerfile
-            context: docker-query-exporter
+            file: query-exporter/build/Dockerfile
+            context: query-exporter
     runs-on: ubuntu-24.04
     steps:
       - name: Validate

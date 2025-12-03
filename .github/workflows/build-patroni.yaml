@@ -6,7 +6,7 @@ on:
     branches:
       - '**'
     paths:
-      - 'docker-patroni/**'
+      - 'patroni/**'
   workflow_dispatch:
     inputs:
       publish_docker:
@@ -26,16 +26,16 @@ jobs:
       matrix:
         component:
           - name: pgskipper-docker-patroni-17
-            file: docker-patroni/Dockerfile
-            context: docker-patroni
+            file: patroni/Dockerfile
+            context: patroni
             pg_version: "17"
           - name: pgskipper-docker-patroni-16
-            file: docker-patroni/Dockerfile
-            context: docker-patroni
+            file: patroni/Dockerfile
+            context: patroni
             pg_version: "16"
           - name: pgskipper-docker-patroni-15
-            file: docker-patroni/Dockerfile
-            context: docker-patroni
+            file: patroni/Dockerfile
+            context: patroni
             pg_version: "15"
     runs-on: ubuntu-24.04
     steps:

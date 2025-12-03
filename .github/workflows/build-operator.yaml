@@ -5,6 +5,9 @@ on:
   push:
     branches:
       - '**'
+    paths:
+      - 'operator/**'
+      - 'tests/**'
   workflow_dispatch:
     inputs:
       publish_docker:
@@ -34,8 +37,8 @@ jobs:
             file: tests/Dockerfile
             context: "tests"
           - name: pgskipper-operator-transfer
-            file: docker-transfer/Dockerfile
-            context: ""
+            file: transfer/Dockerfile
+            context: operator
     runs-on: ubuntu-24.04
     steps:
       - name: Validate

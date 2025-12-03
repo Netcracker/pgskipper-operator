@@ -6,7 +6,7 @@ on:
     branches:
       - '**'
     paths:
-      - 'docker-dbaas-adapter/**'
+      - 'dbaas-adapter/**'
   workflow_dispatch:
     inputs:
       publish_docker:
@@ -47,8 +47,8 @@ jobs:
       matrix:
         component:
           - name: pgskipper-docker-dbaas-adapter
-            file: docker-dbaas-adapter/build/Dockerfile
-            context: docker-dbaas-adapter
+            file: dbaas-adapter/build/Dockerfile
+            context: dbaas-adapter
     runs-on: ubuntu-24.04
     steps:
       - name: Validate
