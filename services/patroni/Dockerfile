@@ -69,6 +69,7 @@ RUN apt-get --no-install-recommends install -y \
     libssl-dev \
     libxml2-dev \
     libpq-dev \
+    gpg \
     liblz4-dev \
     libzstd-dev \
     libbz2-dev \
