@@ -42,7 +42,6 @@ import (
 
 	"fmt"
 
-	"github.com/Netcracker/pgskipper-operator-core/pkg/util"
 	appsv1 "github.com/Netcracker/pgskipper-operator/api/apps/v1"
 	qubershipv1 "github.com/Netcracker/pgskipper-operator/api/patroni/v1"
 	"github.com/Netcracker/qubership-credential-manager/pkg/informer"
@@ -80,8 +79,8 @@ type PatroniCoreReconciler struct {
 }
 
 func NewPatroniCoreReconciler(client client.Client, scheme *runtime.Scheme) *PatroniCoreReconciler {
-	namespace := util.GetNameSpace()
-	logger := util.GetLogger()
+	namespace := utils.GetNameSpace()
+	logger := utils.GetLogger()
 	return &PatroniCoreReconciler{
 		Client:      client,
 		Scheme:      scheme,
@@ -151,7 +150,7 @@ func (pr *PatroniCoreReconciler) Reconcile(ctx context.Context, request ctrl.Req
 	}
 
 	newResVersion := cr.ResourceVersion
-	newCrHash := util.HashJson(cr.Spec)
+	newCrHash := utils.HashJson(cr.Spec)
 	if (pr.resVersions[cr.Name] == newResVersion ||
 		pr.crHash == newCrHash) && (len(cr.Status.Conditions) != 0 &&
 		(cr.Status.Conditions[0].Type != Failed || (cr.Status.Conditions[0].Type == Failed && pr.errorCounter == 0))) {
@@ -181,7 +180,7 @@ func (pr *PatroniCoreReconciler) Reconcile(ctx context.Context, request ctrl.Req
 	}
 	pr.crHash = newCrHash
 
-	maxReconcileAttempts, errStrConv := strconv.Atoi(util.GetEnv("PG_RECONCILE_RETRIES", "1"))
+	maxReconcileAttempts, errStrConv := strconv.Atoi(utils.GetEnv("PG_RECONCILE_RETRIES", "1"))
 	if errStrConv != nil {
 		//Adding a logger here to show that reconcile retries were not set by end user
 		pr.logger.Info("Reconcile retries were not set, setting default value as 2")
@@ -356,7 +355,7 @@ func (pr *PatroniCoreReconciler) stanzaUpgrade(create bool) error {
 		return err
 	}
 	masterPodName := masterPod.Items[0].Name
-	namespace := util.GetNameSpace()
+	namespace := utils.GetNameSpace()
 	pr.logger.Info("executing command to upgrade pgBackRest stanza")
 	stdout, stderr, err := pr.helper.ExecCmdOnPod(masterPodName, namespace, backRestcontainerName, command)
 	if err != nil {

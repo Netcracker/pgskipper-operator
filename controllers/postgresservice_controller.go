@@ -44,7 +44,6 @@ import (
 
 	"fmt"
 
-	"github.com/Netcracker/pgskipper-operator-core/pkg/util"
 	qubershipv1 "github.com/Netcracker/pgskipper-operator/api/apps/v1"
 	"github.com/Netcracker/qubership-credential-manager/pkg/informer"
 	"github.com/Netcracker/qubership-credential-manager/pkg/manager"
@@ -92,8 +91,8 @@ type PatroniClusterSettings struct {
 }
 
 func NewPostgresServiceReconciler(client client.Client, scheme *runtime.Scheme) *PostgresServiceReconciler {
-	namespace := util.GetNameSpace()
-	logger := util.GetLogger()
+	namespace := utils.GetNameSpace()
+	logger := utils.GetLogger()
 	logger.Info(fmt.Sprintf("Scheme: %v", scheme.Name()))
 	return &PostgresServiceReconciler{
 		Client:      client,
@@ -147,7 +146,7 @@ func (r *PostgresServiceReconciler) Reconcile(ctx context.Context, request ctrl.
 	}
 
 	newResVersion := cr.ResourceVersion
-	newCrHash := util.HashJson(cr.Spec)
+	newCrHash := utils.HashJson(cr.Spec)
 	if (r.resVersions[cr.Name] == newResVersion ||
 		r.crHash == newCrHash) && (len(cr.Status.Conditions) != 0 &&
 		(cr.Status.Conditions[0].Type != Failed || (cr.Status.Conditions[0].Type == Failed && r.errorCounter == 0))) {
@@ -179,7 +178,7 @@ func (r *PostgresServiceReconciler) Reconcile(ctx context.Context, request ctrl.
 	}
 	r.crHash = newCrHash
 
-	maxReconcileAttempts, errStrConv := strconv.Atoi(util.GetEnv("PG_RECONCILE_RETRIES", "1"))
+	maxReconcileAttempts, errStrConv := strconv.Atoi(utils.GetEnv("PG_RECONCILE_RETRIES", "1"))
 	if errStrConv != nil {
 		//Adding a logger here to show that reconcile retries were not set by end user
 		r.logger.Info("Reconcile retries were not set, setting default value as 2")
@@ -637,7 +636,7 @@ func (r *PostgresServiceReconciler) processExternalResources(cr *qubershipv1.Pat
 	hostCM := &corev1.ConfigMap{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      "postgres-external",
-			Namespace: util.GetNameSpace(),
+			Namespace: utils.GetNameSpace(),
 		},
 		Data: map[string]string{"connectionName": conn},
 	}
@@ -656,7 +655,7 @@ func (r *PostgresServiceReconciler) processExternalResources(cr *qubershipv1.Pat
 	restoreConfigCM := &corev1.ConfigMap{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      "external-restore-config",
-			Namespace: util.GetNameSpace(),
+			Namespace: utils.GetNameSpace(),
 		},
 		Data: restoreData,
 	}

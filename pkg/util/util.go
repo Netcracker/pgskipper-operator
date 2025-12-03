@@ -18,7 +18,9 @@ import (
 	"context"
 	cRand "crypto/rand"
 	"crypto/rsa"
+	"crypto/sha256"
 	"crypto/x509"
+	"encoding/json"
 	"encoding/pem"
 	"fmt"
 	"math/rand"
@@ -32,7 +34,6 @@ import (
 	"sync"
 	"time"
 
-	"github.com/Netcracker/pgskipper-operator-core/pkg/util"
 	qubershipv1 "github.com/Netcracker/pgskipper-operator/api/apps/v1"
 	patroniv1 "github.com/Netcracker/pgskipper-operator/api/patroni/v1"
 	"golang.org/x/crypto/ssh"
@@ -174,11 +175,11 @@ func GetSmAuthUserName() string {
 }
 
 func IsHttpAuthEnabled() bool {
-	return strings.ToLower(util.GetEnv("SM_HTTP_AUTH", "false")) == "true"
+	return strings.ToLower(GetEnv("SM_HTTP_AUTH", "false")) == "true"
 }
 
 func InternalTlsEnabled() string {
-	return strings.ToLower(util.GetEnv("INTERNAL_TLS_ENABLED", "false"))
+	return strings.ToLower(GetEnv("INTERNAL_TLS_ENABLED", "false"))
 }
 
 func GetKubeClient() *kubernetes.Clientset {
@@ -235,7 +236,7 @@ func GetPatroniClusterSettings(patroniClusterName string) *patroniv1.PatroniClus
 }
 
 func GetConfigMapByName(configMapLocalName string, configMapName string, configMapKey string) *corev1.ConfigMap {
-	namespace := util.GetNameSpace()
+	namespace := GetNameSpace()
 	filePath := fmt.Sprintf("/opt/operator/%s", configMapLocalName)
 	bytes, e := os.ReadFile(filePath)
 	if e != nil {
@@ -422,4 +423,11 @@ func GenerateSSHKeyPair(bits int) (privateKeyPEM string, publicKeyOpenSSH string
 	pubKeyStr := string(ssh.MarshalAuthorizedKey(pub))
 
 	return string(privPEM), pubKeyStr, nil
+}
+
+func HashJson(o interface{}) string {
+	cr, _ := json.Marshal(o)
+	hash := sha256.New()
+	hash.Write(cr)
+	return fmt.Sprintf("%x", hash.Sum(nil))
 }

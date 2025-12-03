@@ -15,7 +15,7 @@
 package v1
 
 import (
-	types "github.com/Netcracker/pgskipper-operator-core/api/v1"
+	commonv1 "github.com/Netcracker/pgskipper-operator/api/common/v1"
 	v1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
@@ -29,7 +29,7 @@ type PatroniCoreSpec struct {
 	ConsulRegistration    *ConsulRegistration `json:"consulRegistration,omitempty"`
 	Policies              *Policies           `json:"policies,omitempty"`
 	ServiceAccountName    string              `json:"serviceAccountName,omitempty"`
-	CloudSql              *types.CloudSql     `json:"cloudSql,omitempty"`
+	CloudSql              *commonv1.CloudSql  `json:"cloudSql,omitempty"`
 	Tls                   *Tls                `json:"tls,omitempty"`
 	PgBackRest            *PgBackRest         `json:"pgBackRest,omitempty"`
 	Ldap                  *LdapConfig         `json:"ldap,omitempty"`
@@ -84,7 +84,7 @@ type Patroni struct {
 	Resources                    *v1.ResourceRequirements `json:"resources,omitempty"`
 	Replicas                     int                      `json:"replicas,omitempty"`
 	DockerImage                  string                   `json:"image,omitempty"`
-	Storage                      *types.Storage           `json:"storage,omitempty"`
+	Storage                      *commonv1.Storage        `json:"storage,omitempty"`
 	Affinity                     v1.Affinity              `json:"affinity,omitempty"`
 	PostgreSQLParams             []string                 `json:"postgreSQLParams,omitempty"`
 	PatroniParams                []string                 `json:"patroniParams,omitempty"`
@@ -103,7 +103,7 @@ type Patroni struct {
 	Unlimited                    bool                     `json:"unlimited,omitempty"`
 	PgWalStorageAutoManage       bool                     `json:"pgWalStorageAutoManage,omitempty"`
 	ForceCollationVersionUpgrade bool                     `json:"forceCollationVersionUpgrade,omitempty"`
-	PgWalStorage                 *types.Storage           `json:"pgWalStorage,omitempty"`
+	PgWalStorage                 *commonv1.Storage        `json:"pgWalStorage,omitempty"`
 	ClusterName                  string                   `json:"clusterName,omitempty"`
 	IgnoreSlots                  bool                     `json:"ignoreSlots,omitempty"`
 	IgnoreSlotsPrefix            string                   `json:"ignoreSlotsPrefix,omitempty"`
@@ -211,7 +211,7 @@ type PgBackRest struct {
 	IncrSchedule      string                   `json:"incrSchedule,omitempty"`
 	S3                S3                       `json:"s3,omitempty"`
 	DRS3              S3                       `json:"drS3,omitempty"`
-	Rwx               *types.Storage           `json:"rwx,omitempty"`
+	Rwx               *commonv1.Storage        `json:"rwx,omitempty"`
 	Resources         *v1.ResourceRequirements `json:"resources,omitempty"`
 	FullRetention     int                      `json:"fullRetention,omitempty"`
 	DiffRetention     int                      `json:"diffRetention,omitempty"`

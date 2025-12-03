@@ -19,10 +19,10 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/Netcracker/pgskipper-operator-core/pkg/reconciler"
 	qubershipv1 "github.com/Netcracker/pgskipper-operator/api/apps/v1"
 	patroniv1 "github.com/Netcracker/pgskipper-operator/api/patroni/v1"
 	"github.com/Netcracker/pgskipper-operator/pkg/credentials"
+	"github.com/Netcracker/pgskipper-operator/pkg/deployment"
 	"github.com/Netcracker/pgskipper-operator/pkg/helper"
 	opUtil "github.com/Netcracker/pgskipper-operator/pkg/util"
 	"github.com/Netcracker/pgskipper-operator/pkg/util/constants"
@@ -53,14 +53,14 @@ func NewMetricCollectorReconciler(cr *qubershipv1.PatroniServices, helper *helpe
 func (r *MetricCollectorReconciler) Reconcile() error {
 	cr := r.cr
 	mcSpec := cr.Spec.MetricCollector
-	telegrafConfigMap := reconciler.ConfigMapForTelegraf()
+	telegrafConfigMap := deployment.ConfigMapForTelegraf()
 	if _, err := r.helper.CreateOrUpdateConfigMap(telegrafConfigMap); err != nil {
 		logger.Error(fmt.Sprintf("Cannot update config map %s", telegrafConfigMap.Name), zap.Error(err))
 		return err
 	}
 
 	if mcSpec.InfluxDbHost != "" {
-		influxTelegrafConfigMap := reconciler.ConfigMapForInfluxdbTelegraf()
+		influxTelegrafConfigMap := deployment.ConfigMapForInfluxdbTelegraf()
 		if _, err := r.helper.CreateOrUpdateConfigMap(influxTelegrafConfigMap); err != nil {
 			logger.Error(fmt.Sprintf("Cannot create config map %s", influxTelegrafConfigMap.Name), zap.Error(err))
 			return err
@@ -70,7 +70,7 @@ func (r *MetricCollectorReconciler) Reconcile() error {
 	externalDatabase := cr.Spec.ExternalDataBase != nil
 
 	// apply deployment
-	monitoringDeployment := reconciler.NewMonitoringDeployment(mcSpec, r.cluster.ClusterName, cr.Spec.ServiceAccountName)
+	monitoringDeployment := deployment.NewMonitoringDeployment(mcSpec, r.cluster.ClusterName, cr.Spec.ServiceAccountName)
 	monitoringDeployment.Spec.Template.Spec.Containers[0].ImagePullPolicy = cr.Spec.ImagePullPolicy
 	if cr.Spec.PrivateRegistry.Enabled {
 		for _, name := range cr.Spec.PrivateRegistry.Names {
@@ -128,8 +128,8 @@ func (r *MetricCollectorReconciler) Reconcile() error {
 	}
 
 	//apply metric collector service
-	metricCollectorService := reconcileService(reconciler.MetricCollectorDeploymentName, reconciler.MetricCollectorLabels,
-		reconciler.MetricCollectorLabels, reconciler.GetPortsForMonitoringService(), false)
+	metricCollectorService := reconcileService(deployment.MetricCollectorDeploymentName, deployment.MetricCollectorLabels,
+		deployment.MetricCollectorLabels, deployment.GetPortsForMonitoringService(), false)
 	if err := r.helper.CreateOrUpdateService(metricCollectorService); err != nil {
 		logger.Error(fmt.Sprintf("Cannot create service %s", metricCollectorService.Name), zap.Error(err))
 		return err
