@@ -15,7 +15,6 @@
 package deployment
 
 import (
-	"fmt"
 	"strconv"
 
 	netcrackerv1 "github.com/Netcracker/pgskipper-operator/api/apps/v1"
