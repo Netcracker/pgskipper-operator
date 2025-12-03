@@ -32,8 +32,6 @@ import (
 	"k8s.io/apimachinery/pkg/runtime"
 )
 
-var monitoringSecrets = []string{"monitoring-user"}
-
 type MetricCollectorReconciler struct {
 	cr      *qubershipv1.PatroniServices
 	helper  *helper.Helper

@@ -97,7 +97,7 @@ patroni:
   # The number of Patroni (Postgres) nodes. One of these nodes is a master, and the others are replicas.
   replicas: 2
   # Docker Image that will be used for Patroni container
-  dockerImage: ghcr.io/netcracker/pgskipper-docker-patroni-16:main
+  dockerImage: ghcr.io/netcracker/pgskipper-patroni-16:main
   podLabels: {}
   podAnnotations: {}
   configMapAnnotations: {}
@@ -219,7 +219,7 @@ patroni:
   majorUpgrade:
     enabled: false
     #    initDbParams: "--encoding=UTF8 --data-checksums --lc-collate=C --lc-ctype=C"
-    dockerUpgradeImage: ghcr.io/netcracker/qubership-docker-pgskipper-upgrade:main
+    dockerUpgradeImage: ghcr.io/netcracker/qubership-pgskipper-upgrade:main
   securityContext: {}
     #    fsGroupChangePolicy: OnRootMismatch
     #  pgWalStorageAutoManage: false

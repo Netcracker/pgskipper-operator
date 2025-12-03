@@ -201,7 +201,12 @@ func GetPatroniCurrentConfig(patroniUrl string) (map[string]interface{}, error) 
 	if err != nil {
 		return nil, fmt.Errorf("failed to retrieve patroni config: %w", err)
 	}
-	defer resp.Body.Close()
+	defer func() {
+		err := resp.Body.Close()
+		if err != nil {
+			logger.Error("Error during closing response body", zap.Error(err))
+		}
+	}()
 
 	if resp.StatusCode != http.StatusOK {
 		return nil, fmt.Errorf("unexpected status code %d while retrieving patroni config", resp.StatusCode)

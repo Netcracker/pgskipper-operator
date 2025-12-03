@@ -111,13 +111,13 @@ func (r *PatroniReconciler) Reconcile() error {
 		}
 	}
 
-	if _, err := r.helper.ResourceManager.CreateOrUpdateConfigMap(patroniConfigMap); err != nil {
+	if _, err := r.helper.CreateOrUpdateConfigMap(patroniConfigMap); err != nil {
 		logger.Error(fmt.Sprintf("Cannot create or update config map %s", patroniConfigMap.Name), zap.Error(err))
 		return err
 	}
 
 	pgParamsConfigMap := deployment.ConfigMapForPostgreSQL(r.cluster.ClusterName, r.cluster.PatroniPropertiesCM)
-	if _, err := r.helper.ResourceManager.CreateOrUpdateConfigMap(pgParamsConfigMap); err != nil {
+	if _, err := r.helper.CreateOrUpdateConfigMap(pgParamsConfigMap); err != nil {
 		logger.Error(fmt.Sprintf("Cannot create config map %s", pgParamsConfigMap.Name), zap.Error(err))
 		return err
 	}
@@ -125,7 +125,7 @@ func (r *PatroniReconciler) Reconcile() error {
 	for _, userName := range Secrets {
 		logger.Info(fmt.Sprintf("Checking for %s secret existence", userName))
 		pgSecret := deployment.PatroniSecret(cr.Namespace, userName, r.cluster.PatroniLabels)
-		if err := r.helper.ResourceManager.CreateSecretIfNotExists(pgSecret); err != nil {
+		if err := r.helper.CreateSecretIfNotExists(pgSecret); err != nil {
 			logger.Error(fmt.Sprintf("Cannot create secret %s", pgSecret.Name), zap.Error(err))
 			return err
 		}
@@ -134,7 +134,7 @@ func (r *PatroniReconciler) Reconcile() error {
 
 	// find possible deployments by pods
 	// try to get master pod
-	masterPod, err := r.helper.ResourceManager.GetPodsByLabel(r.cluster.PatroniMasterSelectors)
+	masterPod, err := r.helper.GetPodsByLabel(r.cluster.PatroniMasterSelectors)
 	if err != nil {
 		if !errors.IsNotFound(err) {
 			return err
@@ -159,11 +159,11 @@ func (r *PatroniReconciler) Reconcile() error {
 		var statefulCount int
 		logger.Info("Update Postgres Service")
 		patroniStatefulSetName := fmt.Sprintf("pg-%s-node", r.cluster.ClusterName)
-		statefulCount, _ = r.helper.ResourceManager.GetStatefulsetCountByNameRegExp(patroniStatefulSetName)
+		statefulCount, _ = r.helper.GetStatefulsetCountByNameRegExp(patroniStatefulSetName)
 
 		if statefulCount == 0 {
 			patroniDeploymentName := fmt.Sprintf("pg-%s-node", r.cluster.ClusterName)
-			foundDeployment, err := r.helper.ResourceManager.GetDeploymentsByNameRegExp(patroniDeploymentName)
+			foundDeployment, err := r.helper.GetDeploymentsByNameRegExp(patroniDeploymentName)
 			if err != nil {
 				return err
 			}
@@ -172,7 +172,7 @@ func (r *PatroniReconciler) Reconcile() error {
 
 		} else {
 
-			if statefulCount, err = r.helper.ResourceManager.GetStatefulsetCountByNameRegExp(patroniStatefulSetName); err != nil {
+			if statefulCount, err = r.helper.GetStatefulsetCountByNameRegExp(patroniStatefulSetName); err != nil {
 				logger.Error("Can't get existing Patroni Deployments", zap.Error(err))
 				return err
 			}
@@ -190,7 +190,7 @@ func (r *PatroniReconciler) Reconcile() error {
 			// check locale version, because different versions can affect postgres data
 			localeVersion := r.helper.GetLocaleVersion(masterPod.Items[0].Name)
 
-			replicaPods, err := r.helper.ResourceManager.GetPodsByLabel(r.cluster.PatroniReplicasSelector)
+			replicaPods, err := r.helper.GetPodsByLabel(r.cluster.PatroniReplicasSelector)
 			if err != nil {
 				logger.Error("Can not get replica pods")
 				return err
@@ -226,7 +226,7 @@ func (r *PatroniReconciler) Reconcile() error {
 				}
 			}
 
-			existingStatefulsets, err := r.helper.ResourceManager.GetStatefulsetByNameRegExp(patroniStatefulSetName)
+			existingStatefulsets, err := r.helper.GetStatefulsetByNameRegExp(patroniStatefulSetName)
 			if err != nil {
 				return err
 			}
@@ -255,7 +255,7 @@ func (r *PatroniReconciler) Reconcile() error {
 			}
 
 			// compare locale versions and run fix for collation in postres
-			updatedMasterPod, _ := r.helper.ResourceManager.GetPodsByLabel(r.cluster.PatroniMasterSelectors)
+			updatedMasterPod, _ := r.helper.GetPodsByLabel(r.cluster.PatroniMasterSelectors)
 			newLocaleVersion := r.helper.GetLocaleVersionFromPod(updatedMasterPod.Items[0].Name)
 			pgVersion, err := strconv.ParseInt(r.helper.GetPGVersionFromPod(updatedMasterPod.Items[0].Name), 10, 64)
 			if err != nil {
@@ -377,7 +377,7 @@ func (r *PatroniReconciler) Reconcile() error {
 	}
 
 	for _, name := range []string{"patroni-config", "patroni-leader"} {
-		cm, err := r.helper.ResourceManager.GetConfigMap(name)
+		cm, err := r.helper.GetConfigMap(name)
 		if err != nil {
 			if errors.IsNotFound(err) {
 				continue
@@ -394,7 +394,7 @@ func (r *PatroniReconciler) Reconcile() error {
 				cm.Annotations[k] = v
 			}
 		}
-		if _, err := r.helper.ResourceManager.CreateOrUpdateConfigMap(cm); err != nil {
+		if _, err := r.helper.CreateOrUpdateConfigMap(cm); err != nil {
 			logger.Error("failed to annotate Patroni ConfigMap", zap.Error(err))
 			return err
 		}
@@ -420,37 +420,37 @@ func (r *PatroniReconciler) processPatroniServices(cr *v1.PatroniCore, patroniSp
 	} else {
 		pgService := reconcileService(r.cluster.PostgresServiceName, r.cluster.PatroniLabels,
 			r.cluster.PatroniMasterSelectors, deployment.GetPortsForPatroniService(r.cluster.ClusterName), false)
-		if err := r.helper.ResourceManager.CreateOrUpdateService(pgService); err != nil {
+		if err := r.helper.CreateOrUpdateService(pgService); err != nil {
 			logger.Error(fmt.Sprintf("Cannot create service %s", pgService.Name), zap.Error(err))
 			return err
 		}
 		pgReadOnlyService := reconcileService(r.cluster.PostgresServiceName+"-ro", r.cluster.PatroniLabels,
 			r.cluster.PatroniReplicasSelector, deployment.GetPortsForPatroniService(r.cluster.ClusterName), false)
-		if err := r.helper.ResourceManager.CreateServiceIfNotExists(pgReadOnlyService); err != nil {
+		if err := r.helper.CreateServiceIfNotExists(pgReadOnlyService); err != nil {
 			logger.Error(fmt.Sprintf("Cannot create service %s", pgReadOnlyService.Name), zap.Error(err))
 			return err
 		}
 		patroniApiService := reconcileService(r.cluster.PostgresServiceName+"-api", r.cluster.PatroniLabels,
 			r.cluster.PatroniCommonLabels, deployment.GetPortsForPatroniService(r.cluster.ClusterName), false)
-		if err := r.helper.ResourceManager.CreateServiceIfNotExists(patroniApiService); err != nil {
+		if err := r.helper.CreateServiceIfNotExists(patroniApiService); err != nil {
 			logger.Error(fmt.Sprintf("Cannot create service %s", pgService.Name), zap.Error(err))
 			return err
 		}
 		if cr.Spec.PgBackRest != nil {
 			pgBackRestService := deployment.GetPgBackRestService(r.cluster.PatroniMasterSelectors, false)
-			if err := r.helper.ResourceManager.CreateOrUpdateService(pgBackRestService); err != nil {
+			if err := r.helper.CreateOrUpdateService(pgBackRestService); err != nil {
 				logger.Error(fmt.Sprintf("Cannot create service %s", pgBackRestService.Name), zap.Error(err))
 				return err
 			}
 			if cr.Spec.PgBackRest.BackupFromStandby {
 				pgBackRestStandbyService := deployment.GetPgBackRestService(r.cluster.PatroniReplicasSelector, true)
-				if err := r.helper.ResourceManager.CreateOrUpdateService(pgBackRestStandbyService); err != nil {
+				if err := r.helper.CreateOrUpdateService(pgBackRestStandbyService); err != nil {
 					logger.Error(fmt.Sprintf("Cannot create service %s", pgBackRestStandbyService.Name), zap.Error(err))
 					return err
 				}
 			}
 			pgBackRestHeadless := deployment.GetBackrestHeadless()
-			if err := r.helper.ResourceManager.CreateOrUpdateService(pgBackRestHeadless); err != nil {
+			if err := r.helper.CreateOrUpdateService(pgBackRestHeadless); err != nil {
 				logger.Error(fmt.Sprintf("Cannot create service %s", pgBackRestHeadless.Name), zap.Error(err))
 				return err
 			}
@@ -469,13 +469,13 @@ func (r *PatroniReconciler) processPatroniStatefulset(cr *v1.PatroniCore, deploy
 
 	patroniSpec := cr.Spec.Patroni
 	pvc := storage.NewPvc(fmt.Sprintf("%s-data-%v", opUtil.GetPatroniClusterName(cr.Spec.Patroni.ClusterName), deploymentIdx), patroniSpec.Storage, deploymentIdx)
-	if err := r.helper.ResourceManager.CreatePvcIfNotExists(pvc); err != nil {
+	if err := r.helper.CreatePvcIfNotExists(pvc); err != nil {
 		logger.Error(fmt.Sprintf("Cannot create pvc %s", pvc.Name), zap.Error(err))
 		return err
 	}
 	if patroniSpec.PgWalStorage != nil {
 		pvc := storage.NewPvc(fmt.Sprintf("%s-wals-data-%v", opUtil.GetPatroniClusterName(cr.Spec.Patroni.ClusterName), deploymentIdx), patroniSpec.PgWalStorage, deploymentIdx)
-		if err := r.helper.ResourceManager.CreatePvcIfNotExists(pvc); err != nil {
+		if err := r.helper.CreatePvcIfNotExists(pvc); err != nil {
 			logger.Error(fmt.Sprintf("Cannot create pvc %s", pvc.Name), zap.Error(err))
 			return err
 		}
@@ -484,7 +484,7 @@ func (r *PatroniReconciler) processPatroniStatefulset(cr *v1.PatroniCore, deploy
 		pgBackrestStorage := cr.Spec.PgBackRest.Rwx
 		pgBackrestStorage.AccessModes = []string{"ReadWriteMany"}
 		pvc = storage.NewPvc("pgbackrest-backups", pgBackrestStorage, 1)
-		if err := r.helper.ResourceManager.CreatePvcIfNotExists(pvc); err != nil {
+		if err := r.helper.CreatePvcIfNotExists(pvc); err != nil {
 			logger.Error(fmt.Sprintf("Cannot create pvc %s", pvc.Name), zap.Error(err))
 			return err
 		}
@@ -511,7 +511,7 @@ func (r *PatroniReconciler) processPatroniStatefulset(cr *v1.PatroniCore, deploy
 		return err
 	}
 
-	if err := r.helper.ResourceManager.CreateOrUpdateStatefulset(patroniDeployment, true); err != nil {
+	if err := r.helper.CreateOrUpdateStatefulset(patroniDeployment, true); err != nil {
 		logger.Error(fmt.Sprintf("Cannot create or update deployment %s", patroniDeployment.Name), zap.Error(err))
 		return err
 	}
@@ -519,14 +519,15 @@ func (r *PatroniReconciler) processPatroniStatefulset(cr *v1.PatroniCore, deploy
 }
 
 func (r *PatroniReconciler) createEndpointsForEtcdAsDcs() error {
-	pgEndpoint := reconcileEndpoint(r.cluster.PostgresServiceName, r.cluster.PatroniLabels)
-	if err := r.helper.ResourceManager.CreateEndpointIfNotExists(pgEndpoint); err != nil {
-		logger.Error(fmt.Sprintf("Cannot create endpoint %s", pgEndpoint.Name), zap.Error(err))
+	pgEndpointSlice := reconcileEndpointSlice(r.cluster.PostgresServiceName, r.cluster.PatroniLabels)
+	if err := r.helper.CreateEndpointSliceIfNotExists(pgEndpointSlice); err != nil {
+		logger.Error(fmt.Sprintf("Cannot create EndpointSlice %s", pgEndpointSlice.Name), zap.Error(err))
 		return err
 	}
-	pgReadOnlyEndpoint := reconcileEndpoint(r.cluster.PostgresServiceName, r.cluster.PatroniLabels)
-	if err := r.helper.ResourceManager.CreateEndpointIfNotExists(pgReadOnlyEndpoint); err != nil {
-		logger.Error(fmt.Sprintf("Cannot create endpoint %s", pgReadOnlyEndpoint.Name), zap.Error(err))
+
+	pgReadOnlyEndpointSlice := reconcileEndpointSlice(r.cluster.PostgresServiceName+"-ro", r.cluster.PatroniLabels)
+	if err := r.helper.CreateEndpointSliceIfNotExists(pgReadOnlyEndpointSlice); err != nil {
+		logger.Error(fmt.Sprintf("Cannot create EndpointSlice %s", pgReadOnlyEndpointSlice.Name), zap.Error(err))
 		return err
 	}
 	return nil
@@ -535,13 +536,13 @@ func (r *PatroniReconciler) createEndpointsForEtcdAsDcs() error {
 func (r *PatroniReconciler) createServicesForEtcdAsDcs() error {
 	pgService := reconcileService(r.cluster.PostgresServiceName, r.cluster.PatroniLabels,
 		r.cluster.PatroniMasterSelectors, deployment.GetPortsForPatroniService(r.cluster.ClusterName), true)
-	if err := r.helper.ResourceManager.CreateOrUpdateService(pgService); err != nil {
+	if err := r.helper.CreateOrUpdateService(pgService); err != nil {
 		logger.Error(fmt.Sprintf("Cannot create service %s", pgService.Name), zap.Error(err))
 		return err
 	}
 	pgReadOnlyService := reconcileService(r.cluster.PatroniReplicasServiceName+"-ro", r.cluster.PatroniLabels,
 		r.cluster.PatroniReplicasSelector, deployment.GetPortsForPatroniService(r.cluster.ClusterName), true)
-	if err := r.helper.ResourceManager.CreateOrUpdateService(pgReadOnlyService); err != nil {
+	if err := r.helper.CreateOrUpdateService(pgReadOnlyService); err != nil {
 		logger.Error(fmt.Sprintf("Cannot create service %s", pgReadOnlyService.Name), zap.Error(err))
 		return err
 	}
@@ -631,7 +632,9 @@ func (r *PatroniReconciler) fixCollationVersionForDB(pgClient *pgClient.Postgres
 	}
 
 	if len(brokenIndNames) > 0 {
-		fixBrokenIndexes(pgClient, db, brokenIndNames)
+		if err = fixBrokenIndexes(pgClient, db, brokenIndNames); err != nil {
+			return
+		}
 	}
 
 	if pgVersion >= 15 {
@@ -682,25 +685,27 @@ func findBrokenIndexes(pgClient *pgClient.PostgresClient, db string) ([]string, 
 	logger.Debug(fmt.Sprintf("check broken indexes for db: %s", db))
 
 	brokenIndexQuery := `
-		SELECT 
+		SELECT
 			n.nspname AS schema_name,
 			c.relname AS index_name
-		FROM 
+		FROM
 			pg_index i
-		JOIN 
+		JOIN
 			pg_class c ON i.indexrelid = c.oid
-		JOIN 
+		JOIN
 			pg_namespace n ON c.relnamespace = n.oid
-		WHERE 
+		WHERE
 			n.nspname NOT IN ('pg_catalog', 'information_schema') AND i.indisvalid = false AND ( c.relname like '%_ccnew%' or c.relname like '%_ccold%')
-		ORDER BY 
+		ORDER BY
 				schema_name, index_name;`
 
 	conn, err := pgClient.GetConnectionToDb(db)
 	if err != nil {
 		return nil, err
 	}
-	defer conn.Close(context.Background())
+	defer func() {
+		_ = conn.Close(context.Background())
+	}()
 
 	rows, err := conn.Query(context.Background(), brokenIndexQuery)
 	if err != nil {
@@ -744,12 +749,17 @@ func (r *PatroniReconciler) getCollationsForRefresh(pgClient *pgClient.PostgresC
 	if err != nil {
 		return nil, err
 	}
-	defer conn.Close(context.Background())
+	defer func() {
+		err := conn.Close(context.Background())
+		if err != nil {
+			logger.Error("error during closing connection", zap.Error(err))
+		}
+	}()
 
 	rows, err := conn.Query(context.Background(), `SELECT distinct c.collname AS "Collation"
-             FROM pg_depend d
-             JOIN pg_collation c ON (refclassid = 'pg_collation'::regclass AND refobjid = c.oid)
-             WHERE c.collversion <> pg_collation_actual_version(c.oid) or c.collversion is null;`)
+			FROM pg_depend d
+			JOIN pg_collation c ON (refclassid = 'pg_collation'::regclass AND refobjid = c.oid)
+			WHERE c.collversion <> pg_collation_actual_version(c.oid) or c.collversion is null;`)
 	if err != nil {
 		logger.Error(fmt.Sprintf("error during fetching collations for database %s", db))
 		return nil, err
@@ -772,7 +782,7 @@ func (r *PatroniReconciler) processPgWalStorageExternal() error {
 
 	logger.Info("Start pg_wal copying process")
 
-	replicaPods, err := r.helper.ResourceManager.GetPodsByLabel(r.cluster.PatroniReplicasSelector)
+	replicaPods, err := r.helper.GetPodsByLabel(r.cluster.PatroniReplicasSelector)
 	if err != nil {
 		logger.Warn("Can not get replica pods to execute pg_wal copying command")
 	}
@@ -789,7 +799,7 @@ func (r *PatroniReconciler) processPgWalStorageExternal() error {
 		}
 	}
 
-	masterPod, err := r.helper.ResourceManager.GetPodsByLabel(r.cluster.PatroniMasterSelectors)
+	masterPod, err := r.helper.GetPodsByLabel(r.cluster.PatroniMasterSelectors)
 	if err != nil {
 		logger.Warn("Can not get master pod to execute pg_wal copying command")
 		return err
@@ -836,7 +846,7 @@ func (r PatroniReconciler) checkSymlinkAlreadyExist(podName, podIdentity string)
 func (r *PatroniReconciler) preparePgbackRest(cr *v1.PatroniCore, patroniConfigMap *corev1.ConfigMap) error {
 	// Prepare pgbackrest configuration CM
 	pgBackRestCm := deployment.GetPgBackRestCM(cr)
-	if _, err := r.helper.ResourceManager.CreateOrUpdateConfigMap(pgBackRestCm); err != nil {
+	if _, err := r.helper.CreateOrUpdateConfigMap(pgBackRestCm); err != nil {
 		logger.Error(fmt.Sprintf("Cannot create or update config map %s", "pgbackrest-config"), zap.Error(err))
 		return err
 	}

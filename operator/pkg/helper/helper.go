@@ -85,9 +85,9 @@ func (h *Helper) AddNameAndUID(name string, uid types.UID, kind string) error {
 		logger.Error(message, zap.Error(err))
 		return err
 	}
-	h.ResourceManager.name = name
-	h.ResourceManager.uid = uid
-	h.ResourceManager.kind = kind
+	h.name = name
+	h.uid = uid
+	h.kind = kind
 	return nil
 }
 func (h *Helper) SetCustomResource(cr *qubershipv1.PatroniServices) error {
@@ -112,7 +112,7 @@ func (h *Helper) GetClient() client.Client {
 func (h *Helper) UpdatePostgresService(service *qubershipv1.PatroniServices) error {
 	err := h.kubeClient.Update(context.TODO(), service)
 	if err != nil {
-		logger.Error(fmt.Sprintf("Failed to update PatroniServices %v", service.ObjectMeta.Name), zap.Error(err))
+		logger.Error(fmt.Sprintf("Failed to update PatroniServices %v", service.Name), zap.Error(err))
 		return err
 	}
 	return nil
@@ -165,8 +165,8 @@ func (h *Helper) WaitUntilReconcileIsDone() error {
 			return false, nil
 		}
 		if strings.ToLower(cr.Status.Conditions[0].Type) == "failed" {
-			logger.Error("Recocile status failed, please fix your cluster and try again", zap.Error(err))
-			return true, genericerror.New("Reconcile status failed")
+			logger.Error("recocile status failed, please fix your cluster and try again", zap.Error(err))
+			return true, genericerror.New("reconcile status failed")
 		}
 		return true, nil
 	})

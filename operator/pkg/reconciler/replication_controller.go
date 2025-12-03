@@ -75,11 +75,11 @@ func (r *RCReconciler) Reconcile() error {
 			rcDeployment.Spec.Template.Spec.Containers[0].VolumeMounts = append(rcDeployment.Spec.Template.Spec.Containers[0].VolumeMounts, opUtil.GetTlsSecretVolumeMount())
 			rcDeployment.Spec.Template.Spec.Volumes = append(rcDeployment.Spec.Template.Spec.Volumes, opUtil.GetTlsSecretVolume(cr.Spec.Tls.CertificateSecretName))
 
-			rcDeployment.Spec.Template.Spec.Containers[0].LivenessProbe.ProbeHandler.HTTPGet.Scheme = "HTTPS"
-			rcDeployment.Spec.Template.Spec.Containers[0].LivenessProbe.ProbeHandler.HTTPGet.Port = intstr.IntOrString{IntVal: replicationcontroller.HttpsPort}
+			rcDeployment.Spec.Template.Spec.Containers[0].LivenessProbe.HTTPGet.Scheme = "HTTPS"
+			rcDeployment.Spec.Template.Spec.Containers[0].LivenessProbe.HTTPGet.Port = intstr.IntOrString{IntVal: replicationcontroller.HttpsPort}
 
-			rcDeployment.Spec.Template.Spec.Containers[0].ReadinessProbe.ProbeHandler.HTTPGet.Scheme = "HTTPS"
-			rcDeployment.Spec.Template.Spec.Containers[0].ReadinessProbe.ProbeHandler.HTTPGet.Port = intstr.IntOrString{IntVal: replicationcontroller.HttpsPort}
+			rcDeployment.Spec.Template.Spec.Containers[0].ReadinessProbe.HTTPGet.Scheme = "HTTPS"
+			rcDeployment.Spec.Template.Spec.Containers[0].ReadinessProbe.HTTPGet.Port = intstr.IntOrString{IntVal: replicationcontroller.HttpsPort}
 			rcDeployment.Spec.Template.Spec.Containers[0].Ports = append(rcDeployment.Spec.Template.Spec.Containers[0].Ports, replicationcontroller.GetTLSContainerPort())
 			// update RC service
 			srv.Spec.Ports = append(srv.Spec.Ports, replicationcontroller.GetTLSPort())

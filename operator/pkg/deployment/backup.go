@@ -15,7 +15,6 @@
 package deployment
 
 import (
-	"fmt"
 	"strconv"
 
 	netcrackerv1 "github.com/Netcracker/pgskipper-operator/api/apps/v1"
@@ -290,7 +289,7 @@ func NewBackupDaemonDeployment(backupDaemon *netcrackerv1.BackupDaemon, pgCluste
 				Name: "backup-data",
 				VolumeSource: corev1.VolumeSource{
 					PersistentVolumeClaim: &corev1.PersistentVolumeClaimVolumeSource{
-						ClaimName: fmt.Sprintf("postgres-backup-pvc"),
+						ClaimName: "postgres-backup-pvc",
 						ReadOnly:  false,
 					},
 				},

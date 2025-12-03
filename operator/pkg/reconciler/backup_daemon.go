@@ -169,8 +169,8 @@ func (r *BackupDaemonReconciler) Reconcile() error {
 		backupDaemonDeployment.Spec.Template.Spec.Containers[0].VolumeMounts = append(backupDaemonDeployment.Spec.Template.Spec.Containers[0].VolumeMounts, util.GetTlsSecretVolumeMount())
 		backupDaemonDeployment.Spec.Template.Spec.Volumes = append(backupDaemonDeployment.Spec.Template.Spec.Volumes, util.GetTlsSecretVolume(cr.Spec.Tls.CertificateSecretName))
 		backupDaemonDeployment.Spec.Template.Spec.Containers[0].Env = append(backupDaemonDeployment.Spec.Template.Spec.Containers[0].Env, r.getTlsEnv())
-		backupDaemonDeployment.Spec.Template.Spec.Containers[0].LivenessProbe.ProbeHandler.HTTPGet.Scheme = "HTTPS"
-		backupDaemonDeployment.Spec.Template.Spec.Containers[0].ReadinessProbe.ProbeHandler.HTTPGet.Scheme = "HTTPS"
+		backupDaemonDeployment.Spec.Template.Spec.Containers[0].LivenessProbe.HTTPGet.Scheme = "HTTPS"
+		backupDaemonDeployment.Spec.Template.Spec.Containers[0].ReadinessProbe.HTTPGet.Scheme = "HTTPS"
 	}
 	if cr.Spec.Tracing != nil && cr.Spec.Tracing.Enabled {
 
