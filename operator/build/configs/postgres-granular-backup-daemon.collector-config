@@ -1,0 +1,15 @@
+[
+ {
+ "name": "granular-backuper",
+ "parameters": {
+    "url": "http://postgres-backup-daemon:9000/health",
+    "selector":
+     {
+       "key": "app",
+       "value": "postgres-backup-daemon"
+     },
+    "service_name": "postgres-granular-backup-daemon",
+    "output_selector": "health"
+  }
+ }
+]

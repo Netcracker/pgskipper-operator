@@ -1,0 +1,14 @@
+{{- if not .Values.externalDataBase }}
+{{- if .Values.tls }}
+{{- if and .Values.tls.enabled .Values.tls.generateCerts.enabled (not (.Values.tls.generateCerts.clusterIssuerName)) }}
+apiVersion: cert-manager.io/v1
+kind: Issuer
+metadata:
+  name: postgres-services-tls-issuer
+  labels:
+    {{ include "kubernetes.labels" . | nindent 4 }}
+spec:
+  selfSigned: {}
+{{- end }}
+{{- end }}
+{{- end }}

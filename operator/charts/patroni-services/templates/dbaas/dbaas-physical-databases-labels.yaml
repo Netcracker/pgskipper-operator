@@ -1,0 +1,12 @@
+{{- if .Values.dbaas.install }}
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: dbaas-physical-databases-labels
+  labels:
+    app: dbaas-postgres-adapter
+    name: dbaas-postgres-adapter
+      {{ include "kubernetes.labels" . | nindent 4 }}
+data:
+  dbaas.physical_databases.registration.labels.json: {{ .Values.dbaas.labels | toJson | quote }}
+{{- end }}

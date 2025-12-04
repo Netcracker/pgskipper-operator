@@ -1,0 +1,34 @@
+{{- if not .Values.externalDataBase }}
+{{- if .Values.tls }}
+{{- if and .Values.tls.enabled .Values.tls.generateCerts.enabled }}
+apiVersion: cert-manager.io/v1
+kind: Certificate
+metadata:
+  name: postgres-services-tls-certificate
+  labels:
+    {{ include "kubernetes.labels" . | nindent 4 }}
+spec:
+  secretName: {{ include "postgres.certServicesSecret" . }}
+  duration: {{ default 365 .Values.tls.generateCerts.duration | mul 24 }}h
+  commonName: postgres-ca
+  isCA: true
+  privateKey:
+    algorithm: RSA
+    encoding: PKCS1
+    size: 2048
+  dnsNames:
+{{ ( include "postgres.certDnsNames" . | indent 4) }}
+  ipAddresses:
+{{ ( include "postgres.certIpAddresses" . | indent 4) }}
+  issuerRef:
+  {{- if .Values.tls.generateCerts.clusterIssuerName }}
+    name: {{ .Values.tls.generateCerts.clusterIssuerName }}
+    kind: ClusterIssuer
+  {{- else }}
+    name: postgres-services-tls-issuer
+    kind: Issuer
+  {{- end }}
+    group: cert-manager.io
+{{- end }}
+{{- end }}
+{{- end }}

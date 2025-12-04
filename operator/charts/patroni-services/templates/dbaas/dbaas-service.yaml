@@ -1,0 +1,24 @@
+{{- if .Values.dbaas.install }}
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ template "dbaas.serviceName" . }}
+  labels:
+    app: dbaas-postgres-adapter
+    name: dbaas-postgres-adapter
+      {{ include "kubernetes.labels" . | nindent 4 }}
+spec:
+  ports:
+    - name: web
+      protocol: TCP
+      port: 8080
+      targetPort: 8080
+    {{- if .Values.INTERNAL_TLS_ENABLED }}
+    - name: web-tls
+      protocol: TCP
+      port: 8443
+      targetPort: 8080
+    {{- end }}
+  selector:
+    app: dbaas-postgres-adapter
+{{ end }}

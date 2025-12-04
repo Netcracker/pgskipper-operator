@@ -33,3 +33,10 @@ profile = black
 
 [*.sh]
 indent_size = 4
+indent_style = tab
+
+[Makefile]
+indent_style = tab
+
+[*entrypoint*]
+indent_style = tab
