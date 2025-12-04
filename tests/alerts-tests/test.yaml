@@ -1,0 +1,1446 @@
+rule_files:
+- rules.yaml
+evaluation_interval: 1m
+tests:
+- interval: 1m
+  input_series:
+  - series: ma_pg_patroni_cluster_status
+    values: "0x5"
+  alert_rule_test:
+  - eval_time: 5m
+    groupname: default-pgskipper-montemplates
+    alertname: PostgreSQL metrics are absent
+    exp_alerts:
+    - exp_labels:
+        severity: warning
+        namespace: default
+        service: pgskipper-montemplates
+      exp_annotations:
+        summary: "PostgreSQL metrics are absent"
+        description: "PostgreSQL metrics are absent on default."
+
+- interval: 1m
+  input_series:
+  - series: ma_pg_patroni_cluster_status{namespace="default"}
+    values: "0x5"
+  alert_rule_test:
+  - eval_time: 5m
+    groupname: default-pgskipper-montemplates
+    alertname: PostgreSQL metrics are absent
+    exp_alerts: []
+
+- interval: 1m
+  input_series:
+  - series: ma_pg_patroni_cluster_status{namespace="default"}
+    values: "10x5"
+  alert_rule_test:
+  - eval_time: 5m
+    groupname: default-pgskipper-montemplates
+    alertname: PostgreSQL is Down
+    exp_alerts:
+    - exp_labels:
+        severity: critical
+        namespace: default
+        service: pgskipper-montemplates
+      exp_annotations:
+        summary: "PostgreSQL is Down"
+        description: "PostgreSQL is Down on default."
+
+- interval: 1m
+  input_series:
+  - series: ma_pg_patroni_cluster_status{namespace="default"}
+    values: "-1x5"
+  alert_rule_test:
+  - eval_time: 5m
+    groupname: default-pgskipper-montemplates
+    alertname: PostgreSQL is Down
+    exp_alerts:
+    - exp_labels:
+        severity: critical
+        namespace: default
+        service: pgskipper-montemplates
+      exp_annotations:
+        summary: "PostgreSQL is Down"
+        description: "PostgreSQL is Down on default."    
+
+- interval: 1m
+  input_series:
+  - series: ma_pg_patroni_cluster_status{namespace="default"}
+    values: "1x5"
+  alert_rule_test:
+  - eval_time: 5m
+    groupname: default-pgskipper-montemplates
+    alertname: PostgreSQL is Down
+    exp_alerts: []
+    
+- interval: 1m
+  input_series:
+  - series: ma_pg_patroni_cluster_status{namespace="default"}
+    values: "6x5"
+  alert_rule_test:
+  - eval_time: 5m
+    groupname: default-pgskipper-montemplates
+    alertname: PostgreSQL is Degraded
+    exp_alerts:
+    - exp_labels:
+        severity: warning
+        namespace: default
+        service: pgskipper-montemplates
+      exp_annotations:
+        summary: "PostgreSQL is Degraded"
+        description: "PostgreSQL is Degraded on default."    
+
+- interval: 1m
+  input_series:
+  - series: ma_pg_patroni_cluster_status{namespace="default"}
+    values: "1x5"
+  alert_rule_test:
+  - eval_time: 5m
+    groupname: default-pgskipper-montemplates
+    alertname: PostgreSQL is Degraded
+    exp_alerts: []
+    
+- interval: 1m
+  input_series:
+  - series: ma_storage_free_space{namespace="default", service_name='postgres-backup-daemon'}
+    values: "0x5"
+  - series: ma_storage_total_space{namespace="default", service_name='postgres-backup-daemon'}
+    values: "1x5"
+  alert_rule_test:
+  - eval_time: 5m
+    groupname: default-pgskipper-montemplates
+    alertname: Space for Postgres backup is less than acceptable critical threshold
+    exp_alerts:
+    - exp_labels:
+        severity: critical
+        namespace: default
+        service: pgskipper-montemplates
+        service_name: postgres-backup-daemon
+      exp_annotations:
+        summary: "Space for Postgres backup is less than acceptable critical threshold"
+        description: "Backup space is less than 5 percent free  on default"    
+
+- interval: 1m
+  input_series:
+  - series: ma_storage_free_space{namespace="default", service_name='postgres-backup-daemon'}
+    values: "1x5"
+  - series: ma_storage_total_space{namespace="default", service_name='postgres-backup-daemon'}
+    values: "1x5"
+  alert_rule_test:
+  - eval_time: 5m
+    groupname: default-pgskipper-montemplates
+    alertname: Space for Postgres backup is less than acceptable critical threshold
+    exp_alerts: []
+    
+- interval: 1m
+  input_series:
+  - series: ma_storage_free_space{namespace="default", service_name='postgres-backup-daemon'}
+    values: "1x5"
+  - series: ma_storage_total_space{namespace="default", service_name='postgres-backup-daemon'}
+    values: "10x5"
+  alert_rule_test:
+  - eval_time: 5m
+    groupname: default-pgskipper-montemplates
+    alertname: Space for Postgres backup is less than acceptable warning threshold
+    exp_alerts:
+    - exp_labels:
+        severity: warning
+        namespace: default
+        service: pgskipper-montemplates
+        service_name: postgres-backup-daemon
+      exp_annotations:
+        summary: "Space for Postgres backup is less than acceptable warning threshold"
+        description: "Backup space is less than 20 percent free on default"    
+
+- interval: 1m
+  input_series:
+  - series: ma_storage_free_space{namespace="default", service_name='postgres-backup-daemon'}
+    values: "1x5"
+  - series: ma_storage_total_space{namespace="default", service_name='postgres-backup-daemon'}
+    values: "1x5"
+  alert_rule_test:
+  - eval_time: 5m
+    groupname: default-pgskipper-montemplates
+    alertname: Space for Postgres backup is less than acceptable warning threshold
+    exp_alerts: []
+
+- interval: 1m
+  input_series:
+  - series: ma_storage_last_failed{namespace="default", service_name="postgres-backup-daemon"}
+    values: "1x5"
+  alert_rule_test:
+  - eval_time: 5m
+    groupname: default-pgskipper-montemplates
+    alertname: Last Postgres backup is failed
+    exp_alerts:
+    - exp_labels:
+        severity: warning
+        namespace: default
+        service: pgskipper-montemplates
+        service_name: postgres-backup-daemon
+      exp_annotations:
+        summary: "Targets are down"
+        description: "Last backup is failed on default"    
+
+- interval: 1m
+  input_series:
+  - series: ma_storage_last_failed{namespace="default", service_name="postgres-backup-daemon"}
+    values: "0x5"
+  alert_rule_test:
+  - eval_time: 5m
+    groupname: default-pgskipper-montemplates
+    alertname: Last Postgres backup is failed
+    exp_alerts: []
+    
+- interval: 1m
+  input_series:
+  - series: ma_storage_lastSuccessful_metrics_end_backup_timestamp{namespace="default", service_name="postgres-backup-daemon"}
+    values: "-86500000x5"
+  alert_rule_test:
+  - eval_time: 5m
+    groupname: default-pgskipper-montemplates
+    alertname: Last Successful Postgres backup is too old
+    exp_alerts:
+    - exp_labels:
+        severity: warning
+        namespace: default
+        service: pgskipper-montemplates
+        service_name: postgres-backup-daemon
+      exp_annotations:
+        summary: "Last Successful Postgres backup is too old"
+        description: "Last Successful backup is too old on default"    
+
+- interval: 1m
+  input_series:
+  - series: ma_storage_lastSuccessful_metrics_end_backup_timestamp{namespace="default", service_name="postgres-backup-daemon"}
+    values: "0x5"
+  alert_rule_test:
+  - eval_time: 5m
+    groupname: default-pgskipper-montemplates
+    alertname: Last Successful Postgres backup is too old
+    exp_alerts: []    
+
+- interval: 1m
+  input_series:
+  - series: ma_status{namespace="default", service_name="postgres-backup-daemon"}
+    values: "6x5"
+  alert_rule_test:
+  - eval_time: 5m
+    groupname: default-pgskipper-montemplates
+    alertname: PostgreSQL backup agent has problem
+    exp_alerts:
+    - exp_labels:
+        severity: warning
+        namespace: default
+        service: pgskipper-montemplates
+        service_name: postgres-backup-daemon
+      exp_annotations:
+        summary: "PostgreSQL backup agent has problem"
+        description: "PostgreSQL backup agent has problem on default"    
+
+- interval: 1m
+  input_series:
+  - series: ma_status{namespace="default", service_name="postgres-backup-daemon"}
+    values: "0x5"
+  alert_rule_test:
+  - eval_time: 5m
+    groupname: default-pgskipper-montemplates
+    alertname: PostgreSQL backup agent has problem
+    exp_alerts: []
+    
+- interval: 1m
+  input_series:
+  - series: ma_status{namespace="default", service_name="postgres-backup-daemon"}
+    values: "-1x5"
+  alert_rule_test:
+  - eval_time: 5m
+    groupname: default-pgskipper-montemplates
+    alertname: Unable to collect metrics from PostgreSQL backup agent
+    exp_alerts:
+    - exp_labels:
+        severity: warning
+        namespace: default
+        service: pgskipper-montemplates
+        service_name: postgres-backup-daemon
+      exp_annotations:
+        summary: "Unable to collect metrics from PostgreSQL backup agent"
+        description: "Unable to collect metrics from PostgreSQL backup agent on default"    
+
+- interval: 1m
+  input_series:
+  - series: ma_status
+    values: "0x5"
+  alert_rule_test:
+  - eval_time: 5m
+    groupname: default-pgskipper-montemplates
+    alertname: Unable to collect metrics from PostgreSQL backup agent
+    exp_alerts:
+    - exp_labels:
+        severity: warning
+        namespace: default
+        service: pgskipper-montemplates
+        service_name: postgres-backup-daemon
+      exp_annotations:
+        summary: "Unable to collect metrics from PostgreSQL backup agent"
+        description: "Unable to collect metrics from PostgreSQL backup agent on default"  
+
+- interval: 1m
+  input_series:
+  - series: ma_status{namespace="default", service_name="postgres-backup-daemon"}
+    values: "0x5"
+  alert_rule_test:
+  - eval_time: 5m
+    groupname: default-pgskipper-montemplates
+    alertname: Unable to collect metrics from PostgreSQL backup agent
+    exp_alerts: []
+
+- interval: 1m
+  input_series:
+  - series: ma_pg_patroni_patroni_status{namespace="default", pg_node="node1"}
+    values: "0x5"
+  alert_rule_test:
+  - eval_time: 5m
+    groupname: default-pgskipper-montemplates
+    alertname: Patroni first Node is not running
+    exp_alerts:
+    - exp_labels:
+        severity: warning
+        namespace: default
+        service: pgskipper-montemplates
+        pg_node: node1
+      exp_annotations:
+        summary: "Patroni first Node is not running"
+        description: "Patroni status First Node is not running on default"  
+
+- interval: 1m
+  input_series:
+  - series: ma_pg_patroni_patroni_status{namespace="default", pg_node="node1"}
+    values: "1x5"
+  alert_rule_test:
+  - eval_time: 5m
+    groupname: default-pgskipper-montemplates
+    alertname: Patroni first Node is not running
+    exp_alerts: []
+    
+- interval: 1m
+  input_series:
+  - series: ma_pg_patroni_patroni_status{namespace="default", pg_node="node4"}
+    values: "0x5"
+  alert_rule_test:
+  - eval_time: 5m
+    groupname: default-pgskipper-montemplates
+    alertname: Patroni fourth Node is not running
+    exp_alerts:
+    - exp_labels:
+        severity: warning
+        namespace: default
+        service: pgskipper-montemplates
+        pg_node: node4
+      exp_annotations:
+        summary: "Patroni fourth Node is not running"
+        description: "Patroni status Fourth Node is not running on default"  
+
+- interval: 1m
+  input_series:
+  - series: ma_pg_patroni_patroni_status{namespace="default", pg_node="node4"}
+    values: "1x5"
+  alert_rule_test:
+  - eval_time: 5m
+    groupname: default-pgskipper-montemplates
+    alertname: Patroni fourth Node is not running
+    exp_alerts: []
+
+- interval: 1m
+  input_series:
+  - series: ma_pg_patroni_patroni_status{namespace="default", pg_node="node2"}
+    values: "0x5"
+  alert_rule_test:
+  - eval_time: 5m
+    groupname: default-pgskipper-montemplates
+    alertname: Patroni second Node is not running
+    exp_alerts:
+    - exp_labels:
+        severity: warning
+        namespace: default
+        service: pgskipper-montemplates
+        pg_node: node2
+      exp_annotations:
+        summary: "Patroni second Node is not running"
+        description: "Patroni status Second Node is not running on default"  
+
+- interval: 1m
+  input_series:
+  - series: ma_pg_patroni_patroni_status{namespace="default", pg_node="node2"}
+    values: "1x5"
+  alert_rule_test:
+  - eval_time: 5m
+    groupname: default-pgskipper-montemplates
+    alertname: Patroni second Node is not running
+    exp_alerts: []
+    
+- interval: 1m
+  input_series:
+  - series: ma_pg_patroni_patroni_status{namespace="default", pg_node="node3"}
+    values: "0x5"
+  alert_rule_test:
+  - eval_time: 5m
+    groupname: default-pgskipper-montemplates
+    alertname: Patroni third Node is not running
+    exp_alerts:
+    - exp_labels:
+        severity: warning
+        namespace: default
+        service: pgskipper-montemplates
+        pg_node: node3
+      exp_annotations:
+        summary: "Patroni third Node is not running"
+        description: "Patroni status Third Node is not running on default"  
+
+- interval: 1m
+  input_series:
+  - series: ma_pg_patroni_patroni_status{namespace="default", pg_node="node3"}
+    values: "1x5"
+  alert_rule_test:
+  - eval_time: 5m
+    groupname: default-pgskipper-montemplates
+    alertname: Patroni third Node is not running
+    exp_alerts: []
+    
+- interval: 1m
+  input_series:
+  - series: ma_pg_patroni_metrics_df_pcent{namespace="default", pg_node="node1"}
+    values: "91x5"
+  alert_rule_test:
+  - eval_time: 5m
+    groupname: default-pgskipper-montemplates
+    alertname: Postgres First Node Disk is almost full
+    exp_alerts:
+    - exp_labels:
+        severity: warning
+        namespace: default
+        service: pgskipper-montemplates
+        pg_node: node1
+      exp_annotations:
+        summary: "Postgres First Node Disk is almost full"
+        description: "Disk space Postgres First Node Disk is almost full on default"  
+
+- interval: 1m
+  input_series:
+  - series: ma_pg_patroni_metrics_df_pcent{namespace="default", pg_node="node1"}
+    values: "0x5"
+  alert_rule_test:
+  - eval_time: 5m
+    groupname: default-pgskipper-montemplates
+    alertname: Postgres First Node Disk is almost full
+    exp_alerts: []
+
+- interval: 1m
+  input_series:
+  - series: ma_pg_patroni_metrics_df_pcent{namespace="default", pg_node="node4"}
+    values: "91x5"
+  alert_rule_test:
+  - eval_time: 5m
+    groupname: default-pgskipper-montemplates
+    alertname: Postgres Fourth Node Disk is almost full
+    exp_alerts:
+    - exp_labels:
+        severity: warning
+        namespace: default
+        service: pgskipper-montemplates
+        pg_node: node4
+      exp_annotations:
+        summary: "Postgres Fourth Node Disk is almost full"
+        description: "Disk space Postgres Fourth Node Disk is almost full on default"  
+
+- interval: 1m
+  input_series:
+  - series: ma_pg_patroni_metrics_df_pcent{namespace="default", pg_node="node4"}
+    values: "0x5"
+  alert_rule_test:
+  - eval_time: 5m
+    groupname: default-pgskipper-montemplates
+    alertname: Postgres Fourth Node Disk is almost full
+    exp_alerts: []
+    
+- interval: 1m
+  input_series:
+  - series: ma_pg_patroni_metrics_df_pcent{namespace="default", pg_node="node2"}
+    values: "91x5"
+  alert_rule_test:
+  - eval_time: 5m
+    groupname: default-pgskipper-montemplates
+    alertname: Postgre Second Node Disk is almost full
+    exp_alerts:
+    - exp_labels:
+        severity: warning
+        namespace: default
+        service: pgskipper-montemplates
+        pg_node: node2
+      exp_annotations:
+        summary: "Postgre Second Node Disk is almost full"
+        description: "Disk space Postgre Second Node Disk is almost full on default"  
+
+- interval: 1m
+  input_series:
+  - series: ma_pg_patroni_metrics_df_pcent{namespace="default", pg_node="node2"}
+    values: "0x5"
+  alert_rule_test:
+  - eval_time: 5m
+    groupname: default-pgskipper-montemplates
+    alertname: Postgre Second Node Disk is almost full
+    exp_alerts: []
+
+- interval: 1m
+  input_series:
+  - series: ma_pg_patroni_metrics_df_pcent{namespace="default", pg_node="node3"}
+    values: "91x5"
+  alert_rule_test:
+  - eval_time: 5m
+    groupname: default-pgskipper-montemplates
+    alertname: Postgres Third Node Disk is almost full
+    exp_alerts:
+    - exp_labels:
+        severity: warning
+        namespace: default
+        service: pgskipper-montemplates
+        pg_node: node3
+      exp_annotations:
+        summary: "Postgres Third Node Disk is almost full"
+        description: "Disk space Postgres Third Node Disk is almost full on default"  
+
+- interval: 1m
+  input_series:
+  - series: ma_pg_patroni_metrics_df_pcent{namespace="default", pg_node="node3"}
+    values: "0x5"
+  alert_rule_test:
+  - eval_time: 5m
+    groupname: default-pgskipper-montemplates
+    alertname: Postgres Third Node Disk is almost full
+    exp_alerts: []
+    
+- interval: 1m
+  input_series:
+  - series: ma_pg_metrics_locks{namespace="default", pg_node="node1"}
+    values: "501x5"
+  alert_rule_test:
+  - eval_time: 5m
+    groupname: default-pgskipper-montemplates
+    alertname: Locks on First Node more then acceptable threshold
+    exp_alerts:
+    - exp_labels:
+        severity: warning
+        namespace: default
+        service: pgskipper-montemplates
+        pg_node: node1
+      exp_annotations:
+        summary: "Locks on First Node more then acceptable threshold"
+        description: "Locks on First Node more then 500 on default"  
+
+- interval: 1m
+  input_series:
+  - series: ma_pg_metrics_locks{namespace="default", pg_node="node1"}
+    values: "0x5"
+  alert_rule_test:
+  - eval_time: 5m
+    groupname: default-pgskipper-montemplates
+    alertname: Locks on First Node more then acceptable threshold
+    exp_alerts: []
+
+- interval: 1m
+  input_series:
+  - series: ma_pg_metrics_locks{namespace="default", pg_node="node4"}
+    values: "501x5"
+  alert_rule_test:
+  - eval_time: 5m
+    groupname: default-pgskipper-montemplates
+    alertname: Locks on Fourth Node more then acceptable threshold
+    exp_alerts:
+    - exp_labels:
+        severity: warning
+        namespace: default
+        service: pgskipper-montemplates
+        pg_node: node4
+      exp_annotations:
+        summary: "Locks on Fourth Node more then acceptable threshold"
+        description: "Locks on Fourth Node more then 500 on default"  
+
+- interval: 1m
+  input_series:
+  - series: ma_pg_metrics_locks{namespace="default", pg_node="node4"}
+    values: "0x5"
+  alert_rule_test:
+  - eval_time: 5m
+    groupname: default-pgskipper-montemplates
+    alertname: Locks on Fourth Node more then acceptable threshold
+    exp_alerts: []
+
+- interval: 1m
+  input_series:
+  - series: ma_pg_metrics_locks{namespace="default", pg_node="node2"}
+    values: "501x5"
+  alert_rule_test:
+  - eval_time: 5m
+    groupname: default-pgskipper-montemplates
+    alertname: Locks on Second Node more then acceptable threshold
+    exp_alerts:
+    - exp_labels:
+        severity: warning
+        namespace: default
+        service: pgskipper-montemplates
+        pg_node: node2
+      exp_annotations:
+        summary: "Locks on Second Node more then acceptable threshold"
+        description: "Locks on Second Node more then 500 on default"  
+
+- interval: 1m
+  input_series:
+  - series: ma_pg_metrics_locks{namespace="default", pg_node="node2"}
+    values: "0x5"
+  alert_rule_test:
+  - eval_time: 5m
+    groupname: default-pgskipper-montemplates
+    alertname: Locks on Second Node more then acceptable threshold
+    exp_alerts: []
+
+- interval: 1m
+  input_series:
+  - series: ma_pg_metrics_locks{namespace="default", pg_node="node3"}
+    values: "501x5"
+  alert_rule_test:
+  - eval_time: 5m
+    groupname: default-pgskipper-montemplates
+    alertname: Locks on Third Node more then acceptable threshold
+    exp_alerts:
+    - exp_labels:
+        severity: warning
+        namespace: default
+        service: pgskipper-montemplates
+        pg_node: node3
+      exp_annotations:
+        summary: "Locks on Third Node more then acceptable threshold"
+        description: "Locks on Third Node more then 500 on default"  
+
+- interval: 1m
+  input_series:
+  - series: ma_pg_metrics_locks{namespace="default", pg_node="node3"}
+    values: "0x5"
+  alert_rule_test:
+  - eval_time: 5m
+    groupname: default-pgskipper-montemplates
+    alertname: Locks on Third Node more then acceptable threshold
+    exp_alerts: []
+
+- interval: 1m
+  input_series:
+  - series: container_memory_working_set_bytes{namespace="default", container="test-node1"}
+    values: "1x5"
+  - series: container_spec_memory_limit_bytes{namespace="default", container="test-node1"}
+    values: "1x5"    
+  - series: container_spec_memory_limit_bytes{namespace="default", container="test-node1"}
+    values: "1x5"       
+  alert_rule_test:
+  - eval_time: 5m
+    groupname: default-pgskipper-montemplates
+    alertname: Memory on Postgres First Node is more than 95% busy
+    exp_alerts:
+    - exp_labels:
+        severity: warning
+        namespace: default
+        service: pgskipper-montemplates
+        container: test-node1
+      exp_annotations:
+        summary: "Memory on Postgres First Node is more than 95 percent busy"
+        description: "Memory Postgres First Node is more than 95 percent busy on default"  
+
+- interval: 1m
+  input_series:
+  - series: container_memory_working_set_bytes{namespace="default", container="node1"}
+    values: "0x5"
+  - series: container_spec_memory_limit_bytes{namespace="default", container=~"node1"}
+    values: "1x5"    
+  - series: container_spec_memory_limit_bytes{namespace="default", container=~"node1"}
+    values: "1x5"  
+  alert_rule_test:
+  - eval_time: 5m
+    groupname: default-pgskipper-montemplates
+    alertname: Memory on Postgres First Node is more than 95% busy
+    exp_alerts: []
+
+- interval: 1m
+  input_series:
+  - series: container_memory_working_set_bytes{namespace="default", container="test-node4"}
+    values: "1x5"
+  - series: container_spec_memory_limit_bytes{namespace="default", container="test-node4"}
+    values: "1x5"    
+  - series: container_spec_memory_limit_bytes{namespace="default", container="test-node4"}
+    values: "1x5"       
+  alert_rule_test:
+  - eval_time: 5m
+    groupname: default-pgskipper-montemplates
+    alertname: Memory on Postgres Fourth Node is more than 95% busy
+    exp_alerts:
+    - exp_labels:
+        severity: warning
+        namespace: default
+        service: pgskipper-montemplates
+        container: test-node4
+      exp_annotations:
+        summary: "Memory on Postgres Fourth Node is more than 95 percent busy"
+        description: "Memory Postgres Fourth Node is more than 95 percent busy on default"  
+
+- interval: 1m
+  input_series:
+  - series: container_memory_working_set_bytes{namespace="default", container="node4"}
+    values: "0x5"
+  - series: container_spec_memory_limit_bytes{namespace="default", container=~"node4"}
+    values: "1x5"    
+  - series: container_spec_memory_limit_bytes{namespace="default", container=~"node4"}
+    values: "1x5"  
+  alert_rule_test:
+  - eval_time: 5m
+    groupname: default-pgskipper-montemplates
+    alertname: Memory on Postgres Fourth Node is more than 95% busy
+    exp_alerts: []
+
+- interval: 1m
+  input_series:
+  - series: container_memory_working_set_bytes{namespace="default", container="test-node2"}
+    values: "1x5"
+  - series: container_spec_memory_limit_bytes{namespace="default", container="test-node2"}
+    values: "1x5"    
+  - series: container_spec_memory_limit_bytes{namespace="default", container="test-node2"}
+    values: "1x5"       
+  alert_rule_test:
+  - eval_time: 5m
+    groupname: default-pgskipper-montemplates
+    alertname: Memory on Postgres Second Node is more than 95% busy
+    exp_alerts:
+    - exp_labels:
+        severity: warning
+        namespace: default
+        service: pgskipper-montemplates
+        container: test-node2
+      exp_annotations:
+        summary: "Memory on Postgres Second Node is more than 95 percent busy"
+        description: "Memory Postgres Second Node is more than 95 percent busy on default"  
+
+- interval: 1m
+  input_series:
+  - series: container_memory_working_set_bytes{namespace="default", container="node2"}
+    values: "0x5"
+  - series: container_spec_memory_limit_bytes{namespace="default", container=~"node2"}
+    values: "1x5"    
+  - series: container_spec_memory_limit_bytes{namespace="default", container=~"node2"}
+    values: "1x5"  
+  alert_rule_test:
+  - eval_time: 5m
+    groupname: default-pgskipper-montemplates
+    alertname: Memory on Postgres Second Node is more than 95% busy
+    exp_alerts: []
+
+- interval: 1m
+  input_series:
+  - series: container_memory_working_set_bytes{namespace="default", container="test-node3"}
+    values: "1x5"
+  - series: container_spec_memory_limit_bytes{namespace="default", container="test-node3"}
+    values: "1x5"    
+  - series: container_spec_memory_limit_bytes{namespace="default", container="test-node3"}
+    values: "1x5"       
+  alert_rule_test:
+  - eval_time: 5m
+    groupname: default-pgskipper-montemplates
+    alertname: Memory on Postgres Third Node is more than 95% busy
+    exp_alerts:
+    - exp_labels:
+        severity: warning
+        namespace: default
+        service: pgskipper-montemplates
+        container: test-node3
+      exp_annotations:
+        summary: "Memory on Postgres Third Node is more than 95 percent busy"
+        description: "Memory Postgres Third Node is more than 95 percent busy on default"  
+
+- interval: 1m
+  input_series:
+  - series: container_memory_working_set_bytes{namespace="default", container="node3"}
+    values: "0x5"
+  - series: container_spec_memory_limit_bytes{namespace="default", container=~"node3"}
+    values: "1x5"    
+  - series: container_spec_memory_limit_bytes{namespace="default", container=~"node3"}
+    values: "1x5"  
+  alert_rule_test:
+  - eval_time: 5m
+    groupname: default-pgskipper-montemplates
+    alertname: Memory on Postgres Third Node is more than 95% busy
+    exp_alerts: []
+    
+- interval: 1m
+  input_series:
+  - series: ma_pg_metrics_query_max_time{namespace="default", pg_node="node1"}
+    values: "3601x5"     
+  alert_rule_test:
+  - eval_time: 5m
+    groupname: default-pgskipper-montemplates
+    alertname: There are long running queries on First Node
+    exp_alerts:
+    - exp_labels:
+        severity: warning
+        namespace: default
+        service: pgskipper-montemplates
+        pg_node: node1
+      exp_annotations:
+        summary: "There are long running queries on First Node"
+        description: "There are long running queries First Node. Execution time is more than 3600 second(s) on default"  
+
+- interval: 1m
+  input_series:
+  - series: ma_pg_metrics_query_max_time{namespace="default", pg_node="node1"}
+    values: "0x5" 
+  alert_rule_test:
+  - eval_time: 5m
+    groupname: default-pgskipper-montemplates
+    alertname: There are long running queries on Fourth Node
+    exp_alerts: []
+
+- interval: 1m
+  input_series:
+  - series: ma_pg_metrics_query_max_time{namespace="default", pg_node="node4"}
+    values: "3601x5"     
+  alert_rule_test:
+  - eval_time: 5m
+    groupname: default-pgskipper-montemplates
+    alertname: There are long running queries on Fourth Node
+    exp_alerts:
+    - exp_labels:
+        severity: warning
+        namespace: default
+        service: pgskipper-montemplates
+        pg_node: node4
+      exp_annotations:
+        summary: "There are long running queries on Fourth Node"
+        description: "There are long running queries Fourth Node. Execution time is more than 3600 second(s) on default"  
+
+- interval: 1m
+  input_series:
+  - series: ma_pg_metrics_query_max_time{namespace="default", pg_node="node4"}
+    values: "0x5" 
+  alert_rule_test:
+  - eval_time: 5m
+    groupname: default-pgskipper-montemplates
+    alertname: There are long running queries on First Node
+    exp_alerts: []
+
+- interval: 1m
+  input_series:
+  - series: ma_pg_metrics_query_max_time{namespace="default", pg_node="node2"}
+    values: "3601x5"     
+  alert_rule_test:
+  - eval_time: 5m
+    groupname: default-pgskipper-montemplates
+    alertname: There are long running queries on Second Node
+    exp_alerts:
+    - exp_labels:
+        severity: warning
+        namespace: default
+        service: pgskipper-montemplates
+        pg_node: node2
+      exp_annotations:
+        summary: "There are long running queries on Second Node"
+        description: "There are long running queries Second Node. Execution time is more than 3600 second(s) on default"  
+
+- interval: 1m
+  input_series:
+  - series: ma_pg_metrics_query_max_time{namespace="default", pg_node="node2"}
+    values: "0x5" 
+  alert_rule_test:
+  - eval_time: 5m
+    groupname: default-pgskipper-montemplates
+    alertname: There are long running queries on Second Node
+    exp_alerts: []
+
+- interval: 1m
+  input_series:
+  - series: ma_pg_metrics_query_max_time{namespace="default", pg_node="node3"}
+    values: "3601x5"     
+  alert_rule_test:
+  - eval_time: 5m
+    groupname: default-pgskipper-montemplates
+    alertname: There are long running queries on Third Node
+    exp_alerts:
+    - exp_labels:
+        severity: warning
+        namespace: default
+        service: pgskipper-montemplates
+        pg_node: node3
+      exp_annotations:
+        summary: "There are long running queries on Third Node"
+        description: "There are long running queries Third Node. Execution time is more than 3600 second(s) on default"  
+
+- interval: 1m
+  input_series:
+  - series: ma_pg_metrics_query_max_time{namespace="default", pg_node="node3"}
+    values: "0x5" 
+  alert_rule_test:
+  - eval_time: 5m
+    groupname: default-pgskipper-montemplates
+    alertname: There are long running queries on Third Node
+    exp_alerts: []
+
+- interval: 1m
+  input_series:
+  - series: ma_pg_large_object_total_size_bytes{namespace="default"}
+    values: "200000000x5"     
+  alert_rule_test:
+  - eval_time: 5m
+    groupname: default-pgskipper-montemplates
+    alertname: PostgreSql Large Object Size High
+    exp_alerts:
+    - exp_labels:
+        severity: warning
+        namespace: default
+        service: pgskipper-montemplates
+      exp_annotations:
+        summary: "PostgreSQL Large Object Size High"
+        description: "Large object total size has exceeded the warning threshold in namespace default."  
+
+- interval: 1m
+  input_series:
+  - series: ma_pg_large_object_total_size_bytes{namespace="default"}
+    values: "0x5" 
+  alert_rule_test:
+  - eval_time: 5m
+    groupname: default-pgskipper-montemplates
+    alertname: PostgreSql Large Object Size High
+    exp_alerts: []
+
+- interval: 1m
+  input_series:
+  - series: container_cpu_usage_seconds_total{namespace="default", container="test-node1"}
+    values: "60+60x5"
+  - series: kube_pod_container_resource_limits_cpu_cores{exported_namespace="default", exported_container="test-node1"}
+    values: "1x5"    
+  alert_rule_test:
+  - eval_time: 5m
+    groupname: default-pgskipper-montemplates
+    alertname: CPU on Postgres First Node is more than 95% busy
+    exp_alerts:
+    - exp_labels:
+        severity: warning
+        namespace: default
+        service: pgskipper-montemplates
+      exp_annotations:
+        summary: "CPU on Postgres First Node is more than 95 percent busy"
+        description: "CPU Postgres First Node is more than 95 percent busy on default"  
+
+- interval: 1m
+  input_series:
+  - series: container_cpu_usage_seconds_total{namespace="default", container="test-node1"}
+    values: "0x5"
+  - series: kube_pod_container_resource_limits_cpu_cores{exported_namespace="default", exported_container="test-node1"}
+    values: "1x5" 
+  alert_rule_test:
+  - eval_time: 5m
+    groupname: default-pgskipper-montemplates
+    alertname: CPU on Postgres First Node is more than 95% busy
+    exp_alerts: []
+    
+- interval: 1m
+  input_series:
+  - series: container_cpu_usage_seconds_total{namespace="default", container="test-node2"}
+    values: "60+60x5"
+  - series: kube_pod_container_resource_limits_cpu_cores{exported_namespace="default", exported_container="test-node2"}
+    values: "1x5"    
+  alert_rule_test:
+  - eval_time: 5m
+    groupname: default-pgskipper-montemplates
+    alertname: CPU on Postgres Second Node is more than 95% busy
+    exp_alerts:
+    - exp_labels:
+        severity: warning
+        namespace: default
+        service: pgskipper-montemplates
+      exp_annotations:
+        summary: "CPU on Postgres Second Node is more than 95 percent busy"
+        description: "CPU Postgres Second Node is more than 95 percent busy on default"  
+
+- interval: 1m
+  input_series:
+  - series: container_cpu_usage_seconds_total{namespace="default", container="test-node2"}
+    values: "0x5"
+  - series: kube_pod_container_resource_limits_cpu_cores{exported_namespace="default", exported_container="test-node2"}
+    values: "1x5" 
+  alert_rule_test:
+  - eval_time: 5m
+    groupname: default-pgskipper-montemplates
+    alertname: CPU on Postgres Second Node is more than 95% busy
+    exp_alerts: []    
+
+- interval: 1m
+  input_series:
+  - series: container_cpu_usage_seconds_total{namespace="default", container="test-node3"}
+    values: "60+60x5"
+  - series: kube_pod_container_resource_limits_cpu_cores{exported_namespace="default", exported_container="test-node3"}
+    values: "1x5"    
+  alert_rule_test:
+  - eval_time: 5m
+    groupname: default-pgskipper-montemplates
+    alertname: CPU on Postgres Third Node is more than 95% busy
+    exp_alerts:
+    - exp_labels:
+        severity: warning
+        namespace: default
+        service: pgskipper-montemplates
+      exp_annotations:
+        summary: "CPU on Postgres Third Node is more than 95 percent busy"
+        description: "CPU Postgres Third Node is more than 95 percent busy on default"  
+
+- interval: 1m
+  input_series:
+  - series: container_cpu_usage_seconds_total{namespace="default", container="test-node3"}
+    values: "0x5"
+  - series: kube_pod_container_resource_limits_cpu_cores{exported_namespace="default", exported_container="test-node3"}
+    values: "1x5" 
+  alert_rule_test:
+  - eval_time: 5m
+    groupname: default-pgskipper-montemplates
+    alertname: CPU on Postgres Third Node is more than 95% busy
+    exp_alerts: []  
+
+- interval: 1m
+  input_series:
+  - series: container_cpu_usage_seconds_total{namespace="default", container="test-node4"}
+    values: "60+60x5"
+  - series: kube_pod_container_resource_limits_cpu_cores{exported_namespace="default", exported_container="test-node4"}
+    values: "1x5"    
+  alert_rule_test:
+  - eval_time: 5m
+    groupname: default-pgskipper-montemplates
+    alertname: CPU on Postgres Fourth Node is more than 95% busy
+    exp_alerts:
+    - exp_labels:
+        severity: warning
+        namespace: default
+        service: pgskipper-montemplates
+      exp_annotations:
+        summary: "CPU on Postgres Fourth Node is more than 95 percent busy"
+        description: "CPU Postgres Fourth Node is more than 95 percent busy on default"  
+
+- interval: 1m
+  input_series:
+  - series: container_cpu_usage_seconds_total{namespace="default", container="test-node4"}
+    values: "0x5"
+  - series: kube_pod_container_resource_limits_cpu_cores{exported_namespace="default", exported_container="test-node4"}
+    values: "1x5" 
+  alert_rule_test:
+  - eval_time: 5m
+    groupname: default-pgskipper-montemplates
+    alertname: CPU on Postgres Fourth Node is more than 95% busy
+    exp_alerts: []
+    
+- interval: 1m
+  input_series:
+  - series: ma_pg_patroni_replication_lag{namespace="default"}
+    values: "40000000x5"   
+  alert_rule_test:
+  - eval_time: 5m
+    groupname: default-pgskipper-montemplates
+    alertname: Patroni Replica Is Lagging
+    exp_alerts:
+    - exp_labels:
+        severity: warning
+        namespace: default
+        service: pgskipper-montemplates
+      exp_annotations:
+        summary: >-
+          "Patroni Replica \{\{ \$labels.hostname \}\} Is Lagging in \{\{ \$labels.namespace \}\} namespace"
+        description: "Patroni Replica Is Lagging"  
+
+- interval: 1m
+  input_series:
+  - series: ma_pg_patroni_replication_lag{namespace="default"}
+    values: "0x5"
+  alert_rule_test:
+  - eval_time: 5m
+    groupname: default-pgskipper-montemplates
+    alertname: Patroni Replica Is Lagging
+    exp_alerts: []
+    
+- interval: 1m
+  input_series:
+  - series: ma_pg_patroni_replication_state_sent_replay_lag{namespace="default"}
+    values: "40000000x5"   
+  alert_rule_test:
+  - eval_time: 5m
+    groupname: default-pgskipper-montemplates
+    alertname: PostgreSQL Replica Is Lagging
+    exp_alerts:
+    - exp_labels:
+        severity: warning
+        namespace: default
+        service: pgskipper-montemplates
+      exp_annotations:
+        summary: >-
+          "PostgreSQL Replica \{\{ \$labels.hostname \}\} Is Lagging in \{\{ \$labels.namespace \}\} namespace"
+        description: "PostgreSQL Replica Is Lagging"  
+
+- interval: 1m
+  input_series:
+  - series: ma_pg_patroni_replication_state_sent_replay_lag{namespace="default"}
+    values: "0x5" 
+  alert_rule_test:
+  - eval_time: 5m
+    groupname: default-pgskipper-montemplates
+    alertname: PostgreSQL Replica Is Lagging
+    exp_alerts: []
+    
+- interval: 1m
+  input_series:
+  - series: ma_pg_patroni_replication_state_sm_replication_state{namespace="default"}
+    values: "0x5"   
+  alert_rule_test:
+  - eval_time: 5m
+    groupname: default-pgskipper-montemplates
+    alertname: Patroni Standby Leader Is Not Connected
+    exp_alerts:
+    - exp_labels:
+        severity: warning
+        namespace: default
+        service: pgskipper-montemplates
+      exp_annotations:
+        summary: >-
+          "Patroni Standby Leader Is Not Connected"
+        description: "Patroni Standby Leader Is Not Connected"  
+
+- interval: 1m
+  input_series:
+  - series: ma_pg_patroni_replication_state_sm_replication_state{namespace="default"}
+    values: "1x5" 
+  alert_rule_test:
+  - eval_time: 5m
+    groupname: default-pgskipper-montemplates
+    alertname: Patroni Standby Leader Is Not Connected
+    exp_alerts: []
+    
+- interval: 1m
+  input_series:
+  - series: ma_pg_metrics_current_connections{namespace="default"}
+    values: "1x5"
+  - series: ma_pg_metrics_postgres_max_connections{namespace="default"}
+    values: "1x5"    
+  alert_rule_test:
+  - eval_time: 5m
+    groupname: default-pgskipper-montemplates
+    alertname: Current overall connections exceed max_connection percentage
+    exp_alerts:
+    - exp_labels:
+        severity: critical
+        namespace: default
+        service: pgskipper-montemplates
+      exp_annotations:
+        summary: "Current overall connections exceed max_connection percentage"
+        description: "Current overall connections are above the max_connection percentage threshold on default."  
+
+- interval: 1m
+  input_series:
+  - series: ma_pg_metrics_current_connections{namespace="default"}
+    values: "0x5"
+  - series: ma_pg_metrics_postgres_max_connections{namespace="default"}
+    values: "1x5" 
+  alert_rule_test:
+  - eval_time: 5m
+    groupname: default-pgskipper-montemplates
+    alertname: Current overall connections exceed max_connection percentage
+    exp_alerts: []
+    
+- interval: 1m
+  input_series:
+  - series: ma_pg_metrics_current_connections{namespace="default"}
+    values: "9x5"
+  - series: ma_pg_metrics_postgres_max_connections{namespace="default"}
+    values: "10x5"    
+  alert_rule_test:
+  - eval_time: 5m
+    groupname: default-pgskipper-montemplates
+    alertname: Current overall connections reached warning max_connection percentage
+    exp_alerts:
+    - exp_labels:
+        severity: warning
+        namespace: default
+        service: pgskipper-montemplates
+      exp_annotations:
+        summary: "Current overall connections reached warning max_connection percentage"
+        description: "Current overall connections reached warning of the max_connection percentage threshold on default."  
+
+- interval: 1m
+  input_series:
+  - series: ma_pg_metrics_current_connections{namespace="default"}
+    values: "0x5"
+  - series: ma_pg_metrics_postgres_max_connections{namespace="default"}
+    values: "1x5" 
+  alert_rule_test:
+  - eval_time: 5m
+    groupname: default-pgskipper-montemplates
+    alertname: Current overall connections reached warning max_connection percentage
+    exp_alerts: []
+    
+- interval: 1m
+  input_series:
+  - series: ma_pg_metrics_current_connections{namespace="default"}
+    values: "1x5"
+  - series: ma_pg_metrics_postgres_max_connections{namespace="default"}
+    values: "1x5"    
+  alert_rule_test:
+  - eval_time: 5m
+    groupname: default-pgskipper-montemplates
+    alertname: Current connections exceed max_connection
+    exp_alerts:
+    - exp_labels:
+        severity: critical
+        namespace: default
+        service: pgskipper-montemplates
+      exp_annotations:
+        summary: "Current connections exceed max_connection"
+        description: "Current connections are above the max_connection threshold on default."  
+
+- interval: 1m
+  input_series:
+  - series: ma_pg_metrics_current_connections{namespace="default"}
+    values: "0x5"
+  - series: ma_pg_metrics_postgres_max_connections{namespace="default"}
+    values: "1x5"  
+  alert_rule_test:
+  - eval_time: 5m
+    groupname: default-pgskipper-montemplates
+    alertname: Current connections exceed max_connection
+    exp_alerts: []
+    
+- interval: 1m
+  input_series:
+  - series: ma_pg_connection_by_database{namespace="default"}
+    values: "250x5"    
+  alert_rule_test:
+  - eval_time: 5m
+    groupname: default-pgskipper-montemplates
+    alertname: DB Connection exceeding more than specified limit
+    exp_alerts:
+    - exp_labels:
+        severity: warning
+        namespace: default
+        service: pgskipper-montemplates
+      exp_annotations:
+        summary: "DB Connection exceeding more than specified limit"
+        description: "DB Connections exceeding more than specified limit on default."  
+
+- interval: 1m
+  input_series:
+  - series: ma_pg_connection_by_database{namespace="default"}
+    values: "0x5" 
+  alert_rule_test:
+  - eval_time: 5m
+    groupname: default-pgskipper-montemplates
+    alertname: DB Connection exceeding more than specified limit
+    exp_alerts: []
+    
+- interval: 1m
+  input_series:
+  - series: wait_event_metric{namespace="default", wait_event="SubtransBuffer"}
+    values: "6x5"    
+  alert_rule_test:
+  - eval_time: 5m
+    groupname: default-pgskipper-montemplates
+    alertname: Wait event warning threshold for SubtransBuffer or SubtransSLRU
+    exp_alerts:
+    - exp_labels:
+        severity: warning
+        namespace: default
+        service: pgskipper-montemplates
+        wait_event: SubtransBuffer
+      exp_annotations:
+        summary: "Wait event warning threshold for SubtransBuffer or SubtransSLRU"
+        description: "Wait event SubtransBuffer or SubtransSLRU hit warning threshold 5 on default"  
+
+- interval: 1m
+  input_series:
+  - series: wait_event_metric{namespace="default", wait_event="SubtransSLRU"}
+    values: "6x5"    
+  alert_rule_test:
+  - eval_time: 5m
+    groupname: default-pgskipper-montemplates
+    alertname: Wait event warning threshold for SubtransBuffer or SubtransSLRU
+    exp_alerts:
+    - exp_labels:
+        severity: warning
+        namespace: default
+        service: pgskipper-montemplates
+        wait_event: SubtransSLRU
+      exp_annotations:
+        summary: "Wait event warning threshold for SubtransBuffer or SubtransSLRU"
+        description: "Wait event SubtransBuffer or SubtransSLRU hit warning threshold 5 on default"  
+
+- interval: 1m
+  input_series:
+  - series: wait_event_metric{namespace="default", wait_event="SubtransBuffer"}
+    values: "0x5"
+  - series: wait_event_metric{namespace="default", wait_event="SubtransSLRU"}
+    values: "0x5" 
+  alert_rule_test:
+  - eval_time: 5m
+    groupname: default-pgskipper-montemplates
+    alertname: Wait event warning threshold for SubtransBuffer or SubtransSLRU
+    exp_alerts: []    
+
+- interval: 1m
+  input_series:
+  - series: wait_event_metric{namespace="default", wait_event="SubtransBuffer"}
+    values: "21x5"    
+  alert_rule_test:
+  - eval_time: 5m
+    groupname: default-pgskipper-montemplates
+    alertname: Wait event critical threshold for SubtransBuffer or SubtransSLRU
+    exp_alerts:
+    - exp_labels:
+        severity: critical
+        namespace: default
+        service: pgskipper-montemplates
+        wait_event: SubtransBuffer
+      exp_annotations:
+        summary: "Wait event critical threshold for SubtransBuffer or SubtransSLRU"
+        description: "Wait event SubtransBuffer or SubtransSLRU hit critical threshold 20 on default"  
+
+- interval: 1m
+  input_series:
+  - series: wait_event_metric{namespace="default", wait_event="SubtransSLRU"}
+    values: "21x5"    
+  alert_rule_test:
+  - eval_time: 5m
+    groupname: default-pgskipper-montemplates
+    alertname: Wait event critical threshold for SubtransBuffer or SubtransSLRU
+    exp_alerts:
+    - exp_labels:
+        severity: critical
+        namespace: default
+        service: pgskipper-montemplates
+        wait_event: SubtransSLRU
+      exp_annotations:
+        summary: "Wait event critical threshold for SubtransBuffer or SubtransSLRU"
+        description: "Wait event SubtransBuffer or SubtransSLRU hit critical threshold 20 on default"  
+
+- interval: 1m
+  input_series:
+  - series: wait_event_metric{namespace="default", wait_event="SubtransBuffer"}
+    values: "0x5"
+  - series: wait_event_metric{namespace="default", wait_event="SubtransSLRU"}
+    values: "0x5" 
+  alert_rule_test:
+  - eval_time: 5m
+    groupname: default-pgskipper-montemplates
+    alertname: Wait event critical threshold for SubtransBuffer or SubtransSLRU
+    exp_alerts: []
+    
+- interval: 1m
+  input_series:
+  - series: pct_used_metric{namespace="default"}
+    values: "51x5"    
+  alert_rule_test:
+  - eval_time: 5m
+    groupname: default-pgskipper-montemplates
+    alertname: Pct used warning threshold
+    exp_alerts:
+    - exp_labels:
+        severity: warning
+        namespace: default
+        service: pgskipper-montemplates
+      exp_annotations:
+        summary: "Pct used warning threshold"
+        description: "Pct used hit warning threshold 50 on default"  
+
+- interval: 1m
+  input_series:
+  - series: pct_used_metric{namespace="default"}
+    values: "0x5" 
+  alert_rule_test:
+  - eval_time: 5m
+    groupname: default-pgskipper-montemplates
+    alertname: Pct used warning threshold
+    exp_alerts: []
+
+- interval: 1m
+  input_series:
+  - series:  ma_pg_standby_leader_count{namespace="default"}
+    values: "0x5"    
+  alert_rule_test:
+  - eval_time: 5m
+    groupname: default-pgskipper-montemplates
+    alertname: Standby cluster is not streaming
+    exp_alerts:
+    - exp_labels:
+        severity: warning
+        namespace: default
+        service: pgskipper-montemplates
+      exp_annotations:
+        summary: "Standby cluster is not streaming"
+        description: "Standby cluster is not streaming from default"  
+
+- interval: 1m
+  input_series:
+  - series:  ma_pg_standby_leader_count{namespace="default"}
+    values: "1x5" 
+  alert_rule_test:
+  - eval_time: 5m
+    groupname: default-pgskipper-montemplates
+    alertname: Standby cluster is not streaming
+    exp_alerts: []
+
+- interval: 1m
+  input_series:
+  - series:  ma_pg_standby_replication_lag_in_bytes{namespace="default"}
+    values: "1073741825x5" 
+  alert_rule_test:
+  - eval_time: 5m
+    groupname: default-pgskipper-montemplates
+    alertname: Standby cluster has big lag in bytes
+    exp_alerts:
+    - exp_labels:
+        severity: warning
+        namespace: default
+        service: pgskipper-montemplates
+      exp_annotations:
+        summary: "Standby cluster has big lag in bytes"
+        description: "Standby cluster has big lag in bytes for default"  
+
+- interval: 1m
+  input_series:
+  - series:  ma_pg_standby_leader_count{namespace="default"}
+    values: "1073741823x5" 
+  alert_rule_test:
+  - eval_time: 5m
+    groupname: default-pgskipper-montemplates
+    alertname: Standby cluster has big lag in bytes
+    exp_alerts: []
+
+- interval: 1m
+  input_series:
+  - series: ma_pg_standby_replication_lag_in_ms{namespace="default"}
+    values: "600001x5"  
+  alert_rule_test:
+  - eval_time: 5m
+    groupname: default-pgskipper-montemplates
+    alertname: Standby cluster has big lag in milliseconds
+    exp_alerts:
+    - exp_labels:
+        severity: warning
+        namespace: default
+        service: pgskipper-montemplates
+      exp_annotations:
+        summary: "Standby cluster has big lag in milliseconds"
+        description: "Standby cluster has big lag in milliseconds for default"  
+
+- interval: 1m
+  input_series:
+  - series: ma_pg_standby_replication_lag_in_ms{namespace="default"}
+    values: "600000x5" 
+  alert_rule_test:
+  - eval_time: 5m
+    groupname: default-pgskipper-montemplates
+    alertname: Standby cluster has big lag in milliseconds
+    exp_alerts: []
