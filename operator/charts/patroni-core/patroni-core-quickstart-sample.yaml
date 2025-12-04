@@ -1,0 +1,57 @@
+postgresUser: postgres
+postgresPassword: "p@ssWOrD1"
+replicatorPassword: "replicator"
+
+##  This section describes values for patroni-core deployment
+operator:
+  # Resource limits for patroni-core-operator pod
+  resources:
+    limits:
+      cpu: 50m
+      memory: 50Mi
+    requests:
+      cpu: 50m
+      memory: 50Mi
+
+##  This section describes values for patroni deployment
+patroni:
+  # Optional flag for Patroni deployment component
+  install: true
+  # The number of Patroni (Postgres) nodes. One of these nodes is a master, and the others are replicas.
+  replicas: 2
+  resources:
+    requests:
+      cpu: 125m
+      memory: 250Mi
+    limits:
+      cpu: 250m
+      memory: 500Mi
+  # Storage section.
+  storage:
+    # Describes the storage type. The possible values are `pv` and `provisioned`.
+    type: provisioned
+    # Size of the PVC that will be create for each of Patroni Pod as mount for data files
+    size: 2Gi
+    # storageClass should  be specified only if storage.type is set to provisioned
+    storageClass: local-path
+    # The names of all volumes to be used in this deployment. The number of lines must match the number of nodes.
+    # storage.volumes can be used only if storage.type is set to pv
+    #    volumes:
+    #      - postgresql-pv-1
+    #      - postgresql-pv-2
+
+tests:
+  install: true
+  runTestScenarios: "basic"
+  testScenarios:
+    patroniSimple:
+      - check_patroni_rest
+    patroniBasic:
+      - check_installation_patroni
+    patroniFull:
+      - check_installation_patroni
+      - check_rest_api_auth
+      - check_scale_down_replica
+      - check_scale_down_master
+      - check_delete_master
+      - check_manual_switchover

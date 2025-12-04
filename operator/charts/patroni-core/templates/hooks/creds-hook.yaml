@@ -1,0 +1,58 @@
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: {{ printf "credentials-saver-%s" (lower (randAlphaNum 5)) }}
+  labels:
+{{- if .Values.podLabels }}
+{{ .Values.podLabels | toYaml | nindent 4 }}
+{{- end }}
+{{ include "kubernetes.labels" . | nindent 4 }}
+  annotations:
+    "helm.sh/hook": pre-install, pre-upgrade
+    "helm.sh/hook-weight": "2"
+    "helm.sh/hook-delete-policy": before-hook-creation,hook-succeeded
+spec:
+  template:
+    metadata:
+      name: "credentials-saver"
+      labels:
+{{- if .Values.podLabels }}
+{{ .Values.podLabels | toYaml | nindent 8 }}
+{{- end }}
+{{ include "kubernetes.labels" . | nindent 8 }}
+    spec:
+      restartPolicy: Never
+      serviceAccountName: hook-sa
+      containers:
+      - name: credentials-saver
+        image: {{ template "find_image" (dict "deployName" "postgres_operator_init" "SERVICE_NAME" "postgres_operator_init" "vals" .Values "default" .Values.operatorInit.image) }}
+        imagePullPolicy: {{ default "IfNotPresent" .Values.imagePullPolicy }}
+        env:
+          - name: IS_HOOK
+            value: "True"
+          - name: SECRET_NAMES
+            value: "postgres-credentials"
+          - name: NAMESPACE
+            valueFrom:
+              fieldRef:
+                fieldPath: metadata.namespace
+          - name: APPLICATION_NAME
+            valueFrom:
+              fieldRef:
+                fieldPath: metadata.labels['app.kubernetes.io/part-of']
+          - name: SESSION_ID
+            valueFrom:
+              fieldRef:
+                fieldPath: metadata.labels['deployment.netcracker.com/sessionId']
+        resources:
+          {{ toYaml .Values.operatorInit.resources | nindent 10 }}
+        securityContext:
+          {{- include "restricted.globalContainerSecurityContext" . | nindent 10 }}
+      securityContext:
+        {{- include "restricted.globalPodSecurityContext" . | nindent 8 }}
+      {{- if .Values.privateRegistry.enabled }}
+      imagePullSecrets:
+      {{- range $i, $v := .Values.privateRegistry.secrets }}
+        - name: {{ $v.name }}
+      {{- end }}
+      {{- end }}
