@@ -21,7 +21,6 @@ jobs:
             context: ""
           - name: pgskipper-docker-patroni-15
             context: ""
-    runs-on: ubuntu-24.04
     steps:
       - name: Prepare Tag
         run: echo "TAG_NAME=$(echo ${TAG_NAME} | sed 's@refs/heads/@@;s@/@_@g')" >> $GITHUB_ENV
