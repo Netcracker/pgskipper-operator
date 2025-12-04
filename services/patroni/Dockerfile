@@ -106,7 +106,7 @@ RUN wget https://github.com/zubkov-andrei/pg_profile/releases/download/4.8/pg_pr
     rm -rf pg_profile--4.8.tar.gz
 
 # Install pgsentinel and pg_dbms_stats
-RUN apt update && apt-get install -y git make gcc && \
+RUN apt-get update && apt-get install -y git make gcc && \
     git clone https://github.com/pgsentinel/pgsentinel.git && \
     cd pgsentinel && \
     git checkout 0218c2147daab0d2dbbf08433cb480163d321839 && \
