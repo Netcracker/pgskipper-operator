@@ -27,7 +27,7 @@ jobs:
           access-token: ${{secrets.GITHUB_TOKEN}}
       - uses: actions/delete-package-versions@v5
         with: 
-          package-name: pgskipper-dbaas-adapter
+          package-name: ${{ env.COMPONENT_NAME }}
           package-type: 'container'
           package-version-ids: ${{ steps.get-ids-for-delete.outputs.ids-for-delete }}
         if: ${{ steps.get-ids-for-delete.outputs.ids-for-delete != '' }}
