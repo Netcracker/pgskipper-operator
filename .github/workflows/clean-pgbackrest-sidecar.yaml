@@ -22,7 +22,7 @@ jobs:
         id: get-ids-for-delete
         uses: Netcracker/get-package-ids@v0.0.1
         with:
-          component-name: ${{ matrix.component.name }}
+          component-name: ${{ env.COMPONENT_NAME }}
           component-tag: ${{ env.TAG_NAME }}
           access-token: ${{secrets.GITHUB_TOKEN}}
       - uses: actions/delete-package-versions@v5
