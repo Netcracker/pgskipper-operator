@@ -1,4 +1,4 @@
-name: Build Artifacts
+name: Build Backup Daemon Artifacts
 on:
   release:
     types: [created]
