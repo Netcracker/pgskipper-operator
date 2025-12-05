@@ -1,4 +1,4 @@
-name: Build Artifacts
+name: Build Monitoring Agent Artifacts
 on:
   release:
     types: [created]

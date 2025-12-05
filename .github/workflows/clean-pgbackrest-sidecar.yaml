@@ -1,4 +1,4 @@
-name: Branch Deleted
+name: Remove PGBackrest Sidecar Artifacts for deleted branch
 on: delete
 
 env:

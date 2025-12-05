@@ -1,4 +1,4 @@
-name: Branch Deleted
+name: Remove Replication Controller Artifacts for deleted branch
 on: delete
 
 env:

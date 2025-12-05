@@ -1,4 +1,4 @@
-name: Build Artifacts
+name: Build Replication Controller Artifacts
 on:
   release:
     types: [created]

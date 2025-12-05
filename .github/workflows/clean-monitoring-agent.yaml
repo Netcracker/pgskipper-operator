@@ -1,4 +1,4 @@
-name: Branch Deleted
+name: Remove Monitoring Agent Artifacts for deleted branch
 on: delete
 
 env:

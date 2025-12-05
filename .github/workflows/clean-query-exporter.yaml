@@ -1,4 +1,4 @@
-name: Branch Deleted
+name: Remove Query Exporter Artifacts for deleted branch
 on: delete
 
 env:

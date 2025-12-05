@@ -1,4 +1,4 @@
-name: Build Artifacts
+name: Build DBAAS Adapter Artifacts
 on:
   release:
     types: [created]

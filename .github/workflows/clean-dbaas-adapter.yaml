@@ -1,4 +1,4 @@
-name: Branch Deleted
+name: Remove DBAAS Adapter Artifacts for deleted branch
 on: delete
 
 env:
