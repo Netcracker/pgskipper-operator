@@ -63,6 +63,11 @@ func InitDRManager() {
 		panic(err)
 	}
 
+	if (cr.Spec.SiteManager == nil) && (cloudSqlCm == nil) {
+		log.Info("Site Manager is not enabled, skipping DR init")
+		return
+	}
+
 	if cloudSqlCm != nil {
 		pgManager = newCloudSQLDRManager(helper, cloudSqlCm)
 	} else {
