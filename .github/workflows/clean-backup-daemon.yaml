@@ -1,4 +1,4 @@
-name: Branch Deleted
+name: Remove Backup Daemon Artifacts for deleted branch
 on: delete
 
 env:

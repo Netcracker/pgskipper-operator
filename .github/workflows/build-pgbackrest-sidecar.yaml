@@ -1,4 +1,4 @@
-name: Build Artifacts
+name: Build PGBackrest Sidecar Artifacts
 on:
   release:
     types: [created]
