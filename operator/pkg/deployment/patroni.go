@@ -235,14 +235,6 @@ func NewPatroniStatefulset(cr *patroniv1.PatroniCore, deploymentIdx int, cluster
 									Name:  "RUN_PROPAGATE_SCRIPT",
 									Value: "False",
 								},
-								{
-									Name:  "PGBACKREST_PG1_PATH",
-									Value: fmt.Sprintf("/var/lib/pgsql/data/postgresql_node%v/", deploymentIdx),
-								},
-								{
-									Name:  "PGBACKREST_STANZA",
-									Value: "patroni",
-								},
 							},
 							Ports: []corev1.ContainerPort{
 								{ContainerPort: 8008, Name: "patroni", Protocol: corev1.ProtocolTCP},

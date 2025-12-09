@@ -252,11 +252,15 @@ func (u *Upgrade) applyCleanerInitContainer(leaderName string, patroniSpec *v1.P
 		}
 
 		replicas := int32(1)
-		dep.Spec.Template.Spec.InitContainers = append(cleanerInitContainer, dep.Spec.Template.Spec.InitContainers...)
-		dep.Spec.Template.Spec.Containers[0].Image = patroniSpec.DockerImage
+		if len(dep.Spec.Template.Spec.InitContainers) == 0 {
+			logger.Info(fmt.Sprintf("Add cleaner container to statefulset: %s", dep.Name))
+			dep.Spec.Template.Spec.InitContainers = append(cleanerInitContainer, dep.Spec.Template.Spec.InitContainers...)
+			dep.Spec.Template.Spec.Containers[0].Image = patroniSpec.DockerImage
+		}
+
 		dep.Spec.Replicas = &replicas
 
-		if err := u.helper.CreateOrUpdateStatefulset(dep, true); err != nil {
+		if err := u.helper.CreateOrUpdateStatefulset(dep, false); err != nil {
 			logger.Error("Can't update Patroni deployment", zap.Error(err))
 			return err
 		}
@@ -460,10 +464,6 @@ func (u *Upgrade) ProceedUpgrade(cr *v1.PatroniCore, cluster *v1.PatroniClusterS
 		return err
 	}
 
-	if err := opUtil.WaitForPatroni(cr, cluster.PatroniMasterSelectors, cluster.PatroniReplicasSelector); err != nil {
-		return err
-	}
-
 	// Store pg version after upgrade
 	updatedMasterPod, err := u.helper.GetPodsByLabel(cluster.PatroniMasterSelectors)
 	if err != nil {
@@ -483,6 +483,13 @@ func (u *Upgrade) ProceedUpgrade(cr *v1.PatroniCore, cluster *v1.PatroniClusterS
 		return err
 	}
 
+	logger.Info("Leader Upgrade completed")
+
+	if err := opUtil.WaitForPatroni(cr, cluster.PatroniMasterSelectors, cluster.PatroniReplicasSelector); err != nil {
+		return err
+	}
+
+	logger.Info("Replicas Upgrade completed")
 	return nil
 }
 
