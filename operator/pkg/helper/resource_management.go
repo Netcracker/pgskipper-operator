@@ -47,7 +47,10 @@ import (
 
 const kubeSysAnnotations = "kubernetes.io"
 
-var pythonServices = []string{"postgres-backup-daemon"}
+var (
+	pythonServices        = []string{"postgres-backup-daemon"}
+	chartDeployedServices = []string{"postgres-exporter", "dbaas-postgres-adapter"}
+)
 
 type ResourceManager struct {
 	kubeClient    client.Client
@@ -357,7 +360,7 @@ func (rm *ResourceManager) CreateOrUpdateDeployment(deployment *appsv1.Deploymen
 	if err != nil && errors.IsNotFound(err) {
 		logger.Info(fmt.Sprintf("Creating %s k8s deployment", deployment.Name))
 		deployment.OwnerReferences = rm.GetOwnerReferences()
-		deployment.Labels = rm.getLabels(deployment.ObjectMeta)
+		deployment.Labels = rm.getLabelsForDeployment(deployment)
 		err = rm.kubeClient.Create(context.TODO(), deployment)
 		if err != nil {
 			logger.Error(fmt.Sprintf("Failed to create deployment %v", deployment.Name), zap.Error(err))
@@ -367,7 +370,7 @@ func (rm *ResourceManager) CreateOrUpdateDeployment(deployment *appsv1.Deploymen
 		copySystemAnnotations(&deploymentBefore.Spec.Template, &deployment.Spec.Template)
 		logger.Info(fmt.Sprintf("Updating %s k8s deployment", deployment.Name))
 		deployment.OwnerReferences = rm.GetOwnerReferences()
-		deployment.Labels = rm.getLabels(deployment.ObjectMeta)
+		deployment.Labels = rm.getLabelsForDeployment(deployment)
 		err = rm.kubeClient.Update(context.TODO(), deployment)
 		if err != nil {
 			logger.Error(fmt.Sprintf("Failed to update deployment %v", deployment.Name), zap.Error(err))
@@ -984,6 +987,18 @@ func (rm *ResourceManager) getOperatorLabels() (map[string]string, error) {
 	deployment := foundDeployment[0]
 	labels := deployment.Spec.Template.Labels
 	return labels, nil
+}
+
+func (rm *ResourceManager) getLabelsForDeployment(deployment *appsv1.Deployment) map[string]string {
+	if isDeployedByChart(deployment) {
+		return deployment.Labels
+	}
+
+	return rm.getLabels(deployment.ObjectMeta)
+}
+
+func isDeployedByChart(deployment *appsv1.Deployment) bool {
+	return slices.Contains(chartDeployedServices, deployment.Name)
 }
 
 func (rm *ResourceManager) getLabels(meta metav1.ObjectMeta) map[string]string {
