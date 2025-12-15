@@ -57,7 +57,7 @@ spec:
     databasesToSchedule: {{ .Values.backupDaemon.databasesToSchedule }}
   {{- end }}
     jobFlag: {{ if .Values.backupDaemon.jobFlag }}{{ .Values.backupDaemon.jobFlag | squote }}{{ else }}'1'{{ end }}
-    connectTimeout: {{ default "5" .Values.backupDaemon.connectTimeout | squote }}
+    connectTimeout: {{ default 5 .Values.backupDaemon.connectTimeout | toString | quote }}
     backupSchedule: {{ if .Values.externalDataBase }}None{{ else }}{{ default "0 0/7 * * *" .Values.backupDaemon.backupSchedule }}{{ end }}
     evictionPolicy: {{ default "100m" .Values.backupDaemon.evictionPolicy }}
     pgHost: {{ include "backupDaemon.pgHost" . }}
