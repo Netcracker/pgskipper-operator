@@ -678,6 +678,10 @@ func (rm *ResourceManager) UpdatePGService() error {
 	var svcNames = []string{"postgres-operator", "dbaas-postgres-adapter"}
 	for _, svcName := range svcNames {
 		svc := rm.GetService(svcName, util.GetNameSpace())
+		if svc == nil {
+			logger.Info(fmt.Sprintf("Service %s not found, skipping update", svcName))
+			continue
+		}
 		svc.OwnerReferences = rm.GetOwnerReferences()
 		svc.Labels = rm.getLabels(svc.ObjectMeta)
 		if err := rm.UpdateService(svc); err != nil {
