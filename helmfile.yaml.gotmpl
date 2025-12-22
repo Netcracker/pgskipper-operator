@@ -1,0 +1,166 @@
+# pgskipper-operator Helmfile Configuration
+#
+# This helmfile manages the deployment of pgskipper-operator components:
+# - Patroni-Core Operator (PostgreSQL core functionality)
+# - Patroni-Services Operator (PostgreSQL services)
+#
+# Usage:
+#   helmfile sync                      - Deploy with official images
+#   helmfile -e orbstack sync          - Deploy to OrbStack
+#   helmfile -e rancher sync           - Deploy to Rancher Desktop
+#   helmfile -e k3d-v4only sync        - Deploy to k3d with IPv4 only
+#
+# Environment Variables (optional):
+#   USE_LOCAL_IMAGES=true              - Build and use local operator images
+#   PGSKIPPER_IMAGE=<image>            - Override operator image (default: ghcr.io/netcracker/pgskipper-operator)
+#   PGSKIPPER_TAG=<tag>                - Override operator tag (default: main)
+#
+# Examples:
+#   USE_LOCAL_IMAGES=true helmfile -e orbstack sync  - Build local images for OrbStack
+#   PGSKIPPER_TAG=v1.2.3 helmfile sync               - Use specific version from ghcr.io
+
+helmDefaults:
+  wait: true
+  timeout: 600
+  createNamespace: true
+  cleanupOnFail: true
+
+environments:
+  default:
+    values:
+      - environments/default.yaml
+  k3d-v4only:
+    values:
+      - environments/k3d-v4only.yaml
+  orbstack:
+    values:
+      - environments/orbstack.yaml
+  rancher:
+    values:
+      - environments/rancher.yaml
+
+---
+
+{{ $namespace := env "NAMESPACE" | default "postgres" }}
+
+{{/* Image configuration via environment variables */}}
+{{ $useLocalImages := env "USE_LOCAL_IMAGES" | default "false" }}
+
+{{ $pgskipperImage := "" }}
+{{ $pgskipperTag := "" }}
+{{ $pullPolicy := "" }}
+
+{{ if eq $useLocalImages "true" }}
+  {{ $pgskipperImage = "pgskipper-operator" }}
+  {{ $pgskipperTag = "local" }}
+  {{ $pullPolicy = "Never" }}
+{{ else }}
+  {{ $pgskipperImage = env "PGSKIPPER_IMAGE" | default "ghcr.io/netcracker/pgskipper-operator" }}
+  {{ $pgskipperTag = env "PGSKIPPER_TAG" | default "main" }}
+  {{ $pullPolicy = "IfNotPresent" }}
+{{ end }}
+
+releases:
+  #############################################################################
+  # Patroni-Core Operator
+  # Manages PostgreSQL core functionality and CRDs
+  #############################################################################
+  - name: patroni-core
+    namespace: {{ $namespace }}
+    chart: ./charts/patroni-core
+    labels:
+      component: postgres-operator
+      type: core
+    values:
+      - ./tests/examples/spring-boot-failover-test/helm-charts/postgresql/patroni-core-simple.yaml
+      - operator:
+          image: {{ $pgskipperImage }}:{{ $pgskipperTag }}
+          imagePullPolicy: {{ $pullPolicy }}
+    hooks:
+      # Build custom operator images if requested
+      - events: ["presync"]
+        showlogs: true
+        command: "bash"
+        args:
+          - "-c"
+          # language=bash
+          - |
+            if [ "{{ $useLocalImages }}" != "true" ]; then
+              echo "Using official pgskipper-operator images: {{ $pgskipperImage }}:{{ $pgskipperTag }}"
+            else
+              echo "Building local pgskipper-operator images..."
+
+              # Switch to configured Docker context (for local k8s like OrbStack/Rancher)
+              DOCKER_CONTEXT="{{ .Values.dockerContext | default "default" }}"
+              CURRENT_CONTEXT=$(docker context show)
+              echo "Current Docker context: $CURRENT_CONTEXT"
+              echo "Target Docker context: $DOCKER_CONTEXT"
+
+              if [ "$CURRENT_CONTEXT" != "$DOCKER_CONTEXT" ]; then
+                echo "Switching to $DOCKER_CONTEXT context..."
+                docker context use "$DOCKER_CONTEXT"
+              fi
+
+              TAG_ENV="{{ $pgskipperTag }}" DOCKER_NAMES="{{ $pgskipperImage }}:{{ $pgskipperTag }}" make docker-build
+
+              echo "✓ Local operator images built successfully: {{ $pgskipperImage }}:{{ $pgskipperTag }}"
+            fi
+      # Validate storage before deployment
+      - events: ["presync"]
+        showlogs: true
+        command: "bash"
+        args:
+          - "-c"
+          # language=bash
+          - |
+            cd tests/examples/spring-boot-failover-test
+            ./scripts/configure-storage.sh --auto
+      # Wait for operator to be ready
+      - events: ["postsync"]
+        showlogs: true
+        command: "bash"
+        args:
+          - "-c"
+          # language=bash
+          - |
+            echo "Waiting for Patroni-Core Operator to be ready..."
+            kubectl wait --for=condition=available --timeout=300s \
+              deployment -l app.kubernetes.io/name=patroni-core-operator -n {{ $namespace }} 2>/dev/null || true
+
+  #############################################################################
+  # Patroni-Services Operator
+  # Manages PostgreSQL services and high availability
+  #############################################################################
+  - name: patroni-services
+    namespace: {{ $namespace }}
+    chart: ./charts/patroni-services
+    labels:
+      component: postgres-operator
+      type: services
+    values:
+      - ./tests/examples/spring-boot-failover-test/helm-charts/postgresql/patroni-services-simple.yaml
+      - operator:
+          image: {{ $pgskipperImage }}:{{ $pgskipperTag }}
+          imagePullPolicy: {{ $pullPolicy }}
+    needs:
+      - {{ $namespace }}/patroni-core
+    hooks:
+      # Wait for PostgreSQL cluster to be ready
+      - events: ["postsync"]
+        showlogs: true
+        command: "bash"
+        args:
+          - "-c"
+          # language=bash
+          - |
+            echo "Waiting for PostgreSQL cluster to initialize..."
+            sleep 30
+
+            echo "Waiting for primary PostgreSQL pod..."
+            timeout 600 bash -c 'until kubectl get pods -n {{ $namespace }} --selector=pgtype=master 2>/dev/null | grep -q Running; do sleep 5; done' || true
+
+            echo "Waiting for all PostgreSQL pods to be ready..."
+            kubectl wait --for=condition=ready --timeout=600s \
+              pods -l app=postgres -n {{ $namespace }} 2>/dev/null || true
+
+            echo "PostgreSQL cluster is ready!"
