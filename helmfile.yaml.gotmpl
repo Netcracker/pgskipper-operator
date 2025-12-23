@@ -20,7 +20,7 @@
 #   PGSKIPPER_TAG=v1.2.3 helmfile sync               - Use specific version from ghcr.io
 
 helmDefaults:
-  wait: true
+  wait: false
   timeout: 600
   createNamespace: true
   cleanupOnFail: true
@@ -125,7 +125,7 @@ releases:
           - |
             echo "Waiting for Patroni-Core Operator to be ready..."
             kubectl wait --for=condition=available --timeout=300s \
-              deployment -l app.kubernetes.io/name=patroni-core-operator -n {{ $namespace }} 2>/dev/null || true
+              deployment -l name=patroni-core-operator -n {{ $namespace }} 2>/dev/null || true
 
   #############################################################################
   # Patroni-Services Operator
@@ -142,8 +142,6 @@ releases:
       - operator:
           image: {{ $pgskipperImage }}:{{ $pgskipperTag }}
           imagePullPolicy: {{ $pullPolicy }}
-    needs:
-      - {{ $namespace }}/patroni-core
     hooks:
       # Wait for PostgreSQL cluster to be ready
       - events: ["postsync"]
