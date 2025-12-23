@@ -67,7 +67,7 @@ releases:
   #############################################################################
   - name: patroni-core
     namespace: {{ $namespace }}
-    chart: ./charts/patroni-core
+    chart: ./operator/charts/patroni-core
     labels:
       component: postgres-operator
       type: core
@@ -133,7 +133,7 @@ releases:
   #############################################################################
   - name: patroni-services
     namespace: {{ $namespace }}
-    chart: ./charts/patroni-services
+    chart: ./operator/charts/patroni-services
     labels:
       component: postgres-operator
       type: services
