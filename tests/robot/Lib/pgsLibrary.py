@@ -61,7 +61,7 @@ class pgsLibrary(object):
     def setup_robot_logging(self):
         try:
             from robot.api import logger
-        except ImportError as e:
+        except ImportError:
             pass
         log = logging.getLogger()
         log.setLevel(logging.INFO)
@@ -80,7 +80,7 @@ class pgsLibrary(object):
                     logger.info(msg)
                 except (KeyboardInterrupt, SystemExit):
                     raise
-                except:
+                except Exception:
                     self.handleError(record)
         log.addHandler(RobotRedirectHandler())
 
@@ -178,7 +178,7 @@ class pgsLibrary(object):
         config_map_name = "patroni-{}.config.yaml".format(cluster_name)
         try:
             config_map = self.pl_lib.get_config_map(config_map_name, self._namespace)
-        except:
+        except Exception:
             config_map_name = "{}-patroni.config.yaml".format(cluster_name)
             config_map = self.pl_lib.get_config_map(config_map_name, self._namespace)
         config_map_yaml = (config_map.to_dict())
@@ -207,8 +207,12 @@ class pgsLibrary(object):
             if (key == 'status'):
                 pods = list([x for x in pods if x.status.phase == value])
             if (key == 'label'):
-                (k, v) = value.split(":")
-                pods = list([x for x in pods if k in x.metadata.labels and x.metadata.labels[k] == v])
+                # Support both ":" and "=" as separators
+                if ":" in value:
+                    (k, v) = value.split(":", 1)
+                else:
+                    (k, v) = value.split("=", 1)
+                pods = list([x for x in pods if x.metadata.labels and k in x.metadata.labels and x.metadata.labels[k] == v])
         return pods
 
     def get_pod(self, **kwargs):
@@ -344,10 +348,6 @@ class pgsLibrary(object):
             logging.info("Error {0}.  url: {1}".format(e, url))
         return resp
 
-    def get_master_service(self):
-        master_service = "pg-" + os.getenv("PG_CLUSTER_NAME", "patroni")
-        return master_service
-
     def make_switchover_via_patroni_rest(self):
         logging.info("Manual switchover via Patroni REST is called")
         master = self.get_master_pod_id()
@@ -375,7 +375,7 @@ class pgsLibrary(object):
         assert new_master == replica
 
     def check_if_next_run_scheduled(self):
-        pod = self.get_pod(label='app:postgres-backup-daemon', status='Running')
+        self.get_pod(label='app:postgres-backup-daemon', status='Running')
         schedule = requests.get(f"{self._scheme}://postgres-backup-daemon:8085/schedule", verify=False)
         schedule_json = schedule['stdout']
         if "time_until_next_backup" in schedule_json:
@@ -573,7 +573,7 @@ class pgsLibrary(object):
             health_json = requests.get(f"{self._scheme}://postgres-backup-daemon:8080/health", verify=False).json()
             new_dump_count = int(health_json["storage"]["lastSuccessful"]["ts"])
             delta = int(expr_date) - new_dump_count
-        except:
+        except Exception:
             logging.exception("Cannot parse delta")
             delta = 60000
         if delta < 60000:
