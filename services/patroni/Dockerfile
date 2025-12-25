@@ -117,6 +117,9 @@ RUN apt-get update && apt-get install -y git make gcc && \
     apt-get purge -y --auto-remove git make gcc && \
     cd .. && rm -rf pgsentinel
 
+# Install credcheck extension
+RUN apt-get update && apt-get install -y postgresql-$PG_VERSION-credcheck
+
 RUN apt-get install -y alien vmtouch openssh-server
 
 RUN cat /root/.pip/pip.conf
