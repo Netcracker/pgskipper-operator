@@ -9,15 +9,24 @@
 #   helmfile -e orbstack sync          - Deploy to OrbStack
 #   helmfile -e rancher sync           - Deploy to Rancher Desktop
 #   helmfile -e k3d-v4only sync        - Deploy to k3d with IPv4 only
+#   helmfile destroy                   - Uninstall releases (see cleanup note below)
 #
 # Environment Variables (optional):
 #   USE_LOCAL_IMAGES=true              - Build and use local operator images
 #   PGSKIPPER_IMAGE=<image>            - Override operator image (default: ghcr.io/netcracker/pgskipper-operator)
 #   PGSKIPPER_TAG=<tag>                - Override operator tag (default: main)
+#   NAMESPACE=<namespace>              - Target namespace (default: postgres)
 #
 # Examples:
 #   USE_LOCAL_IMAGES=true helmfile -e orbstack sync  - Build local images for OrbStack
 #   PGSKIPPER_TAG=v1.2.3 helmfile sync               - Use specific version from ghcr.io
+#
+# Cleanup after destroy:
+#   After running `helmfile destroy`, some operator-created resources may remain.
+#   To fully clean up, run:
+#     kubectl delete pvc,service,configmap --all -n postgres --ignore-not-found
+#   Or delete the entire namespace:
+#     kubectl delete namespace postgres
 
 helmDefaults:
   wait: false
