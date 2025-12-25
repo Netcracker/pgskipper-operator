@@ -4,7 +4,7 @@ metadata:
   name: patroni-core
   labels:
     name: patroni-core
-      {{ include "kubernetes.labels" . | nindent 4 }}
+    {{ include "kubernetes.labels" . | nindent 4 }}
 spec:
   imagePullPolicy: {{ .Values.imagePullPolicy | default "IfNotPresent" }}
   installationTimestamp: {{ now | unixEpoch | quote }}
