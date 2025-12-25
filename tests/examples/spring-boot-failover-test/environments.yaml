@@ -1,0 +1,18 @@
+# Helmfile Environments Configuration
+#
+# Define environment-specific settings for different deployment contexts
+# Usage: helmfile -e <environment> sync
+
+environments:
+  default:
+    values:
+      - environments/default.yaml
+  local:
+    values:
+      - environments/local.yaml
+  minikube:
+    values:
+      - environments/minikube.yaml
+  kind:
+    values:
+      - environments/kind.yaml

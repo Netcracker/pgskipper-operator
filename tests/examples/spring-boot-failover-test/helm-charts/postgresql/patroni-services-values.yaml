@@ -1,0 +1,75 @@
+# Custom values for patroni-services Helm chart
+# This configures the Patroni Services for the PostgreSQL cluster
+
+# Namespace configuration
+namespace: postgres
+
+# Operator configuration
+operator:
+  replicas: 1
+  image:
+    repository: netcracker/patroni-services-operator
+    tag: latest
+    pullPolicy: IfNotPresent
+
+  resources:
+    limits:
+      cpu: 500m
+      memory: 512Mi
+    requests:
+      cpu: 100m
+      memory: 128Mi
+
+# Service configuration for the PostgreSQL cluster
+patroniService:
+  enabled: true
+  name: postgres-service
+
+  # Reference to the PatroniCore cluster
+  clusterName: postgres-cluster
+
+  # Service type
+  serviceType: ClusterIP
+
+  # Connection pooling with PgBouncer (optional)
+  pgbouncer:
+    enabled: false
+    replicas: 2
+    poolMode: transaction
+    maxClientConnections: 100
+    defaultPoolSize: 25
+
+  # Load balancing configuration
+  loadBalancing:
+    enabled: true
+    # Route read queries to replicas
+    readOnlyService: true
+
+# Database initialization
+databases:
+  - name: testdb
+    owner: postgres
+    encoding: UTF8
+    lc_collate: en_US.UTF-8
+    lc_ctype: en_US.UTF-8
+    template: template0
+
+# Service endpoints
+services:
+  # Primary service (read-write)
+  primary:
+    name: postgres-primary
+    port: 5432
+    targetPort: 5432
+
+  # Replica service (read-only)
+  replica:
+    name: postgres-replica
+    port: 5432
+    targetPort: 5432
+
+  # Combined service (routes to primary for writes, replicas for reads)
+  combined:
+    name: postgres-service
+    port: 5432
+    targetPort: 5432

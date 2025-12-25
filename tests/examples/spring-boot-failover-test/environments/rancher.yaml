@@ -1,0 +1,5 @@
+# Rancher Desktop environment - for local development with Rancher Desktop
+# Rancher Desktop provides a lightweight Kubernetes cluster with k3s
+
+storageClass: local-path
+dockerContext: rancher-desktop

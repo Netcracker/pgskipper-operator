@@ -51,7 +51,7 @@ kubernetes:
     app: ${PATRONI_CLUSTER_NAME}
   role_label: pgtype
   scope_label: app
-  pod_ip: ${LISTEN_ADDR}
+  pod_ip: ${POD_DNS_NAME}
 postgresql:
   authentication:
     replication:
@@ -67,15 +67,15 @@ postgresql:
     on_role_change: /setup_endpoint_callback.py
     on_start: /setup_endpoint_callback.py
     on_stop: /setup_endpoint_callback.py
-  connect_address: ${LISTEN_ADDR}:5432
+  connect_address: ${POD_DNS_NAME}:5432
   data_dir: /var/lib/pgsql/data/postgresql_${NODE_NAME}
-  listen: '0.0.0.0, ::0:5432'
+  listen: '*:5432'
   parameters:
     unix_socket_directories: /var/run/postgresql, /tmp
   pgpass: /tmp/pgpass0
 restapi:
-  connect_address: ${LISTEN_ADDR}:8008
-  listen: ${LISTEN_ADDR}:8008
+  connect_address: ${POD_DNS_NAME}:8008
+  listen: '*:8008'
 tags:
   clonefrom: false
   nofailover: ${DR_MODE}
