@@ -57,8 +57,10 @@ def backups_storage(version=None):
         storage_path = '/backup-storage/pg15/granular'
     elif [16, 0] <= version < [17, 0]:
         storage_path = '/backup-storage/pg16/granular'
-    elif version >= [17, 0]:
+    elif [17, 0] <= version < [18, 0]:
         storage_path = '/backup-storage/pg17/granular'
+    elif version >= [18, 0]:
+        storage_path = '/backup-storage/pg18/granular'
     return storage_path
 
 
@@ -176,6 +178,8 @@ def get_pgsql_bin_path(version):
         return "/usr/lib/postgresql/16/bin"
     elif major_version == 17:
         return "/usr/lib/postgresql/17/bin"
+    elif major_version == 18:
+        return "/usr/lib/postgresql/18/bin"
 
 
 def is_external_pg():

@@ -25,6 +25,10 @@ jobs:
       fail-fast: false
       matrix:
         component:
+          - name: pgskipper-docker-patroni-18
+            file: services/patroni/Dockerfile
+            context: services/patroni
+            pg_version: "18"
           - name: pgskipper-docker-patroni-17
             file: services/patroni/Dockerfile
             context: services/patroni
