@@ -25,15 +25,18 @@ ENV POD_IDENTITY="node1" \
 # we craft a custom build of protobuf-c and publish it at this repo.
 # Remove this line after moving to the next CentOS releases.
 COPY scripts/archive_wal.sh /opt/scripts/archive_wal.sh
-ADD ./scripts/pip.conf /root/.pip/pip.conf
+COPY ./scripts/pip.conf /root/.pip/pip.conf
 COPY ./scripts/postgresql.conf /tmp/postgresql.conf
 COPY ./scripts/fix_permission.sh /usr/libexec/fix-permissions
-ADD ./scripts/* /
+COPY ./scripts/* /
 
 RUN echo "deb [trusted=yes] http://apt.postgresql.org/pub/repos/apt jammy-pgdg main" >> /etc/apt/sources.list.d/pgdg.list
+
 RUN ls -la /etc/apt/
-RUN apt-get -y update
-RUN apt-get -o DPkg::Options::="--force-confnew" -y dist-upgrade
+
+RUN apt-get -y update && \
+    apt-get -o DPkg::Options::="--force-confnew" -y upgrade && \
+    rm -rf /var/lib/apt/lists/*
 RUN apt-get update && \
     apt-get install -y --allow-downgrades gcc-12 cpp-12 gcc-12-base libgcc-12-dev libstdc++6 libgcc-s1 libnsl2
 RUN apt-get --no-install-recommends install -y python3.11 python3-pip python3-dev libpq-dev cython3 wget curl
@@ -117,6 +120,9 @@ RUN apt-get update && apt-get install -y git make gcc && \
     apt-get purge -y --auto-remove git make gcc && \
     cd .. && rm -rf pgsentinel
 
+# Install credcheck extension
+RUN apt-get update && apt-get install -y postgresql-$PG_VERSION-credcheck
+
 RUN apt-get install -y alien vmtouch openssh-server
 
 RUN cat /root/.pip/pip.conf
@@ -156,7 +162,7 @@ RUN chmod 777 /var/lib/pgbackrest && \
     chown postgres:0 /var/lib/pgbackrest && \
     chown postgres:0 /var/log/pgbackrest && \
     chown postgres:0 /var/spool/pgbackrest
-    
+
 # Volumes are defined to support read-only root file system
 VOLUME /etc
 VOLUME /patroni
