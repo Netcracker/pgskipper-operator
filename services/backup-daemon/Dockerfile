@@ -14,7 +14,7 @@ RUN CGO_ENABLED=0 GOOS=$TARGETOS GOARCH=$TARGETARCH go build -o ./_output/bin/az
 
 FROM ubuntu:22.04
 
-ENV PGPASSWORD=password PG_CLUSTER_NAME=common STORAGE_ROOT=/backup-storage EXTERNAL_STORAGE_ROOT=/external \
+ENV USER_UID=1001 USER_NAME=postgres-backup-daemon PGPASSWORD=password PG_CLUSTER_NAME=common STORAGE_ROOT=/backup-storage EXTERNAL_STORAGE_ROOT=/external \
     LC_ALL=en_US.UTF-8 \
     LANG=en_US.UTF-8
 
@@ -89,5 +89,7 @@ VOLUME /opt/backup
 VOLUME /tmp
 
 EXPOSE 8080 8081 8082 9000
+
+USER ${USER_UID}
 
 CMD ["bash", "/opt/backup/start_backup_daemon.sh"]
