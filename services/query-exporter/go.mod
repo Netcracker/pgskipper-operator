@@ -1,6 +1,6 @@
 module github.com/Netcracker/qubership-query-exporter
 
-go 1.25.1
+go 1.25.5
 
 require (
 	github.com/godror/godror v0.49.2
@@ -30,7 +30,7 @@ require (
 	github.com/prometheus/procfs v0.17.0 // indirect
 	github.com/rogpeppe/go-internal v1.13.1 // indirect
 	go.yaml.in/yaml/v2 v2.4.3 // indirect
-	golang.org/x/crypto v0.42.0 // indirect
+	golang.org/x/crypto v0.43.0 // indirect
 	golang.org/x/exp v0.0.0-20250819193227-8b4c13bb791b // indirect
 	golang.org/x/sync v0.17.0 // indirect
 	golang.org/x/sys v0.36.0 // indirect
