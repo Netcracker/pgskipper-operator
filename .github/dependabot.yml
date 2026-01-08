@@ -1,0 +1,22 @@
+version: 2
+updates:
+  # Go
+  - package-ecosystem: "gomod"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+
+  # Docker images
+  - package-ecosystem: "docker"
+    directories:
+      - "/tests"
+      - "/docker-transfer"
+      - "/build"
+    schedule:
+      interval: "weekly"
+
+  # Python dependencies for tests docker image
+  - package-ecosystem: "pip"
+    directory: "/tests/docker"
+    schedule:
+      interval: "weekly"
