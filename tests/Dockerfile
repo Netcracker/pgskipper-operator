@@ -1,11 +1,10 @@
-FROM ghcr.io/netcracker/qubership-docker-integration-tests:0.2.2
+FROM ghcr.io/netcracker/qubership-docker-integration-tests:0.3.7
 
 ENV LC_ALL=en_US.UTF-8 \
     LANG=en_US.UTF-8
 
 COPY docker/pip.conf /root/.pip/pip.conf
 COPY docker/requirements.txt /root/requirements.txt
-COPY docker/uid_entrypoint /opt/uid_entrypoint
 
 RUN set -x \
     && apk add --update --no-cache build-base postgresql-dev \
@@ -18,6 +17,7 @@ RUN chmod -R g=u /etc/passwd && \
 
 COPY ./app/* /app/
 COPY robot /test_runs/
+COPY docker/uid_entrypoint /opt/uid_entrypoint
 
 RUN chgrp -R 0 /app && chmod g+w /app && \
     chgrp -R 0 /test_runs && chmod -R g+w /test_runs && \

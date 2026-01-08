@@ -1,4 +1,4 @@
-FROM --platform=$BUILDPLATFORM golang:1.25.3-alpine3.22 AS builder
+FROM --platform=$BUILDPLATFORM golang:1.25-alpine3.23 AS builder
 
 ENV GO111MODULE=on
 
@@ -19,7 +19,6 @@ ENV PGPASSWORD=password PG_CLUSTER_NAME=common STORAGE_ROOT=/backup-storage EXTE
     LANG=en_US.UTF-8
 
 COPY docker/pip.conf /root/.pip/pip.conf
-COPY docker/requirements.txt /root/requirements.txt
 
 RUN echo "deb [trusted=yes] http://apt.postgresql.org/pub/repos/apt jammy-pgdg main" >> /etc/apt/sources.list.d/pgdg.list
 RUN cat /etc/apt/sources.list
@@ -28,7 +27,8 @@ RUN apt-get -y update
 RUN apt-get -o DPkg::Options::="--force-confnew" -y dist-upgrade
 RUN apt-get update && \
     apt-get install -y --allow-downgrades gcc-12 cpp-12 gcc-12-base libgcc-12-dev libstdc++6 libgcc-s1 libnsl2
-RUN apt-get --no-install-recommends install -y python3.11 python3-pip python3-dev libpq-dev cython3
+RUN apt-get --no-install-recommends install -y python3.11 python3.11-dev python3-pip libpq-dev cython3 \
+    && update-alternatives --install /usr/bin/python3 python3 /usr/bin/python3.11 1
 
 RUN ls -ls /usr/bin/
 ARG DEBIAN_FRONTEND=noninteractive
@@ -44,6 +44,8 @@ RUN apt-get --no-install-recommends install -y comerr-dev \
                        vim \
                        locales
 RUN python3 -m pip install -U setuptools==78.1.1 wheel==0.38.0
+
+COPY docker/requirements.txt /root/requirements.txt
 RUN python3 -m pip install --no-cache-dir -r /root/requirements.txt \
       && python3 -m pip install --upgrade pip \
       && python3 -m pip install grpcio \

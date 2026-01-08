@@ -1,4 +1,4 @@
-FROM golang:1.25-alpine3.22
+FROM golang:1.25-alpine3.23
 
 ENV EXPORTER_FILE=/usr/local/bin/query-exporter \
     USER_UID=1001
