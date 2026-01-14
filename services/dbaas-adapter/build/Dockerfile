@@ -17,7 +17,7 @@ RUN go mod tidy
 ARG TARGETOS TARGETARCH
 RUN CGO_ENABLED=0 GOOS=$TARGETOS GOARCH=$TARGETARCH go build -o /build/_output/bin/postgresql-dbaas -gcflags all=-trimpath=${GOPATH} -asmflags all=-trimpath=${GOPATH} ./adapter
 
-FROM alpine:3.22
+FROM alpine:3.23
 
 ENV OPERATOR=/usr/local/bin/postgresql-dbaas \
     USER_UID=1001

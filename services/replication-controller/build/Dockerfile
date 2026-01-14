@@ -20,7 +20,7 @@ ARG TARGETOS TARGETARCH
 RUN CGO_ENABLED=0 GOOS=$TARGETOS GOARCH=$TARGETARCH CGO_ENABLED=0 go build -o ./build/_output/bin/pgskipper-replication-controller \
 				-gcflags all=-trimpath=${GOPATH} -asmflags all=-trimpath=${GOPATH} ./cmd/pgskipper-replication-controller
 
-FROM alpine:3.20
+FROM alpine:3.23
 
 ENV CONTROLLER=/usr/local/bin/pgskipper-replication-controller \
     USER_UID=1001
