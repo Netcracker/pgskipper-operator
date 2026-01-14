@@ -19,7 +19,7 @@ RUN --mount=type=cache,id=gomodcache,target=/go/pkg/mod \
     CGO_ENABLED=0 GOOS=$TARGETOS GOARCH=$TARGETARCH go build -o ./build/_output/bin/postgres-operator \
     -gcflags all=-trimpath=${GOPATH} -asmflags all=-trimpath=${GOPATH} ./cmd/pgskipper-operator
 
-FROM alpine:3.22
+FROM alpine:3.23
 
 ENV OPERATOR=/usr/local/bin/postgres-operator \
     USER_UID=1001 \
