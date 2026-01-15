@@ -10,7 +10,7 @@ require (
 	github.com/jackc/pgx/v4 v4.18.2
 	github.com/stretchr/testify v1.9.0
 	github.com/valyala/fasthttp v1.52.0
-	go.uber.org/zap v1.27.0
+	go.uber.org/zap v1.27.1
 	k8s.io/api v0.29.0
 	k8s.io/apimachinery v0.29.0
 	k8s.io/client-go v0.29.0
