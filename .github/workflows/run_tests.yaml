@@ -10,7 +10,7 @@ on:
 
 jobs:
   Pgskipper-Pipeline:
-    uses: Netcracker/qubership-test-pipelines/.github/workflows/pgskipper.yaml@pg_skipper
+    uses: Netcracker/qubership-test-pipelines/.github/workflows/pgskipper.yaml@pgskipper
     with:
       service_branch: '${{ github.head_ref || github.ref_name }}'
       versions_file: '.github/versions.yaml'
