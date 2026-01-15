@@ -4,7 +4,7 @@ go 1.25.5
 
 require (
 	github.com/gofiber/fiber/v2 v2.52.9
-	go.uber.org/zap v1.27.0
+	go.uber.org/zap v1.27.1
 )
 
 require (
