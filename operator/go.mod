@@ -13,7 +13,7 @@ require (
 	github.com/jackc/pgx/v4 v4.18.3
 	github.com/operator-framework/operator-lib v0.19.0
 	github.com/pkg/errors v0.9.1
-	go.uber.org/zap v1.27.0
+	go.uber.org/zap v1.27.1
 	golang.org/x/crypto v0.47.0
 	google.golang.org/api v0.249.0
 	gopkg.in/yaml.v2 v2.4.0
