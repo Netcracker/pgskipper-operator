@@ -7,16 +7,16 @@
 
 charts:
   - name: patroni-core
-    chart_file: charts/patroni-core/Chart.yaml
-    values_file: charts/patroni-core/values.yaml
+    chart_file: operator/charts/patroni-core/Chart.yaml
+    values_file: operator/charts/patroni-core/values.yaml
     image:
       #- ghcr.io/netcracker/qubership-credential-manager:${release}
       #- ghcr.io/netcracker/pgskipper-operator:${release}
       #- ghcr.io/netcracker/pgskipper-patroni-16:${release}
       - ghcr.io/netcracker/pgskipper-operator-tests:${release}
   - name: patroni-services
-    chart_file: charts/patroni-services/Chart.yaml
-    values_file: charts/patroni-services/values.yaml
+    chart_file: operator/charts/patroni-services/Chart.yaml
+    values_file: operator/charts/patroni-services/values.yaml
     image:
       #- ghcr.io/netcracker/qubership-credential-manager:${release}
       #- ghcr.io/netcracker/pgskipper-operator:${release}
