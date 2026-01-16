@@ -80,7 +80,7 @@ def get_common_pg_metrics_by_version(version):
         "xlog_location":            get_metrics_type_by_version("xlog_location", version),
         "pg_is_in_recovery":        "SELECT pg_is_in_recovery()",
         "xact_sum":                 "select sum(xact_commit + xact_rollback) :: bigint from pg_stat_database",
-        "query_max_time":           "SELECT COALESCE(trunc(extract(epoch from (now() - min(query_start)))), 0) FROM pg_stat_activity WHERE state='active' AND usename != 'replicator' AND wait_event_type ||'.'|| wait_event != 'Client.WalSenderWaitForWAL'",
+        "query_max_time":           "SELECT COALESCE(trunc(extract(epoch from (now() - min(query_start)))), 0) FROM pg_stat_activity WHERE state='active' AND usename != 'replicator' AND lower(wait_event_type ||'.'|| wait_event) != 'client.walsenderwaitforwal'",
     }
 
 
