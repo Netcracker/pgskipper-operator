@@ -45,14 +45,14 @@ jobs:
           password: ${{secrets.GITHUB_TOKEN}}
       - name: Prepare Tag
         run: echo "TAG_NAME=$(echo ${TAG_NAME} | sed 's@refs/tags/@@;s@refs/heads/@@;s@/@_@g')" >> $GITHUB_ENV
-      - name: Get package IDs for delete 
+      - name: Get package IDs for delete
         id: get-ids-for-delete
         uses: Netcracker/get-package-ids@v0.0.1
         with:
           component-name: ${{ matrix.component.name }}
           component-tag: ${{ env.TAG_NAME }}
-          access-token: ${{ secrets.GH_ACCESS_TOKEN }} 
-        if: ${{ env.PUSH }} 
+          access-token: ${{ secrets.GH_ACCESS_TOKEN }}
+        if: ${{ env.PUSH }}
       - name: Build and push
         uses: docker/build-push-action@v6
         with:
@@ -60,11 +60,11 @@ jobs:
           context: ${{ matrix.component.context }}
           file: ${{ matrix.component.file }}
           platforms: linux/amd64,linux/arm64
-          push: ${{ env.PUSH }} 
+          push: ${{ env.PUSH }}
           tags: ghcr.io/netcracker/${{ matrix.component.name }}:${{ env.TAG_NAME }}
           provenance: false
       - uses: actions/delete-package-versions@v5
-        with: 
+        with:
           package-name: ${{ matrix.component.name }}
           package-type: 'container'
           package-version-ids: ${{ steps.get-ids-for-delete.outputs.ids-for-delete }}
