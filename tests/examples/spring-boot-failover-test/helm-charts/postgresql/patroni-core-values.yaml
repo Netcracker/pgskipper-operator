@@ -1,0 +1,114 @@
+# Custom values for patroni-core Helm chart
+# This configures the Patroni Core operator for PostgreSQL HA
+
+# Namespace configuration
+namespace: postgres
+
+# Operator configuration
+operator:
+  replicas: 1
+  image:
+    repository: netcracker/patroni-core-operator
+    tag: latest
+    pullPolicy: IfNotPresent
+
+  resources:
+    limits:
+      cpu: 500m
+      memory: 512Mi
+    requests:
+      cpu: 100m
+      memory: 128Mi
+
+# PostgreSQL cluster configuration
+patroniCore:
+  enabled: true
+  name: postgres-cluster
+
+  # PostgreSQL version
+  postgresVersion: "15"
+
+  # Cluster topology
+  topology:
+    # Number of PostgreSQL instances (1 primary + 2 replicas)
+    replicas: 3
+
+  # Storage configuration
+  storage:
+    # Storage class for persistent volumes
+    # Update this based on your Kubernetes cluster
+    storageClassName: "standard"
+    size: "10Gi"
+    accessMode: ReadWriteOnce
+
+  # Resource allocation for PostgreSQL pods
+  resources:
+    limits:
+      cpu: 1000m
+      memory: 2Gi
+    requests:
+      cpu: 500m
+      memory: 1Gi
+
+  # Patroni configuration for HA
+  patroni:
+    # DCS (Distributed Configuration Store) settings
+    ttl: 30
+    loop_wait: 10
+    retry_timeout: 10
+    maximum_lag_on_failover: 1048576  # 1MB
+
+    # PostgreSQL parameters
+    postgresql:
+      parameters:
+        max_connections: 100
+        shared_buffers: 512MB
+        effective_cache_size: 1536MB
+        maintenance_work_mem: 128MB
+        checkpoint_completion_target: 0.9
+        wal_buffers: 16MB
+        default_statistics_target: 100
+        random_page_cost: 1.1
+        effective_io_concurrency: 200
+        work_mem: 5242kB
+        min_wal_size: 1GB
+        max_wal_size: 4GB
+        # Replication settings
+        hot_standby: "on"
+        wal_level: replica
+        max_wal_senders: 10
+        max_replication_slots: 10
+
+  # pgBackRest configuration (optional, for backups)
+  backup:
+    enabled: false
+
+# Service configuration
+service:
+  # Service type for external access
+  type: ClusterIP
+  port: 5432
+  # Create separate services for primary and replica
+  separateServices: true
+
+# Security
+security:
+  # Enable TLS
+  tls:
+    enabled: false
+
+  # PostgreSQL users
+  users:
+    - name: postgres
+      password: postgres  # CHANGE THIS IN PRODUCTION!
+      superuser: true
+    - name: app_user
+      password: app_password  # CHANGE THIS IN PRODUCTION!
+      databases:
+        - testdb
+
+# Monitoring (optional)
+monitoring:
+  enabled: false
+  prometheus:
+    enabled: false
