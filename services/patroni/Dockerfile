@@ -113,6 +113,7 @@ RUN apt-get update && apt-get install -y git make gcc && \
     git clone https://github.com/pgsentinel/pgsentinel.git && \
     cd pgsentinel && \
     git checkout 0218c2147daab0d2dbbf08433cb480163d321839 && \
+    cd src && make install && \
     cd ../.. && \
     if [ "$PG_VERSION" -lt 18 ]; then \
         git clone --depth 1 --branch REL14_0 https://github.com/ossc-db/pg_dbms_stats.git && \
