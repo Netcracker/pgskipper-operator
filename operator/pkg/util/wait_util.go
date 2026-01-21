@@ -20,6 +20,7 @@ import (
 	"fmt"
 	"os"
 	"strconv"
+	"strings"
 	"time"
 
 	v1 "github.com/Netcracker/pgskipper-operator/api/patroni/v1"
@@ -244,8 +245,8 @@ func WaitForLeader(patroniMasterSelector map[string]string) error {
 	})
 }
 
-func waitForReplicas(patroniReplicasSelector map[string]string, numberOfReplicas int) error {
-	return wait.PollUntilContextTimeout(context.Background(), time.Second, getWaitTimeout(), true, func(ctx context.Context) (done bool, err error) {
+func waitForReplicas(patroniReplicasSelector map[string]string, numberOfReplicas int, timeout time.Duration) error {
+	return wait.PollUntilContextTimeout(context.Background(), time.Second, timeout, true, func(ctx context.Context) (done bool, err error) {
 		return checkPodsByLabel(patroniReplicasSelector, numberOfReplicas)
 	})
 }
@@ -263,12 +264,16 @@ func WaitForMetricCollector() error {
 }
 
 func WaitForPatroni(cr *v1.PatroniCore, patroniMasterSelector map[string]string, patroniReplicasSelector map[string]string) error {
+	storageSize := cr.Spec.Patroni.Storage.Size
+	dynamicTimeout := getDynamicWaitTimeout(storageSize)
+	uLog.Info(fmt.Sprintf("Calculated dynamic timeout: %v for %s database", dynamicTimeout, storageSize))
+
 	if cr.Spec.Patroni.Dcs.Type == "kubernetes" {
 		if err := WaitForLeader(patroniMasterSelector); err != nil {
 			uLog.Error("Failed to wait for master, exiting", zap.Error(err))
 			return err
 		}
-		if err := waitForReplicas(patroniReplicasSelector, cr.Spec.Patroni.Replicas-1); err != nil {
+		if err := waitForReplicas(patroniReplicasSelector, cr.Spec.Patroni.Replicas-1, dynamicTimeout); err != nil {
 			uLog.Error("Failed to wait for replicas, exiting", zap.Error(err))
 			return err
 		}
@@ -343,4 +348,20 @@ func getWaitTimeout() time.Duration {
 	}
 	waitTimeout, _ := strconv.Atoi(waitTimeoutStr)
 	return time.Duration(waitTimeout) * time.Minute
+}
+
+func getDynamicWaitTimeout(sizeStr string) time.Duration {
+	if val, ok := os.LookupEnv("WAIT_TIMEOUT"); ok {
+		t, _ := strconv.Atoi(val)
+		return time.Duration(t) * time.Minute
+	}
+	var dbSizeGB int
+	fmt.Sscanf(sizeStr, "%d", &dbSizeGB)
+	if strings.Contains(sizeStr, "Ti") {
+		dbSizeGB *= 1024
+	}
+
+	minutes := max((dbSizeGB*2)+20, 20)
+
+	return time.Duration(minutes) * time.Minute
 }
