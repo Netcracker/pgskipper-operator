@@ -30,7 +30,7 @@ serviceAccount:
   name: "patroni-sa"
 
 operatorInit:
-  image: ghcr.io/netcracker/qubership-credential-manager:main
+  image: ghcr.io/netcracker/qubership-credential-manager:v0.0.12
   resources:
     limits:
       cpu: 50m
@@ -42,7 +42,7 @@ operatorInit:
 ##  This section describes values for postgres-operator deployment
 operator:
   # Docker Image that will be used to Postgres Operator deployment
-  image: ghcr.io/netcracker/pgskipper-operator:main
+  image: ghcr.io/netcracker/pgskipper-operator:1.52.0
   podLabels: {}
   securityContext: {}
   waitTimeout: 10
@@ -97,7 +97,7 @@ patroni:
   # The number of Patroni (Postgres) nodes. One of these nodes is a master, and the others are replicas.
   replicas: 2
   # Docker Image that will be used for Patroni container
-  dockerImage: ghcr.io/netcracker/pgskipper-docker-patroni-16:main
+  dockerImage: ghcr.io/netcracker/pgskipper-docker-patroni-16:1.52.0
   podLabels: {}
   podAnnotations: {}
   configMapAnnotations: {}
@@ -219,7 +219,7 @@ patroni:
   majorUpgrade:
     enabled: false
     #    initDbParams: "--encoding=UTF8 --data-checksums --lc-collate=C --lc-ctype=C"
-    dockerUpgradeImage: ghcr.io/netcracker/qubership-pgskipper-upgrade:main
+    dockerUpgradeImage: ghcr.io/netcracker/qubership-pgskipper-upgrade:1.52.0
   securityContext: {}
     #    fsGroupChangePolicy: OnRootMismatch
     #  pgWalStorageAutoManage: false
@@ -249,7 +249,7 @@ patroni:
 
 ##  This section describes values for pgBackRest
 # pgBackRest:
-#   dockerImage: "ghcr.io/netcracker/pgbackrest-sidecar:main"
+#   dockerImage: "ghcr.io/netcracker/pgbackrest-sidecar:1.52.0"
 #   repoType: "rwx"
 #   repoPath: "/var/lib/pgbackrest"
 #   diffSchedule: "0 0/1 * * *"
@@ -272,7 +272,7 @@ patroni:
 
 tests:
   install: true
-  dockerImage: ghcr.io/netcracker/pgskipper-operator-tests:main
+  dockerImage: ghcr.io/netcracker/pgskipper-operator-tests:1.52.0
   podLabels: {}
   # One of "full", "basic"or one from testScenarios
   runTestScenarios: "basic"
