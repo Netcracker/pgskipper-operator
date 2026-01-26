@@ -24,6 +24,7 @@ import time
 import sys
 import utils_oc
 import utils_pg
+import re
 from utils_common import RecoveryException
 from utils_dcs import PatroniDCS, PatroniDCSEtcd, PatroniDCSKubernetes
 
@@ -207,6 +208,16 @@ def perform_bootstrap_recovery(oc_client, oc_orch, pg, dcs_storage,
     pool = concurrent.futures.ThreadPoolExecutor(max_workers=4)
     loop = asyncio.get_event_loop()
 
+    statefulsets = None
+    initial_sts_replicas = None
+
+    if deployment_type == "statefulset":
+        initial_replicas_desc = oc_client.get_cluster_pods_desc(pg_cluster_name)
+        initial_replicas = [pod["metadata"]["name"] for pod in initial_replicas_desc]
+
+        statefulsets = sorted({statefulset_from_pod(p) for p in initial_replicas})
+        initial_sts_replicas = {sts: oc_client.get_stateful_set_replicas_count(sts) for sts in statefulsets}
+
     if deployment_type == "dc":
         deployments = oc_client.get_deployment_names(pg_depl_name)
         tasks = [loop.run_in_executor(
@@ -225,17 +236,18 @@ def perform_bootstrap_recovery(oc_client, oc_orch, pg, dcs_storage,
         loop.run_until_complete(asyncio.gather(*tasks))
 
     elif deployment_type == "statefulset":
-        oc_orch.replace_command_on_statefulset("pg-patroni-node1", ["sh", "-c", "while true ; do sleep 3600; done"])
-        oc_orch.replace_command_on_statefulset("pg-patroni-node2", ["sh", "-c", "while true ; do sleep 3600; done"])
+        for sts in statefulsets:
+            oc_orch.replace_command_on_statefulset(sts, ["sh", "-c", "while true ; do sleep 3600; done"])
 
 
 
-    initial_replicas_desc = oc_client.get_cluster_pods_desc(pg_cluster_name)
-    initial_replicas = [pod["metadata"]["name"] for pod in initial_replicas_desc]
+    if deployment_type != "statefulset":
+        initial_replicas_desc = oc_client.get_cluster_pods_desc(pg_cluster_name)
+        initial_replicas = [pod["metadata"]["name"] for pod in initial_replicas_desc]
 
     # in case of statefulset need to get number of replicas for scaling back
-    if deployment_type == "statefulset":
-        initial_replicas_num = oc_client.get_stateful_set_replicas_count("patroni")
+    # if deployment_type == "statefulset":
+    #     initial_replicas_num = oc_client.get_stateful_set_replicas_count("patroni")
 
     recovery_pod_id = list([pod for pod in initial_replicas_desc if not list([env for env in pod["spec"]["containers"][0]["env"] if env["name"] == "DR_MODE" and "value" in env and env["value"].lower() == "true"])])[0]["metadata"]["name"]
     log.info("Will use for procedure pod {} from {}".format(recovery_pod_id, initial_replicas))
@@ -291,9 +303,10 @@ def perform_bootstrap_recovery(oc_client, oc_orch, pg, dcs_storage,
         recovery_pod_id = oc_client.get_pods_by_label("app={}".format(pg_cluster_name))[0]
     elif deployment_type == "statefulset":
         # set command as None for statefulset
-        oc_orch.replace_command_on_statefulset("pg-patroni-node1", None, False)
-        oc_orch.replace_command_on_statefulset("pg-patroni-node2", None, False)
-        oc_orch.scale_stateful_set("pg-patroni-node1", 1)
+        for sts in statefulsets:
+            oc_orch.replace_command_on_statefulset(sts, None, False)
+        recovery_sts = statefulset_from_pod(recovery_pod_id)
+        oc_orch.scale_stateful_set(recovery_sts, 1)
         recovery_pod_id = oc_client.get_cluster_pods(pg_cluster_name)[0]
     log.info(recovery_pod_id)
     # wait while pod is up
@@ -355,7 +368,8 @@ def perform_bootstrap_recovery(oc_client, oc_orch, pg, dcs_storage,
                 log.info("Scale up deployment {}".format(dc))
                 oc_orch.ensure_scale(dc, 1, "deployment")
     elif deployment_type == "statefulset":
-        oc_orch.scale_stateful_set("pg-patroni-node2", initial_replicas_num)
+        for sts, cnt in initial_sts_replicas.items():
+            oc_orch.scale_stateful_set(sts, cnt)
 
     # check if database working on all nodes
     replicas = oc_client.get_cluster_pods(pg_cluster_name)
@@ -375,6 +389,9 @@ def perform_bootstrap_recovery(oc_client, oc_orch, pg, dcs_storage,
             log.info("Wait while replica database will start on pod {}.".format(pod_id))
             pg.wait_database(pod_id)
 
+
+def statefulset_from_pod(pod_name: str) -> str:
+    return re.sub(r"-\d+$", "", pod_name)
 
 
 def download_archive(oc_client, recovery_pod_id, restore_version):
