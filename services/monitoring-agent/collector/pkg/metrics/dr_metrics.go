@@ -148,8 +148,7 @@ func getStandbyInfo(ctx context.Context, patroniPodsIP []string) ([]ReplicaInfo,
 
 func (s *Scraper) IsCurrentSiteActive(ctx context.Context) (bool, error) {
 	var response = ClusterInfo{}
-	protocol, _ := util.GetProtocol()
-	url := fmt.Sprintf("%spg-%s-api:8008/cluster", protocol, clusterName)
+	url := fmt.Sprintf("http://pg-%s-api:8008/cluster", clusterName)
 
 	status, body, err := util.ProcessHttpRequest(s.httpClient, url, s.token)
 	if err != nil {
