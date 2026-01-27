@@ -203,6 +203,15 @@ class OpenshiftClient(metaclass=ABCMeta):
     def get_stateful_set_replicas_count(self, stateful_set_name):
         stateful_set = self.get_stateful_set(stateful_set_name)
         return int(stateful_set.get("spec").get("replicas"))
+    
+    def get_stateful_set_names_by_label(self, s: str) -> list[str]:
+        sel = dict(p.strip().split("=", 1) for p in s.split(","))
+        items = self.get_entities("statefulset")
+        return sorted(
+            st["metadata"]["name"]
+            for st in items
+            if all((st.get("metadata", {}).get("labels", {}) or {}).get(k) == v for k, v in sel.items())
+        )
 
     def get_running_stateful_set_replicas_count(self, stateful_set_name):
         stateful_set = self.get_stateful_set(stateful_set_name)

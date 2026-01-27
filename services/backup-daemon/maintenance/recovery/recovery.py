@@ -215,7 +215,7 @@ def perform_bootstrap_recovery(oc_client, oc_orch, pg, dcs_storage,
         initial_replicas_desc = oc_client.get_cluster_pods_desc(pg_cluster_name)
         initial_replicas = [pod["metadata"]["name"] for pod in initial_replicas_desc]
 
-        statefulsets = sorted({statefulset_from_pod(p) for p in initial_replicas})
+        statefulsets = oc_client.get_stateful_set_names_by_label(f"app={pg_cluster_name}")
         initial_sts_replicas = {sts: oc_client.get_stateful_set_replicas_count(sts) for sts in statefulsets}
 
     if deployment_type == "dc":
