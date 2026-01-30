@@ -20,6 +20,7 @@ import logging
 from utils_common import *
 import pprint
 import time
+import re
 
 log = logging.getLogger()
 
@@ -562,17 +563,16 @@ class OpenshiftPyClient(OpenshiftClient):
 
     def get_entity(self, entity_type, entity_name):
         items = self.__list_entities(entity_type)
-        if entity_type == "statefulset":
-            filtered_items = [item for item in items if "patroni" in item.metadata.name]
-        else:
-            filtered_items = list(filter(lambda x: x.metadata.name == entity_name, items))
-        if entity_name == "pg-patroni-node1":
-            returned_value = self.__to_dict(filtered_items[0])
-        elif entity_name == "pg-patroni-node2":
-            returned_value = self.__to_dict(filtered_items[1])
-        else:
-            returned_value = self.__to_dict(filtered_items[0])
-        return returned_value
+
+        if entity_type != "statefulset":
+            return self.__to_dict(next(x for x in items if x.metadata.name == entity_name))
+
+        sts = sorted((x for x in items if "patroni" in x.metadata.name), key=lambda x: x.metadata.name)
+
+        m = re.search(r"node(\d+)$", entity_name or "")
+        idx = int(m.group(1)) - 1 if m else 0
+
+        return self.__to_dict(sts[idx])
 
     def get_entity_safe(self, entity_type, entity_name):
         try:
