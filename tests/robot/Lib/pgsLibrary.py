@@ -259,11 +259,13 @@ class pgsLibrary(object):
             with conn.cursor() as cursor:
                 try:
                     cursor.execute(query)
-                    if query.lower().find("insert"):
-                        conn.commit()
-                    return cursor.fetchall()
+                    # Only fetch results for queries that return data (SELECT, etc.)
+                    # DDL statements (CREATE, DROP, ALTER) don't return results
+                    if cursor.description is not None:
+                        return cursor.fetchall()
+                    return None
                 except Exception as e:
-                    logging.info("Error {0}.  execute {1}. Service is {2}".format(e, query, host))
+                    logging.error("Error {0}.  execute {1}. Service is {2}".format(e, query, host))
 
     @keyword('Scale Deployment ${deployment} To ${replicas}')
     def os_scale_dc(self, deployment, replicas, timeout=90):
