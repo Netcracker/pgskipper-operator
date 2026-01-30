@@ -5,7 +5,8 @@ Suite Setup       Preparation
 
 *** Variables ***
 ${user_name}                     test_role
-${user_pass}                     test_role
+${user_pass}                     SecureP@ssw0rd123
+${user_pass_new}                 NewP@ssw0rd456
 
 *** Keywords ***
 Preparation
@@ -36,7 +37,7 @@ Check Update User
     ${res}=  Execute Query  pg-${PG_CLUSTER_NAME}  SELECT usename FROM pg_user;
     Should Be True   """${user_name}""" in """${res}"""   msg=[creating user] Expected user ${user_name} is not created in pg-${PG_CLUSTER_NAME}: res: ${res}
     ${previous_pass}=  Execute Query  pg-${PG_CLUSTER_NAME}  SELECT passwd from pg_shadow where usename='${user_name}';
-    Execute Query  pg-${PG_CLUSTER_NAME}  ALTER USER ${user_name} WITH PASSWORD 'password';
+    Execute Query  pg-${PG_CLUSTER_NAME}  ALTER USER ${user_name} WITH PASSWORD '${user_pass_new}';
     ${res}=  Execute Query  pg-${PG_CLUSTER_NAME}  SELECT usename FROM pg_user;
     Should Be True   """${user_name}""" in """${res}"""   msg=[updating user] Expected user ${user_name} is not exist after alter in pg-${PG_CLUSTER_NAME}: res: ${res}
     ${current_pass}=  Execute Query  pg-${PG_CLUSTER_NAME}  SELECT passwd from pg_shadow where usename='${user_name}';
