@@ -211,13 +211,6 @@ def perform_bootstrap_recovery(oc_client, oc_orch, pg, dcs_storage,
     statefulsets = None
     initial_sts_replicas = None
 
-    if deployment_type == "statefulset":
-        initial_replicas_desc = oc_client.get_cluster_pods_desc(pg_cluster_name)
-        initial_replicas = [pod["metadata"]["name"] for pod in initial_replicas_desc]
-
-        statefulsets = oc_client.get_stateful_set_names_by_label(f"app={pg_cluster_name}")
-        initial_sts_replicas = {sts: oc_client.get_stateful_set_replicas_count(sts) for sts in statefulsets}
-
     if deployment_type == "dc":
         deployments = oc_client.get_deployment_names(pg_depl_name)
         tasks = [loop.run_in_executor(
@@ -236,6 +229,11 @@ def perform_bootstrap_recovery(oc_client, oc_orch, pg, dcs_storage,
         loop.run_until_complete(asyncio.gather(*tasks))
 
     elif deployment_type == "statefulset":
+        initial_replicas_desc = oc_client.get_cluster_pods_desc(pg_cluster_name)
+        initial_replicas = [pod["metadata"]["name"] for pod in initial_replicas_desc]
+
+        statefulsets = oc_client.get_stateful_set_names_by_label(f"app={pg_cluster_name}")
+        initial_sts_replicas = {sts: oc_client.get_stateful_set_replicas_count(sts) for sts in statefulsets}
         for sts in statefulsets:
             oc_orch.replace_command_on_statefulset(sts, ["sh", "-c", "while true ; do sleep 3600; done"])
 
@@ -244,10 +242,6 @@ def perform_bootstrap_recovery(oc_client, oc_orch, pg, dcs_storage,
     if deployment_type != "statefulset":
         initial_replicas_desc = oc_client.get_cluster_pods_desc(pg_cluster_name)
         initial_replicas = [pod["metadata"]["name"] for pod in initial_replicas_desc]
-
-    # in case of statefulset need to get number of replicas for scaling back
-    # if deployment_type == "statefulset":
-    #     initial_replicas_num = oc_client.get_stateful_set_replicas_count("patroni")
 
     recovery_pod_id = list([pod for pod in initial_replicas_desc if not list([env for env in pod["spec"]["containers"][0]["env"] if env["name"] == "DR_MODE" and "value" in env and env["value"].lower() == "true"])])[0]["metadata"]["name"]
     log.info("Will use for procedure pod {} from {}".format(recovery_pod_id, initial_replicas))
