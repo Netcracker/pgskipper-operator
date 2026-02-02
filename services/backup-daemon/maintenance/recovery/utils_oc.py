@@ -20,6 +20,7 @@ import logging
 from utils_common import *
 import pprint
 import time
+import re
 
 log = logging.getLogger()
 
@@ -203,6 +204,15 @@ class OpenshiftClient(metaclass=ABCMeta):
     def get_stateful_set_replicas_count(self, stateful_set_name):
         stateful_set = self.get_stateful_set(stateful_set_name)
         return int(stateful_set.get("spec").get("replicas"))
+    
+    def get_stateful_set_names_by_label(self, s: str) -> list[str]:
+        sel = dict(p.strip().split("=", 1) for p in s.split(","))
+        items = self.get_entities("statefulset")
+        return sorted(
+            st["metadata"]["name"]
+            for st in items
+            if all((st.get("metadata", {}).get("labels", {}) or {}).get(k) == v for k, v in sel.items())
+        )
 
     def get_running_stateful_set_replicas_count(self, stateful_set_name):
         stateful_set = self.get_stateful_set(stateful_set_name)
@@ -553,17 +563,16 @@ class OpenshiftPyClient(OpenshiftClient):
 
     def get_entity(self, entity_type, entity_name):
         items = self.__list_entities(entity_type)
-        if entity_type == "statefulset":
-            filtered_items = [item for item in items if "patroni" in item.metadata.name]
-        else:
-            filtered_items = list(filter(lambda x: x.metadata.name == entity_name, items))
-        if entity_name == "pg-patroni-node1":
-            returned_value = self.__to_dict(filtered_items[0])
-        elif entity_name == "pg-patroni-node2":
-            returned_value = self.__to_dict(filtered_items[1])
-        else:
-            returned_value = self.__to_dict(filtered_items[0])
-        return returned_value
+
+        if entity_type != "statefulset":
+            return self.__to_dict(next(x for x in items if x.metadata.name == entity_name))
+
+        sts = sorted((x for x in items if "patroni" in x.metadata.name), key=lambda x: x.metadata.name)
+
+        m = re.search(r"node(\d+)$", entity_name or "")
+        idx = int(m.group(1)) - 1 if m else 0
+
+        return self.__to_dict(sts[idx])
 
     def get_entity_safe(self, entity_type, entity_name):
         try:
