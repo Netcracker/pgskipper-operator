@@ -1,0 +1,14 @@
+{{- if .Values.tests.install }}
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: supplementary-tests-config
+  labels:
+    app: patroni-tests
+data:
+  {{- if include "supplementary-tests.monitoredImages" . }}
+  dd_images: {{ include "supplementary-tests.monitoredImages" . }}
+  {{ else }}
+  dd_images: ""
+  {{ end }}
+{{- end }}

@@ -1,0 +1,1440 @@
+databases:
+  master:
+    type: postgres
+    dsn: 'user=${POSTGRES_USER} password=${POSTGRES_PASSWORD} host=${POSTGRES_HOST} port=${POSTGRES_PORT}'
+    keep-connected: true
+    labels:
+      dbtype: pg
+# List of used metrics
+metrics:
+  connection_by_database_cnt:
+    type: gauge
+    labels:
+    - datname
+    description: Shows the number of connections per database.
+  connection_by_role_cnt:
+    type: gauge
+    labels:
+    - usename
+    - limit
+    description: Shows the number of connections per role.
+  connection_by_role_with_limit_role_cnt:
+    type: gauge
+    labels:
+    - usename
+    - limit
+    - not_idle_cnt
+    description: Shows connections for role
+  connection_count_stat_max_connections:
+    type: gauge
+    labels:
+    - datname
+    description: Shows how many connections are available., used connections, reserved
+      for regular, and superuser.
+  connection_count_stat_reserved_for_reg_users:
+    type: gauge
+    labels:
+    - datname
+    description: Shows the number of reserved for superuser connections.
+  connection_count_stat_reserved_for_superuser:
+    type: gauge
+    labels:
+    - datname
+    description: Shows the number of reserved for regular user connections.
+  connection_count_stat_used:
+    type: gauge
+    labels:
+    - datname
+    description: Shows the number of used connections.
+  count_not_idle_cnt:
+    type: gauge
+    labels:
+    - datname
+    - usename
+    description: Shows not Idle Connections per database
+  pg_archive_current_archived_wals_per_second:
+    type: gauge
+    description: Heap Blks Total
+  pg_archive_is_archiving:
+    type: mappedmetric
+    description: Phase
+  pg_archive_last_failed_time:
+    type: gauge
+    description: relname
+  pg_buffercache_bufs:
+    type: gauge
+    description: Amount of used buffers
+  pg_buffercache_dirty_bufs:
+    type: gauge
+    description: Amount of dirty buffers
+  pg_buffercache_freq_used_bufs:
+    type: gauge
+    description: Amount of frequently used buffers
+  pg_buffercache_main_bufs:
+    type: gauge
+    description: Amount of used buffers of main fork
+  pg_database_datdba:
+    type: gauge
+    labels:
+    - datname
+    description: DB ID
+  pg_database_real_size_bytes:
+    type: gauge
+    labels:
+    - datname
+    description: pg_size
+  pg_dbaas_name:
+    type: gauge
+    labels:
+    - datname
+    - db_namespace
+    - microservice
+    - tenant_id
+    description: Mapping for DBAAS namespace and microservice
+  pg_dead_tuple_percent:
+    type: gauge
+    labels:
+    - datname
+    - relname
+    - size
+    description: percent
+  pg_largest_age_databases_age:
+    type: gauge
+    labels:
+    - datname
+    description: age
+  pg_lock_tree_info:
+    type: gauge
+    labels:
+    - pid
+    - blocked_by
+    - relname
+    - mode
+    - state
+    - wait
+    - wait_age
+    - tx_age
+    - datname
+    - usename
+    - blkd
+    - query
+    description: all info in labels
+  pg_locks_count:
+    type: gauge
+    labels:
+    - datname
+    - mode
+    description: Query Id
+  pg_postmaster_start_time_seconds:
+    type: gauge
+    description: Time at which postmaster started
+  pg_progress_vacuum_heap_blks_scanned:
+    type: gauge
+    labels:
+    - datname
+    - pid
+    - datid
+    - relid
+    - relname
+    - schemaname
+    description: Heap Blks Scanned
+  pg_progress_vacuum_heap_blks_total:
+    type: gauge
+    labels:
+    - datname
+    - pid
+    - datid
+    - relid
+    - relname
+    - schemaname
+    description: Heap Blks Total
+  pg_progress_vacuum_heap_blks_vacuumed:
+    type: gauge
+    labels:
+    - datname
+    - pid
+    - datid
+    - relid
+    - relname
+    - schemaname
+    description: Heap Blks Vacuumed
+  pg_progress_vacuum_index_vacuum_count:
+    type: gauge
+    labels:
+    - datname
+    - pid
+    - datid
+    - relid
+    - relname
+    - schemaname
+    description: Index Vacuum Count
+  pg_progress_vacuum_max_dead_tuples:
+    type: gauge
+    labels:
+    - datname
+    - pid
+    - datid
+    - relid
+    - relname
+    - schemaname
+    description: Max Dead Tuples
+  pg_progress_vacuum_num_dead_tuples:
+    type: gauge
+    labels:
+    - datname
+    - pid
+    - datid
+    - relid
+    - relname
+    - schemaname
+    description: Dead Tuples
+  pg_progress_vacuum_phase:
+    type: gauge
+    labels:
+    - datname
+    - pid
+    - datid
+    - relid
+    - relname
+    - schemaname
+    description: Phase
+  pg_repl_lag:
+    type: gauge
+    description: Replication lag behind master in seconds
+  pg_replicaiton_slots_monitoring_retained_wal:
+    type: gauge
+    parameters:
+      default-value-query-returned-nan: 0
+    labels:
+    - slot_name
+    - slot_type
+    - active
+    - active_pid
+    - database
+    - xmin
+    - catalog_xmin
+    - restart_lsn
+    description: the diff between restart lsn and current lsn
+  pg_replication_is_replica:
+    type: gauge
+    description: replication replica or master
+  pg_sess_rownum:
+    type: gauge
+    labels:
+    - datname
+    - mode
+    - blocked_pid
+    - blocked_user
+    - blocking_pid
+    - blocking_user
+    description: Block row number
+  pg_settings_checkpoint_setting:
+    type: gauge
+    labels:
+    - name
+    description: VALUE
+  pg_settings_limits_setting:
+    type: gauge
+    labels:
+    - name
+    description: VALUE
+  pg_settings_memory_setting:
+    type: gauge
+    labels:
+    - name
+    description: VALUE
+  pg_settings_misc_setting:
+    type: gauge
+    labels:
+    - name
+    description: VALUE
+  pg_settings_optimizer_setting:
+    type: gauge
+    labels:
+    - name
+    description: VALUE
+  pg_settings_setting:
+    type: gauge
+    labels:
+    - name
+    description: VALUE
+  pg_settings_wal_setting:
+    type: gauge
+    labels:
+    - name
+    description: VALUE
+  pg_stat_act_cnt:
+    type: gauge
+    labels:
+    - datname
+    - backend_type
+    - state
+    description: count
+  pg_stat_activity_idle_process_seconds:
+    type: histogram
+    sum: pg_stat_activity_idle_process_seconds_sum
+    count: pg_stat_activity_idle_process_seconds_count
+    summarize: false
+    buckets:
+      value1: 1
+      value2: 2
+      value3: 5
+      value4: 15
+      value5: 30
+      value6: 60
+      value7: 90
+      value8: 120
+      value9: 300
+    labels:
+    - datname
+    description: Idle time of server processes
+  pg_stat_bgwriter_buffers_alloc:
+    type: gauge
+    labels:
+    - datname
+    description: buffers_alloc
+  pg_stat_bgwriter_buffers_backend:
+    type: gauge
+    labels:
+    - datname
+    description: buffers_backend
+  pg_stat_bgwriter_buffers_backend_fsync:
+    type: gauge
+    labels:
+    - datname
+    description: buffers_backend_fsync
+  pg_stat_bgwriter_buffers_checkpoint:
+    type: gauge
+    labels:
+    - datname
+    description: buffers_checkpoint
+  pg_stat_bgwriter_buffers_clean:
+    type: gauge
+    labels:
+    - datname
+    description: buffers_clean
+  pg_stat_bgwriter_checkpoint_sync_time:
+    type: gauge
+    labels:
+    - datname
+    description: checkpoint_sync_time
+  pg_stat_bgwriter_checkpoint_write_time:
+    type: gauge
+    labels:
+    - datname
+    description: checkpoint_write_time
+  pg_stat_bgwriter_checkpoints_req:
+    type: gauge
+    labels:
+    - datname
+    description: checkpoints_req
+  pg_stat_bgwriter_checkpoints_timed:
+    type: gauge
+    labels:
+    - datname
+    description: checkpoints_timed
+  pg_stat_bgwriter_maxwritten_clean:
+    type: gauge
+    labels:
+    - datname
+    description: maxwritten_clean
+  pg_stat_bgwriter_stats_reset:
+    type: gauge
+    labels:
+    - datname
+    description: stats_reset
+  pg_stat_calls_per_sec:
+    type: gauge
+    labels:
+    - datname
+    description: QPS
+  pg_stat_database_blks_hit:
+    type: gauge
+    labels:
+    - datname
+    description: blocks hit
+  pg_stat_database_blks_read:
+    type: gauge
+    labels:
+    - datname
+    description: blocks read
+  pg_stat_database_conflicts:
+    type: gauge
+    labels:
+    - datname
+    description: conflicts
+  pg_stat_database_deadlocks:
+    type: gauge
+    labels:
+    - datname
+    description: deadlocks
+  pg_stat_database_numbackends:
+    type: gauge
+    labels:
+    - datname
+    description: Connections
+  pg_stat_database_temp_bytes:
+    type: gauge
+    labels:
+    - datname
+    description: tempbytes
+  pg_stat_database_tup_deleted:
+    type: gauge
+    labels:
+    - datname
+    description: Tuples deleted
+  pg_stat_database_tup_fetched:
+    type: gauge
+    labels:
+    - datname
+    description: tuples fetched
+  pg_stat_database_tup_inserted:
+    type: gauge
+    labels:
+    - datname
+    description: tuples inserted
+  pg_stat_database_tup_returned:
+    type: gauge
+    labels:
+    - datname
+    description: tuples returned
+  pg_stat_database_tup_updated:
+    type: gauge
+    labels:
+    - datname
+    description: Tuples updated
+  pg_stat_database_xact_commit:
+    type: gauge
+    labels:
+    - datname
+    description: commits
+  pg_stat_database_xact_rollback:
+    type: gauge
+    labels:
+    - datname
+    description: xact rollback
+  pg_stat_long_running_totalAvgtime:
+    type: gauge
+    labels:
+    - datname
+    - query
+    description: totalAvgtime
+  pg_stat_long_running_totalTime:
+    type: gauge
+    labels:
+    - datname
+    - query
+    description: totalTimeMinute
+  pg_stat_query_avg_time:
+    type: gauge
+    labels:
+    - datname
+    - query
+    - dbid
+    - userid
+    - rolname
+    - queryid
+    description: avg_time
+  pg_stat_query_calls:
+    type: gauge
+    labels:
+    - datname
+    - query
+    - dbid
+    - userid
+    - rolname
+    - queryid
+    description: calls
+  pg_stat_query_percentage_cpu:
+    type: gauge
+    labels:
+    - datname
+    - query
+    - dbid
+    - userid
+    - rolname
+    - queryid
+    description: cpu percentage
+  pg_stat_query_temp_blks_written:
+    type: gauge
+    labels:
+    - datname
+    - query
+    - dbid
+    - userid
+    - rolname
+    - queryid
+    description: temp blocks written
+  pg_stat_query_rows:
+    type: gauge
+    labels:
+    - datname
+    - query
+    - dbid
+    - userid
+    - rolname
+    - queryid
+    description: calls
+  pg_stat_query_shared_blks_read:
+    type: gauge
+    labels:
+    - datname
+    - query
+    - dbid
+    - userid
+    - rolname
+    - queryid
+    description: shared_blks_read from pg_stat_statements
+  pg_stat_query_shared_blks_written:
+    type: gauge
+    labels:
+    - datname
+    - query
+    - dbid
+    - userid
+    - rolname
+    - queryid
+    description: shared_blks_written from pg_stat_statements
+  pg_stat_query_totalTime:
+    type: gauge
+    labels:
+    - datname
+    - query
+    - dbid
+    - userid
+    - rolname
+    - queryid
+    description: totalTimeMinute
+  pg_stat_replicat_flush_lag:
+    type: gauge
+    labels:
+    - client
+    - usename
+    - application_name
+    - state
+    description: flush_lag
+  pg_stat_replicat_mode:
+    type: gauge
+    labels:
+    - client
+    - usename
+    - application_name
+    - state
+    description: mode
+  pg_stat_replicat_pending_flush_data:
+    type: gauge
+    labels:
+    - client
+    - usename
+    - application_name
+    - state
+    description: pending_flush
+  pg_stat_replicat_pending_replay_data:
+    type: gauge
+    labels:
+    - client
+    - usename
+    - application_name
+    - state
+    description: pending_replay
+  pg_stat_replicat_pending_send_data:
+    type: gauge
+    labels:
+    - client
+    - usename
+    - application_name
+    - state
+    description: pending_send
+  pg_stat_replicat_pending_write_data:
+    type: gauge
+    labels:
+    - client
+    - usename
+    - application_name
+    - state
+    description: pending_write
+  pg_stat_replicat_replay_lag:
+    type: gauge
+    labels:
+    - client
+    - usename
+    - application_name
+    - state
+    description: replay_lag
+  pg_stat_replicat_total_lag:
+    type: gauge
+    labels:
+    - client
+    - usename
+    - application_name
+    - state
+    description: total_lag
+  pg_stat_replicat_write_lag:
+    type: gauge
+    labels:
+    - client
+    - usename
+    - application_name
+    - state
+    description: write_lag
+  pg_stat_statements_blk_read_time:
+    type: gauge
+    labels:
+    - datname
+    - dbid
+    - userid
+    - queryid
+    - query
+    description: Total time the statement spent reading blocks, in milliseconds
+  pg_stat_statements_blk_write_time:
+    type: gauge
+    labels:
+    - datname
+    - dbid
+    - userid
+    - queryid
+    - query
+    description: Total time the statement spent writing blocks, in milliseconds
+  pg_stat_statements_calls:
+    type: gauge
+    labels:
+    - datname
+    - dbid
+    - userid
+    - queryid
+    - query
+    description: Number of times executed
+  pg_stat_statements_nivcsws:
+    type: gauge
+    labels:
+    - datname
+    - dbid
+    - userid
+    - queryid
+    - query
+    description: Number of involuntary context switches
+  pg_stat_statements_nvcsws:
+    type: gauge
+    labels:
+    - datname
+    - dbid
+    - userid
+    - queryid
+    - query
+    description: Number of voluntary context switches
+  pg_stat_statements_reads:
+    type: gauge
+    labels:
+    - datname
+    - dbid
+    - userid
+    - queryid
+    - query
+    description: Number of bytes read by the filesystem layer
+  pg_stat_statements_rows:
+    type: gauge
+    labels:
+    - datname
+    - dbid
+    - userid
+    - queryid
+    - query
+    description: Total number of rows retrieved or affected by the statement
+  pg_stat_statements_shared_blks_dirtied:
+    type: gauge
+    labels:
+    - datname
+    - dbid
+    - userid
+    - queryid
+    - query
+    description: Total number of shared blocks dirtied by the statement
+  pg_stat_statements_shared_blks_hit:
+    type: gauge
+    labels:
+    - datname
+    - dbid
+    - userid
+    - queryid
+    - query
+    description: Total number of shared block cache hits by the statement
+  pg_stat_statements_shared_blks_read:
+    type: gauge
+    labels:
+    - datname
+    - dbid
+    - userid
+    - queryid
+    - query
+    description: Total number of shared blocks read by the statement
+  pg_stat_statements_shared_blks_written:
+    type: gauge
+    labels:
+    - datname
+    - dbid
+    - userid
+    - queryid
+    - query
+    description: Total number of shared blocks written by the statement
+  pg_stat_statements_total_time:
+    type: gauge
+    labels:
+    - datname
+    - dbid
+    - userid
+    - queryid
+    - query
+    description: Total time spent in query
+  pg_stat_statements_writes:
+    type: gauge
+    labels:
+    - datname
+    - dbid
+    - userid
+    - queryid
+    - query
+    description: Number of bytes written by the filesystem layer
+  pg_stat_tables_autovacuum_count:
+    type: gauge
+    labels:
+    - datname
+    - schemaname
+    - relname
+    description: Autovacuum count
+  pg_stat_tables_hot_upd:
+    type: gauge
+    labels:
+    - datname
+    - schemaname
+    - relname
+    description: Number of HOT updated tuples
+  pg_stat_tables_n_dead_tup:
+    type: gauge
+    labels:
+    - datname
+    - schemaname
+    - relname
+    description: Estimated number of dead tuples
+  pg_stat_tables_n_live_tup:
+    type: gauge
+    labels:
+    - datname
+    - schemaname
+    - relname
+    description: Estimated number of live tuples
+  pg_stat_tables_tup_del:
+    type: gauge
+    labels:
+    - datname
+    - schemaname
+    - relname
+    description: Total number of deleted tuples
+  pg_stat_tables_tup_ins:
+    type: gauge
+    labels:
+    - datname
+    - schemaname
+    - relname
+    description: Total number of inserted tuples
+  pg_stat_tables_tup_upd:
+    type: gauge
+    labels:
+    - datname
+    - schemaname
+    - relname
+    description: Total number of updated tuples
+  pg_stat_user_tables_idx_scan:
+    type: gauge
+    labels:
+    - datname
+    description: Number of index scans initiated on this table
+  pg_stat_user_tables_seq_scan:
+    type: gauge
+    labels:
+    - datname
+    description: Number of sequential scans initiated on this table
+  wait_event_metric:
+    type: gauge
+    labels:
+    - wait_event
+    description: Quantity of wait_event group by wait_event
+  pg_stat_vacuum_rownum:
+    type: gauge
+    labels:
+    - datname
+    - usename
+    - state
+    - query
+    - xact_runtime
+    - pid
+    description: Block row number
+  pg_statio_user_tables_cache_hits_perc:
+    type: gauge
+    labels:
+    - datname
+    - schemaname
+    - table_name
+    description: Percent number how many hits are from the cache
+  pg_statio_user_tables_disk_hits_perc:
+    type: gauge
+    labels:
+    - datname
+    - schemaname
+    - table_name
+    description: Percent number how many hits are from the disk
+  pg_statio_user_tables_from_disk:
+    type: gauge
+    labels:
+    - datname
+    - schemaname
+    - table_name
+    description: Number of disk blocks read from this table
+  pg_statio_user_tables_total_hits:
+    type: gauge
+    labels:
+    - datname
+    - schemaname
+    - table_name
+    description: Number of total hits in this table
+  pg_txid_wraparound_oldest_current_xid:
+    type: gauge
+    description: oldest_current_xid
+  pg_txid_wraparound_percent_towards_wraparound:
+    type: gauge
+    description: percent_towards_wraparound
+  pg_wal_count:
+    type: gauge
+    description: count
+  pg_wal_duration:
+    type: gauge
+    description: time
+  pg_wal_size:
+    type: gauge
+    description: Size Wal
+  pg_pash_avg_active_sess:
+    type: gauge
+    labels:
+    - datname
+    - query
+    - backend_type
+    - wait_event_type
+    description: Avg active sessions...???
+  pg_pash_pct_time_spent:
+    type: gauge
+    labels:
+    - datname
+    - query
+    - backend_type
+    - wait_event_type
+    description: percent of time spent
+  pg_wait_per_backend_count:
+    type: gauge
+    labels:
+    - backend_type
+    - event_type
+    - event
+    description: Wait event count in last 5 sec
+  pg_wait_type_count:
+    type: gauge
+    labels:
+    - event_type
+    - event
+    description: Wait events per query count
+  pct_used_metric:
+    type: gauge
+    labels:
+    - datname
+    - sequencename
+    description: Percentage of sequence usage in database
+queries:
+  pg_database_query:
+    databases:
+    - master
+    master: true
+    metrics:
+    - pg_database_datdba
+    sql: SELECT datname, datdba as pg_database_datdba FROM pg_database
+  pg_postmaster_query:
+    databases:
+    - master
+    master: true
+    metrics:
+    - pg_postmaster_start_time_seconds
+    sql: SELECT pg_postmaster_start_time as pg_postmaster_start_time_seconds from pg_postmaster_start_time()
+  pg_repl_query:
+    databases:
+    - master
+    master: true
+    metrics:
+    - pg_repl_lag
+    sql: SELECT CASE WHEN NOT pg_is_in_recovery() THEN 0 ELSE GREATEST (0, EXTRACT(EPOCH
+      FROM (now() - pg_last_xact_replay_timestamp()))) END AS pg_repl_lag
+  pg_replication_query:
+    databases:
+    - master
+    master: true
+    metrics:
+    - pg_replication_is_replica
+    sql: SELECT CASE WHEN NOT pg_is_in_recovery() THEN 0 ELSE 1 END as pg_replication_is_replica where pg_is_in_recovery()='f'
+  pg_stat_tables_query:
+    databases:
+    - master
+    metrics:
+    - pg_stat_tables_n_live_tup
+    - pg_stat_tables_n_dead_tup
+    - pg_stat_tables_autovacuum_count
+    - pg_stat_tables_tup_upd
+    - pg_stat_tables_hot_upd
+    - pg_stat_tables_tup_ins
+    - pg_stat_tables_tup_del
+    sql: SELECT current_database() as datname, schemaname, relname, n_tup_upd as pg_stat_tables_tup_upd,
+      n_tup_hot_upd as pg_stat_tables_hot_upd, n_live_tup as pg_stat_tables_n_live_tup, n_dead_tup as pg_stat_tables_n_dead_tup, n_tup_ins as pg_stat_tables_tup_ins, n_tup_del
+      as pg_stat_tables_tup_del, autovacuum_count as pg_stat_tables_autovacuum_count FROM pg_stat_user_tables where n_tup_upd + n_live_tup
+      + n_dead_tup > 0
+  pg_stat_user_tables_idx_query:
+    databases:
+    - master
+    metrics:
+    - pg_stat_user_tables_idx_scan
+    sql: SELECT current_database() as datname, sum(idx_scan) as pg_stat_user_tables_idx_scan FROM pg_stat_user_tables
+      where (idx_scan) >0
+  pg_stat_user_tables_seq_query:
+    databases:
+    - master
+    metrics:
+    - pg_stat_user_tables_seq_scan
+    sql: SELECT current_database() as datname, sum(seq_scan) as pg_stat_user_tables_seq_scan FROM pg_stat_user_tables
+      where (seq_scan)>0
+  pg_statio_user_tables_query:
+    databases:
+    - master
+    metrics:
+    - pg_statio_user_tables_from_disk
+    - pg_statio_user_tables_disk_hits_perc
+    - pg_statio_user_tables_cache_hits_perc
+    - pg_statio_user_tables_total_hits
+    sql: "with tables as ( SELECT * FROM (\n    SELECT schemaname as schemaname,\n
+      \       relname as table_name,\n        ((coalesce(heap_blks_read,0) + coalesce(idx_blks_read,0)
+      + coalesce(toast_blks_read,0) + coalesce(tidx_blks_read,0))) as from_disk,\n
+      \       ((coalesce(heap_blks_hit,0)  + coalesce(idx_blks_hit,0)  + coalesce(toast_blks_hit,0)
+      \ + coalesce(tidx_blks_hit,0))) as from_cache   \n    FROM pg_statio_user_tables\n
+      \   ) a\nWHERE (from_disk + from_cache) > 0 ) SELECT current_database() as datname,
+      \  \n    schemaname as schemaname,\n    table_name,\n    from_disk as pg_statio_user_tables_from_disk,\n    round((from_disk::numeric
+      / (from_disk + from_cache)::numeric)*100.0,2) as \"pg_statio_user_tables_disk_hits_perc\",\n    round((from_cache::numeric
+      / (from_disk + from_cache)::numeric)*100.0,2) as \"pg_statio_user_tables_cache_hits_perc\",\n    (from_disk
+      + from_cache) as \"pg_statio_user_tables_total_hits\"\nFROM (SELECT * FROM tables) a ORDER BY pg_statio_user_tables_from_disk
+      desc limit 10\n"
+  connection_by_database_query:
+    databases:
+    - master
+    master: true
+    metrics:
+    - connection_by_database_cnt
+    sql: SELECT count(*) connection_by_database_cnt, datname FROM pg_stat_activity WHERE datname <> '' GROUP
+      BY datname ORDER BY connection_by_database_cnt DESC;
+  connection_by_role_query:
+    databases:
+    - master
+    master: true
+    metrics:
+    - connection_by_role_cnt
+    sql: SELECT count(*) as connection_by_role_cnt, usename, rolconnlimit as limit FROM pg_stat_activity
+      as pg_stat_activity JOIN pg_roles ON pg_stat_activity.usename = pg_roles.rolname
+      WHERE datname <> '' GROUP BY usename, rolconnlimit ORDER BY connection_by_role_cnt DESC;
+  connection_by_role_with_limit_query:
+    databases:
+    - master
+    master: true
+    metrics:
+    - connection_by_role_with_limit_role_cnt
+    sql: SELECT role_cnt as connection_by_role_with_limit_role_cnt, t1.usename, rolconnlimit as limit, not_idle_cnt FROM(SELECT
+      count(*) role_cnt, usename, rolconnlimit FROM pg_stat_activity as pg_stat_activity
+      JOIN pg_roles ON pg_stat_activity.usename = pg_roles.rolname WHERE datname <>
+      '' GROUP BY usename, rolconnlimit ORDER BY role_cnt DESC) t1 FULL OUTER JOIN  (SELECT
+      count(*) not_idle_cnt, usename FROM pg_stat_activity WHERE state <> 'idle' and
+      datname <> '' GROUP BY datname, usename ORDER BY not_idle_cnt desc) t2 on (t1.usename
+      = t2.usename) order by connection_by_role_with_limit_role_cnt desc;
+  connection_count_stat_query:
+    databases:
+    - master
+    master: true
+    metrics:
+    - connection_count_stat_used
+    - connection_count_stat_reserved_for_superuser
+    - connection_count_stat_reserved_for_reg_users
+    - connection_count_stat_max_connections
+    sql: SELECT max_connections as connection_count_stat_max_connections, used as connection_count_stat_used, res_for_super as connection_count_stat_reserved_for_superuser, (max_connections
+      - used-res_for_super) connection_count_stat_reserved_for_reg_users FROM (SELECT count(*) used FROM
+      pg_stat_activity) t1, (SELECT setting::int res_for_super FROM pg_settings WHERE
+      name=$$superuser_reserved_connections$$) t2, (SELECT setting::int max_connections
+      FROM pg_settings WHERE name=$$max_connections$$) t3;
+  count_not_idle_query:
+    databases:
+    - master
+    master: true
+    metrics:
+    - count_not_idle_cnt
+    sql: SELECT count(*) count_not_idle_cnt, datname, usename FROM pg_stat_activity WHERE state <>
+      'idle' and datname <> '' GROUP BY datname, usename ORDER BY count_not_idle_cnt desc;
+  pg_archive_query:
+    databases:
+    - master
+    master: true
+    metrics:
+    - pg_archive_last_failed_time
+    - pg_archive_is_archiving
+    - pg_archive_current_archived_wals_per_second
+    sql: SELECT last_failed_time as pg_archive_last_failed_time,  (case when current_setting('archive_mode')='off'
+      then 'off' else 'on' end)::BOOLEAN AND (last_failed_wal IS NULL OR last_failed_wal
+      <= last_archived_wal) AS pg_archive_current_archived_wals_per_second, CAST (archived_count AS NUMERIC)/ EXTRACT
+      (EPOCH FROM age(now(), stats_reset)) AS current_archived_wals_per_second FROM
+      pg_stat_archiver
+  pg_buffercache_query:
+    databases:
+    - master
+    master: true
+    metrics:
+    - pg_buffercache_bufs
+    - pg_buffercache_dirty_bufs
+    - pg_buffercache_main_bufs
+    - pg_buffercache_freq_used_bufs
+    sql: select count(1) pg_buffercache_bufs, count(*) filter (where isdirty) pg_buffercache_dirty_bufs, count(*)
+      filter (where usagecount > 3) pg_buffercache_freq_used_bufs, count(*) filter (where relforknumber
+      = 0) pg_buffercache_main_bufs from pg_buffercache;
+  pg_database_real_size_query:
+    databases:
+    - master
+    metrics:
+    - pg_database_real_size_bytes
+    sql: SELECT current_database() as datname, SUM(pg_relation_size(oid)) as pg_database_real_size_bytes
+      FROM pg_class
+  pg_dbaas_query:
+    databases:
+    - master
+    metrics:
+    - pg_dbaas_name
+    sql: select current_database() as datname, value#>>'{classifier,namespace}' as
+      db_namespace, value#>>'{classifier,microserviceName}' as microservice, value#>>'{classifier,tenantId}'
+      as tenant_id, 1 as pg_dbaas_name from _dbaas_metadata where key='metadata'
+  pg_dead_tuple_query:
+    databases:
+    - master
+    metrics:
+    - pg_dead_tuple_percent
+    sql: SELECT current_database() as datname, relname, n_dead_tup/(n_live_tup+n_dead_tup)
+      as pg_dead_tuple_percent, pg_total_relation_size('' || schemaname ||'.'|| relname || '') as
+      size FROM pg_stat_user_tables where n_dead_tup > 0 and pg_total_relation_size(''
+      || schemaname ||'.'|| relname || '') > 2000000000 order by pg_dead_tuple_percent desc limit
+      5
+  pg_largest_age_databases_query:
+    databases:
+    - master
+    master: true
+    metrics:
+    - pg_largest_age_databases_age
+    sql: select datname, age as pg_largest_age_databases_age from (SELECT datname, age(datfrozenxid) as age, row_number()
+      over (order by 2 DESC) as row FROM pg_database) as b where row < 11
+  pg_lock_tree_query:
+    databases:
+    - master
+    metrics:
+    - pg_lock_tree_info
+    sql: "with recursive activity as (\n  select\n    current_timestamp\n    ,c.relname\n
+      \   ,l.mode\n    ,pg_blocking_pids(a.pid) blocked_by\n    ,a.*\n    ,age(clock_timestamp(),
+      xact_start)::interval(0) as tx_age\n    ,age(clock_timestamp(), state_change) as wait_age\n  from pg_stat_activity
+      a\n        , pg_locks l\n        , pg_class c\n        , pg_namespace n\n   where\n
+      \  l.pid                = a.pid\n   and l.relation       = c.oid\n   and   c.relnamespace
+      \      = n.oid\n   and   n.nspname not in ('pg_catalog')\n   and   c.relname
+      not in ('pg_stat_statements')\n   and   a.state is distinct from 'idle'  \n
+      \ ), blockers as (\n  select\n    array_agg(distinct c order by c) as pids\n
+      \ from (\n    select unnest(blocked_by)\n    from activity\n  ) as dt(c)\n),
+      tree as (\n  select\n    activity.*,\n    1 as level,\n    activity.pid as top_blocker_pid,\n
+      \   array[activity.pid] as path,\n    array[activity.pid]::int[] as all_blockers_above\n
+      \ from activity, blockers\n  where\n    array[pid] <@ blockers.pids\n    and
+      blocked_by = '{}'::int[]\n  union all\n  select\n    activity.*,\n    tree.level
+      + 1 as level,\n    tree.top_blocker_pid,\n    path || array[activity.pid] as
+      path,\n    tree.all_blockers_above || array_agg(activity.pid) over () as all_blockers_above\n
+      \ from activity, tree\n  where\n    not array[activity.pid] <@ tree.all_blockers_above\n
+      \   and activity.blocked_by <> '{}'::int[]\n    and activity.blocked_by <@ tree.all_blockers_above\n)\nselect
+      * from (\n  select\n    1 as pg_lock_tree_info\n    , pid\n    , blocked_by\n
+      \   , relname\n    , mode\n    , case when wait_event_type <> 'Lock' then replace(state,
+      'idle in transaction', 'idletx') else 'waiting' end as state,\n    wait_event_type
+      || ':' || wait_event as wait,\n    wait_age,\n    tx_age,\n    datname,\n    usename,\n
+      \   (select count(distinct t1.pid) from tree t1 where array[tree.pid] <@ t1.path
+      and t1.pid <> tree.pid) as blkd,\n    format(\n      '%s %s%s',\n      lpad('['
+      || pid::text || ']', 9, ' '),\n      repeat('.', level - 1) || case when level
+      > 1 then ' ' end,\n      left(query, 1000)\n    ) as query,\n    top_blocker_pid,\n
+      \   level\n  from tree\n\n union all\n\n  
+      select\n    1 as pg_lock_tree_info,\n    null as pid,\n    '{}'::int[]
+      as blocked_by,\n    'No blocking activity' as relname,\n    null as mode,\n
+      \   'No blocking activity' as state,\n    null as wait,\n    null as wait_age,\n
+      \   null as tx_age,\n    current_database() as datname,\n    null as usename,\n    0 as blkd,\n
+      \   'No blocking queries found' as query,\n    null as top_blocker_pid,\n    null
+      as level\n  where not exists (select 1 from tree)\n) as final_results\norder
+      by top_blocker_pid nulls last, level nulls last, tx_age desc nulls last, pid
+      nulls last;\n"
+  pg_locks_query:
+    databases:
+    - master
+    metrics:
+    - pg_locks_count
+    sql: SELECT  pg_database.datname as datname,tmp.mode as mode,COALESCE(pg_locks_count,0)
+      as pg_locks_count FROM (VALUES ('accesssharelock'),('rowsharelock'),('rowexclusivelock'),('shareupdateexclusivelock'),('sharelock'),('sharerowexclusivelock'),('exclusivelock'),('accessexclusivelock'))
+      AS tmp(mode) CROSS JOIN pg_database LEFT JOIN (SELECT database, lower(mode)
+      AS mode,count(*) AS pg_locks_count FROM pg_locks WHERE database IS NOT NULL GROUP BY
+      database, lower(mode)) AS tmp2 ON tmp.mode=tmp2.mode and pg_database.oid = tmp2.database
+      where pg_database.datname=current_database()  and tmp2.pg_locks_count>0 ORDER BY 1
+  pg_progress_vacuum_query:
+    databases:
+    - master
+    master: true
+    metrics:
+    - pg_progress_vacuum_num_dead_tuples
+    - pg_progress_vacuum_phase
+    - pg_progress_vacuum_heap_blks_total
+    - pg_progress_vacuum_heap_blks_scanned
+    - pg_progress_vacuum_heap_blks_vacuumed
+    - pg_progress_vacuum_index_vacuum_count
+    - pg_progress_vacuum_max_dead_tuples
+    sql: SELECT s.pid AS pid, s.datid AS datid, d.datname AS datname, s.relid AS relid,
+      t.relname AS relname, t.schemaname AS schemaname, s.param1 AS pg_progress_vacuum_phase, s.param2
+      AS pg_progress_vacuum_heap_blks_total, s.param3 AS pg_progress_vacuum_heap_blks_scanned, s.param4 AS pg_progress_vacuum_heap_blks_vacuumed,
+      s.param5 AS pg_progress_vacuum_index_vacuum_count, s.param6 AS pg_progress_vacuum_max_dead_tuples, s.param7 AS pg_progress_vacuum_num_dead_tuples
+      FROM pg_stat_get_progress_info('VACUUM'::text) s LEFT JOIN pg_database d ON
+      s.datid = d.oid LEFT JOIN pg_stat_all_tables t on t.relid=s.relid
+  pg_sess_query:
+    databases:
+    - master
+    master: true
+    metrics:
+    - pg_sess_rownum
+    sql: SELECT pl.database as datname, pl.pid as blocked_pid, psa.usename as blocked_user     ,pl2.pid
+      as blocking_pid        ,psa2.usename as blocking_user, pl2.mode as mode, row_number()
+      over (order by pl.pid) as pg_sess_rownum        FROM pg_catalog.pg_locks pl JOIN pg_catalog.pg_stat_activity
+      psa ON pl.pid = psa.pid JOIN pg_catalog.pg_locks pl2 JOIN pg_catalog.pg_stat_activity
+      psa2     ON pl2.pid = psa2.pid ON pl.transactionid = pl2.transactionid AND pl.pid
+      != pl2.pid WHERE NOT pl.granted
+  pg_settings_checkpoint_query:
+    databases:
+    - master
+    master: true
+    metrics:
+    - pg_settings_checkpoint_setting
+    sql: select name, setting as pg_settings_checkpoint_setting from (select name, setting from  pg_settings where name
+      in ('bgwriter_delay', 'bgwriter_flush_after', 'bgwriter_lru_maxpages', 'bgwriter_lru_multiplier',
+      'checkpoint_completion_target', 'checkpoint_timeout', 'checkpoint_flush_after',
+      'backend_flush_after')) as a
+  pg_settings_limits_query:
+    databases:
+    - master
+    master: true
+    metrics:
+    - pg_settings_limits_setting
+    sql: select name, setting as pg_settings_limits_setting from (select name, setting from  pg_settings where name
+      in ('max_connections', 'max_worker_processes', 'max_parallel_workers', 'max_replication_slots',
+      'max_wal_senders', 'max_prepared_transactions', 'max_parallel_maintenance_workers',
+      'max_parallel_workers_per_gather')) as a
+  pg_settings_memory_query:
+    databases:
+    - master
+    master: true
+    metrics:
+    - pg_settings_memory_setting
+    sql: select name, setting as pg_settings_memory_setting from (select name, setting from  pg_settings where name
+      in ('maintenance_work_mem', 'work_mem', 'shared_buffers', 'effective_cache_size'))
+      as a
+  pg_settings_misc_query:
+    databases:
+    - master
+    master: true
+    metrics:
+    - pg_settings_misc_setting
+    sql: select name, setting as pg_settings_misc_setting from (select name, case when setting='on' then '1' when
+      setting='off' then '0' else setting end as setting from  pg_settings where name
+      in ('autovacuum_freeze_max_age', 'data_checksums', 'full_page_writes', 'hot_standby_feedback',
+      'track_commit_timestamp')) as a
+  pg_settings_optimizer_query:
+    databases:
+    - master
+    master: true
+    metrics:
+    - pg_settings_optimizer_setting
+    sql: select name, setting as pg_settings_optimizer_setting from (select name, setting from  pg_settings where name
+      in ('random_page_cost','seq_page_cost','effective_io_concurrency')) as a
+  pg_settings_query:
+    databases:
+    - master
+    master: true
+    metrics:
+    - pg_settings_setting
+    sql: select name, setting as pg_settings_setting from (select name, setting from  pg_settings where name
+      in ('wal_keep_segments','effective_cache_size','max_wal_size','maintenance_work_mem','work_mem','shared_buffers','max_worker_processes','max_parallel_workers','random_page_cost','max_connections','seq_page_cost','autovacuum_freeze_max_age','bgwriter_delay','bgwriter_flush_after','bgwriter_lru_maxpages','bgwriter_lru_multiplier','checkpoint_timeout','checkpoint_completion_target','checkpoint_flush_after','commit_delay','commit_siblings','max_replication_slots','max_wal_senders','port','server_version','server_version_num','tcp_keepalives_count','tcp_keepalives_interval')
+      UNION select name,  case when setting='replica' then '18' when setting='minimal'
+      then '13' else '14' end as setting  FROM pg_settings where name='wal_level'
+      UNION  select name,  case when setting='on' then '1' when setting='off' then
+      '0' when setting='always' then '2' end as setting  FROM pg_settings where name
+      in ('track_commit_timestamp','wal_compression','wal_log_hints','data_checksums','full_page_writes','hot_standby_feedback')  UNION
+      select name,  case when setting='local' then '12' when setting='remote_write'
+      then '23' when  setting='remote_apply' then '16'  end as setting  FROM pg_settings
+      where name='synchronous_commit') as a
+  pg_settings_wal_query:
+    databases:
+    - master
+    master: true
+    metrics:
+    - pg_settings_wal_setting
+    sql: select name, setting as pg_settings_wal_setting from (select name, case when setting='logical' then
+      '19' when setting='replica' then '18' when setting='on' then '1' when setting='off'
+      then '0' else setting end as setting from pg_settings where name in ('commit_delay',
+      'max_wal_size', 'wal_buffers', 'synchronous_commit', 'wal_writer_delay', 'wal_writer_flush_after',
+      'wal_compression', 'wal_level', 'archive_mode')) as a
+  pg_stat_act_query:
+    databases:
+    - master
+    metrics:
+    - pg_stat_act_cnt
+    sql: SELECT current_database() datname, backend_type, t.col state, count(*) filter
+      (where a.state is not null) as pg_stat_act_cnt from (select 'active' col union all  select
+      'idle' union all  select 'idle in transaction' union all  select 'idle in transaction
+      (aborted)'  ) t left join pg_stat_activity a on (t.col = a.state and  a.datname=current_database())
+      group by backend_type,  t.col
+  pg_stat_activity_idle_query:
+    databases:
+    - master
+    master: true
+    metrics:
+    - pg_stat_activity_idle_process_seconds
+    sql: WITH metrics AS ( SELECT datname, SUM(EXTRACT(EPOCH FROM (CURRENT_TIMESTAMP
+      - state_change))::bigint)::float AS pg_stat_activity_idle_process_seconds_sum, COUNT(*) AS pg_stat_activity_idle_process_seconds_count
+      FROM pg_stat_activity WHERE state = 'idle' GROUP BY datname ), buckets AS (
+      SELECT datname, le, SUM( CASE WHEN EXTRACT(EPOCH FROM (CURRENT_TIMESTAMP - state_change))
+      <= le THEN 1 ELSE 0 END )::bigint AS bucket FROM pg_stat_activity, UNNEST(ARRAY[1,
+      2, 5, 15, 30, 60, 90, 120, 300]) AS le GROUP BY datname, le ORDER BY datname,
+      le ) select datname, pg_stat_activity_idle_process_seconds_sum, pg_stat_activity_idle_process_seconds_count, value, bucket, dd.bucket[1] as value1, dd.bucket[2] as value2, dd.bucket[3] as value3, dd.bucket[4] as value4, dd.bucket[5] as value5, dd.bucket[6] as value6, dd.bucket[7] as value7, dd.bucket[8] as value8, dd.bucket[9] as value9 from (SELECT datname, pg_stat_activity_idle_process_seconds_sum, pg_stat_activity_idle_process_seconds_count, ARRAY_AGG(le)
+      AS value, ARRAY_AGG(bucket) AS bucket FROM metrics
+      JOIN buckets USING (datname) GROUP BY 1, 2, 3) as dd
+  pg_stat_bgwriter_query:
+    databases:
+    - master
+    metrics:
+    - pg_stat_bgwriter_checkpoints_timed
+    - pg_stat_bgwriter_checkpoint_sync_time
+    - pg_stat_bgwriter_buffers_backend
+    - pg_stat_bgwriter_buffers_alloc
+    - pg_stat_bgwriter_stats_reset
+    - pg_stat_bgwriter_checkpoints_req
+    - pg_stat_bgwriter_checkpoint_write_time
+    - pg_stat_bgwriter_buffers_checkpoint
+    - pg_stat_bgwriter_buffers_clean
+    - pg_stat_bgwriter_maxwritten_clean
+    - pg_stat_bgwriter_buffers_backend_fsync
+    sql: SELECT  current_database() as datname, checkpoints_timed as pg_stat_bgwriter_checkpoints_timed, checkpoints_req as pg_stat_bgwriter_checkpoints_req,
+      checkpoint_write_time as pg_stat_bgwriter_checkpoint_write_time, checkpoint_sync_time as pg_stat_bgwriter_checkpoint_sync_time, buffers_checkpoint as pg_stat_bgwriter_buffers_checkpoint, buffers_clean as pg_stat_bgwriter_buffers_clean,
+      maxwritten_clean as pg_stat_bgwriter_maxwritten_clean, buffers_backend as pg_stat_bgwriter_buffers_backend, buffers_backend_fsync as pg_stat_bgwriter_buffers_backend_fsync, buffers_alloc as pg_stat_bgwriter_buffers_alloc, stats_reset as pg_stat_bgwriter_stats_reset
+      FROM  pg_stat_bgwriter
+  pg_stat_calls_query:
+    databases:
+    - master
+    master: true
+    metrics:
+    - pg_stat_calls_per_sec
+    sql: select pg_database.datname as datname, sum(calls) as pg_stat_calls_per_sec from pg_database
+      , pg_stat_statements where  pg_database.oid=pg_stat_statements.dbid group by
+      pg_database.datname
+  pg_stat_database_query:
+    databases:
+    - master
+    metrics:
+    - pg_stat_database_blks_hit
+    - pg_stat_database_tup_inserted
+    - pg_stat_database_conflicts
+    - pg_stat_database_temp_bytes
+    - pg_stat_database_xact_commit
+    - pg_stat_database_xact_rollback
+    - pg_stat_database_tup_updated
+    - pg_stat_database_tup_deleted
+    - pg_stat_database_blks_read
+    - pg_stat_database_numbackends
+    - pg_stat_database_tup_returned
+    - pg_stat_database_tup_fetched
+    - pg_stat_database_deadlocks
+    sql: SELECT  datname, numbackends as pg_stat_database_numbackends, xact_commit as pg_stat_database_xact_commit, xact_rollback as pg_stat_database_xact_rollback, blks_read as pg_stat_database_blks_read, blks_hit as pg_stat_database_blks_hit,
+      tup_returned as pg_stat_database_tup_returned, tup_fetched as pg_stat_database_tup_fetched, tup_inserted as pg_stat_database_tup_inserted, tup_updated as pg_stat_database_tup_updated, tup_deleted as pg_stat_database_tup_deleted, conflicts as pg_stat_database_conflicts,  temp_bytes as pg_stat_database_temp_bytes,
+      deadlocks as pg_stat_database_deadlocks FROM pg_stat_database  WHERE datname=current_database()
+  pg_stat_long_running_query:
+    databases:
+    - master
+    master: true
+    metrics:
+    - pg_stat_long_running_totalAvgtime
+    - pg_stat_long_running_totalTime
+    sql: SELECT distinct pd.datname as datname, substring(pss.query from 1 for 50)
+      AS query, sum(pss.total_plan_time+pss.total_exec_time) over (partition by substring(pss.query
+      from 1 for 50)) AS pg_stat_long_running_totalTime, sum((pss.total_plan_time+pss.total_exec_time)/NULLIF(calls,0))
+      over (partition by substring(pss.query from 1 for 50)) as pg_stat_long_running_totalAvgtime FROM
+      pg_stat_statements AS pss  INNER JOIN pg_database AS pd ON pss.dbid=pd.oid where
+      (pss.total_plan_time+pss.total_exec_time)>0 and (substring(pss.query from 1
+      for 50)  not like 'END%' OR substring(pss.query from 1 for 50) not like 'BEGIN%')
+      ORDER by 3 desc limit 10
+  pg_stat_query_query:
+    databases:
+    - master
+    master: true
+    metrics:
+    - pg_stat_query_avg_time
+    - pg_stat_query_percentage_cpu
+    - pg_stat_query_shared_blks_read
+    - pg_stat_query_shared_blks_written
+    - pg_stat_query_temp_blks_written
+    - pg_stat_query_totalTime
+    - pg_stat_query_calls
+    - pg_stat_query_rows
+    sql: SELECT t1.*, t2.rolname, t3.datname from (SELECT query, dbid, userid, queryid,
+      round(total_plan_time::numeric + total_exec_time::numeric, 2) AS pg_stat_query_totalTime,
+      calls as pg_stat_query_calls, rows as pg_stat_query_rows, round((total_plan_time::numeric + total_exec_time::numeric)  /
+      NULLIF(calls,0), 2) AS pg_stat_query_avg_time, round((100 * (total_plan_time+total_exec_time) / NULLIF(sum(total_plan_time::numeric
+      + total_exec_time::numeric) OVER (),0))::numeric, 2) AS pg_stat_query_percentage_cpu, shared_blks_read as pg_stat_query_shared_blks_read,
+      shared_blks_written as pg_stat_query_shared_blks_written, temp_blks_written as pg_stat_query_temp_blks_written FROM pg_stat_statements
+      ORDER BY pg_stat_query_totalTime DESC LIMIT 10)
+      t1 JOIN pg_roles t2 ON (t1.userid=t2.oid) JOIN pg_database t3 ON (t1.dbid=t3.oid)
+      WHERE t2.rolname != 'rdsadmin'
+  pg_stat_replicat_query:
+    databases:
+    - master
+    master: true
+    metrics:
+    - pg_stat_replicat_write_lag
+    - pg_stat_replicat_replay_lag
+    - pg_stat_replicat_pending_send_data
+    - pg_stat_replicat_pending_write_data
+    - pg_stat_replicat_mode
+    - pg_stat_replicat_flush_lag
+    - pg_stat_replicat_pending_flush_data
+    - pg_stat_replicat_pending_replay_data
+    - pg_stat_replicat_total_lag
+    sql: "SELECT psr.client_addr AS client, psr.usename, regexp_replace(psr.application_name
+      ,'\r|\n' ,'' ,'g') as application_name ,regexp_replace(psr.state, '\r|\n' ,''
+      ,'g') as state,  CASE WHEN psr.sync_state='sync' THEN 1 WHEN psr.sync_state='async'
+      THEN 2 ELSE 0 END AS pg_stat_replicat_mode, extract(epoch from write_lag) as pg_stat_replicat_write_lag, extract(epoch
+      from flush_lag) as pg_stat_replicat_flush_lag, extract(epoch from replay_lag) as pg_stat_replicat_replay_lag,
+      (pg_wal_lsn_diff(pg_current_wal_lsn(),sent_lsn) / 1024)::bigint as pg_stat_replicat_pending_send_data,(pg_wal_lsn_diff(sent_lsn,write_lsn)
+      / 1024)::bigint as pg_stat_replicat_pending_write_data, (pg_wal_lsn_diff(write_lsn,flush_lsn)
+      / 1024)::bigint as pg_stat_replicat_pending_flush_data,(pg_wal_lsn_diff(flush_lsn,replay_lsn)
+      / 1024)::bigint as pg_stat_replicat_pending_replay_data, (pg_wal_lsn_diff(pg_current_wal_lsn(),replay_lsn))::bigint
+      / 1024 as pg_stat_replicat_total_lag FROM pg_stat_replication psr join pg_stat_activity psa on
+      psr.pid = psa.pid where psa.wait_event_type != 'Client'"
+  pg_stat_statements_query:
+    databases:
+    - master
+    master: true
+    metrics:
+    - pg_stat_statements_calls
+    - pg_stat_statements_blk_read_time
+    - pg_stat_statements_blk_write_time
+    - pg_stat_statements_shared_blks_written
+    - pg_stat_statements_total_time
+    - pg_stat_statements_reads
+    - pg_stat_statements_writes
+    - pg_stat_statements_shared_blks_hit
+    - pg_stat_statements_shared_blks_dirtied
+    - pg_stat_statements_rows
+    - pg_stat_statements_shared_blks_read
+    - pg_stat_statements_nvcsws
+    - pg_stat_statements_nivcsws
+    sql: SELECT p.datname as datname, s.dbid, s.userid, s.queryid, substring(s.query
+      from 1 for 200) AS query, (s.total_plan_time+s.total_exec_time) as pg_stat_statements_total_time,
+      s.rows as pg_stat_statements_rows, s.calls as pg_stat_statements_calls, shared_blks_hit as pg_stat_statements_shared_blks_hit, shared_blks_read as pg_stat_statements_shared_blks_read, shared_blks_dirtied as pg_stat_statements_shared_blks_dirtied,
+      shared_blks_written as pg_stat_statements_shared_blks_written,   blk_read_time as pg_stat_statements_blk_read_time, blk_write_time as pg_stat_statements_blk_write_time, k.exec_reads as pg_stat_statements_reads,
+      k.exec_writes as writes, k.exec_nvcsws as pg_stat_statements_nvcsws, k.exec_nivcsws as pg_stat_statements_nivcsws
+      FROM pg_stat_statements s JOIN pg_database p ON p.oid = s.dbid INNER JOIN pg_stat_kcache()
+      k USING (dbid, userid, queryid) ORDER BY (s.total_plan_time+s.total_exec_time)
+      DESC FETCH FIRST 10 ROWS ONLY
+  pg_stat_vacuum_query:
+    databases:
+    - master
+    metrics:
+    - pg_stat_vacuum_rownum
+    sql: SELECT datname, usename, pid, current_timestamp - xact_start AS xact_runtime,
+      state, query, row_number() over (order by xact_start) as pg_stat_vacuum_rownum FROM pg_stat_activity
+      WHERE datname = current_database() and  query LIKE '%autovacuum:%' AND query
+      NOT LIKE '%pg_stat_activity%' ORDER BY xact_start
+  wait_event_query:
+    databases:
+    - master
+    master: true
+    metrics:
+    - wait_event_metric
+    sql: select wait_event, count(wait_event) as wait_event_metric from pg_stat_activity where wait_event != '' group by wait_event order by count(wait_event) desc
+  pg_txid_wraparound_query:
+    databases:
+    - master
+    master: true
+    metrics:
+    - pg_txid_wraparound_oldest_current_xid
+    - pg_txid_wraparound_percent_towards_wraparound
+    sql: WITH max_age AS ( SELECT 2000000000 as max_old_xid, setting AS autovacuum_freeze_max_age
+      FROM pg_catalog.pg_settings WHERE name = 'autovacuum_freeze_max_age' ), per_database_stats
+      AS (SELECT datname, m.max_old_xid::int, m.autovacuum_freeze_max_age::int, age(d.datfrozenxid)
+      AS oldest_current_xid FROM pg_catalog.pg_database d JOIN max_age m ON (true)
+      WHERE d.datallowconn ) SELECT max(oldest_current_xid) AS pg_txid_wraparound_oldest_current_xid,
+      max(ROUND(100*(oldest_current_xid/max_old_xid::float))) AS pg_txid_wraparound_percent_towards_wraparound
+      FROM per_database_stats
+  pg_wal_query:
+    databases:
+    - master
+    master: true
+    metrics:
+    - pg_wal_size
+    - pg_wal_duration
+    - pg_wal_count
+    sql: SELECT sum(size/1024/1024) as pg_wal_size,extract(epoch from(max(modification)-min(modification)))
+      as pg_wal_duration, count(*) as pg_wal_count FROM pg_ls_waldir()
+  pg_replicaiton_slots_monitoring_query:
+    databases:
+    - master
+    master: true
+    metrics:
+    - pg_replicaiton_slots_monitoring_retained_wal
+    sql: SELECT slot_name, slot_type, active, active_pid, database, xmin, catalog_xmin,
+      pg_wal_lsn_diff(pg_current_wal_lsn(), restart_lsn) AS pg_replicaiton_slots_monitoring_retained_wal, restart_lsn
+      FROM pg_replication_slots
+  pg_pash_query:
+    databases:
+    - master
+    master: true
+    metrics:
+    - pg_pash_pct_time_spent
+    - pg_pash_avg_active_sess
+    sql: select datname, round(100 * count(*)/ sum(count(*)) over(), 0) as pg_pash_pct_time_spent,
+      round(count(*)/ ash.samples, 2) as pg_pash_avg_active_sess,   substring(ash.top_level_query
+      from 1 for 50) as query, wait_event_type, backend_type from    (     select        ash_t.*,       datid
+      dbid,        datname as database,        ceil(extract(           epoch from
+      max(ash_time) over() - min(ash_time) over()         ))::numeric as samples      from        pg_active_session_history
+      ash_t     where        ash_time >= current_timestamp - interval '15 seconds'   )
+      ash where state = 'active'   and pid != pg_backend_pid() group by    samples,   datname,   substring(ash.top_level_query
+      from 1 for 50),   wait_event_type,   backend_type order by 3 desc fetch first
+      10 rows only
+  pg_wait_per_backend_query:
+    databases:
+    - master
+    master: true
+    metrics:
+    - pg_wait_per_backend_count
+    sql: select backend_type, event_type, event, count(pw.pid) as pg_wait_per_backend_count from pg_wait_sampling_history
+      pw inner join pg_stat_activity ps using (pid) where ps.datname=current_database()
+      group by backend_type, event_type, event
+  pg_wait_type_query:
+    databases:
+    - master
+    master: true
+    metrics:
+    - pg_wait_type_count
+    sql: select pp.event_type, pp.event, sum(pp.count) as pg_wait_type_count from pg_wait_sampling_profile
+      pp group by event_type, event order by pg_wait_type_count desc fetch first 10 rows only
+  pct_used_query:
+    databases:
+    - master
+    metrics:
+    - pct_used_metric
+    sql: select current_database() as datname, sequencename, round(100-((max_value - coalesce(last_value,0)) * 100.0 / max_value),2) as pct_used_metric from pg_sequences
+      where round(100-((max_value - coalesce(last_value,0)) * 100.0 / max_value),2) > 0 order by pct_used_metric desc

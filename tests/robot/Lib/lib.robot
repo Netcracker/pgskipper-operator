@@ -5,12 +5,12 @@ Library           DateTime
 Library           OperatingSystem
 Library           String
 Library           RequestsLibrary
-Library           ../Lib/pgsLibrary.py  namespace=${NAMESPACE}  ssl_mode=${PGSSLMODE}
+Library           ../Lib/pgsLibrary.py  namespace=${NAMESPACE}  ssl_mode=${PGSSLMODE}  internal_tls=${INTERNAL_TLS_ENABLED}
 
 *** Variables ***
 ${NAMESPACE}        %{POD_NAMESPACE}
 ${PGSSLMODE}        %{PGSSLMODE}
-
+${INTERNAL_TLS_ENABLED}    %{INTERNAL_TLS_ENABLED}
 
 *** Keywords ***
 Checks Before Tests

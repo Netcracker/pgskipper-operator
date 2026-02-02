@@ -21,8 +21,8 @@ Prepare Dbaas Adapter
     Set Suite Variable  ${DBAAS_ADAPTER_API_USER}
     Set Suite Variable  ${DBAAS_ADAPTER_API_PASSWORD}
     ${auth}=  Create List  ${DBAAS_ADAPTER_API_USER}  ${DBAAS_ADAPTER_API_PASSWORD}
-    ${PGSSLMODE}=  Get Environment Variable  PGSSLMODE
-    ${scheme}=  Set Variable If  '${PGSSLMODE}' == 'require'  https  http
+    ${INTERNAL_TLS_ENABLED}=  Get Environment Variable  INTERNAL_TLS_ENABLED
+    ${scheme}=  Set Variable If  '${INTERNAL_TLS_ENABLED}' == 'true'  https  http
     Create Session  dbaassession  ${scheme}://${DBAAS_ADAPTER_HOST}:${DBAAS_ADAPTER_PORT}  auth=${auth}  verify=False
     ${prefix}=  Generate Random String  5  [LOWER]
     ${name}=  Set Variable  dbaas_db

@@ -1,0 +1,37 @@
+version: 2
+updates:
+  # Go
+  - package-ecosystem: "gomod"
+    directories:
+      - "/operator"
+      - "/services/backup-daemon/go"
+      - "/services/dbaas-adapter"
+      - "/services/monitoring-agent"
+      - "/services/pgbackrest-sidecar"
+      - "/services/replication-controller"
+    schedule:
+      interval: "weekly"
+
+  # Docker images
+  - package-ecosystem: "docker"
+    directories:
+      - "/tests"
+      - "/transfer"
+      - "/operator/build"
+      - "/services/backup-daemon/build"
+      - "/services/dbaas-adapter/build"
+      - "/services/monitoring-agent"
+      - "/services/patroni"
+      - "/services/pgbackrest-sidecar/build"
+      - "/services/replication-controller/build"
+      - "/services/upgrade"
+    schedule:
+      interval: "weekly"
+
+  # Python dependencies for tests docker image
+  - package-ecosystem: "pip"
+    directories:
+      - "/tests/docker"
+      - "/services/backup-daemon"
+    schedule:
+      interval: "weekly"

@@ -1,0 +1,239 @@
+{{- if .Values.dbaas.install }}
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: dbaas-postgres-adapter
+  labels:
+    app: dbaas-postgres-adapter
+    name: dbaas-postgres-adapter
+    {{ include "kubernetes.labels" . | nindent 4 }}
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: dbaas-postgres-adapter
+{{ if .Values.dbaas.podLabels }}
+{{ .Values.dbaas.podLabels | toYaml | nindent 6 }}
+{{ else if .Values.podLabels }}
+{{ .Values.podLabels | toYaml | nindent 6 }}
+{{ end }}
+  template:
+    metadata:
+      labels:
+        app: dbaas-postgres-adapter
+        app.kubernetes.io/instance: {{ .Release.Name }}
+        app.kubernetes.io/name: patroni-services
+        app.kubernetes.io/version: {{ .Chart.AppVersion | quote }}
+        app.kubernetes.io/component: "backend"
+        app.kubernetes.io/part-of: "postgres-operator"
+        app.kubernetes.io/managed-by: "postgres-operator"
+        app.kubernetes.io/technology: "go"
+{{ if .Values.dbaas.podLabels }}
+{{ .Values.dbaas.podLabels | toYaml | nindent 8 }}
+{{ else if .Values.podLabels }}
+{{ .Values.podLabels | toYaml | nindent 8 }}
+{{ end }}
+    spec:
+      {{- if .Values.dbaas.priorityClassName }}
+      priorityClassName: {{ .Values.dbaas.priorityClassName }}
+      {{- end }}
+      serviceAccountName: {{ .Values.serviceAccount.name }}
+      {{- if .Values.dbaas.affinity }}
+      affinity: {{ .Values.dbaas.affinity | toJson }}
+      {{- else if .Values.affinity }}
+      affinity: {{ .Values.affinity | toJson }}
+      {{- end }}
+      volumes:
+        - name: dbaas-physical-databases-labels-mount
+          configMap:
+            name: dbaas-physical-databases-labels
+            defaultMode: 420
+        - name: dbaas-default-extensions-mount
+          configMap:
+            name: dbaas-postgres-adapter.extensions-config
+            defaultMode: 420
+        {{- if not .Values.externalDataBase }}
+        {{- if and .Values.tls .Values.tls.enabled }}
+        - name: tls-cert
+          secret:
+            secretName: {{ include "postgres.certServicesSecret" . }}
+            defaultMode: 416
+        {{- end }}
+        {{- end }}
+      initContainers:
+        - name: init-dbaas-postgres-adapter
+          image: {{ template "find_image" (dict "deployName" "postgresql_dbaas_adapter" "SERVICE_NAME" "postgresql_dbaas_adapter" "vals" .Values "default" .Values.dbaas.dockerImage) }}
+          imagePullPolicy: {{ default "IfNotPresent" .Values.imagePullPolicy }}
+          args:
+            - init
+          securityContext:
+            {{- include "restricted.globalContainerSecurityContext" . | nindent 12 }}
+          volumeMounts:
+              - name: dbaas-default-extensions-mount
+                mountPath: /app/extensions
+          resources:
+{{ .Values.dbaas.resources | toYaml | indent 12 }}
+          env:
+  {{- template "postgres-dbaas.pgAdminEnvs" . }}
+            - name: POSTGRES_DATABASE
+              value: {{ default "postgres" .Values.dbaas.dbName }}
+            - name: POSTGRES_HOST
+              value: {{ include "dbaas.pgHost" . }}
+            - name: POSTGRES_PORT
+              value: {{ default "5432" .Values.dbaas.pgPort | quote }}
+            {{ if .Values.externalDataBase }}
+            - name: EXTERNAL_POSTGRESQL
+              value: {{ default "" .Values.externalDataBase.type }}
+            {{- end }}
+            - name: AUTH
+              value: "False"
+            - name: MULTI_USERS_ENABLED
+              value: {{ default "false" .Values.dbaas.multiUsers | quote }}
+            - name: IS_ROLE_UPDATE_REQUIRED
+              value: {{ default "false" .Values.dbaas.updateRoles | quote }}
+            - name: CLOUD_NAMESPACE
+              valueFrom:
+                fieldRef:
+                  fieldPath: metadata.namespace
+            - name: CLOUD_PUBLIC_HOST
+              value: {{ .Values.CLOUD_PUBLIC_HOST }}
+            - name: LOG_DEBUG
+              value: {{ default "false" .Values.dbaas.debug | quote }}
+            - name: EXTENSIONS
+              value: {{ join "," .Values.dbaas.extensions }}
+      containers:
+        - name: dbaas-postgres-adapter
+          image: {{ template "find_image" (dict "deployName" "postgresql_dbaas_adapter" "SERVICE_NAME" "postgresql_dbaas_adapter" "vals" .Values "default" .Values.dbaas.dockerImage) }}
+          ports:
+            - name: web
+              containerPort: 8080
+              protocol: TCP
+          securityContext:
+            {{- include "restricted.globalContainerSecurityContext" . | nindent 12 }}
+          env:
+{{- template "postgres-dbaas.pgAdminEnvs" . }}
+            - name: POSTGRES_DATABASE
+              value: {{ default "postgres" .Values.dbaas.dbName }}
+{{- template "postgres-dbaas.aggregatorEnvsReg" . }}
+            - name: DBAAS_ADAPTER_ADDRESS
+              value: {{ default (printf "http://dbaas-postgres-adapter.%s:8080" .Release.Namespace) .Values.dbaas.adapter.address }}
+            - name: DBAAS_AGGREGATOR_REGISTRATION_ADDRESS
+              value: {{ ( include "postgres.API_DBAAS_ADDRESS" . ) }}
+            - name: POSTGRES_HOST
+              value: {{ include "dbaas.pgHost" . }}
+            - name : READONLY_HOST
+              value: {{ include "dbaas.pgHostRO" . }}
+            - name: POSTGRES_PORT
+              value: {{ default "5432" .Values.dbaas.pgPort | quote }}
+            - name: DBAAS_ADAPTER_API_USER
+              valueFrom:
+                secretKeyRef:
+                  name: dbaas-adapter-credentials
+                  key: username
+            - name: DBAAS_ADAPTER_API_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: dbaas-adapter-credentials
+                  key: password
+            - name: DBAAS_AGGREGATOR_PHYSICAL_DATABASE_IDENTIFIER
+              value: {{ .Values.dbaas.aggregator.physicalDatabaseIdentifier | default (printf "%s:%s" .Release.Namespace "postgres")}}
+            - name: CLOUD_NAMESPACE
+              value: {{ .Release.Namespace }}
+            - name: PG_SSL
+            {{ if .Values.tls }}
+            {{ if .Values.tls.enabled }}
+              value: "on"
+            {{ else }}
+              value: "off"
+            {{ end }}
+            {{ else }}
+              value: "off"
+            {{ end }}
+            - name: CLOUD_PUBLIC_HOST
+              value: {{ .Values.CLOUD_PUBLIC_HOST }}
+            {{- if .Values.dbaas.extensions }}
+            - name: EXTENSIONS
+              value: {{ join "," .Values.dbaas.extensions }}
+            {{- end }}
+            {{ if .Values.externalDataBase }}
+            - name: EXTERNAL_POSTGRESQL
+              value: {{ default "" .Values.externalDataBase.type }}
+              {{- end }}
+            - name: MULTI_USERS_ENABLED
+              value: {{ default "false" .Values.dbaas.multiUsers | quote }}
+            - name: LOG_DEBUG
+              value: {{ default "false" .Values.dbaas.debug | quote }}
+            - name: INTERNAL_TLS_ENABLED
+              value: {{ default "false" .Values.INTERNAL_TLS_ENABLED | quote }}
+          resources:
+{{ toYaml .Values.dbaas.resources | indent 12 }}
+          volumeMounts:
+            - name: dbaas-physical-databases-labels-mount
+              mountPath: /app/config
+            - name: dbaas-default-extensions-mount
+              mountPath: /app/extensions
+  {{- if not .Values.externalDataBase }}
+  {{- if and .Values.tls .Values.tls.enabled }}
+            - name: tls-cert
+              mountPath: /certs/
+  {{- end }}
+  {{- end }}
+          livenessProbe:
+            httpGet:
+              path: /health
+              port: 8080
+              {{- if .Values.INTERNAL_TLS_ENABLED }}
+              scheme: HTTPS
+              {{- else }}
+              scheme: HTTP
+              {{- end }}
+            initialDelaySeconds: 10
+            timeoutSeconds: 5
+            periodSeconds: 10
+            successThreshold: 1
+            failureThreshold: 10
+          readinessProbe:
+            httpGet:
+              path: /health
+              port: 8080
+              {{- if .Values.INTERNAL_TLS_ENABLED }}
+              scheme: HTTPS
+              {{- else }}
+              scheme: HTTP
+              {{- end }}
+            initialDelaySeconds: 10
+            timeoutSeconds: 5
+            periodSeconds: 10
+            successThreshold: 1
+            failureThreshold: 10
+          terminationMessagePath: /dev/termination-log
+          terminationMessagePolicy: File
+          imagePullPolicy: {{ default "IfNotPresent" .Values.imagePullPolicy }}
+      {{- if .Values.privateRegistry.enabled }}
+      imagePullSecrets:
+        {{- range $i, $v := .Values.privateRegistry.secrets }}
+        - name: {{ $v.name }}
+        {{- end }}
+      {{- end }}
+      tolerations:
+        {{- range $tKey, $t := .Values.policies.tolerations }}
+        - key: {{ $t.key }}
+          operator: {{ $t.operator }}
+          value: {{ $t.value }}
+          effect: {{ $t.effect }}
+          tolerationSeconds: {{ $t.tolerationSeconds }}
+        {{- end }}
+      restartPolicy: Always
+      terminationGracePeriodSeconds: 30
+      securityContext:
+        {{- include "restricted.globalPodSecurityContext" . | nindent 8 }}
+        {{- with .Values.dbaas.securityContext }}
+        {{- toYaml . | nindent 8 -}}
+        {{- end }}
+      serviceAccount: postgres-sa
+  {{- if and (.Values.dbaas.pgHost) (.Values.patroni.install) }}
+    {{ if not (contains "." .Values.dbaas.pgHost) }}
+      {{- fail "Please, specify FQDN for PostgreSQL host, in <svc-name>.<ns-name> format" }}
+    {{- end }}
+  {{- end }}
+{{- end }}

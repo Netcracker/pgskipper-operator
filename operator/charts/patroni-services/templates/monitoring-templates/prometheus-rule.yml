@@ -1,0 +1,525 @@
+{{- if and (eq (include "monitoring.install" .) "true") (.Values.metricCollector.prometheusMonitoring) }}
+apiVersion: monitoring.coreos.com/v1
+kind: PrometheusRule
+metadata:
+  labels:
+    name: prometheus-postgres-service-rules
+      {{ include "monitoring.kubernetes.labels" . | nindent 4 }}
+    prometheus: postgres-service-metric-collector
+    role: alert-rules
+  name: prometheus-postgres-service-rules
+spec:
+  groups:
+  - name: {{ .Release.Namespace }}-{{ .Release.Name }}
+    rules:
+    - alert: PostgreSQL metrics are absent
+      annotations:
+        description: 'PostgreSQL metrics are absent on {{ .Release.Namespace }}.'
+        summary: PostgreSQL metrics are absent
+      expr: absent(ma_pg_patroni_cluster_status{namespace="{{ .Release.Namespace }}"}) == 1
+      for: {{ default "3m" .Values.metricCollector.prometheusRules.alertDelay }}
+      labels:
+        severity: high
+        namespace: {{ .Release.Namespace }}
+        service: {{ .Release.Name }}
+    - alert: PostgreSQL is Down
+      annotations:
+        description: 'PostgreSQL is Down on {{ .Release.Namespace }}.'
+        summary: PostgreSQL is Down
+      expr: ma_pg_patroni_cluster_status{namespace="{{ .Release.Namespace }}"} == 10 or ma_pg_patroni_cluster_status{namespace="{{ .Release.Namespace }}"} < 0
+      for: {{ default "3m" .Values.metricCollector.prometheusRules.alertDelay }}
+      labels:
+        severity: disaster
+        namespace: {{ .Release.Namespace }}
+        service: {{ .Release.Name }}
+    - alert: PostgreSQL is Degraded
+      annotations:
+        description: 'PostgreSQL is Degraded on {{ .Release.Namespace }}.'
+        summary: PostgreSQL is Degraded
+      expr: ma_pg_patroni_cluster_status{namespace="{{ .Release.Namespace }}"} == 6
+      for: {{ default "3m" .Values.metricCollector.prometheusRules.alertDelay }}
+      labels:
+        severity: high
+        namespace: {{ .Release.Namespace }}
+        service: {{ .Release.Name }}
+{{- if .Values.backupDaemon.install }}
+    - alert: Space for Postgres backup is less than acceptable threshold
+      annotations:
+        description: 'Backup space is less than {{ default 5 .Values.metricCollector.prometheusRules.backupAlertThreshold }} % free  on {{ .Release.Namespace }}'
+        summary: Space for Postgres backup is less than acceptable threshold
+      expr: ma_storage_free_space{namespace="{{ default "common" .Release.Namespace }}", service_name='postgres-backup-daemon'} / ma_storage_total_space{namespace="{{ .Release.Namespace }}", service_name='postgres-backup-daemon'} < {{ default 5 .Values.metricCollector.prometheusRules.backupAlertThreshold }}*0.01
+      for: {{ default "3m" .Values.metricCollector.prometheusRules.alertDelay }}
+      labels:
+        severity: average
+        namespace: {{ .Release.Namespace }}
+        service: {{ .Release.Name }}
+    - alert: Space for Postgres backup is less than acceptable threshold
+      annotations:
+        description: 'Backup space is less than {{ default 20 .Values.metricCollector.prometheusRules.backupWarningThreshold }} % free on {{ .Release.Namespace }}'
+        summary: Space for Postgres backup is less than acceptable threshold
+      expr: ma_storage_free_space{namespace="{{ .Release.Namespace }}", service_name='postgres-backup-daemon'} / ma_storage_total_space{namespace="{{ .Release.Namespace }}", service_name='postgres-backup-daemon'} < {{ default 20 .Values.metricCollector.prometheusRules.backupWarningThreshold }}*0.01
+      for: {{ default "3m" .Values.metricCollector.prometheusRules.alertDelay }}
+      labels:
+        severity: warning
+        namespace: {{ .Release.Namespace }}
+        service: {{ .Release.Name }}
+    - alert: Last Postgres backup is failed
+      annotations:
+        description: 'Last backup is failed on {{ .Release.Namespace }}'
+        summary: Targets are down
+      expr: ma_storage_last_failed{namespace="{{ .Release.Namespace }}", service_name="postgres-backup-daemon"} > 0
+      for: {{ default "3m" .Values.metricCollector.prometheusRules.alertDelay }}
+      labels:
+        severity: average
+        namespace: {{ .Release.Namespace }}
+        service: {{ .Release.Name }}
+    - alert: Last Successful Postgres backup is too old
+      annotations:
+        description: 'Last Successful backup is too old on {{ .Release.Namespace }}'
+        summary: Last Successful Postgres backup is too old
+      expr: time() - (ma_storage_lastSuccessful_metrics_end_backup_timestamp{namespace="{{ .Release.Namespace }}", service_name="postgres-backup-daemon"}/1000) > {{ default 86400 .Values.metricCollector.prometheusRules.maxLastBackupAge }}
+      for: {{ default "3m" .Values.metricCollector.prometheusRules.alertDelay }}
+      labels:
+        severity: average
+        namespace: {{ .Release.Namespace }}
+        service: {{ .Release.Name }}
+    - alert: PostgreSQL backup agent has problem
+      annotations:
+        description: 'PostgreSQL backup agent has problem on {{ .Release.Namespace }}'
+        summary: PostgreSQL backup agent has problem
+      expr: ma_status{namespace="{{ .Release.Namespace }}", service_name="postgres-backup-daemon"} == 6
+      for: {{ default "3m" .Values.metricCollector.prometheusRules.alertDelay }}
+      labels:
+        severity: average
+        namespace: {{ .Release.Namespace }}
+        service: {{ .Release.Name }}
+    - alert: Unable to collect metrics from PostgreSQL backup agent
+      annotations:
+        description: 'Unable to collect metrics from PostgreSQL backup agent on {{ .Release.Namespace }}'
+        summary: Unable to collect metrics from PostgreSQL backup agent
+      expr: ma_status{namespace="{{ .Release.Namespace }}", service_name="postgres-backup-daemon"} < 0 or absent(ma_status{namespace="{{ .Release.Namespace }}", service_name="postgres-backup-daemon"}) == 1
+      for: {{ default "3m" .Values.metricCollector.prometheusRules.alertDelay }}
+      labels:
+        severity: high
+        namespace: {{ .Release.Namespace }}
+        service: {{ .Release.Name }}
+{{- end }}
+    - alert: Patroni first Node is not running
+      annotations:
+        description: 'Patroni status First Node is not running on {{ .Release.Namespace }}'
+        summary: Patroni first Node is not running
+      expr: ma_pg_patroni_patroni_status{namespace="{{ .Release.Namespace }}", pg_node="node1"} == 0
+      for: {{ default "3m" .Values.metricCollector.prometheusRules.alertDelay }}
+      labels:
+        severity: warning
+        namespace: {{ .Release.Namespace }}
+        service: {{ .Release.Name }}
+    - alert: Patroni fourth Node is not running
+      annotations:
+        description: 'Patroni status Fourth Node is not running on {{ .Release.Namespace }}'
+        summary: Patroni fourth Node is not running
+      expr: ma_pg_patroni_patroni_status{namespace="{{ .Release.Namespace }}", pg_node="node4"} == 0
+      for: {{ default "3m" .Values.metricCollector.prometheusRules.alertDelay }}
+      labels:
+        severity: warning
+        namespace: {{ .Release.Namespace }}
+        service: {{ .Release.Name }}
+    - alert: Patroni second Node is not running
+      annotations:
+        description: 'Patroni status Second Node is not running on {{ .Release.Namespace }}'
+        summary: Patroni second Node is not running
+      expr: ma_pg_patroni_patroni_status{namespace="{{ .Release.Namespace }}", pg_node="node2"} == 0
+      for: {{ default "3m" .Values.metricCollector.prometheusRules.alertDelay }}
+      labels:
+        severity: warning
+        namespace: {{ .Release.Namespace }}
+        service: {{ .Release.Name }}
+    - alert: Patroni third Node is not running
+      annotations:
+        description: 'Patroni status Third Node is not running on {{ .Release.Namespace }}'
+        summary: Patroni third Node is not running
+      expr: ma_pg_patroni_patroni_status{namespace="{{ .Release.Namespace }}", pg_node="node3"} == 0
+      for: {{ default "3m" .Values.metricCollector.prometheusRules.alertDelay }}
+      labels:
+        severity: warning
+        namespace: {{ .Release.Namespace }}
+        service: {{ .Release.Name }}
+    - alert: Postgres First Node Disk is almost full
+      annotations:
+        description: 'Disk space Postgres First Node Disk is almost full on {{ .Release.Namespace }}'
+        summary: Postgres First Node Disk is almost full
+      expr: ma_pg_patroni_metrics_df_pcent{namespace="{{ .Release.Namespace }}", pg_node="node1"} > 90
+      for: {{ default "3m" .Values.metricCollector.prometheusRules.alertDelay }}
+      labels:
+        severity: high
+        namespace: {{ .Release.Namespace }}
+        service: {{ .Release.Name }}
+    - alert: Postgres Fourth Node Disk is almost full
+      annotations:
+        description: 'Disk space Postgres Fourth Node Disk is almost full on {{ .Release.Namespace }}'
+        summary: Postgres Fourth Node Disk is almost full
+      expr: ma_pg_patroni_metrics_df_pcent{namespace="{{ .Release.Namespace }}", pg_node="node4"} > 90
+      for: {{ default "3m" .Values.metricCollector.prometheusRules.alertDelay }}
+      labels:
+        severity: high
+        namespace: {{ .Release.Namespace }}
+        service: {{ .Release.Name }}
+    - alert: Postgre Second Node Disk is almost full
+      annotations:
+        description: 'Disk space Postgre Second Node Disk is almost full on {{ .Release.Namespace }}'
+        summary: Postgre Second Node Disk is almost full
+      expr: ma_pg_patroni_metrics_df_pcent{namespace="{{ .Release.Namespace }}", pg_node="node2"} > 90
+      for: {{ default "3m" .Values.metricCollector.prometheusRules.alertDelay }}
+      labels:
+        severity: high
+        namespace: {{ .Release.Namespace }}
+        service: {{ .Release.Name }}
+    - alert: Postgres Third Node Disk is almost full
+      annotations:
+        description: 'Disk space Postgres Third Node Disk is almost full on {{ .Release.Namespace }}'
+        summary: Postgres Third Node Disk is almost full
+      expr: ma_pg_patroni_metrics_df_pcent{namespace="{{ .Release.Namespace }}", pg_node="node3"} > 90
+      for: {{ default "3m" .Values.metricCollector.prometheusRules.alertDelay }}
+      labels:
+        severity: high
+        namespace: {{ .Release.Namespace }}
+        service: {{ .Release.Name }}
+    - alert: Locks on First Node more then acceptable threshold
+      annotations:
+        description: 'Locks on First Node more then {{ default 500 .Values.metricCollector.prometheusRules.locksThreshold }} on {{ .Release.Namespace }}'
+        summary: Locks on First Node more then acceptable threshold
+      expr: ma_pg_metrics_locks{namespace="{{ .Release.Namespace }}", pg_node="node1"} > {{ default 500 .Values.metricCollector.prometheusRules.locksThreshold }}
+      for: {{ default "3m" .Values.metricCollector.prometheusRules.alertDelay }}
+      labels:
+        severity: average
+        namespace: {{ .Release.Namespace }}
+        service: {{ .Release.Name }}
+    - alert: Locks on Fourth Node more then acceptable threshold
+      annotations:
+        description: 'Locks on Fourth Node more then {{ default 500 .Values.metricCollector.prometheusRules.locksThreshold }} on {{ .Release.Namespace }}'
+        summary: Locks on Fourth Node more then acceptable threshold
+      expr: ma_pg_metrics_locks{namespace="{{ .Release.Namespace }}", pg_node="node4"} > {{ default 500 .Values.metricCollector.prometheusRules.locksThreshold }}
+      for: {{ default "3m" .Values.metricCollector.prometheusRules.alertDelay }}
+      labels:
+        severity: average
+        namespace: {{ .Release.Namespace }}
+        service: {{ .Release.Name }}
+    - alert: Locks on Second Node more then acceptable threshold
+      annotations:
+        description: 'Locks on Second Node more then {{ default 500 .Values.metricCollector.prometheusRules.locksThreshold }} on {{ .Release.Namespace }}'
+        summary: Locks on Second Node more then acceptable threshold
+      expr: ma_pg_metrics_locks{namespace="{{ .Release.Namespace }}", pg_node="node2"} > {{ default 500 .Values.metricCollector.prometheusRules.locksThreshold }}
+      for: {{ default "3m" .Values.metricCollector.prometheusRules.alertDelay }}
+      labels:
+        severity: average
+        namespace: {{ .Release.Namespace }}
+        service: {{ .Release.Name }}
+    - alert: Locks on Third Node more then acceptable threshold
+      annotations:
+        description: 'Locks on Third Node more then {{ default 500 .Values.metricCollector.prometheusRules.locksThreshold }} on {{ .Release.Namespace }}'
+        summary: Locks on Third Node more then acceptable threshold
+      expr: ma_pg_metrics_locks{namespace="{{ .Release.Namespace }}", pg_node="node3"} > {{ default 500 .Values.metricCollector.prometheusRules.locksThreshold }}
+      for: {{ default "3m" .Values.metricCollector.prometheusRules.alertDelay }}
+      labels:
+        severity: average
+        namespace: {{ .Release.Namespace }}
+        service: {{ .Release.Name }}
+    - alert: Memory on Postgres First Node is more than 95% busy
+      annotations:
+        description: 'Memory Postgres First Node is more than 95% busy on {{ .Release.Namespace }}'
+        summary: Memory on Postgres First Node is more than 95% busy
+      expr: container_memory_working_set_bytes{namespace="{{ .Release.Namespace }}", container=~".*-node1"} / container_spec_memory_limit_bytes{namespace="{{ .Release.Namespace }}", container=~".*-node1"} * 100 > 95 and container_spec_memory_limit_bytes{namespace="{{ .Release.Namespace }}", container=~".*-node1"} > -1
+      for: {{ default "3m" .Values.metricCollector.prometheusRules.alertDelay }}
+      labels:
+        severity: average
+        namespace: {{ .Release.Namespace }}
+        service: {{ .Release.Name }}
+    - alert: Memory on Postgres Fourth Node is more than 95% busy
+      annotations:
+        description: 'Memory Postgres Fourth Node is more than 95% busy on {{ .Release.Namespace }}'
+        summary: Memory on Postgres Fourth Node is more than 95% busy
+      expr: container_memory_working_set_bytes{namespace="{{ .Release.Namespace }}", container=~".*-node4"} / container_spec_memory_limit_bytes{namespace="{{ .Release.Namespace }}", container=~".*-node4"} * 100 > 95 and container_spec_memory_limit_bytes{namespace="{{ .Release.Namespace }}", container=~".*-node4"} > -1
+      for: {{ default "3m" .Values.metricCollector.prometheusRules.alertDelay }}
+      labels:
+        severity: average
+        namespace: {{ .Release.Namespace }}
+        service: {{ .Release.Name }}
+    - alert: Memory on Postgres Second Node is more than 95% busy
+      annotations:
+        description: 'Memory Postgres Second Node is more than 95% busy on {{ .Release.Namespace }}'
+        summary: Memory on Postgres Second Node is more than 95% busy
+      expr: container_memory_working_set_bytes{namespace="{{ .Release.Namespace }}", container=~".*-node2"} / container_spec_memory_limit_bytes{namespace="{{ .Release.Namespace }}", container=~".*-node2"} * 100 > 95 and container_spec_memory_limit_bytes{namespace="{{ .Release.Namespace }}", container=~".*-node2"} > -1
+      for: {{ default "3m" .Values.metricCollector.prometheusRules.alertDelay }}
+      labels:
+        severity: average
+        namespace: {{ .Release.Namespace }}
+        service: {{ .Release.Name }}
+    - alert: Memory on Postgres Third Node is more than 95% busy
+      annotations:
+        description: 'Memory Postgres Third Node is more than 95% busy on {{ .Release.Namespace }}'
+        summary: Memory on Postgres Third Node is more than 95% busy
+      expr: container_memory_working_set_bytes{namespace="{{ .Release.Namespace }}", container=~".*-node3"} / container_spec_memory_limit_bytes{namespace="{{ .Release.Namespace }}", container=~".*-node3"} * 100 > 95 and container_spec_memory_limit_bytes{namespace="{{ .Release.Namespace }}", container=~".*-node3"} > -1
+      for: {{ default "3m" .Values.metricCollector.prometheusRules.alertDelay }}
+      labels:
+        severity: average
+        namespace: {{ .Release.Namespace }}
+        service: {{ .Release.Name }}
+    - alert: There are long running queries on First Node
+      annotations:
+        description: 'There are long running queries First Node. Execution time is more than {{ default 3600 .Values.metricCollector.prometheusRules.queryMaxTimeThreshold }} second(s) on {{ .Release.Namespace }}'
+        summary: There are long running queries on First Node
+      expr: ma_pg_metrics_query_max_time{namespace="{{ .Release.Namespace }}", pg_node="node1"} > {{ default 3600 .Values.metricCollector.prometheusRules.queryMaxTimeThreshold }}
+      for: {{ default "3m" .Values.metricCollector.prometheusRules.alertDelay }}
+      labels:
+        severity: average
+        namespace: {{ .Release.Namespace }}
+        service: {{ .Release.Name }}
+    - alert: There are long running queries on Fourth Node
+      annotations:
+        description: 'There are long running queries Fourth Node. Execution time is more than {{ default 3600 .Values.metricCollector.prometheusRules.queryMaxTimeThreshold }} second(s) on {{ .Release.Namespace }}'
+        summary: There are long running queries on Fourth Node
+      expr: ma_pg_metrics_query_max_time{namespace="{{ .Release.Namespace }}", pg_node="node4"} > {{ default 3600 .Values.metricCollector.prometheusRules.queryMaxTimeThreshold }}
+      for: {{ default "3m" .Values.metricCollector.prometheusRules.alertDelay }}
+      labels:
+        severity: average
+        namespace: {{ .Release.Namespace }}
+        service: {{ .Release.Name }}
+    - alert: There are long running queries on Second Node
+      annotations:
+        description: 'There are long running queries Second Node. Execution time is more than {{ default 3600 .Values.metricCollector.prometheusRules.queryMaxTimeThreshold }} second(s) on {{ .Release.Namespace }}'
+        summary: There are long running queries on Second Node
+      expr: ma_pg_metrics_query_max_time{namespace="{{ .Release.Namespace }}", pg_node="node2"} > {{ default 3600 .Values.metricCollector.prometheusRules.queryMaxTimeThreshold }}
+      for: {{ default "3m" .Values.metricCollector.prometheusRules.alertDelay }}
+      labels:
+        severity: average
+        namespace: {{ .Release.Namespace }}
+        service: {{ .Release.Name }}
+    - alert: PostgreSql Large Object Size High
+      annotations:
+        summary: PostgreSQL Large Object Size High
+        description: 'Large object total size has exceeded the warning threshold in namespace {{ .Release.Namespace }}.'
+      expr: ma_pg_large_object_total_size_bytes{namespace="{{ .Release.Namespace }}"} > {{ default "104857600" .Values.metricCollector.prometheusRules.largeObjectSizeThreshold }}
+      for: {{ default "3m" .Values.metricCollector.prometheusRules.alertDelay }}
+      labels:
+        severity: average
+        namespace: {{ .Release.Namespace }}
+        service: {{ .Release.Name }}
+    - alert: There are long running queries on Third Node
+      annotations:
+        description: 'There are long running queries Third Node. Execution time is more than {{ default 3600 .Values.metricCollector.prometheusRules.queryMaxTimeThreshold }} second(s) on {{ .Release.Namespace }}'
+        summary: There are long running queries on Third Node
+      expr: ma_pg_metrics_query_max_time{namespace="{{ .Release.Namespace }}", pg_node="node3"} > {{ default 3600 .Values.metricCollector.prometheusRules.queryMaxTimeThreshold }}
+      for: {{ default "3m" .Values.metricCollector.prometheusRules.alertDelay }}
+      labels:
+        severity: average
+        namespace: {{ .Release.Namespace }}
+        service: {{ .Release.Name }}
+    - alert: CPU on Postgres First Node is more than 95% busy
+      annotations:
+        description: 'CPU Postgres First Node is more than 95% busy on {{ .Release.Namespace }}'
+        summary: CPU on Postgres First Node is more than 95% busy
+      expr: max(rate(container_cpu_usage_seconds_total{namespace="{{ .Release.Namespace }}", container=~".*-node1"}[1m])) / max(kube_pod_container_resource_limits_cpu_cores{exported_namespace="{{ .Release.Namespace }}", exported_container=~".*-node1"}) > 0.95
+      for: {{ default "3m" .Values.metricCollector.prometheusRules.alertDelay }}
+      labels:
+        severity: average
+        namespace: {{ .Release.Namespace }}
+        service: {{ .Release.Name }}
+    - alert: CPU on Postgres Second Node is more than 95% busy
+      annotations:
+        description: 'CPU Postgres Second Node is more than 95% busy on {{ .Release.Namespace }}'
+        summary: CPU on Postgres Second Node is more than 95% busy
+      expr: max(rate(container_cpu_usage_seconds_total{namespace="{{ .Release.Namespace }}", container=~".*-node2"}[1m])) / max(kube_pod_container_resource_limits_cpu_cores{exported_namespace="{{ .Release.Namespace }}", exported_container=~".*-node2"}) > 0.95
+      for: {{ default "3m" .Values.metricCollector.prometheusRules.alertDelay }}
+      labels:
+        severity: average
+        namespace: {{ .Release.Namespace }}
+        service: {{ .Release.Name }}
+    - alert: CPU on Postgres Third Node is more than 95% busy
+      annotations:
+        description: 'CPU Postgres Third Node is more than 95% busy on {{ .Release.Namespace }}'
+        summary: CPU on Postgres Third Node is more than 95% busy
+      expr: max(rate(container_cpu_usage_seconds_total{namespace="{{ .Release.Namespace }}", container=~".*-node3"}[1m])) / max(kube_pod_container_resource_limits_cpu_cores{exported_namespace="{{ .Release.Namespace }}", exported_container=~".*-node3"}) > 0.95
+      for: {{ default "3m" .Values.metricCollector.prometheusRules.alertDelay }}
+      labels:
+        severity: average
+        namespace: {{ .Release.Namespace }}
+        service: {{ .Release.Name }}
+    - alert: CPU on Postgres Fourth Node is more than 95% busy
+      annotations:
+        description: 'CPU Postgres Fourth Node is more than 95% busy on {{ .Release.Namespace }}'
+        summary: CPU on Postgres Fourth Node is more than 95% busy
+      expr: max(rate(container_cpu_usage_seconds_total{namespace="{{ .Release.Namespace }}", container=~".*-node4"}[1m])) / max(kube_pod_container_resource_limits_cpu_cores{exported_namespace="{{ .Release.Namespace }}", exported_container=~".*-node4"}) > 0.95
+      for: {{ default "3m" .Values.metricCollector.prometheusRules.alertDelay }}
+      labels:
+        severity: average
+        namespace: {{ .Release.Namespace }}
+        service: {{ .Release.Name }}
+    - alert: Patroni Replica Is Lagging
+      annotations:
+        description: Patroni Replica Is Lagging
+        summary: >-
+          "Patroni Replica \{\{ \$labels.hostname \}\} Is Lagging in \{\{ \$labels.namespace \}\} namespace"
+      expr: ma_pg_patroni_replication_lag{namespace="{{ .Release.Namespace }}"} > {{ default 33554432 .Values.metricCollector.prometheusRules.replicationLagValue }}
+      for: {{ default "3m" .Values.metricCollector.prometheusRules.alertDelay }}
+      labels:
+        severity: high
+        namespace: {{ .Release.Namespace }}
+        service: {{ .Release.Name }}
+    - alert: PostgreSQL Replica Is Lagging
+      annotations:
+        description: PostgreSQL Replica Is Lagging
+        summary: >-
+          "PostgreSQL Replica \{\{ \$labels.hostname \}\} Is Lagging in \{\{ \$labels.namespace \}\} namespace"
+      expr: ma_pg_patroni_replication_state_sent_replay_lag{namespace="{{ .Release.Namespace }}"} > {{ default 33554432 .Values.metricCollector.prometheusRules.replicationLagValue }}
+      for: {{ default "3m" .Values.metricCollector.prometheusRules.alertDelay }}
+      labels:
+        severity: high
+        namespace: {{ .Release.Namespace }}
+        service: {{ .Release.Name }}
+    - alert: Patroni Standby Leader Is Not Connected
+      annotations:
+        description: Patroni Standby Leader Is Not Connected
+        summary: >-
+          "Patroni Standby Leader Is Not Connected"
+      expr: ma_pg_patroni_replication_state_sm_replication_state{namespace="{{ .Release.Namespace }}"} == 0
+      for: {{ default "3m" .Values.metricCollector.prometheusRules.alertDelay }}
+      labels:
+        severity: high
+        namespace: {{ .Release.Namespace }}
+        service: {{ .Release.Name }}
+    - alert: Current overall connections exceed max_connection percentage
+      annotations:
+        description: 'Current overall connections are above the max_connection percentage threshold on {{ .Release.Namespace }}.'
+        summary: Current overall connections exceed max_connection percentage
+      expr: (ma_pg_metrics_current_connections{namespace="{{ .Release.Namespace }}"}/ma_pg_metrics_postgres_max_connections{namespace="{{ .Release.Namespace }}"} * 100) > {{ default "90" .Values.metricCollector.prometheusRules.maxConnectionExceedPercentageThreshold }}
+      for: {{ default "3m" .Values.metricCollector.prometheusRules.alertDelay }}
+      labels:
+        severity: high
+        namespace: {{ .Release.Namespace }}
+        service: {{ .Release.Name }}
+    - alert: Current overall connections reached average max_connection percentage
+      annotations:
+        description: 'Current overall connections reached average of the max_connection percentage threshold on {{ .Release.Namespace }}.'
+        summary: Current overall connections reached average max_connection percentage
+      expr: (ma_pg_metrics_current_connections{namespace="{{ .Release.Namespace }}"}/ma_pg_metrics_postgres_max_connections{namespace="{{ .Release.Namespace }}"} * 100) > {{ default "80" .Values.metricCollector.prometheusRules.maxConnectionReachedPercentageThreshold }}
+      for: {{ default "3m" .Values.metricCollector.prometheusRules.alertDelay }}
+      labels:
+        severity: average
+        namespace: {{ .Release.Namespace }}
+        service: {{ .Release.Name }}
+    - alert: Current connections exceed max_connection
+      annotations:
+        description: 'Current connections are above the max_connection threshold on {{ .Release.Namespace }}.'
+        summary: Current connections exceed max_connection
+      expr: ma_pg_metrics_current_connections{namespace="{{ .Release.Namespace }}"} >= ma_pg_metrics_postgres_max_connections{namespace="{{ .Release.Namespace }}"}
+      for: {{ default "3m" .Values.metricCollector.prometheusRules.alertDelay }}
+      labels:
+        severity: high
+        namespace: {{ .Release.Namespace }}
+        service: {{ .Release.Name }}
+    - alert: DB Connection exceeding more than specified limit
+      annotations:
+        description: 'DB Connections exceeding more than specified limit on {{ .Release.Namespace }}.'
+        summary: DB Connection exceeding more than specified limit
+      expr: ma_pg_connection_by_database{namespace="{{ .Release.Namespace }}"} >= {{ default 250 .Values.metricCollector.databaseConnectionLimits }}
+      for: {{ default "3m" .Values.metricCollector.prometheusRules.alertDelay }}
+      labels:
+        severity: high
+        namespace: {{ .Release.Namespace }}
+        service: {{ .Release.Name }}
+{{- if .Values.postgresExporter.install }}
+    - alert: PostgreSQL the percentage of transaction ID space used out
+      annotations:
+        description: The percentage of transaction ID space used out
+        summary: >-
+          "TXID of \{\{ \$labels.hostname \}\} is used out in \{\{ \$labels.namespace \}\} namespace"
+      expr: pg_txid_wraparound_percent_towards_wraparound{namespace="{{ .Release.Namespace }}"} > 75
+      for: {{ default "3m" .Values.metricCollector.prometheusRules.alertDelay }}
+      labels:
+        severity: high
+        namespace: {{ .Release.Namespace }}
+        service: {{ .Release.Name }}
+    - alert: PostgreSQL replication slot wal size is too high
+      annotations:
+        description: The replication slot wal size is more than allowed threshold in MB
+        summary: The replication slot wal size is more than allowed threshold in MB
+      expr: pg_replicaiton_slots_monitoring_retained_wal{namespace="{{ .Release.Namespace }}"} / 1024 / 1024 > {{ default "1024" .Values.postgresExporter.prometheusRules.maxReplicationSlotWalSizeThreshold }}
+      for: {{ default "3m" .Values.metricCollector.prometheusRules.alertDelay }}
+      labels:
+        severity: high
+        namespace: {{ .Release.Namespace }}
+        service: {{ .Release.Name }}
+    - alert: PostgreSQL replication slot is not active for a long time
+      annotations:
+        description: The replication slot is not active for a long time
+        summary: The replication slot is not active for a long time
+      expr: pg_replicaiton_slots_monitoring_retained_wal{namespace="{{ .Release.Namespace }}", active="false"} > -1
+      for: {{ default "3m" .Values.metricCollector.prometheusRules.alertDelay }}
+      labels:
+        severity: high
+        namespace: {{ .Release.Namespace }}
+        service: {{ .Release.Name }}
+{{- end }}
+    - alert: Wait event warning threshold for SubtransBuffer or SubtransSLRU
+      annotations:
+        description: 'Wait event SubtransBuffer or SubtransSLRU hit warning threshold {{ default 5 .Values.metricCollector.prometheusRules.warnWaitEventTreshold }} on {{ .Release.Namespace }}'
+        summary: Wait event warning threshold for SubtransBuffer or SubtransSLRU
+      expr: wait_event_metric{namespace="{{ .Release.Namespace }}", wait_event="SubtransBuffer"} > {{ default 5 .Values.metricCollector.prometheusRules.warnWaitEventTreshold }} or wait_event_metric{namespace="{{ .Release.Namespace }}", wait_event="SubtransSLRU"} > {{ default 5 .Values.metricCollector.prometheusRules.warnWaitEventTreshold }}
+      for: {{ default "3m" .Values.metricCollector.prometheusRules.alertDelay }}
+      labels:
+        severity: average
+        namespace: {{ .Release.Namespace }}
+        service: {{ .Release.Name }}
+    - alert: Wait event critical threshold for SubtransBuffer or SubtransSLRU
+      annotations:
+        description: 'Wait event SubtransBuffer or SubtransSLRU hit critical threshold {{ default 20 .Values.metricCollector.prometheusRules.critWaitEventTreshold }} on {{ .Release.Namespace }}'
+        summary: Wait event critical threshold for SubtransBuffer or SubtransSLRU
+      expr: wait_event_metric{namespace="{{ .Release.Namespace }}", wait_event="SubtransBuffer"} > {{ default 20 .Values.metricCollector.prometheusRules.critWaitEventTreshold }} or wait_event_metric{namespace="{{ .Release.Namespace }}", wait_event="SubtransSLRU"} > {{ default 20 .Values.metricCollector.prometheusRules.critWaitEventTreshold }}
+      for: {{ default "3m" .Values.metricCollector.prometheusRules.alertDelay }}
+      labels:
+        severity: high
+        namespace: {{ .Release.Namespace }}
+        service: {{ .Release.Name }}
+    - alert: Pct used warning threshold
+      annotations:
+        description: 'Pct used hit warning threshold {{ default 50 .Values.metricCollector.prometheusRules.warnpctUsedThreshold }} on {{ .Release.Namespace }}'
+        summary: Pct used warning threshold
+      expr: pct_used_metric{namespace="{{ .Release.Namespace }}"} > {{ default 50 .Values.metricCollector.prometheusRules.warnpctUsedThreshold }}
+      for: {{ default "3m" .Values.metricCollector.prometheusRules.alertDelay }}
+      labels:
+        severity: average
+        namespace: {{ .Release.Namespace }}
+        service: {{ .Release.Name }}
+{{if .Values.siteManager.install }}
+    - alert: Standby cluster is not streaming
+      annotations:
+        description: 'Standby cluster is not streaming from {{ .Release.Namespace }}'
+        summary: Standby cluster is not streaming
+      expr: ma_pg_standby_leader_count{namespace="{{ .Release.Namespace }}"} < 1
+      for: {{ default "3m" .Values.metricCollector.prometheusRules.alertDelay }}
+      labels:
+        severity: high
+        namespace: {{ .Release.Namespace }}
+        service: {{ .Release.Name }}
+    - alert: Standby cluster has big lag in bytes
+      annotations:
+        description: 'Standby cluster has big lag in bytes for {{ .Release.Namespace }}'
+        summary: Standby cluster has big lag in bytes
+      expr: ma_pg_standby_replication_lag_in_bytes{namespace="{{ .Release.Namespace }}"} > {{ default 1073741824 .Values.metricCollector.prometheusRules.standbyLagInBytesThreshold }}
+      for: {{ default "3m" .Values.metricCollector.prometheusRules.alertDelay }}
+      labels:
+        severity: high
+        namespace: {{ .Release.Namespace }}
+        service: {{ .Release.Name }}
+    - alert: Standby cluster has big lag in milliseconds
+      annotations:
+        description: 'Standby cluster has big lag in milliseconds for {{ .Release.Namespace }}'
+        summary: Standby cluster has big lag in milliseconds
+      expr: ma_pg_standby_replication_lag_in_ms{namespace="{{ .Release.Namespace }}"} > {{ default 600000 .Values.metricCollector.prometheusRules.standbyLagInMsThreshold }}
+      for: {{ default "3m" .Values.metricCollector.prometheusRules.alertDelay }}
+      labels:
+        severity: high
+        namespace: {{ .Release.Namespace }}
+        service: {{ .Release.Name }}
+{{- end }}
+{{ end }}

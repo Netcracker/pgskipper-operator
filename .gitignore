@@ -1,6 +1,6 @@
 .idea
-build/_output
+operator/build/_output
 extras/target/*
 deployments
 target/*
-charts/**/*.gz
+operator/charts/**/*.gz

@@ -1,0 +1,83 @@
+bootstrap:
+  dcs:
+    primary_start_timeout: 30
+    loop_wait: ${PATRONI_LOOP_WAIT}
+    maximum_lag_on_failover: ${PATRONI_MAXIMUM_LAG_ON_FAILOVER}
+    postgresql:
+      parameters:
+        effective_cache_size: ${PG_CONF_EFFECTIVE_CACHE_SIZE}
+        log_directory: /proc/1/fd/
+        log_filename: 1
+        log_line_prefix: '[%m][source=postgresql]'
+        log_rotation_age: 0
+        log_rotation_size: 0
+        maintenance_work_mem: ${PG_CONF_MAINTENANCE_WORK_MEM}
+        max_connections: ${PG_MAX_CONNECTIONS}
+        shared_buffers: ${PG_CONF_SHARED_BUFFERS}
+        password_encryption: md5
+        wal_keep_segments: 100
+        work_mem: ${PG_CONF_WORK_MEM}
+        tcp_keepalives_idle: 300
+        tcp_keepalives_interval: 10
+        tcp_keepalives_count: 5
+      pg_hba:
+        - local   all             postgres                                trust
+        - host    all             postgres             127.0.0.1/32       trust
+        - host    all             postgres             ::1/128            trust
+        - local   replication     all                                     trust
+        - host    replication     all             127.0.0.1/32            trust
+        - host    replication     all             ::1/128                 trust
+        - host replication replicator 0.0.0.0/0 md5
+        - host replication postgres 0.0.0.0/0 md5
+        - host all all 0.0.0.0/0 md5
+        - local all all md5
+        - host replication replicator ::0/0 md5
+        - host replication postgres ::0/0 md5
+        - host all all ::0/0 md5
+      recovery_conf:
+        restore_command: ''
+      use_pg_rewind: true
+      use_slots: false
+    retry_timeout: ${PATRONI_RETRY_TIMEOUT}
+    synchronous_mode: ${PATRONI_SYNCHRONOUS_MODE}
+    ttl: ${PATRONI_TTL}
+  initdb:
+  - encoding: UTF8
+  - data-checksums
+scope: ${PATRONI_CLUSTER_NAME}
+kubernetes:
+  namespace: ${POD_NAMESPACE}
+  labels:
+    app: ${PATRONI_CLUSTER_NAME}
+  role_label: pgtype
+  scope_label: app
+  pod_ip: ${LISTEN_ADDR}
+postgresql:
+  authentication:
+    replication:
+      password: ${PG_REPL_PASSWORD}
+      username: replicator
+    superuser:
+      password: ${PG_ROOT_PASSWORD}
+      username: postgres
+  bin_dir: ${PG_BIN_DIR}
+  callbacks:
+    on_reload: /setup_endpoint_callback.py
+    on_restart: /setup_endpoint_callback.py
+    on_role_change: /setup_endpoint_callback.py
+    on_start: /setup_endpoint_callback.py
+    on_stop: /setup_endpoint_callback.py
+  connect_address: ${LISTEN_ADDR}:5432
+  data_dir: /var/lib/pgsql/data/postgresql_${NODE_NAME}
+  listen: '0.0.0.0, ::0:5432'
+  parameters:
+    unix_socket_directories: /var/run/postgresql, /tmp
+  pgpass: /tmp/pgpass0
+restapi:
+  connect_address: ${LISTEN_ADDR}:8008
+  listen: ${LISTEN_ADDR}:8008
+tags:
+  clonefrom: false
+  nofailover: ${DR_MODE}
+  noloadbalance: false
+  nosync: false

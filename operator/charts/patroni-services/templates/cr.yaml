@@ -1,0 +1,429 @@
+apiVersion: netcracker.com/v1
+kind: PatroniServices
+metadata:
+  name: patroni-services
+  labels:
+    name: patroni-services
+      {{ include "kubernetes.labels" . | nindent 4 }}
+spec:
+  imagePullPolicy: {{ .Values.imagePullPolicy | default "IfNotPresent" }}
+  installationTimestamp: {{ now | unixEpoch | quote }}
+  {{ if .Values.serviceAccount.create }}
+  serviceAccountName: {{default "postgres-sa" .Values.serviceAccount.name}}
+{{ end }}
+  {{- if .Values.policies.tolerations }}
+  policies:
+    tolerations: {{ toYaml .Values.policies.tolerations | nindent 6 }}
+  {{- end }}
+{{ if .Values.tls }}
+  tls:
+    enabled: {{ default "false" .Values.tls.enabled }}
+    certificateSecretName: {{ include "postgres.certServicesSecret" . }}
+{{ end }}
+  patroni:
+    clusterName: {{default "patroni" .Values.patroni.clusterName}}
+{{ if .Values.backupDaemon.install }}
+  backupDaemon:
+    {{ if .Values.backupDaemon.affinity }}
+    affinity: {{ .Values.backupDaemon.affinity | toJson }}
+    {{ else if .Values.affinity }}
+    affinity: {{ .Values.affinity | toJson }}
+    {{ end }}
+    {{- if .Values.backupDaemon.podLabels }}
+    podLabels:
+      {{ toYaml .Values.backupDaemon.podLabels | nindent 6 }}
+    {{- else if .Values.podLabels }}
+    podLabels:
+      {{ toYaml .Values.podLabels | nindent 6 }}
+    {{- end }}
+    image: {{ template "find_image" (dict "deployName" "postgres_backup_daemon" "SERVICE_NAME" "postgres_backup_daemon" "vals" .Values "default" .Values.backupDaemon.dockerImage) }}
+    compressionLevel: {{ default 5 .Values.backupDaemon.compressionLevel }}
+    walArchiving: {{ default false .Values.backupDaemon.walArchiving }}
+    granularEviction: {{ .Values.backupDaemon.granularEviction | squote }}
+    encryption: {{.Values.backupDaemon.encryption}}
+    retainArchiveSettings: {{ default false .Values.backupDaemon.retainArchiveSettings }}
+    backupTimeout: {{.Values.backupDaemon.backupTimeout}}
+    allowPrefix: {{ default false .Values.backupDaemon.allowPrefix }}
+    useEvictionPolicyFirst: "{{ .Values.backupDaemon.useEvictionPolicyFirst }}"
+    evictionBinaryPolicy: {{ .Values.backupDaemon.evictionBinaryPolicy }}
+    archiveEvictionPolicy: "{{ .Values.backupDaemon.archiveEvictionPolicy }}"
+  {{- if .Values.backupDaemon.granularBackupSchedule }}
+    granularBackupSchedule: {{ .Values.backupDaemon.granularBackupSchedule }}
+  {{- end }}
+  {{- if .Values.backupDaemon.excludedExtensions }}
+    excludedExtensions: "{{ .Values.backupDaemon.excludedExtensions }}"
+  {{- end }}
+  {{- if .Values.backupDaemon.databasesToSchedule }}
+    databasesToSchedule: {{ .Values.backupDaemon.databasesToSchedule }}
+  {{- end }}
+    jobFlag: {{ if .Values.backupDaemon.jobFlag }}{{ .Values.backupDaemon.jobFlag | squote }}{{ else }}'1'{{ end }}
+    connectTimeout: {{ default 5 .Values.backupDaemon.connectTimeout | toString | quote }}
+    backupSchedule: {{ if .Values.externalDataBase }}None{{ else }}{{ default "0 0/7 * * *" .Values.backupDaemon.backupSchedule }}{{ end }}
+    evictionPolicy: {{ default "100m" .Values.backupDaemon.evictionPolicy }}
+    pgHost: {{ include "backupDaemon.pgHost" . }}
+    securityContext:
+      {{- include "restricted.globalPodSecurityContext" . | nindent 6 }}
+      {{- with .Values.backupDaemon.securityContext }}
+      {{- toYaml . | nindent 6 -}}
+      {{- end }}
+    resources:
+{{ toYaml .Values.backupDaemon.resources | indent 6 }}
+    storage:
+      type: {{ default "pv" .Values.backupDaemon.storage.type }}
+      size: {{ default "10Gi" .Values.backupDaemon.storage.size }}
+      {{ if .Values.backupDaemon.storage.nodes }}
+      nodes:
+          {{- range .Values.backupDaemon.storage.nodes }}
+        - {{ . }}
+          {{- end }}
+      {{ end }}
+      {{ if .Values.backupDaemon.storage.volumes }}
+      volumes:
+          {{- range .Values.backupDaemon.storage.volumes }}
+        - {{ . }}
+          {{- end }}
+      {{ end }}
+      {{- if .Values.backupDaemon.storage.accessModes }}
+      accessModes:
+          {{- range .Values.backupDaemon.storage.accessModes }}
+        - {{ . }}
+          {{- end }}
+      {{- end }}
+      {{ if ( include "postgres.storageClassName" . ) }}
+      storageClass: {{ ( include "postgres.storageClassName" . ) }}
+      {{ end }}
+      {{ if .Values.backupDaemon.storage.selectors }}
+      selectors:
+          {{- range .Values.backupDaemon.storage.selectors }}
+        - {{ . }}
+          {{- end }}
+      {{ end }}
+    {{ if .Values.backupDaemon.priorityClassName }}
+    priorityClassName: {{ .Values.backupDaemon.priorityClassName }}
+    {{ end }}
+    {{ if not .Values.externalDataBase }}
+    {{ if and .Values.tls .Values.tls.enabled }}
+    sslMode: "require"
+    {{ else }}
+    sslMode: "prefer"
+    {{ end }}
+    {{ else }}
+    sslMode: "prefer"
+    {{ end }}
+  {{ if .Values.backupDaemon.s3Storage }}
+    s3Storage:
+      url: {{ .Values.backupDaemon.s3Storage.url }}
+      accessKeyId: {{ .Values.backupDaemon.s3Storage.accessKeyId }}
+      secretAccessKey: {{ .Values.backupDaemon.s3Storage.secretAccessKey }}
+      bucket: {{ .Values.backupDaemon.s3Storage.bucket }}
+      prefix: {{ default "postgres" .Values.backupDaemon.s3Storage.prefix }}
+      untrustedCert: {{ .Values.backupDaemon.s3Storage.untrustedCert }}
+      region: {{ .Values.backupDaemon.s3Storage.region }}
+  {{ end }}
+  {{ if .Values.backupDaemon.externalPv }}
+    externalPv: {{ toYaml .Values.backupDaemon.externalPv | nindent 6 }}
+  {{ end }}
+{{ end }}
+{{ if .Values.consulRegistration }}
+  consulRegistration:
+{{ toYaml .Values.consulRegistration | indent 4 }}
+{{ end }}
+{{ if .Values.externalDataBase }}
+  externalDataBase:
+    type: "{{ .Values.externalDataBase.type }}"
+    project: "{{ .Values.externalDataBase.project }}"
+    instance: "{{ .Values.externalDataBase.instance }}"
+    port: {{ .Values.externalDataBase.port }}
+    region: "{{ .Values.externalDataBase.region }}"
+    connectionName: "{{ .Values.externalDataBase.connectionName }}"
+    authSecretName: "{{ .Values.externalDataBase.authSecretName }}"
+    {{- if .Values.externalDataBase.restoreConfig }}
+    restoreConfig:
+      {{ .Values.externalDataBase.restoreConfig | toYaml | nindent 6 }}
+    {{- end }}
+{{ end }}
+{{ if (eq (include "monitoring.install" .) "true") }}
+  metricCollector:
+    {{ if .Values.metricCollector.affinity }}
+    affinity: {{ .Values.metricCollector.affinity | toJson }}
+    {{ else if .Values.affinity }}
+    affinity: {{ .Values.affinity | toJson }}
+    {{ end }}
+    {{- if .Values.metricCollector.podLabels }}
+    podLabels:
+      {{ toYaml .Values.metricCollector.podLabels | nindent 6 }}
+    {{- else if .Values.podLabels }}
+    podLabels:
+      {{ toYaml .Values.podLabels | nindent 6 }}
+    {{- end }}
+    image: {{ template "find_image" (dict "deployName" "pg_patroni_metric_collector" "SERVICE_NAME" "pg_patroni_metric_collector" "vals" .Values "default" .Values.metricCollector.dockerImage) }}
+{{ if .Values.metricCollector.resources }}
+    resources:
+{{ toYaml .Values.metricCollector.resources | indent 6 }}
+{{ else }}
+    resources:
+      limits:
+        cpu: 300m
+        memory: 128Mi
+      requests:
+        cpu: 150m
+        memory: 128Mi
+{{ end }}
+    {{ if .Values.metricCollector.influxDb }}
+    influxDbHost: {{ .Values.metricCollector.influxDb.host }}
+    influxDatabase: {{ .Values.metricCollector.influxDb.database }}
+    {{ end }}
+    {{ if not .Values.externalDataBase }}
+    {{ if and .Values.tls .Values.tls.enabled }}
+    sslMode: "require"
+    {{ else }}
+    sslMode: "prefer"
+    {{ end }}
+    {{ else }}
+    sslMode: "prefer"
+    {{ end }}
+    metricsProfile: {{ .Values.metricCollector.metricsProfile | default "dev" }}
+    {{- if eq .Values.metricCollector.metricsProfile "dev" }}
+    devMetricsTimeout: {{ .Values.metricCollector.devMetricsTimeout | default 10 }}
+    devMetricsInterval: {{ .Values.metricCollector.devMetricsInterval | default 10 }}
+    {{- end }}
+    collectionInterval: {{ .Values.metricCollector.collectionInterval | default 60 }}
+    telegrafPluginTimeout: {{ .Values.metricCollector.telegrafPluginTimeout | default 60 }}
+    ocExecTimeout: {{ .Values.metricCollector.ocExecTimeout | default 10 }}
+    {{ if .Values.metricCollector.priorityClassName }}
+    priorityClassName: {{ .Values.metricCollector.priorityClassName }}
+    {{ end }}
+    securityContext:
+    {{- include "restricted.globalPodSecurityContext" . | nindent 6 }}
+    {{- with .Values.metricCollector.securityContext }}
+    {{- toYaml . | nindent 6 -}}
+    {{- end }}
+{{ end }}
+{{ if .Values.siteManager.install }}
+  siteManager:
+    activeClusterHost: {{ default "" .Values.siteManager.activeClusterHost }}
+    activeClusterPort: {{ default 5432 .Values.siteManager.activeClusterPort }}
+    standbyClusterHealthCheck:
+      retriesLimit: {{ default 3 .Values.siteManager.standbyClusterHealthCheck.retriesLimit }}
+      failureRetriesLimit: {{ default 5 .Values.siteManager.standbyClusterHealthCheck.failureRetriesLimit }}
+      retriesWaitTimeout: {{ default 30 .Values.siteManager.standbyClusterHealthCheck.retriesWaitTimeout }}
+{{ end }}
+{{- if .Values.postgresExporter }}
+{{- if .Values.postgresExporter.install }}
+  postgresExporter:
+    install: true
+    uri: {{ include "postgres-exporter.dataSourceURI" . }}
+{{- if .Values.postgresExporter.customQueries.enabled }}
+    customQueries:
+{{ toYaml .Values.postgresExporter.customQueries | indent 6 }}
+{{- end }}
+{{- end }}
+{{- end }}
+{{- if .Values.powaUI.install }}
+  powaUI:
+    install: {{ .Values.powaUI.install }}
+    image: {{ template "find_image" (dict "deployName" "powa_ui_docker" "SERVICE_NAME" "powa_ui_docker" "vals" .Values "default" .Values.powaUI.dockerImage) }}
+    {{- if .Values.powaUI.affinity }}
+    affinity: {{ .Values.powaUI.affinity | toJson }}
+    {{- else if .Values.affinity }}
+    affinity: {{ .Values.affinity | toJson }}
+    {{- end }}
+    cookieSecret: {{ default "powa" .Values.powaUI.cookieSecret }}
+    {{- if .Values.powaUI.podLabels }}
+    podLabels:
+{{ toYaml .Values.powaUI.podLabels | nindent 6 }}
+    {{- else if .Values.podLabels }}
+    podLabels:
+{{ toYaml .Values.podLabels | nindent 6 }}
+    {{- end }}
+    resources:
+{{ toYaml .Values.powaUI.resources | indent 6 }}
+    securityContext:
+      {{- include "restricted.globalPodSecurityContext" . | nindent 6 }}
+      {{- include "powaUI.securityContext" . }}
+{{- end }}
+{{- if .Values.queryExporter.install }}
+  queryExporter:
+    install: {{ .Values.queryExporter.install }}
+    image: {{ template "find_image" (dict "deployName" "query_exporter" "SERVICE_NAME" "query_exporter" "vals" .Values "default" .Values.queryExporter.dockerImage) }}
+    {{- if .Values.queryExporter.affinity }}
+    affinity: {{ .Values.queryExporter.affinity | toJson }}
+    {{- else if .Values.affinity }}
+    affinity: {{ .Values.affinity | toJson }}
+    {{- end }}
+    {{- if .Values.queryExporter.podLabels }}
+    podLabels:
+{{ toYaml .Values.queryExporter.podLabels | nindent 6 }}
+    {{- else if .Values.podLabels }}
+    podLabels:
+{{ toYaml .Values.podLabels | nindent 6 }}
+{{- include "kubernetes.labels" . | nindent 6 }}
+    {{- end }}
+    pgHost: {{ default (printf "%s.%s" "pg-patroni" .Release.Namespace) .Values.queryExporter.pgHost }}
+    pgPort: {{ default 5432 .Values.queryExporter.pgPort }}
+    queryTimeout: {{ default 30 .Values.queryExporter.queryTimeout}}
+    selfMonitorDisabled: {{ default false .Values.queryExporter.selfMonitorDisabled}}
+    maxMasterConnections: {{ default 10 .Values.queryExporter.maxMasterConnections}}
+    maxLogicalConnections: {{ default 1 .Values.queryExporter.maxLogicalConnections}}
+    maxFailedTimeouts: {{ default 3 .Values.queryExporter.maxFailedTimeouts | quote }}
+    collectionInterval: {{ .Values.queryExporter.collectionInterval | default 60 }}s
+{{- if .Values.queryExporter.customQueries.enabled }}
+    customQueries:
+{{ toYaml .Values.queryExporter.customQueries | indent 6 }}
+{{- end }}
+{{- if .Values.queryExporter.excludeQueries }}
+    excludeQueries:
+{{ toYaml .Values.queryExporter.excludeQueries | indent 6 }}
+{{- end }}
+    resources:
+{{ toYaml .Values.queryExporter.resources | indent 6 }}
+    securityContext:
+      {{- include "restricted.globalPodSecurityContext" . | nindent 6 }}
+      {{- with .Values.queryExporter.securityContext }}
+      {{- toYaml . | nindent 6 -}}
+      {{- end }}
+{{- end }}
+{{- if .Values.tracing }}
+  tracing:
+    enabled: {{ default "false" .Values.tracing.enabled }}
+    host: {{ default "jaeger-collector.tracing.svc:4317" .Values.tracing.host }}
+{{- end }}
+{{- if .Values.connectionPooler.install }}
+  connectionPooler:
+    install: {{ .Values.connectionPooler.install }}
+    image: {{ template "find_image" (dict "deployName" "pgbouncer" "SERVICE_NAME" "pgbouncer" "vals" .Values "default" .Values.connectionPooler.dockerImage) }}
+    {{- if .Values.connectionPooler.affinity }}
+    affinity: {{ .Values.connectionPooler.affinity | toJson }}
+    {{- else if .Values.affinity }}
+    affinity: {{ .Values.affinity | toJson }}
+    {{- end }}
+    replicas: {{ default 1 .Values.connectionPooler.replicas }}
+    {{- if .Values.connectionPooler.resources }}
+    resources:
+{{ toYaml .Values.connectionPooler.resources | indent 6 }}
+    {{- else }}
+    resources:
+      requests:
+        cpu: 125m
+        memory: 250Mi
+      limits:
+        cpu: 250m
+        memory: 500Mi
+    {{- end }}
+    securityContext:
+      {{- include "restricted.globalPodSecurityContext" . | nindent 6 }}
+      {{- with .Values.connectionPooler.securityContext }}
+      {{- toYaml . | nindent 6 -}}
+      {{- end }}
+    config:
+{{ toYaml .Values.connectionPooler.config | indent 6 }}
+  {{- end }}
+{{- if .Values.replicationController.install }}
+  replicationController:
+    install: {{ .Values.replicationController.install }}
+    image: {{ template "find_image" (dict "deployName" "replication_controller" "SERVICE_NAME" "replication_controller" "vals" .Values "default" .Values.replicationController.dockerImage) }}
+    {{- if .Values.replicationController.affinity }}
+    affinity: {{ .Values.replicationController.affinity | toJson }}
+    {{- else if .Values.affinity }}
+    affinity: {{ .Values.affinity | toJson }}
+    {{- end }}
+    {{- if .Values.replicationController.podLabels }}
+    podLabels:
+{{ toYaml .Values.replicationController.podLabels | nindent 6 }}
+    {{- else if .Values.podLabels }}
+    podLabels:
+{{ toYaml .Values.podLabels | nindent 6 }}
+    {{- end }}
+    {{ if not .Values.externalDataBase }}
+    {{ if and .Values.tls .Values.tls.enabled }}
+    sslMode: "true"
+    {{ else }}
+    sslMode: "false"
+    {{ end }}
+    {{ else }}
+    sslMode: "false"
+    {{ end }}
+    resources:
+{{ toYaml .Values.replicationController.resources | indent 6 }}
+    securityContext:
+      {{- include "restricted.globalPodSecurityContext" . | nindent 6 }}
+      {{- with .Values.replicationController.securityContext }}
+      {{- toYaml . | nindent 6 -}}
+      {{- end }}
+{{- end }}
+
+{{ if .Values.pgBackRest }}
+  pgBackRest:
+    diffSchedule: {{ .Values.pgBackRest.diffSchedule | default "0 0/1 * * *" }}
+    incrSchedule: {{ .Values.pgBackRest.incrSchedule | default "0 0/1 * * *" }}
+    backupFromStandby: {{ .Values.pgBackRest.backupFromStandby | default false }}
+{{ end }}
+
+{{- if .Values.pgBackRestExporter.install }}
+  pgBackRestExporter:
+    install: {{ .Values.pgBackRestExporter.install }}
+    image: {{ template "find_image" (dict "deployName" "pgbackrestexporter" "SERVICE_NAME" "pgbackrestexporter" "vals" .Values "default" .Values.pgBackRestExporter.image) }}
+    {{- if .Values.pgBackRestExporter.affinity }}
+    affinity: {{ .Values.pgBackRestExporter.affinity | toJson }}
+    {{- else if .Values.affinity }}
+    affinity: {{ .Values.affinity | toJson }}
+    {{- end }}
+    {{- if .Values.pgBackRestExporter.podLabels }}
+    podLabels:
+{{ toYaml .Values.pgBackRestExporter.podLabels | nindent 6 }}
+    {{- else if .Values.podLabels }}
+    podLabels:
+{{ toYaml .Values.podLabels | nindent 6 }}
+    {{- end }}
+    env:
+{{ toYaml .Values.pgBackRestExporter.env | indent 6 }}
+    resources:
+{{ toYaml .Values.pgBackRestExporter.resources | indent 6 }}
+    securityContext:
+      {{- include "restricted.globalPodSecurityContext" . | nindent 6 }}
+      {{- with .Values.pgBackRestExporter.securityContext }}
+      {{- toYaml . | nindent 6 -}}
+      {{- end }}
+{{- end }}
+
+  {{ if .Values.tests.install }}
+  integrationTests:
+    {{- if .Values.tests.affinity }}
+    affinity: {{ .Values.tests.affinity | toJson }}
+    {{- else if .Values.affinity }}
+    affinity: {{ .Values.affinity | toJson }}
+    {{- end }}
+    {{- if .Values.tests.podLabels }}
+    podLabels:
+      {{ toYaml .Values.tests.podLabels | nindent 6 }}
+    {{- else if .Values.podLabels }}
+    podLabels:
+      {{ toYaml .Values.podLabels | nindent 6 }}
+    {{- end }}
+    image: {{ template "find_image" (dict "deployName" "postgres_operator_tests" "SERVICE_NAME" "postgres_operator_tests" "vals" .Values "default" .Values.tests.dockerImage) }}
+{{ if .Values.tests.resources }}
+    resources:
+{{ toYaml .Values.tests.resources | indent 6 }}
+{{ else }}
+    resources:
+      limits:
+        cpu: 300m
+        memory: 512Mi
+      requests:
+        cpu: 150m
+        memory: 256Mi
+{{ end }}
+{{- $runTestScenarios := .Values.tests.runTestScenarios }}
+{{- if or (eq (lower $runTestScenarios) "full") (eq (lower $runTestScenarios) "basic") }}
+    runTestScenarios: {{.Values.tests.runTestScenarios}}
+{{- else if index .Values.tests.testScenarios (printf "%s" $runTestScenarios) }}
+    testList:
+        {{- range (index .Values.tests.testScenarios (printf "%s" $runTestScenarios)) }}
+      - {{ . }}
+        {{- end }}
+{{ end }}
+    pgNodeQty: {{ default "1" .Values.patroni.replicas }}
+{{ end }}
+{{ if .Values.runTestsOnly }}
+runTestsTime: {{ now | unixEpoch | quote }}
+{{ end }}

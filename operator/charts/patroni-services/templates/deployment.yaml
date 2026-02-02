@@ -1,0 +1,192 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: postgres-operator
+  labels:
+    name: patroni-core-operator
+{{ if .Values.operator.podLabels }}
+{{ .Values.operator.podLabels | toYaml | nindent 4 }}
+{{ else if .Values.podLabels }}
+{{ .Values.podLabels | toYaml | nindent 4 }}
+{{ else }}
+{{ include "kubernetes.labels" . | nindent 4 }}
+{{ end }}
+spec:
+  replicas: 1
+  strategy:
+    type: Recreate
+  selector:
+    matchLabels:
+      name: postgres-operator
+{{ if .Values.operator.podLabels }}
+{{ .Values.operator.podLabels | toYaml | nindent 6 }}
+{{ else if .Values.podLabels }}
+{{ .Values.podLabels | toYaml | nindent 6 }}
+{{ end }}
+  template:
+    metadata:
+      labels:
+        name: postgres-operator
+{{ if .Values.operator.podLabels }}
+{{ .Values.operator.podLabels | toYaml | nindent 8 }}
+{{ else if .Values.podLabels }}
+{{ .Values.podLabels | toYaml | nindent 8 }}
+{{ else }}
+{{ include "kubernetes.labels" . | nindent 8 }}
+{{ end }}
+    spec:
+      serviceAccountName: postgres-sa
+      {{ if .Values.operator.affinity }}
+      affinity: {{ .Values.operator.affinity | toJson }}
+      {{ else if .Values.affinity }}
+      affinity: {{ .Values.affinity | toJson }}
+      {{ end }}
+      {{- include "postgres-operator.init-container" . | nindent 6 }}
+      containers:
+        - name: patroni-services
+          image: {{ template "find_image" (dict "deployName" "postgres_operator" "SERVICE_NAME" "patroni-services" "vals" .Values "default" .Values.operator.image) }}
+          imagePullPolicy: {{ default "IfNotPresent" .Values.imagePullPolicy }}
+          {{ if .Values.operator.priorityClassName }}
+          priorityClassName: {{ .Values.operator.priorityClassName }}
+          {{ end }}
+          resources:
+            limits:
+              cpu: {{ default "50m" .Values.operator.resources.limits.cpu  }}
+              memory: {{ default "50Mi" .Values.operator.resources.limits.memory }}
+            requests:
+              cpu: {{ default "50m" .Values.operator.resources.requests.cpu }}
+              memory: {{ default "50Mi" .Values.operator.resources.requests.memory  }}
+          securityContext:
+            {{- include "restricted.globalContainerSecurityContext" . | nindent 12 }}
+          {{ if .Values.externalDataBase }}
+          {{ if eq (lower .Values.externalDataBase.type) "cloudsql"}}
+          volumeMounts:
+            - mountPath: /secrets/cloudsql
+              name: cloudsql-instance-credentials
+              readOnly: true
+          {{ end }}
+          {{ end }}
+          {{- if not .Values.externalDataBase }}
+          {{- if and .Values.tls .Values.tls.enabled }}
+          volumeMounts:
+            - name: tls-cert
+              mountPath: /certs/
+          {{- end }}
+          {{- end }}
+          env:
+            - name: WATCH_NAMESPACE
+              valueFrom:
+                fieldRef:
+                  fieldPath: metadata.namespace
+            - name: NAMESPACE
+              valueFrom:
+                fieldRef:
+                  fieldPath: metadata.namespace
+            - name: POD_NAME
+              valueFrom:
+                fieldRef:
+                  fieldPath: metadata.name
+            - name: OPERATOR_NAME
+              value: "patroni-services"
+            - name: RESOURCE_NAME
+              value: patroni-services
+            - name: PATRONI_CLUSTER_NAME
+              value: {{ .Values.patroni.clusterName }}
+            - name: WAIT_TIMEOUT
+              value: {{ default "10" .Values.operator.waitTimeout | quote }}
+            - name: PG_RECONCILE_RETRIES
+              value: {{ default "3" .Values.operator.reconcileRetries | quote }}
+            {{- if .Values.siteManager.install }}
+            {{- if .Values.siteManager.httpAuth }}
+            - name: TOKEN_SESSION_TIMEOUT
+              value: {{ default "5" .Values.siteManager.httpAuth.tokenSessionTimeout | quote}}
+            {{- end }}
+            {{- end }}
+            - name: HOST_IP
+              valueFrom:
+                fieldRef:
+                  fieldPath: status.hostIP
+            - name: PG_ADMIN_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: postgres-credentials
+                  key: password
+            - name: PG_ADMIN_USER
+              valueFrom:
+                secretKeyRef:
+                  name: postgres-credentials
+                  key: username
+            - name: PG_REPLICATOR_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: replicator-credentials
+                  key: password
+            - name: GLOBAL_SECURITY_CONTEXT
+              value: {{ .Values.GLOBAL_SECURITY_CONTEXT | quote | default ("true" | quote) }}
+            - name: CLOUD_PUBLIC_HOST
+              value: {{ .Values.CLOUD_PUBLIC_HOST }}
+              {{ if .Values.externalDataBase }}
+              {{ if eq (lower .Values.externalDataBase.type) "cloudsql"}}
+            - name: GOOGLE_APPLICATION_CREDENTIALS
+              value: /secrets/cloudsql/credentials.json
+              {{ end }}
+              {{ end }}
+              {{- template "postgres-operator.smEnvs" . }}
+            - name: INTERNAL_TLS_ENABLED
+              value: {{ default "false" .Values.INTERNAL_TLS_ENABLED | quote }}
+          livenessProbe:
+            httpGet:
+              path: /healthz
+              port: 8081
+              scheme: HTTP
+            initialDelaySeconds: 10
+            timeoutSeconds: 5
+            periodSeconds: 10
+            successThreshold: 1
+            failureThreshold: 10
+          readinessProbe:
+            httpGet:
+              path: /readyz
+              port: 8081
+              scheme: HTTP
+            initialDelaySeconds: 10
+            timeoutSeconds: 5
+            periodSeconds: 10
+            successThreshold: 1
+            failureThreshold: 10
+      {{- if .Values.privateRegistry.enabled }}
+      imagePullSecrets:
+      {{- range $i, $v := .Values.privateRegistry.secrets }}
+        - name: {{ $v.name }}
+      {{- end }}
+      {{- end }}
+      volumes:
+      {{ if .Values.externalDataBase }}
+      {{ if eq (lower .Values.externalDataBase.type) "cloudsql"}}
+        - name: cloudsql-instance-credentials
+          secret:
+            defaultMode: 420
+            secretName: {{ default "cloudsql-instance-credentials" .Values.externalDataBase.authSecretName }}
+      {{ end }}
+      {{ end }}
+      {{- if not .Values.externalDataBase }}
+      {{- if and .Values.tls .Values.tls.enabled }}
+        - name: tls-cert
+          secret:
+            secretName: {{ .Values.tls.certificateSecretName }}
+            defaultMode: 416
+      {{- end }}
+      {{- end }}
+      tolerations:
+        {{- range $tKey, $t := .Values.policies.tolerations }}
+        - key: {{ $t.key }}
+          operator: {{ $t.operator }}
+          value: {{ $t.value }}
+          effect: {{ $t.effect }}
+          tolerationSeconds: {{ $t.tolerationSeconds }}
+        {{- end }}
+      securityContext:
+        {{- include "restricted.globalPodSecurityContext" . | nindent 8 }}
+        {{- with .Values.operator.securityContext }}
+        {{- toYaml . | nindent 8 -}}
+        {{- end }}

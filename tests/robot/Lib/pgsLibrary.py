@@ -33,10 +33,14 @@ log = logging.getLogger()
 log.setLevel(logging.DEBUG)
 
 class pgsLibrary(object):
-    def __init__(self, namespace, ssl_mode):
+    def __init__(self, namespace, ssl_mode, internal_tls):
         self._namespace = namespace
         self._ssl_mode = ssl_mode
+        self._internal_tls = internal_tls
         self._scheme = 'http'
+        self._dbaas_scheme = 'http'
+        if self._internal_tls == 'true':
+            self._dbaas_scheme = 'https'
         if self._ssl_mode == 'require':
             self._scheme = 'https'
         self.pl_lib = PlatformLibrary(managed_by_operator="true")
@@ -255,11 +259,13 @@ class pgsLibrary(object):
             with conn.cursor() as cursor:
                 try:
                     cursor.execute(query)
-                    if query.lower().find("insert"):
-                        conn.commit()
-                    return cursor.fetchall()
+                    # Only fetch results for queries that return data (SELECT, etc.)
+                    # DDL statements (CREATE, DROP, ALTER) don't return results
+                    if cursor.description is not None:
+                        return cursor.fetchall()
+                    return None
                 except Exception as e:
-                    logging.info("Error {0}.  execute {1}. Service is {2}".format(e, query, host))
+                    logging.error("Error {0}.  execute {1}. Service is {2}".format(e, query, host))
 
     @keyword('Scale Deployment ${deployment} To ${replicas}')
     def os_scale_dc(self, deployment, replicas, timeout=90):
@@ -282,7 +288,7 @@ class pgsLibrary(object):
 
     @keyword('Get API Version')
     def get_api_version(self):
-        curl_command = f'curl -k -XGET -u dbaas-aggregator:dbaas-aggregator {self._scheme}://dbaas-postgres-adapter.{self._namespace}:8080/api/version'
+        curl_command = f'curl -k -XGET -u dbaas-aggregator:dbaas-aggregator {self._dbaas_scheme}://dbaas-postgres-adapter.{self._namespace}:8080/api/version'
         master_pod = self.get_master_pod_id()
         result, errors = self.execute_in_pod(pod_name=master_pod, exec_command=curl_command)
         if result:
@@ -642,7 +648,13 @@ class pgsLibrary(object):
 
     def detect_pg_version_and_storage_path(self):
         pg_ver = self.get_pg_version()
-        if pg_ver >= 16:
+        if pg_ver >= 18:
+            logging.info("Using pgsql 18 storage")
+            backup_dir = '/backup-storage/pg18'
+        elif pg_ver >= 17:
+            logging.info("Using pgsql 17 storage")
+            backup_dir = '/backup-storage/pg17'
+        elif pg_ver >= 16:
             logging.info("Using pgsql 16 storage")
             backup_dir = '/backup-storage/pg16'
         elif pg_ver >= 15:

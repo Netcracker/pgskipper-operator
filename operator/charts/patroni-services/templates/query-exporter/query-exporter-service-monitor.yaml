@@ -1,0 +1,31 @@
+{{ if .Values.queryExporter.install }}
+apiVersion: monitoring.coreos.com/v1
+kind: ServiceMonitor
+metadata:
+  name: query-exporter-service-monitor
+  labels:
+    k8s-app: query-exporter-service-monitor
+    name: query-exporter-service-monitor
+    app.kubernetes.io/name: query-exporter-service-monitor
+    app.kubernetes.io/component: monitoring
+    app.kubernetes.io/part-of: platform-monitoring
+    app.kubernetes.io/managed-by: platform-monitoring-operator
+spec:
+  endpoints:
+    - interval: {{ .Values.queryExporter.collectionInterval | default 60 }}s
+      port: web
+      scheme: http
+      scrapeTimeout: {{ default "10" .Values.queryExporter.scrapeTimeout }}s
+  jobLabel: k8s-app
+  namespaceSelector:
+    {{ if  .Release.Namespace }}
+    matchNames:
+      - {{ .Release.Namespace }}
+    {{ else }}
+    matchNames:
+      - {{ default "postgres-service" .Values.NAMESPACE }}
+    {{ end }}
+  selector:
+    matchLabels:
+      app: query-exporter
+{{ end }}

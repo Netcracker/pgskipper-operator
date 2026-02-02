@@ -12,8 +12,8 @@ Check List Databases By Dbaas Adapter
 Check List Databases By Dbaas Adapter With Wrong Credentials
     [Tags]  full  dbaas
     ${auth}=  Create List  ${DBAAS_ADAPTER_API_USER}wrong  ${DBAAS_ADAPTER_API_PASSWORD}wrong
-    ${PGSSLMODE}=  Get Environment Variable  PGSSLMODE
-    ${scheme}=  Set Variable If  '${PGSSLMODE}' == 'require'  https  http
+    ${INTERNAL_TLS_ENABLED}=  Get Environment Variable  INTERNAL_TLS_ENABLED
+    ${scheme}=  Set Variable If  '${INTERNAL_TLS_ENABLED}' == 'true'  https  http
     Create Session  dbaaswrongcreds  ${scheme}://${DBAAS_ADAPTER_HOST}:${DBAAS_ADAPTER_PORT}  auth=${auth}
     ${resp}=  GET On Session  dbaaswrongcreds  /api/${api_version}/dbaas/adapter/postgresql/databases  expected_status=401
     Should Be Equal  ${resp.status_code}  ${401}

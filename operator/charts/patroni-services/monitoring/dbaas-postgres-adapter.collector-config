@@ -1,0 +1,29 @@
+[
+ {
+ "name": "dbaas",
+ "parameters": {
+    "url": "http://dbaas-postgres-adapter:8080/health",
+    "selector":
+     {
+       "key": "app",
+       "value": "dbaas-postgres-adapter"
+     },
+    "service_name": "dbaas-postgres-adapter",
+    "output_selector": "health"
+  }
+ },
+ {
+ "name": "dbaas",
+ "parameters": {
+    "url": "http://dbaas-postgres-adapter:8080/metrics",
+    "selector":
+     {
+       "key": "app",
+       "value": "dbaas-postgres-adapter"
+     },
+    "service_name": "dbaas-postgres-adapter",
+    "output_selector": "metrics",
+    "metrics_type": "prometheus"
+  }
+ }
+]
