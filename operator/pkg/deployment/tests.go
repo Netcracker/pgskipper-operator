@@ -16,7 +16,6 @@ package deployment
 
 import (
 	"fmt"
-	"regexp"
 	"strconv"
 	"strings"
 
@@ -36,22 +35,19 @@ func NewIntegrationTestsPod(cr *v1.PatroniServices, cluster *patroniv1.PatroniCl
 	testsSpec := cr.Spec.IntegrationTests
 	tastsTags := ""
 	pgHost := cluster.PostgresServiceName
-	if strings.ToLower(testsSpec.RunTestScenarios) == "full" {
+
+	if testsSpec.Tags != "" {
+		tastsTags = strings.Join(strings.Fields(testsSpec.Tags), "")
+	} else if strings.ToLower(testsSpec.RunTestScenarios) == "full" {
 		if cr.Spec.BackupDaemon != nil && cr.Spec.BackupDaemon.Resources != nil {
 			tastsTags = "backup*ORdbaas*"
 		}
-	} else {
-		if strings.ToLower(testsSpec.RunTestScenarios) == "basic" {
-			if cr.Spec.BackupDaemon != nil && cr.Spec.BackupDaemon.Resources != nil {
-				tastsTags = "backup_basic"
-			}
-		} else {
-			if testsSpec.TestList != nil {
-				tastsTags = strings.Join(testsSpec.TestList, "OR")
-				r := regexp.MustCompile(`\s+`)
-				tastsTags = r.ReplaceAllString(tastsTags, "_")
-			}
+	} else if strings.ToLower(testsSpec.RunTestScenarios) == "basic" {
+		if cr.Spec.BackupDaemon != nil && cr.Spec.BackupDaemon.Resources != nil {
+			tastsTags = "backup_basic"
 		}
+	} else if len(testsSpec.TestList) > 0 {
+		tastsTags = strings.Join(testsSpec.TestList, "OR")
 	}
 	dockerImage := testsSpec.DockerImage
 	name := "integration-robot-tests"
@@ -154,21 +150,20 @@ func NewCoreIntegrationTests(cr *patroniv1.PatroniCore, cluster *patroniv1.Patro
 	if cr.Spec.Patroni.StandbyCluster != nil {
 		pgHost = fmt.Sprintf("pg-%s-external", cluster.ClusterName)
 	}
-	if strings.ToLower(cr.Spec.Patroni.Dcs.Type) != "kubernetes" {
+	if testsSpec.Tags != "" {
+		tastsTags = strings.ReplaceAll(testsSpec.Tags, " ", "")
+	} else if strings.ToLower(cr.Spec.Patroni.Dcs.Type) != "kubernetes" {
 		tastsTags = "patroni_simple"
-	} else {
-		if strings.ToLower(testsSpec.RunTestScenarios) == "full" {
-			tastsTags = "patroni*"
-		} else {
-			if strings.ToLower(testsSpec.RunTestScenarios) == "basic" {
-				tastsTags = "patroni_basic"
-			} else {
-				if testsSpec.TestList != nil {
-					r := regexp.MustCompile(`\s+`)
-					tastsTags = r.ReplaceAllString(tastsTags, "_")
-				}
-			}
+	} else if strings.ToLower(testsSpec.RunTestScenarios) == "full" {
+		tastsTags = "patroni*"
+	} else if strings.ToLower(testsSpec.RunTestScenarios) == "basic" {
+		tastsTags = "patroni_basic"
+	} else if len(testsSpec.TestList) > 0 {
+		cleaned := make([]string, 0, len(testsSpec.TestList))
+		for _, t := range testsSpec.TestList {
+			cleaned = append(cleaned, strings.ReplaceAll(t, " ", "_"))
 		}
+		tastsTags = strings.Join(cleaned, "OR")
 	}
 	dockerImage := testsSpec.DockerImage
 	name := "patroni-robot-tests"

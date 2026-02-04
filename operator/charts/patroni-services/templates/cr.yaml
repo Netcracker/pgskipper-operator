@@ -422,6 +422,9 @@ spec:
       - {{ . }}
         {{- end }}
 {{ end }}
+{{- if .Values.tests.tags }}
+    tags: {{ .Values.tests.tags | quote }}
+{{- end }}
     pgNodeQty: {{ default "1" .Values.patroni.replicas }}
 {{ end }}
 {{ if .Values.runTestsOnly }}
