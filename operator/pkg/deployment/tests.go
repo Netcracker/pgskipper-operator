@@ -34,6 +34,7 @@ var (
 func NewIntegrationTestsPod(cr *v1.PatroniServices, cluster *patroniv1.PatroniClusterSettings) *corev1.Pod {
 	testsSpec := cr.Spec.IntegrationTests
 	tastsTags := ""
+	opt := true
 	pgHost := cluster.PostgresServiceName
 
 	if testsSpec.Tags != "" {
@@ -123,6 +124,16 @@ func NewIntegrationTestsPod(cr *v1.PatroniServices, cluster *patroniv1.PatroniCl
 								},
 							},
 						},
+						{
+							Name: "DD_IMAGES",
+							ValueFrom: &corev1.EnvVarSource{
+								ConfigMapKeyRef: &corev1.ConfigMapKeySelector{
+									LocalObjectReference: corev1.LocalObjectReference{Name: "supplementary-tests-config"},
+									Key:                  "dd_images",
+									Optional:             &opt,
+								},
+							},
+						},
 					},
 					VolumeMounts: []corev1.VolumeMount{},
 				},
@@ -146,6 +157,7 @@ func NewIntegrationTestsPod(cr *v1.PatroniServices, cluster *patroniv1.PatroniCl
 func NewCoreIntegrationTests(cr *patroniv1.PatroniCore, cluster *patroniv1.PatroniClusterSettings) *corev1.Pod {
 	testsSpec := cr.Spec.IntegrationTests
 	tastsTags := ""
+	opt := true
 	pgHost := cluster.PostgresServiceName
 	if cr.Spec.Patroni.StandbyCluster != nil {
 		pgHost = fmt.Sprintf("pg-%s-external", cluster.ClusterName)
@@ -240,6 +252,16 @@ func NewCoreIntegrationTests(cr *patroniv1.PatroniCore, cluster *patroniv1.Patro
 							ValueFrom: &corev1.EnvVarSource{
 								FieldRef: &corev1.ObjectFieldSelector{
 									FieldPath: "metadata.namespace",
+								},
+							},
+						},
+						{
+							Name: "DD_IMAGES",
+							ValueFrom: &corev1.EnvVarSource{
+								ConfigMapKeyRef: &corev1.ConfigMapKeySelector{
+									LocalObjectReference: corev1.LocalObjectReference{Name: "patroni-tests-config"},
+									Key:                  "dd_images",
+									Optional:             &opt,
 								},
 							},
 						},
