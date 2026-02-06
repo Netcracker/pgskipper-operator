@@ -15,6 +15,10 @@ on:
         type: boolean
         default: false
         required: false
+  workflow_run:
+    workflows: ["Run Pgskipper Pipeline"]
+    types:
+      - completed  
 
 concurrency:
   group: build-and-push-${{ github.ref }}

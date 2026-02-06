@@ -36,8 +36,10 @@ jobs:
           token: ${{ secrets.GITHUB_TOKEN }}
           poll-interval: 20
   Pgskipper-Pipeline:
+    needs: Wait-for-images
     uses: Netcracker/qubership-test-pipelines/.github/workflows/pgskipper.yaml@pgskipper
     with:
+      repository_name: ${{ github.repository }}
       service_branch: '${{ github.head_ref || github.ref_name }}'
       versions_file: '.github/versions.yaml'
       pipeline_branch: 'pgskipper' #this value must match the value after '@' in 'uses'
