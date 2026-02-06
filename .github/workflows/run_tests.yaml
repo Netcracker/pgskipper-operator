@@ -5,12 +5,10 @@ permissions:
   packages: read
   actions: read
 
-# on:
-#   pull_request:
-#     types: [opened, synchronize, reopened]
-#     branches: [main]
 on:
-  push
+  pull_request:
+    types: [opened, synchronize, reopened]
+    branches: [main]
 
 jobs:
   # Wait-for-images:
