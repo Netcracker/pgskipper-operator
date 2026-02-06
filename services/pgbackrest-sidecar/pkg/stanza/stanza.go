@@ -28,13 +28,27 @@ var (
 )
 
 func CreateStanza() error {
-	time.Sleep(30 * time.Second)
-	if err, _ := utils.ExecCommand(constants.BackrestBin, args); err != nil {
-		logger.Error(fmt.Sprintf("While creating stanza en error occures %v", err))
-		return err
-	}
-	return nil
+	timeout := time.After(30 * time.Minute)
+	ticker := time.NewTicker(10 * time.Second)
+	defer ticker.Stop()
 
+	for {
+		if err, _ := utils.ExecCommand("pg_isready", []string{"-q"}); err != nil {
+			logger.Error(fmt.Sprintf("Postgres is not ready yet [%v], waiting...", err))
+		} else if err, _ := utils.ExecCommand(constants.BackrestBin, args); err != nil {
+			logger.Error(fmt.Sprintf("While creating stanza an error occurred %v", err))
+			return err
+		} else {
+			return nil
+		}
+
+		select {
+		case <-timeout:
+			return fmt.Errorf("timeout waiting for postgres to be ready, stanza create stopped")
+		case <-ticker.C:
+			// continue loop
+		}
+	}
 }
 
 func UpgradeStanza() error {

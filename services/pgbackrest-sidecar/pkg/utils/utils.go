@@ -16,11 +16,13 @@ package utils
 
 import (
 	"bufio"
+	"bytes"
 	"fmt"
-	"go.uber.org/zap"
-	"go.uber.org/zap/zapcore"
 	"os"
 	"os/exec"
+
+	"go.uber.org/zap"
+	"go.uber.org/zap/zapcore"
 )
 
 var (
@@ -38,6 +40,9 @@ func ExecCommand(command string, args []string) (error, string) {
 
 	logger.Info(fmt.Sprintf("Executed command is %s with args %v", command, args))
 	cmd := exec.Command(command, args...)
+
+	var stderr bytes.Buffer
+	cmd.Stderr = &stderr
 
 	stdout, err := cmd.StdoutPipe()
 	if err != nil {
@@ -62,7 +67,7 @@ func ExecCommand(command string, args []string) (error, string) {
 	}
 
 	if err := cmd.Wait(); err != nil {
-		logger.Error("Error waiting for command to finish", zap.Error(err))
+		logger.Error("Error waiting for command to finish", zap.Error(err), zap.String("stderr", stderr.String()))
 		return err, ""
 	}
 
