@@ -26,7 +26,7 @@ import (
 
 func main() {
 
-	_ = stanza.CreateStanza()
+	go stanza.CreateStanza()
 	app := fiber.New()
 
 	app.Post("/backup", func(c *fiber.Ctx) error {
