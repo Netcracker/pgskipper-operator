@@ -14,9 +14,9 @@ jobs:
   # Wait-for-images:
   #   runs-on: ubuntu-latest
   #   strategy:
-  #     fail-fast: false 
+  #     fail-fast: false
   #     matrix:
-  #       workflow_name: 
+  #       workflow_name:
   #         - build-backup-daemon.yaml
   #         - build-dbaas-adapter.yaml
   #         - build-monitoring-agent.yaml
@@ -35,12 +35,12 @@ jobs:
   #         poll-interval: 20
   Pgskipper-Pipeline:
     # needs: Wait-for-images
-    uses: Netcracker/qubership-test-pipelines/.github/workflows/pgskipper.yaml@86d0556d90790930af865a7c5b42f092259a6294
+    uses: Netcracker/qubership-test-pipelines/.github/workflows/pgskipper.yaml@64c278a28633ba06f64b93de1ef5f35ec3d75ed9 #v1.4.0
     with:
       repository_name: ${{ github.repository }}
       service_branch: '${{ github.head_ref || github.ref_name }}'
-      versions_file: '.github/versions.yaml'
-      pipeline_branch: '86d0556d90790930af865a7c5b42f092259a6294' #this value must match the value after '@' in 'uses'
+      pipeline_branch: '64c278a28633ba06f64b93de1ef5f35ec3d75ed9' #this value must match the value after '@' in 'uses'
     secrets:
       AWS_S3_ACCESS_KEY_ID: ${{secrets.AWS_S3_ACCESS_KEY_ID}}
       AWS_S3_ACCESS_KEY_SECRET: ${{secrets.AWS_S3_ACCESS_KEY_SECRET}}
+
