@@ -617,17 +617,17 @@ func (r *PatroniReconciler) fixCollationVersionForDB(pgClient *pgClient.Postgres
 	logger.Info(fmt.Sprintf("fix locale for database: %s", db))
 	err = pgClient.ExecuteForDB(db, fmt.Sprintf("REINDEX DATABASE CONCURRENTLY \"%s\"", db))
 	if err != nil {
-		logger.Warn(fmt.Sprintf("Cannot reindex database for db: %s", db), zap.Error(err))
+		logger.Error(fmt.Sprintf("Cannot reindex database for db: %s", db), zap.Error(err))
 		return
 	}
 	err = pgClient.ExecuteForDB(db, fmt.Sprintf("REINDEX SYSTEM \"%s\"", db))
 	if err != nil {
-		logger.Warn(fmt.Sprintf("Cannot reindex system for db: %s", db), zap.Error(err))
+		logger.Error(fmt.Sprintf("Cannot reindex system for db: %s", db), zap.Error(err))
 		return
 	}
 	brokenIndNames, err := findBrokenIndexes(pgClient, db)
 	if err != nil {
-		logger.Warn(fmt.Sprintf("Cannot find broken indexes for db: %s", db), zap.Error(err))
+		logger.Error(fmt.Sprintf("Cannot find broken indexes for db: %s", db), zap.Error(err))
 		return
 	}
 
@@ -640,14 +640,14 @@ func (r *PatroniReconciler) fixCollationVersionForDB(pgClient *pgClient.Postgres
 	if pgVersion >= 15 {
 		err = pgClient.Execute(fmt.Sprintf("ALTER DATABASE \"%s\" REFRESH COLLATION VERSION", db))
 		if err != nil {
-			logger.Warn(fmt.Sprintf("Cannot alter locale version for db: %s", db), zap.Error(err))
+			logger.Error(fmt.Sprintf("Cannot alter locale version for db: %s", db), zap.Error(err))
 			return
 		}
 	}
 
 	err = r.refreshDependCollationsVersion(pgClient, db)
 	if err != nil {
-		logger.Warn(fmt.Sprintf("Cannot alter dependent collations version for db: %s", db), zap.Error(err))
+		logger.Error(fmt.Sprintf("Cannot alter dependent collations version for db: %s", db), zap.Error(err))
 	}
 }
 
@@ -655,27 +655,39 @@ func fixBrokenIndexes(pgClient *pgClient.PostgresClient, db string, brokenIndNam
 	logger.Warn(fmt.Sprintf("Broken indexes found for db: %s", db))
 	indexesFixed := true
 	for _, BrokenIndName := range brokenIndNames {
-		dropIndexQuery := fmt.Sprintf("DROP INDEX IF EXISTS \"%s\"", BrokenIndName)
+		dropIndexQuery := fmt.Sprintf("DROP INDEX IF EXISTS %s", BrokenIndName)
 		err := pgClient.ExecuteForDB(db, dropIndexQuery)
 		if err != nil {
-			logger.Warn(fmt.Sprintf("Cannot drop index for db: %s", db), zap.Error(err))
+			logger.Error(fmt.Sprintf("Cannot drop index %s for db: %s", BrokenIndName, db), zap.Error(err))
 			indexesFixed = false
 		}
 		if strings.Contains(BrokenIndName, "_ccnew") {
 			indexNameOld := strings.Split(BrokenIndName, "_ccnew")[0]
-			err = pgClient.ExecuteForDB(db, fmt.Sprintf("REINDEX INDEX CONCURRENTLY \"%s\"", indexNameOld))
+			err = pgClient.ExecuteForDB(db, fmt.Sprintf("REINDEX INDEX CONCURRENTLY %s", indexNameOld))
 			if err != nil {
-				logger.Warn(fmt.Sprintf("Cannot reindex index for db: %s", db), zap.Error(err))
+				logger.Error(fmt.Sprintf("Cannot reindex index %s for db: %s", indexNameOld, db), zap.Error(err))
 				indexesFixed = false
 			}
 		}
 	}
 
 	if indexesFixed {
+		// check if some indexes have not been fixed
+		remainingIndexes, err := findBrokenIndexes(pgClient, db)
+		if err != nil {
+			logger.Error(fmt.Sprintf("Cannot find broken indexes for db: %s", db), zap.Error(err))
+			return err
+		}
+
+		if len(remainingIndexes) > 0 {
+			logger.Error(fmt.Sprintf("Broken indexes %v still present in db: %s", remainingIndexes, db))
+			return fmt.Errorf("Broken indexes still present in db: %s", db)
+		}
+
 		logger.Info(fmt.Sprintf("Broken indexes fixed for db: %s", db))
 	} else {
 		msg := fmt.Sprintf("Broken indexes not fixed for db: %s", db)
-		logger.Warn(msg)
+		logger.Error(msg)
 		return goErrors.New(msg)
 	}
 	return nil
