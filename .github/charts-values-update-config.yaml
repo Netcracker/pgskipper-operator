@@ -1,0 +1,29 @@
+---
+
+# Charts release configuration file example
+# This file is used to update the version of the helm charts and images in the values.yaml file
+# It is used in the helm-charts-release action
+# ${release} is replaced with the release version provided in the workflow
+
+charts:
+  - name: patroni-core
+    chart_file: charts/patroni-core/Chart.yaml
+    values_file: charts/patroni-core/values.yaml
+    image:
+      - ghcr.io/netcracker/qubership-credential-manager:#latest
+      - ghcr.io/netcracker/pgskipper-operator:${release}
+      - ghcr.io/netcracker/pgskipper-patroni-16:#latest
+      - ghcr.io/netcracker/pgskipper-upgrade:#^release-.+
+      - ghcr.io/netcracker/pgskipper-operator-tests:${release}
+  - name: patroni-services
+    chart_file: charts/patroni-services/Chart.yaml
+    values_file: charts/patroni-services/values.yaml
+    image:
+      - ghcr.io/netcracker/qubership-credential-manager:#latest
+      - ghcr.io/netcracker/pgskipper-operator:${release}
+      - ghcr.io/netcracker/pgskipper-monitoring-agent:#^release-.+
+      - ghcr.io/netcracker/pgskipper-backup-daemon:#^release-.+
+      - ghcr.io/netcracker/pgskipper-dbaas-adapter:#^release-.+
+      - ghcr.io/netcracker/qubership-query-exporter:#^release-.+
+      - ghcr.io/netcracker/pgskipper-replication-controller:#^release-.+
+      - ghcr.io/netcracker/pgskipper-operator-tests:${release}

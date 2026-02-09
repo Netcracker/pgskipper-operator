@@ -1,0 +1,20 @@
+{
+  "components": [
+    {
+      "name": "pgskipper-operator",
+      "file": "build/Dockerfile",
+      "context": "."
+    },
+    {
+      "name": "pgskipper-operator-tests",
+      "file": "tests/Dockerfile",
+      "context": "tests"
+    },
+    {
+      "name": "pgskipper-operator-transfer",
+      "file": "./docker-transfer/Dockerfile",
+      "context": "."
+    }
+  ],
+  "platforms": "linux/amd64,linux/arm64"
+}
