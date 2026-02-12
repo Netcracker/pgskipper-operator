@@ -3,7 +3,7 @@ module github.com/Netcracker/pgskipper-pgbackrest-sidecar
 go 1.25.5
 
 require (
-	github.com/gofiber/fiber/v2 v2.52.9
+	github.com/gofiber/fiber/v2 v2.52.11
 	go.uber.org/zap v1.27.1
 )
 
