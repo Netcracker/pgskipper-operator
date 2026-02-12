@@ -1,0 +1,131 @@
+# PostgreSQL Failover Test - Helmfile Configuration
+#
+# Location: tests/examples/spring-boot-failover-test/
+# This example demonstrates PostgreSQL failover testing with Spring Boot
+#
+# This helmfile imports the pgskipper-operator from the root helmfile and adds:
+# - Spring Boot test application
+#
+# Usage:
+#   helmfile sync                      - Deploy with official images
+#   helmfile -e orbstack sync          - Deploy to OrbStack
+#   helmfile -e rancher sync           - Deploy to Rancher Desktop
+#   helmfile -e k3d-v4only sync        - Deploy to k3d with IPv4 only
+#
+# Environment Variables (optional):
+#   USE_LOCAL_IMAGES=true              - Build and use local operator images (passed to root helmfile)
+#   PGSKIPPER_IMAGE=<image>            - Override operator image (passed to root helmfile)
+#   PGSKIPPER_TAG=<tag>                - Override operator tag (passed to root helmfile)
+#   APP_IMAGE_TAG=<tag>                - Override Spring Boot app image tag (default: latest)
+#
+# Examples:
+#   USE_LOCAL_IMAGES=true helmfile -e orbstack sync  - Build local images for OrbStack
+#   PGSKIPPER_TAG=v1.2.3 helmfile sync               - Use specific version from ghcr.io
+#   APP_IMAGE_TAG=1.0.0 helmfile sync                - Build and deploy app with tag 1.0.0
+
+helmDefaults:
+  wait: true
+  timeout: 600
+  createNamespace: true
+  cleanupOnFail: true
+
+environments:
+  default:
+    values:
+      - environments/default.yaml
+  k3d-v4only:
+    values:
+      - environments/k3d-v4only.yaml
+  orbstack:
+    values:
+      - environments/orbstack.yaml
+  rancher:
+    values:
+      - environments/rancher.yaml
+
+# Import pgskipper-operator from root helmfile
+helmfiles:
+  - path: ../../../helmfile.yaml
+    # Inherit environment from this helmfile
+    selectors: []
+    values: []
+
+---
+
+{{ $namespace := env "NAMESPACE" | default "postgres" }}
+{{ $appNamespace := env "APP_NAMESPACE" | default "default" }}
+
+{{/* Spring Boot application image configuration */}}
+{{ $appImageTag := env "APP_IMAGE_TAG" | default "latest" }}
+
+releases:
+  #############################################################################
+  # Spring Boot Test Application
+  # Application that tests PostgreSQL failover behavior
+  #############################################################################
+  - name: failover-test
+    namespace: {{ $appNamespace }}
+    chart: ./helm-charts/spring-app
+    labels:
+      component: test-application
+      type: spring-boot
+    values:
+      - image:
+          tag: {{ $appImageTag }}
+    needs:
+      - {{ $namespace }}/patroni-services
+    hooks:
+      # Build Docker image before deployment
+      - events: ["presync"]
+        showlogs: true
+        command: "bash"
+        args:
+          - "-c"
+          # language=bash
+          - |
+            # Switch to configured Docker context
+            DOCKER_CONTEXT="{{ .Values.dockerContext | default "default" }}"
+            CURRENT_CONTEXT=$(docker context show)
+            echo "Current Docker context: $CURRENT_CONTEXT"
+            echo "Target Docker context: $DOCKER_CONTEXT"
+
+            if [ "$CURRENT_CONTEXT" != "$DOCKER_CONTEXT" ]; then
+              echo "Switching to $DOCKER_CONTEXT context..."
+              docker context use "$DOCKER_CONTEXT"
+            fi
+
+            echo "Building Spring Boot application Docker image tag ..."
+            IMAGE_TAG="{{ $appImageTag }}" ./scripts/build.sh
+      # Wait for application to be ready
+      - events: ["postsync"]
+        showlogs: true
+        command: "bash"
+        args:
+          - "-c"
+          # language=bash
+          - |
+            echo "Waiting for application pods to be ready..."
+            kubectl wait --for=condition=ready --timeout=300s \
+              pods -l app.kubernetes.io/name=postgresql-failover-test -n {{ $appNamespace }}
+
+            echo "Application is ready!"
+
+            # Display status
+            echo ""
+            echo "====================================="
+            echo "Deployment Complete!"
+            echo "====================================="
+            echo ""
+            echo "PostgreSQL Cluster Status:"
+            kubectl get pods -n {{ $namespace }} -l app=postgres
+            echo ""
+            echo "Application Status:"
+            kubectl get pods -n {{ $appNamespace }} -l app.kubernetes.io/name=postgresql-failover-test
+            echo ""
+            echo "Services:"
+            kubectl get svc -n {{ $namespace }}
+            echo ""
+            echo "Next steps:"
+            echo "1. Check application logs: kubectl logs -f -n {{ $appNamespace }} -l app.kubernetes.io/name=postgresql-failover-test"
+            echo "2. Test failover: ./scripts/trigger-failover.sh"
+            echo "3. Monitor reconnection: ./scripts/test-reconnection.sh"

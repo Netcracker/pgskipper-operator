@@ -1,0 +1,62 @@
+version: '3.8'
+
+# Docker Compose file for local development and testing
+# This demonstrates BuildKit usage with docker-compose
+
+services:
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      # Enable BuildKit features
+      cache_from:
+        - postgresql-failover-test:latest
+      args:
+        BUILDKIT_INLINE_CACHE: 1
+    image: postgresql-failover-test:latest
+    container_name: failover-test-app
+    ports:
+      - "8080:8080"
+    environment:
+      - SPRING_PROFILES_ACTIVE=local
+      - DATABASE_URL=jdbc:postgresql://postgres:5432/postgres?targetServerType=primary
+      - DATABASE_USERNAME=postgres
+      - DATABASE_PASSWORD=postgres
+      - JAVA_OPTS=-XX:+UseContainerSupport -XX:MaxRAMPercentage=75.0
+    depends_on:
+      postgres:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:8080/api/health"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 30s
+    networks:
+      - app-network
+
+  postgres:
+    image: postgres:15-alpine
+    container_name: failover-test-postgres
+    environment:
+      - POSTGRES_DB=postgres
+      - POSTGRES_USER=postgres
+      - POSTGRES_PASSWORD=postgres
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - app-network
+
+volumes:
+  postgres-data:
+
+networks:
+  app-network:
+    driver: bridge

@@ -1,0 +1,39 @@
+# Example environment configuration for helmfile
+# Copy this file to .envrc and adjust as needed
+# If using direnv, it will automatically load these variables when you cd into the directory
+
+# Image Configuration
+# -------------------
+
+# Use local build instead of official images (default: false)
+# export USE_LOCAL_IMAGES=true
+
+# Override operator image repository (default: ghcr.io/netcracker/pgskipper-operator)
+# export PGSKIPPER_IMAGE=ghcr.io/netcracker/pgskipper-operator
+
+# Override operator image tag (default: main)
+# export PGSKIPPER_TAG=v1.2.3
+
+# Deployment Configuration
+# -------------------------
+
+# Override PostgreSQL namespace (default: postgres)
+# export NAMESPACE=postgres
+
+# Override application namespace (default: default)
+# export APP_NAMESPACE=default
+
+# Usage Examples
+# --------------
+#
+# Deploy to OrbStack with official images:
+#   helmfile -e orbstack sync
+#
+# Deploy to OrbStack with local build:
+#   USE_LOCAL_IMAGES=true helmfile -e orbstack sync
+#
+# Deploy to Rancher with specific version:
+#   PGSKIPPER_TAG=v1.2.3 helmfile -e rancher sync
+#
+# Deploy to cloud with custom image:
+#   PGSKIPPER_IMAGE=myregistry.io/pgskipper PGSKIPPER_TAG=custom helmfile sync

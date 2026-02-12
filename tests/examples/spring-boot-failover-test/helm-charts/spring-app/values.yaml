@@ -1,0 +1,102 @@
+replicaCount: 2
+
+image:
+  repository: postgresql-failover-test
+  pullPolicy: IfNotPresent
+  tag: "latest"
+
+imagePullSecrets: []
+nameOverride: ""
+fullnameOverride: ""
+
+serviceAccount:
+  create: true
+  annotations: {}
+  name: ""
+
+podAnnotations: {}
+
+podSecurityContext:
+  runAsNonRoot: true
+  runAsUser: 1000
+  fsGroup: 1000
+
+securityContext:
+  allowPrivilegeEscalation: false
+  capabilities:
+    drop:
+      - ALL
+  readOnlyRootFilesystem: false
+
+service:
+  type: ClusterIP
+  port: 8080
+  targetPort: 8080
+
+ingress:
+  enabled: false
+  className: ""
+  annotations: {}
+  hosts:
+    - host: failover-test.local
+      paths:
+        - path: /
+          pathType: Prefix
+  tls: []
+
+resources:
+  limits:
+    cpu: 1000m
+    memory: 1Gi
+  requests:
+    cpu: 500m
+    memory: 512Mi
+
+autoscaling:
+  enabled: false
+  minReplicas: 1
+  maxReplicas: 5
+  targetCPUUtilizationPercentage: 80
+
+# PostgreSQL connection configuration
+database:
+  # Multi-host connection string for failover
+  # Will be constructed from the pgskipper service endpoints
+  # Format: jdbc:postgresql://host1:5432,host2:5432,host3:5432/dbname?targetServerType=primary
+  hosts: "pg-patroni.postgres.svc.cluster.local:5432"
+  name: "postgres"
+  username: "postgres"
+  password: "postgres"
+  # Additional JDBC parameters
+  jdbcParams: ""
+  #jdbcParams: "targetServerType=primary&loadBalanceHosts=true&connectTimeout=10&socketTimeout=30&tcpKeepAlive=true"
+
+# Spring Boot application configuration
+springBoot:
+  profile: "production"
+  javaOpts: "-XX:+UseContainerSupport -XX:MaxRAMPercentage=75.0"
+
+# Probes configuration
+livenessProbe:
+  httpGet:
+    path: /api/health
+    port: 8080
+  initialDelaySeconds: 60
+  periodSeconds: 10
+  timeoutSeconds: 5
+  failureThreshold: 3
+
+readinessProbe:
+  httpGet:
+    path: /api/health
+    port: 8080
+  initialDelaySeconds: 30
+  periodSeconds: 5
+  timeoutSeconds: 3
+  failureThreshold: 3
+
+nodeSelector: {}
+
+tolerations: []
+
+affinity: {}

@@ -1,0 +1,88 @@
+# Minimal working values for patroni-services
+postgresUser: postgres
+postgresPassword: postgres
+replicatorPassword: replicator
+
+global:
+  cloudIntegrationEnabled: false
+
+serviceAccount:
+  create: true
+  name: "postgres-sa"
+
+# Vault registration (disabled)
+vaultRegistration:
+  dockerImage: banzaicloud/vault-env:1.5.0
+  enabled: false
+  dbEngine:
+    enabled: false
+
+# TLS configuration (disabled)
+tls:
+  enabled: false
+  certificateSecretName: pg-cert
+
+# Patroni cluster name (must match patroni-core)
+patroni:
+  clusterName: patroni
+
+# Operator configuration
+operator:
+  image: ghcr.io/netcracker/pgskipper-operator:main
+  waitTimeout: 10
+  resources:
+    limits:
+      cpu: 50m
+      memory: 50Mi
+    requests:
+      cpu: 50m
+      memory: 50Mi
+
+# Metric collector
+metricCollector:
+  install: true
+  dockerImage: ghcr.io/netcracker/pgskipper-monitoring-agent:main
+  databaseConnectionLimits: 250
+  resources:
+    limits:
+      cpu: 300m
+      memory: 256Mi
+    requests:
+      cpu: 150m
+      memory: 170Mi
+  userPassword: "p@ssWOrD1"
+  collectionInterval: 60
+  scrapeTimeout: 20
+  telegrafPluginTimeout: 60
+  ocExecTimeout: 10
+  metricsProfile: prod
+  prometheusMonitoring: false
+  applyGrafanaDashboard: false
+
+# Backup daemon - disabled due to security context incompatibility
+backupDaemon:
+  install: false
+  dockerImage: ghcr.io/netcracker/pgskipper-backup-daemon:main
+  compressionLevel: 5
+  walArchiving: false
+  backupSchedule: "0 0/7 * * *"
+  evictionPolicy: "7d/delete"
+  backupTimeout: 300
+  granularEviction: "3600"
+  encryption: false
+  retainArchiveSettings: false
+  allowPrefix: false
+  useEvictionPolicyFirst: false
+  evictionBinaryPolicy: "7d/delete"
+  archiveEvictionPolicy: "7d"
+  resources:
+    limits:
+      cpu: 450m
+      memory: 768Mi
+    requests:
+      cpu: 100m
+      memory: 256Mi
+  storage:
+    type: provisioned
+    size: 1Gi
+    storageClass: local-path

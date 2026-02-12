@@ -1,0 +1,98 @@
+spring:
+  application:
+    name: postgresql-failover-test
+
+  datasource:
+    # Multi-host PostgreSQL JDBC URL for automatic failover
+    # Format: jdbc:postgresql://host1:5432,host2:5432,host3:5432/dbname?targetServerType=primary
+    # This will be overridden by environment variables in Kubernetes
+    url: ${DATABASE_URL:jdbc:postgresql://localhost:5432/postgres?targetServerType=primary&loadBalanceHosts=true}
+    username: ${DATABASE_USERNAME:postgres}
+    password: ${DATABASE_PASSWORD:postgres}
+    driver-class-name: org.postgresql.Driver
+
+    # HikariCP connection pool configuration for failover resilience
+    hikari:
+      # Connection pool sizing
+      minimum-idle: 2
+      maximum-pool-size: 10
+
+      # Connection timeout settings
+      connection-timeout: 10000  # 10 seconds - time to wait for connection from pool
+      validation-timeout: 5000   # 5 seconds - time to wait for connection validation
+
+      # Connection lifecycle
+      max-lifetime: 600000       # 10 minutes - maximum lifetime of a connection
+      idle-timeout: 300000       # 5 minutes - maximum idle time before connection is retired
+
+      # Connection validation
+      connection-test-query: SELECT 1
+
+      # Leak detection (helps identify connection leaks during testing)
+      leak-detection-threshold: 60000  # 60 seconds
+
+      # Pool name for logging
+      pool-name: PostgreSQL-FailoverPool
+
+      # Auto-commit
+      auto-commit: true
+
+      # Additional PostgreSQL-specific properties
+      data-source-properties:
+        # Socket timeout for detecting dead connections
+        socketTimeout: 30
+        # Login timeout
+        loginTimeout: 10
+        # TCP keepalive
+        tcpKeepAlive: true
+        # Application name for PostgreSQL logs
+        ApplicationName: spring-failover-test
+
+  jpa:
+    hibernate:
+      ddl-auto: update  # Auto-create/update schema (for testing only)
+    show-sql: false
+    properties:
+      hibernate:
+        dialect: org.hibernate.dialect.PostgreSQLDialect
+        format_sql: true
+        # Connection handling
+        connection:
+          provider_disables_autocommit: false
+        # Query timeout (30 seconds)
+        query_timeout: 30000
+        # Enable statistics for monitoring
+        generate_statistics: false
+
+  # Actuator endpoints for health monitoring
+  management:
+    endpoints:
+      web:
+        exposure:
+          include: health,info,metrics
+    endpoint:
+      health:
+        show-details: always
+
+# Logging configuration
+logging:
+  level:
+    root: INFO
+    com.example.pgtest: DEBUG
+    com.zaxxer.hikari: DEBUG
+    org.postgresql: INFO
+    org.hibernate.SQL: INFO
+    org.hibernate.type.descriptor.sql.BasicBinder: INFO
+  pattern:
+    console: "%d{yyyy-MM-dd HH:mm:ss} [%thread] %-5level %logger{36} - %msg%n"
+
+# Server configuration
+server:
+  port: 8080
+  shutdown: graceful
+
+# Application-specific settings
+app:
+  monitoring:
+    enabled: true
+    interval: 5000  # 5 seconds

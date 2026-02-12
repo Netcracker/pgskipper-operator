@@ -1,0 +1,79 @@
+# Minimal working values for patroni-core
+postgresUser: postgres
+postgresPassword: postgres
+replicatorPassword: replicator
+
+# Disable cloud integration for local testing
+global:
+  cloudIntegrationEnabled: false
+
+# Service account
+serviceAccount:
+  create: true
+  name: "patroni-sa"
+
+# Vault registration (disabled)
+vaultRegistration:
+  dockerImage: banzaicloud/vault-env:1.5.0
+  enabled: false
+  dbEngine:
+    enabled: false
+
+# TLS configuration (disabled for local testing)
+tls:
+  enabled: false
+  certificateSecretName: pg-cert
+
+# Configure Patroni cluster
+patroni:
+  install: true
+  clusterName: patroni
+  replicas: 2
+  dockerImage: ghcr.io/netcracker/pgskipper-patroni-16:main
+  dcs:
+    type: kubernetes
+  resources:
+    limits:
+      cpu: 500m
+      memory: 512Mi
+    requests:
+      cpu: 100m
+      memory: 256Mi
+  postgreSQLParams:
+    - "password_encryption: md5"
+    - "max_connections: 200"
+    - "shared_preload_libraries: pg_stat_statements, pg_hint_plan, pg_cron"
+    - "wal_level: logical"
+  patroniParams:
+    - "failsafe_mode: true"
+    - "primary_start_timeout: 30"
+    - "retry_timeout: 600"
+  storage:
+    type: provisioned
+    size: 5Gi
+    storageClass: local-path
+    enableShmVolume: true
+  majorUpgrade:
+    enabled: false
+    dockerUpgradeImage: ghcr.io/netcracker/qubership-pgskipper-upgrade:main
+
+# Operator configuration
+operator:
+  image: ghcr.io/netcracker/pgskipper-operator:main
+  waitTimeout: 10
+  resources:
+    limits:
+      cpu: 50m
+      memory: 128Mi
+    requests:
+      cpu: 50m
+      memory: 128Mi
+
+# Backup storage disabled - requires authentication to pull image
+# pgBackRest:
+#   dockerImage: "ghcr.io/netcracker/pgbackrest-sidecar:main"
+#   repoType: "pv"
+#   repoPath: "/var/lib/pgbackrest"
+#   diffSchedule: "0 0/1 * * *"
+#   incrSchedule: "0 0/1 * * *"
+#   backupFromStandby: false

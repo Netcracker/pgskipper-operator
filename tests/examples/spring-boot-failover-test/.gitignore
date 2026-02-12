@@ -1,0 +1,40 @@
+# Maven
+spring-app/target/
+spring-app/.mvn/
+spring-app/mvnw
+spring-app/mvnw.cmd
+
+# Buildpacks cache
+spring-app/.pack/
+.pack-build/
+
+# IDE
+.idea/
+*.iml
+.vscode/
+*.swp
+*.swo
+.claude/
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Logs
+*.log
+
+# Kubernetes
+*.kubeconfig
+
+# Docker
+.dockerignore
+
+# Environment variables (direnv)
+.envrc
+
+# Temporary files
+tmp/
+temp/
+
+# Test outputs
+test-results/
