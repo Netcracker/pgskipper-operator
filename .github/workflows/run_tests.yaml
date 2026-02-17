@@ -6,17 +6,28 @@ permissions:
   actions: read
 
 on:
-  workflow_run:
-    workflows: ["Build Pgskipper Components"]
-    types: [completed]
+  pull_request:
+    types: [opened, synchronize, reopened]
+    branches: [main]
 
 jobs:
+  Wait-for-images:
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        workflow_name:
+          - build.yaml
+    steps:
+      - name: Wait for ${{ matrix.workflow_name }}
+        uses: netcracker/qubership-workflow-hub/actions/wait-for-workflow@3e428f45132119ce49d90f3770a45d4fe1d1078d
+        with:
+          workflow: ${{ matrix.workflow_name }}
+          token: ${{ secrets.GITHUB_TOKEN }}
+          poll-interval: 20
   Pgskipper-Pipeline:
-    if: >
-      ${{
-        github.event.workflow_run.event == 'pull_request' &&
-        github.event.workflow_run.conclusion == 'success'
-      }}
+    if: needs.build-status.result == 'success'
+    needs: Wait-for-images
     uses: Netcracker/qubership-test-pipelines/.github/workflows/pgskipper.yaml@64c278a28633ba06f64b93de1ef5f35ec3d75ed9 #v1.4.0
     with:
       repository_name: ${{ github.repository }}
