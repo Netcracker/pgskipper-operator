@@ -37,6 +37,15 @@ jobs:
       upgrade: ${{ steps.filter.outputs.upgrade }}
     steps:
       - uses: actions/checkout@v4
+      - name: Validate
+        env:
+          EVENT_NAME: ${{ github.event_name }}
+          GITHUB_REF: ${{ github.ref }}
+        run: |
+          if [[ "$EVENT_NAME" == "workflow_dispatch" && "$GITHUB_REF" == refs/tags/* ]]; then
+            echo -e "\033[91mManual workflow run on tags is not allowed!\033[0m"
+            exit 1
+          fi
       - uses: dorny/paths-filter@v3
         id: filter
         with:
@@ -188,16 +197,6 @@ jobs:
           else
             echo "Skipping ${{ matrix.name }} - no relevant changes"
             echo "build=false" >> $GITHUB_OUTPUT
-          fi
-      - name: Validate
-        if: steps.check.outputs.build == 'true'
-        env:
-          EVENT_NAME: ${{ github.event_name }}
-          GITHUB_REF: ${{ github.ref }}
-        run: |
-          if [[ "$EVENT_NAME" == "workflow_dispatch" && "$GITHUB_REF" == refs/tags/* ]]; then
-            echo -e "\033[91mManual workflow run on tags is not allowed!\033[0m"
-            exit 1
           fi
       - name: Checkout
         if: steps.check.outputs.build == 'true'
