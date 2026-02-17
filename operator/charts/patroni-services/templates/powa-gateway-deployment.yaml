@@ -1,0 +1,54 @@
+apiVersion: gateway.networking.k8s.io/v1
+kind: HTTPRoute
+metadata:
+  name: powa-ui-httproute
+spec:
+  parentRefs:
+  - name: {{ .Values.powaUI.ingress.gatewayName | default "default-external-gateway" }}
+    namespace: {{ .Values.powaUI.ingress.envoyNamespace | default "envoy-gateway" }}    # Note that this "main" route targets port 443 (HTTPS) specifically
+    port: 443
+  hostnames: [{{ .Values.powaUI.ingress.host  | quote }}]
+  rules:
+  - matches:
+    - path:
+        type: PathPrefix
+        value: /
+    backendRefs:
+    - name: powa-ui
+      port: 8080
+---
+{{- if .Values.tls.enabled }}
+apiVersion: gateway.networking.k8s.io/v1
+kind: HTTPRoute
+metadata:
+  name: powa-ui-frontend-redirect
+spec:
+  parentRefs:
+  - name: {{ .Values.powaUI.ingress.gatewayName | default "default-external-gateway" }}
+    namespace: {{ .Values.powaUI.ingress.envoyNamespace | default "envoy-gateway" }}
+    port: 80
+  hostnames: [{{ .Values.powaUI.ingress.host  | quote }}]
+  rules:
+  - filters:
+    - type: RequestRedirect
+      requestRedirect:
+        scheme: https
+        statusCode: 301
+{{- end }}
+---
+{{- if .Values.tls.enabled }}
+apiVersion: gateway.networking.k8s.io/v1
+kind: BackendTLSPolicy
+metadata:
+  name: powa-ui-backend-tls-policy
+spec:
+  targetRefs:
+  - group: ""
+    kind: Service
+    name: powa-ui
+  validation:
+    hostname: {{ .Values.powaUI.ingress.host  | quote }}
+    caCertificateRefs:
+    - kind: Secret
+      name: {{ include "postgres.certServicesSecret" . }}
+{{- end }}
