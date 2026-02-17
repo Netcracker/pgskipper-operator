@@ -23,8 +23,8 @@ COPY docker/pip.conf /root/.pip/pip.conf
 RUN echo "deb [trusted=yes] http://apt.postgresql.org/pub/repos/apt jammy-pgdg main" >> /etc/apt/sources.list.d/pgdg.list
 RUN cat /etc/apt/sources.list
 RUN ls -la /etc/apt/
-#TEST
-RUN failed apt-get -y update
+
+RUN apt-get -y update
 RUN apt-get -o DPkg::Options::="--force-confnew" -y dist-upgrade
 RUN apt-get update && \
     apt-get install -y --allow-downgrades gcc-12 cpp-12 gcc-12-base libgcc-12-dev libstdc++6 libgcc-s1 libnsl2
