@@ -23,7 +23,6 @@ COPY docker/pip.conf /root/.pip/pip.conf
 RUN echo "deb [trusted=yes] http://apt.postgresql.org/pub/repos/apt jammy-pgdg main" >> /etc/apt/sources.list.d/pgdg.list
 RUN cat /etc/apt/sources.list
 RUN ls -la /etc/apt/
-
 RUN apt-get -y update
 RUN apt-get -o DPkg::Options::="--force-confnew" -y dist-upgrade
 RUN apt-get update && \
