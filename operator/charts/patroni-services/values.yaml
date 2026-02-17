@@ -408,7 +408,7 @@ replicationController:
 
 connectionPooler:
   install: false
-  dockerImage: bitnami/pgbouncer:1.17.0-debian-11-r62
+  dockerImage: edoburu/pgbouncer:1.25.1-p0
   replicas: 1
   config:
     databases:
