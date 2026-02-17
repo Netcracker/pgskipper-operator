@@ -15,7 +15,7 @@ on:
 
 concurrency:
   group: build-and-push-${{ github.ref }}
-  cancel-in-progress: true
+  cancel-in-progress: false
 
 env:
   TAG_NAME: ${{ github.event.release.tag_name || github.ref }}
