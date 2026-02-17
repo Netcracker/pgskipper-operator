@@ -17,7 +17,7 @@ jobs:
       fail-fast: false
       matrix:
         workflow_name:
-          - build.yml
+          - build.yaml
     steps:
       - name: Wait for ${{ matrix.workflow_name }}
         uses: netcracker/qubership-workflow-hub/actions/wait-for-workflow@3e428f45132119ce49d90f3770a45d4fe1d1078d
