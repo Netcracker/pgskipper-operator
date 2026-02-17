@@ -17,7 +17,6 @@ jobs:
         github.event.workflow_run.event == 'pull_request' &&
         github.event.workflow_run.conclusion == 'success'
       }}
-    needs: Wait-for-images
     uses: Netcracker/qubership-test-pipelines/.github/workflows/pgskipper.yaml@64c278a28633ba06f64b93de1ef5f35ec3d75ed9 #v1.4.0
     with:
       repository_name: ${{ github.repository }}
