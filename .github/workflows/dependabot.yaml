@@ -33,10 +33,6 @@ jobs:
       contents: write
     if: ${{ github.event_name == 'pull_request' && needs.Wait-for-tests.result == 'success' }}
     steps:
-      - id: metadata
-        uses: dependabot/fetch-metadata@v2
-        with:
-          github-token: "${{ secrets.GITHUB_TOKEN }}"
       - run: |
           gh pr review --approve "$PR_URL"
           gh pr merge --squash --auto "$PR_URL"
