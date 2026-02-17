@@ -1,0 +1,45 @@
+name: dependabot-merge
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened]
+    branches: [main]
+
+permissions:
+  contents: read
+  packages: read
+  actions: read
+
+jobs:
+  Wait-for-tests:
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        workflow_name:
+          - run_tests.yaml
+    steps:
+      - name: Wait for ${{ matrix.workflow_name }}
+        uses: netcracker/qubership-workflow-hub/actions/wait-for-workflow@3e428f45132119ce49d90f3770a45d4fe1d1078d
+        with:
+          workflow: ${{ matrix.workflow_name }}
+          token: ${{ secrets.GITHUB_TOKEN }}
+          poll-interval: 20
+  dependabot-merge:
+    needs: Wait-for-tests
+    runs-on: ubuntu-latest
+    permissions:
+      pull-requests: write
+      contents: write
+    if: ${{ github.actor == 'dependabot[bot]' && github.event_name == 'pull_request' && needs.Wait-for-tests.result == 'success' }}
+    steps:
+      - id: metadata
+        uses: dependabot/fetch-metadata@v2
+        with:
+          github-token: "${{ secrets.GITHUB_TOKEN }}"
+      - run: |
+          gh pr review --approve "$PR_URL"
+          gh pr merge --squash --auto "$PR_URL"
+        env:
+          PR_URL: ${{github.event.pull_request.html_url}}
+          GITHUB_TOKEN: ${{secrets.GITHUB_TOKEN}}
