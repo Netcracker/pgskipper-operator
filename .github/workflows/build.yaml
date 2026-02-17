@@ -1,5 +1,8 @@
 name: Build Pgskipper Components
 on:
+  pull_request:
+    types: [opened, synchronize, reopened]
+    branches: [main]
   release:
     types: [created]
   push:
@@ -15,7 +18,7 @@ on:
 
 concurrency:
   group: build-and-push-${{ github.ref }}
-  cancel-in-progress: false
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 env:
   TAG_NAME: ${{ github.event.release.tag_name || github.ref }}
