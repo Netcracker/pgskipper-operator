@@ -27,6 +27,14 @@ jobs:
     outputs:
       operator: ${{ steps.filter.outputs.operator }}
       tests: ${{ steps.filter.outputs.tests }}
+      backup-daemon: ${{ steps.filter.outputs.backup-daemon }}
+      dbaas-adapter: ${{ steps.filter.outputs.dbaas-adapter }}
+      monitoring-agent: ${{ steps.filter.outputs.monitoring-agent }}
+      patroni: ${{ steps.filter.outputs.patroni }}
+      pgbackrest-sidecar: ${{ steps.filter.outputs.pgbackrest-sidecar }}
+      query-exporter: ${{ steps.filter.outputs.query-exporter }}
+      replication-controller: ${{ steps.filter.outputs.replication-controller }}
+      upgrade: ${{ steps.filter.outputs.upgrade }}
     steps:
       - uses: actions/checkout@v4
       - uses: dorny/paths-filter@v3
