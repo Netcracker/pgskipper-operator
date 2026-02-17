@@ -245,3 +245,15 @@ jobs:
           package-name: ${{ matrix.name }}
           package-type: 'container'
           package-version-ids: ${{ steps.get-ids-for-delete.outputs.ids-for-delete }}
+  build-status:
+    needs: build
+    if: always()
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check build status
+        run: |
+          if [[ "${{ needs.build.result }}" != "success" ]]; then
+            echo "Build failed or was cancelled"
+            exit 1
+          fi
+          echo "All builds completed successfully"
