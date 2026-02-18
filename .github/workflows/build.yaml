@@ -3,11 +3,25 @@ on:
   pull_request:
     types: [opened, synchronize, reopened]
     branches: [main]
+    paths-ignore:
+      - "docs/**"
+      - "CODE-OF-CONDUCT.md"
+      - "CONTRIBUTING.md"
+      - "LICENSE"
+      - "README.md"
+      - "SECURITY.md"
   release:
     types: [created]
   push:
     branches:
       - '**'
+    paths-ignore:
+      - "docs/**"
+      - "CODE-OF-CONDUCT.md"
+      - "CONTRIBUTING.md"
+      - "LICENSE"
+      - "README.md"
+      - "SECURITY.md"
   workflow_dispatch:
     inputs:
       publish_docker:
@@ -22,7 +36,7 @@ concurrency:
 
 env:
   TAG_NAME: ${{ github.event.release.tag_name || github.ref_name  }}
-  PUSH: ${{ github.event_name != 'workflow_dispatch' || inputs.publish_docker }}
+  PUSH: ${{ (github.event_name != 'workflow_dispatch' || inputs.publish_docker) && github.actor != 'dependabot[bot]' }} 
 
 jobs:
   detect-changes:
@@ -52,6 +66,7 @@ jobs:
       - uses: dorny/paths-filter@v3
         id: filter
         with:
+          base: ${{ github.event.before }}
           filters: |
             operator:
               - 'operator/**'

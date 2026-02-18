@@ -26,6 +26,7 @@ jobs:
           token: ${{ secrets.GITHUB_TOKEN }}
           poll-interval: 20
   Pgskipper-Pipeline:
+    if: ${{ github.actor != 'dependabot[bot]' }}
     needs: Wait-for-images
     uses: Netcracker/qubership-test-pipelines/.github/workflows/pgskipper.yaml@acf44dc8f22430d11eb93a679bf54e99b69ee6a2 #v1.5.0
     with:
