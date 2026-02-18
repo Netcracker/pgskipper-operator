@@ -18,11 +18,11 @@ on:
 
 concurrency:
   group: build-and-push-${{ github.ref }}
-  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+  cancel-in-progress: true
 
 env:
   TAG_NAME: ${{ github.event.release.tag_name || github.ref }}
-  PUSH: ${{ (github.event_name != 'workflow_dispatch' || inputs.publish_docker) && github.actor != 'dependabot[bot]' }}
+  PUSH: ${{ github.event_name != 'workflow_dispatch' || inputs.publish_docker }}
 
 jobs:
   detect-changes:
@@ -52,7 +52,6 @@ jobs:
       - uses: dorny/paths-filter@v3
         id: filter
         with:
-          base: ${{ github.event.before }}
           filters: |
             operator:
               - 'operator/**'
