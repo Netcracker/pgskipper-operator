@@ -17,11 +17,11 @@ on:
         required: false
 
 concurrency:
-  group: build-and-push-${{ github.ref }}
-  cancel-in-progress: true
+  group: build-and-push-${{ github.head_ref || github.ref_name }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 env:
-  TAG_NAME: ${{ github.event.release.tag_name || github.ref }}
+  TAG_NAME: ${{ github.event.release.tag_name || github.ref_name  }}
   PUSH: ${{ github.event_name != 'workflow_dispatch' || inputs.publish_docker }}
 
 jobs:
