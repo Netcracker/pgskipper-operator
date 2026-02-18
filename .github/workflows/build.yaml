@@ -264,7 +264,7 @@ jobs:
           package-version-ids: ${{ steps.get-ids-for-delete.outputs.ids-for-delete }}
   build-status:
     needs: build
-    if: always()
+    if: github.event_name == 'pull_request'
     runs-on: ubuntu-latest
     steps:
       - name: Check build status
