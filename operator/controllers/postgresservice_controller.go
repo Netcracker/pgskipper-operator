@@ -598,6 +598,9 @@ func (r *PostgresServiceReconciler) AddExcludeLabelToCm(c client.Client, cmName 
 	}
 	if foundCm.Labels == nil {
 		foundCm.Labels = make(map[string]string)
+	}
+
+	if foundCm.Labels["velero.io/exclude-from-backup"] != "true" {
 		foundCm.Labels["velero.io/exclude-from-backup"] = "true"
 		err = c.Update(context.TODO(), foundCm)
 		if err != nil {
