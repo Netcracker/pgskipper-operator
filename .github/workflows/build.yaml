@@ -130,12 +130,14 @@ jobs:
           registry: ghcr.io
           username: ${GITHUB_ACTOR}
           password: ${{secrets.GITHUB_TOKEN}}
+      - name: Prepare Tag
+        run: echo "TAG_NAME=$(echo ${TAG_NAME} | sed 's@refs/tags/@@;s@refs/heads/@@;s@/@_@g')" >> $GITHUB_ENV
       - name: Get package IDs for delete
         id: get-ids-for-delete
         uses: Netcracker/get-package-ids@84bc8eb8bed50218be76e671b3a24c35a1300979
         with:
           component-name: ${{ matrix.component.name }}
-          component-tag: ${{ needs.prepare.outputs.tags }}
+          component-tag: ${{ env.TAG_NAME }}
           access-token: ${{secrets.GITHUB_TOKEN}}
         if: ${{ env.PUSH }}
       - name: Build and push
@@ -147,7 +149,7 @@ jobs:
           platforms: ${{ needs.prepare.outputs.platforms }}
           push: ${{ env.PUSH }}
           build-args: PG_VERSION=${{ matrix.component.pg_version }}
-          tags: ${{ needs.prepare.outputs.tags }}
+          tags: ghcr.io/netcracker/${{ matrix.component.name }}:${{ env.TAG_NAME }}
           provenance: false
       - uses: actions/delete-package-versions@e5bc658cc4c965c472efe991f8beea3981499c55 # v5.0.0
         with:
