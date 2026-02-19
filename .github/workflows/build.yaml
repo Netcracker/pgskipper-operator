@@ -79,6 +79,7 @@ jobs:
           if [[ "$GITHUB_EVENT_NAME" == "pull_request" || "$GITHUB_EVENT_NAME" == "push" ]]; then
             all_changed_files=$(jq -c '.' .github/outputs/all_changed_files.json)
             if [ "$all_changed_files" != "null" ]; then
+                echo "all_changed_files=${all_changed_files}"
                 chmod +x .github/scripts/matrix.sh
                 components=$(./.github/scripts/matrix.sh ".github/build-config.cfg" ".github/outputs/all_changed_files.json")
             fi
