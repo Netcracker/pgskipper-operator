@@ -48,6 +48,10 @@ concurrency:
   group: ${{ github.ref_type == 'branch' && format('build-branch-{0}', github.ref_name) || format('build-{0}', github.sha) }}
   cancel-in-progress: true
 
+env:
+  TAG_NAME: ${{ github.event.release.tag_name || github.ref_name }}
+  PUSH: ${{ (github.event_name != 'workflow_dispatch' || inputs.publish_docker) && github.actor != 'dependabot[bot]' }}
+
 jobs:
   prepare:
     name: "Prepare Images and Metadata"
@@ -108,14 +112,28 @@ jobs:
       matrix:
         component: ${{ fromJson(needs.prepare.outputs.components) }}
     steps:
-      - name: Docker
-        uses: netcracker/qubership-workflow-hub/actions/docker-action@8d542a426ce561c7dce745f6b9cee068d1d7e101 #2.0.10
+      - name: Get package IDs for delete
+        id: get-ids-for-delete
+        uses: Netcracker/get-package-ids@84bc8eb8bed50218be76e671b3a24c35a1300979
         with:
-          ref: ${{ github.ref }}
-          dry-run: ${{ github.event.inputs.dry-run || github.event_name == 'pull_request' }}
-          download-artifact: false
-          component: ${{ toJson(matrix.component) }}
+          component-name: ${{ matrix.component.name }}
+          component-tag: ${{ needs.prepare.outputs.tags }}
+          access-token: ${{secrets.GITHUB_TOKEN}}
+        if: ${{ env.PUSH }}
+      - name: Build and push
+        uses: docker/build-push-action@16ebe778df0e7752d2cfcbd924afdbbd89c1a755 # v6.6.1
+        with:
+          no-cache: true
+          context: ${{ matrix.component.context }}
+          file: ${{ matrix.component.file }}
           platforms: ${{ needs.prepare.outputs.platforms }}
+          push: ${{ env.PUSH }}
+          build-args: PG_VERSION=${{ matrix.component.pg_version }}
           tags: ${{ needs.prepare.outputs.tags }}
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          provenance: false
+      - uses: actions/delete-package-versions@e5bc658cc4c965c472efe991f8beea3981499c55 # v5.0.0
+        with:
+          package-name: ${{ matrix.component.name }}
+          package-type: 'container'
+          package-version-ids: ${{ steps.get-ids-for-delete.outputs.ids-for-delete }}
+        if: ${{ steps.get-ids-for-delete.outputs.ids-for-delete != '' }}
