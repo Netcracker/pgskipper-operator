@@ -74,17 +74,17 @@ jobs:
         name: Load Components and Platforms
         run: |
           if [[ "$GITHUB_EVENT_NAME" == "release" || "$GITHUB_EVENT_NAME" == "workflow_dispatch" ]]; then
-            components=$(jq -c '.components' .github/dev-build-config.cfg)
+            components=$(jq -c '.components' .github/build-config.cfg)
           fi
           if [[ "$GITHUB_EVENT_NAME" == "pull_request" || "$GITHUB_EVENT_NAME" == "push" ]]; then
             all_changed_files=$(jq -c '.' .github/outputs/all_changed_files.json)
             if [ "$all_changed_files" != "null" ]; then
                 chmod +x .github/scripts/matrix.sh
-                components=$(./.github/scripts/matrix.sh ".github/dev-build-config.cfg" ".github/outputs/all_changed_files.json")
+                components=$(./.github/scripts/matrix.sh ".github/build-config.cfg" ".github/outputs/all_changed_files.json")
             fi
           fi
           echo "components=${components}" >> "$GITHUB_OUTPUT"
-          echo "platforms=$(jq -c '.platforms' .github/dev-build-config.cfg)" >> "$GITHUB_OUTPUT"
+          echo "platforms=$(jq -c '.platforms' .github/build-config.cfg)" >> "$GITHUB_OUTPUT"
 
       - name: Create tags for images
         uses: netcracker/qubership-workflow-hub/actions/metadata-action@8d542a426ce561c7dce745f6b9cee068d1d7e101 #2.0.10
