@@ -83,6 +83,7 @@ jobs:
                 components=$(./.github/scripts/matrix.sh ".github/build-config.cfg" ".github/outputs/all_changed_files.json")
             fi
           fi
+          echo "components=${components}"
           echo "components=${components}" >> "$GITHUB_OUTPUT"
           echo "platforms=$(jq -c '.platforms' .github/build-config.cfg)" >> "$GITHUB_OUTPUT"
 
