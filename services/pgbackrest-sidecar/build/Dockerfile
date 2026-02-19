@@ -103,3 +103,4 @@ VOLUME /etc
 
 CMD ["sh", "/opt/start.sh"]
 USER ${USER}
+#TEST
