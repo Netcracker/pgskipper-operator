@@ -1,9 +1,11 @@
 name: Build Pgskipper Components
+run-name: "Dev image for ${{ github.event.repository.name }}: ${{ github.run_number }} - ${{ github.actor }}"
 on:
-  pull_request:
-    types: [opened, synchronize, reopened]
+  release:
+    types: [created]
+  push:
     branches:
-      - '**'
+      - "**"
     paths-ignore:
       - "docs/**"
       - "CODE-OF-CONDUCT.md"
@@ -11,11 +13,9 @@ on:
       - "LICENSE"
       - "README.md"
       - "SECURITY.md"
-  release:
-    types: [created]
-  push:
+  pull_request:
     branches:
-      - 'main'
+      - "**"
     paths-ignore:
       - "docs/**"
       - "CODE-OF-CONDUCT.md"
@@ -25,253 +25,95 @@ on:
       - "SECURITY.md"
   workflow_dispatch:
     inputs:
-      publish_docker:
-        description: "Publish images to ghcr.io/netcracker"
+      tags:
+        required: false
+        type: string
+        default: ""
+        description: "Tags"
+      dry-run:
+        required: true
         type: boolean
         default: false
+        description: "Dry run mode"
+      replace-symbol:
         required: false
+        type: string
+        default: "_"
+        description: "Symbol to replace in tags"
+
+permissions:
+  contents: read
 
 concurrency:
-  group: build-and-push-${{ github.head_ref || github.ref_name }}
-  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
-
-env:
-  TAG_NAME: ${{ github.event.release.tag_name || github.ref_name  }}
-  PUSH: ${{ (github.event_name != 'workflow_dispatch' || inputs.publish_docker) && github.actor != 'dependabot[bot]' }} 
+  group: ${{ github.ref_type == 'branch' && format('build-branch-{0}', github.ref_name) || format('build-{0}', github.sha) }}
+  cancel-in-progress: true
 
 jobs:
-  detect-changes:
+  prepare:
+    name: "Prepare Images and Metadata"
     runs-on: ubuntu-latest
     outputs:
-      operator: ${{ steps.filter.outputs.operator }}
-      tests: ${{ steps.filter.outputs.tests }}
-      backup-daemon: ${{ steps.filter.outputs.backup-daemon }}
-      dbaas-adapter: ${{ steps.filter.outputs.dbaas-adapter }}
-      monitoring-agent: ${{ steps.filter.outputs.monitoring-agent }}
-      patroni: ${{ steps.filter.outputs.patroni }}
-      pgbackrest-sidecar: ${{ steps.filter.outputs.pgbackrest-sidecar }}
-      query-exporter: ${{ steps.filter.outputs.query-exporter }}
-      replication-controller: ${{ steps.filter.outputs.replication-controller }}
-      upgrade: ${{ steps.filter.outputs.upgrade }}
+      components: ${{ steps.load.outputs.components }}
+      platforms: ${{ steps.load.outputs.platforms }}
+      tags: "${{ steps.meta.outputs.result }}"
     steps:
-      - uses: actions/checkout@v4
-      - name: Validate
-        env:
-          EVENT_NAME: ${{ github.event_name }}
-          GITHUB_REF: ${{ github.ref }}
-        run: |
-          if [[ "$EVENT_NAME" == "workflow_dispatch" && "$GITHUB_REF" == refs/tags/* ]]; then
-            echo -e "\033[91mManual workflow run on tags is not allowed!\033[0m"
-            exit 1
-          fi
-      - uses: dorny/paths-filter@v3
-        id: filter
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
         with:
-          base: ${{ github.event.before }}
-          filters: |
-            operator:
-              - 'operator/**'
-            tests:
-              - 'tests/**'
-            backup-daemon:
-              - 'services/backup-daemon/**'
-            dbaas-adapter:
-              - 'services/dbaas-adapter/**'
-            monitoring-agent:
-              - 'services/monitoring-agent/**'
-            patroni:
-              - 'services/patroni/**'
-            pgbackrest-sidecar:
-              - 'services/pgbackrest-sidecar/**'
-            query-exporter:
-              - 'services/query-exporter/**'
-            replication-controller:
-              - 'services/replication-controller/**'
-            upgrade:
-              - 'services/upgrade/**'
+          persist-credentials: true
+          fetch-depth: 0
+
+      - name: Changed Files
+        if: github.event_name != 'release' && github.event_name != 'workflow_dispatch'
+        id: changed-files
+        uses: tj-actions/changed-files@24d32ffd492484c1d75e0c0b894501ddb9d30d62 # v47
+        with:
+          json: true
+          write_output_files: true # .github/outputs/all_changed_files.json
+
+      - id: load
+        name: Load Components and Platforms
+        run: |
+          if [[ "$GITHUB_EVENT_NAME" == "release" || "$GITHUB_EVENT_NAME" == "workflow_dispatch" ]]; then
+            components=$(jq -c '.components' .github/dev-build-config.cfg)
+          fi
+          if [[ "$GITHUB_EVENT_NAME" == "pull_request" || "$GITHUB_EVENT_NAME" == "push" ]]; then
+            all_changed_files=$(jq -c '.' .github/outputs/all_changed_files.json)
+            if [ "$all_changed_files" != "null" ]; then
+                chmod +x .github/scripts/matrix.sh
+                components=$(./.github/scripts/matrix.sh ".github/dev-build-config.cfg" ".github/outputs/all_changed_files.json")
+            fi
+          fi
+          echo "components=${components}" >> "$GITHUB_OUTPUT"
+          echo "platforms=$(jq -c '.platforms' .github/dev-build-config.cfg)" >> "$GITHUB_OUTPUT"
+
+      - name: Create tags for images
+        uses: netcracker/qubership-workflow-hub/actions/metadata-action@8d542a426ce561c7dce745f6b9cee068d1d7e101 #2.0.10
+        id: meta
+        with:
+          default-template: "{{ref-name}}"
+          extra-tags: ${{ github.event.inputs.tags || '' }}
+          replace-symbol: ${{ github.event.inputs.replace-symbol || '_'}}
 
   build:
-    needs: detect-changes
+    name: ${{ matrix.component.name }} Image Build
+    needs: [prepare]
+    runs-on: ubuntu-latest
     permissions:
       contents: read
       packages: write
-      actions: read
     strategy:
       fail-fast: false
       matrix:
-        include:
-          - name: pgskipper-operator
-            file: operator/build/Dockerfile
-            context: operator
-            changes: operator
-          - name: pgskipper-operator-transfer
-            file: transfer/Dockerfile
-            context: operator
-            changes: operator
-          - name: pgskipper-operator-tests
-            file: tests/Dockerfile
-            context: tests
-            changes: tests
-          - name: pgskipper-docker-backup-daemon
-            file: services/backup-daemon/Dockerfile
-            context: services/backup-daemon
-            changes: backup-daemon
-          - name: pgskipper-docker-dbaas-adapter
-            file: services/dbaas-adapter/build/Dockerfile
-            context: services/dbaas-adapter
-            changes: dbaas-adapter
-          - name: pgskipper-docker-monitoring-agent
-            file: services/monitoring-agent/Dockerfile
-            context: services/monitoring-agent
-            changes: monitoring-agent
-          - name: pgskipper-docker-patroni-18
-            file: services/patroni/Dockerfile
-            context: services/patroni
-            pg_version: "18"
-            changes: patroni
-          - name: pgskipper-docker-patroni-17
-            file: services/patroni/Dockerfile
-            context: services/patroni
-            pg_version: "17"
-            changes: patroni
-          - name: pgskipper-docker-patroni-16
-            file: services/patroni/Dockerfile
-            context: services/patroni
-            pg_version: "16"
-            changes: patroni
-          - name: pgskipper-docker-patroni-15
-            file: services/patroni/Dockerfile
-            context: services/patroni
-            pg_version: "15"
-            changes: patroni
-          - name: pgskipper-docker-pgbackrest-sidecar
-            file: services/pgbackrest-sidecar/build/Dockerfile
-            context: services/pgbackrest-sidecar
-            changes: pgbackrest-sidecar
-          - name: qubership-docker-query-exporter
-            file: services/query-exporter/build/Dockerfile
-            context: services/query-exporter
-            changes: query-exporter
-          - name: pgskipper-docker-replication-controller
-            file: services/replication-controller/build/Dockerfile
-            context: services/replication-controller
-            changes: replication-controller
-          - name: pgskipper-docker-upgrade
-            file: services/upgrade/Dockerfile
-            context: services/upgrade
-            changes: upgrade
-    runs-on: ubuntu-24.04
+        component: ${{ fromJson(needs.prepare.outputs.components) }}
     steps:
-      - name: Check if build needed
-        id: check
+      - name: Docker
+        uses: netcracker/qubership-workflow-hub/actions/docker-action@8d542a426ce561c7dce745f6b9cee068d1d7e101 #2.0.10
+        with:
+          ref: ${{ github.ref }}
+          dry-run: ${{ github.event.inputs.dry-run || github.event_name == 'pull_request' }}
+          download-artifact: false
+          component: ${{ toJson(matrix.component) }}
+          platforms: ${{ needs.prepare.outputs.platforms }}
+          tags: ${{ needs.prepare.outputs.tags }}
         env:
-          EVENT_NAME: ${{ github.event_name }}
-          OPERATOR_CHANGED: ${{ needs.detect-changes.outputs.operator }}
-          TESTS_CHANGED: ${{ needs.detect-changes.outputs.tests }}
-          BACKUP_DAEMON_CHANGED: ${{ needs.detect-changes.outputs.backup-daemon }}
-          DBAAS_ADAPTER_CHANGED: ${{ needs.detect-changes.outputs.dbaas-adapter }}
-          MONITORING_AGENT_CHANGED: ${{ needs.detect-changes.outputs.monitoring-agent }}
-          PATRONI_CHANGED: ${{ needs.detect-changes.outputs.patroni }}
-          PGBACKREST_SIDECAR_CHANGED: ${{ needs.detect-changes.outputs.pgbackrest-sidecar }}
-          QUERY_EXPORTER_CHANGED: ${{ needs.detect-changes.outputs.query-exporter }}
-          REPLICATION_CONTROLLER_CHANGED: ${{ needs.detect-changes.outputs.replication-controller }}
-          UPGRADE_CHANGED: ${{ needs.detect-changes.outputs.upgrade }}
-          CHANGES_KEY: ${{ matrix.changes }}
-        run: |
-          if [[ "$EVENT_NAME" == "release" || "$EVENT_NAME" == "workflow_dispatch" ]]; then
-            echo "Building ${{ matrix.name }} (triggered by $EVENT_NAME)"
-            echo "build=true" >> $GITHUB_OUTPUT
-            exit 0
-          fi
-          if [[ "$CHANGES_KEY" == "operator" && "$OPERATOR_CHANGED" == "true" ]]; then
-            echo "Building ${{ matrix.name }}"
-            echo "build=true" >> $GITHUB_OUTPUT
-          elif [[ "$CHANGES_KEY" == "tests" && "$TESTS_CHANGED" == "true" ]]; then
-            echo "Building ${{ matrix.name }}"
-            echo "build=true" >> $GITHUB_OUTPUT
-          elif [[ "$CHANGES_KEY" == "backup-daemon" && "$BACKUP_DAEMON_CHANGED" == "true" ]]; then
-            echo "Building ${{ matrix.name }}"
-            echo "build=true" >> $GITHUB_OUTPUT
-          elif [[ "$CHANGES_KEY" == "dbaas-adapter" && "$DBAAS_ADAPTER_CHANGED" == "true" ]]; then
-            echo "Building ${{ matrix.name }}"
-            echo "build=true" >> $GITHUB_OUTPUT
-          elif [[ "$CHANGES_KEY" == "monitoring-agent" && "$MONITORING_AGENT_CHANGED" == "true" ]]; then
-            echo "Building ${{ matrix.name }}"
-            echo "build=true" >> $GITHUB_OUTPUT
-          elif [[ "$CHANGES_KEY" == "patroni" && "$PATRONI_CHANGED" == "true" ]]; then
-            echo "Building ${{ matrix.name }}"
-            echo "build=true" >> $GITHUB_OUTPUT
-          elif [[ "$CHANGES_KEY" == "pgbackrest-sidecar" && "$PGBACKREST_SIDECAR_CHANGED" == "true" ]]; then
-            echo "Building ${{ matrix.name }}"
-            echo "build=true" >> $GITHUB_OUTPUT
-          elif [[ "$CHANGES_KEY" == "query-exporter" && "$QUERY_EXPORTER_CHANGED" == "true" ]]; then
-            echo "Building ${{ matrix.name }}"
-            echo "build=true" >> $GITHUB_OUTPUT
-          elif [[ "$CHANGES_KEY" == "replication-controller" && "$REPLICATION_CONTROLLER_CHANGED" == "true" ]]; then
-            echo "Building ${{ matrix.name }}"
-            echo "build=true" >> $GITHUB_OUTPUT
-          elif [[ "$CHANGES_KEY" == "upgrade" && "$UPGRADE_CHANGED" == "true" ]]; then
-            echo "Building ${{ matrix.name }}"
-            echo "build=true" >> $GITHUB_OUTPUT
-          else
-            echo "Skipping ${{ matrix.name }} - no relevant changes"
-            echo "build=false" >> $GITHUB_OUTPUT
-          fi
-      - name: Checkout
-        if: steps.check.outputs.build == 'true'
-        uses: actions/checkout@692973e3d937129bcbf40652eb9f2f61becf3332 # v4.1.7
-        with:
-          persist-credentials: false
-      - name: Set up QEMU
-        if: steps.check.outputs.build == 'true'
-        uses: docker/setup-qemu-action@49b3bc8e6bdd4a60e6116a5414239cba5943d3cf # v3.2.0
-      - name: Set up Docker Buildx
-        if: steps.check.outputs.build == 'true'
-        uses: docker/setup-buildx-action@988b5a0280414f521da01fcc63a27aeeb4b104db # v3.6.1
-      - name: Login to Docker Hub
-        if: steps.check.outputs.build == 'true'
-        uses: docker/login-action@9780b0c442fbb1117ed29e0efdff1e18412f7567 # v3.3.0
-        with:
-          registry: ghcr.io
-          username: ${GITHUB_ACTOR}
-          password: ${{secrets.GITHUB_TOKEN}}
-      - name: Prepare Tag
-        if: steps.check.outputs.build == 'true'
-        run: echo "TAG_NAME=$(echo ${TAG_NAME} | sed 's@refs/tags/@@;s@refs/heads/@@;s@/@_@g')" >> $GITHUB_ENV
-      - name: Get package IDs for delete
-        id: get-ids-for-delete
-        if: steps.check.outputs.build == 'true' && env.PUSH == 'true'
-        uses: Netcracker/get-package-ids@84bc8eb8bed50218be76e671b3a24c35a1300979
-        with:
-          component-name: ${{ matrix.name }}
-          component-tag: ${{ env.TAG_NAME }}
-          access-token: ${{secrets.GITHUB_TOKEN}}
-      - name: Build and push
-        if: steps.check.outputs.build == 'true'
-        uses: docker/build-push-action@16ebe778df0e7752d2cfcbd924afdbbd89c1a755 # v6.6.1
-        with:
-          no-cache: true
-          context: ${{ matrix.context }}
-          file: ${{ matrix.file }}
-          platforms: linux/amd64,linux/arm64
-          push: ${{ env.PUSH }}
-          tags: ghcr.io/netcracker/${{ matrix.name }}:${{ env.TAG_NAME }}
-          provenance: false
-      - uses: actions/delete-package-versions@e5bc658cc4c965c472efe991f8beea3981499c55 # v5.0.0
-        if: steps.check.outputs.build == 'true' && steps.get-ids-for-delete.outputs.ids-for-delete != ''
-        with:
-          package-name: ${{ matrix.name }}
-          package-type: 'container'
-          package-version-ids: ${{ steps.get-ids-for-delete.outputs.ids-for-delete }}
-  build-status:
-    needs: build
-    if: github.event_name == 'pull_request'
-    runs-on: ubuntu-latest
-    steps:
-      - name: Check build status
-        run: |
-          if [[ "${{ needs.build.result }}" != "success" ]]; then
-            echo "Build failed or was cancelled"
-            exit 1
-          fi
-          echo "All builds completed successfully"
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
