@@ -26,13 +26,26 @@ jobs:
           token: ${{ secrets.GITHUB_TOKEN }}
           poll-interval: 20
   Pgskipper-Pipeline:
+    if: ${{ github.actor != 'dependabot[bot]' && github.event.pull_request.user.login != 'dependabot[bot]' }}
     needs: Wait-for-images
-    uses: Netcracker/qubership-test-pipelines/.github/workflows/pgskipper.yaml@64c278a28633ba06f64b93de1ef5f35ec3d75ed9 #v1.4.0
+    uses: Netcracker/qubership-test-pipelines/.github/workflows/pgskipper.yaml@acf44dc8f22430d11eb93a679bf54e99b69ee6a2 #v1.5.0
     with:
       repository_name: ${{ github.repository }}
       service_branch: '${{ github.head_ref || github.ref_name }}'
-      pipeline_branch: '64c278a28633ba06f64b93de1ef5f35ec3d75ed9' #this value must match the value after '@' in 'uses'
+      pipeline_branch: 'acf44dc8f22430d11eb93a679bf54e99b69ee6a2' #this value must match the value after '@' in 'uses'
     secrets:
       AWS_S3_ACCESS_KEY_ID: ${{secrets.AWS_S3_ACCESS_KEY_ID}}
       AWS_S3_ACCESS_KEY_SECRET: ${{secrets.AWS_S3_ACCESS_KEY_SECRET}}
+  Tests-Result:
+    if: always()
+    needs: Pgskipper-Pipeline
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check tests status
+        run: |
+          if [[ "${{ needs.Pgskipper-Pipeline.result }}" != "success" && "${{ needs.Pgskipper-Pipeline.result }}" != "skipped" ]]; then
+            echo "Tests were failed"
+            exit 1
+          fi
+          echo "All tests completed successfully or not required"
 
