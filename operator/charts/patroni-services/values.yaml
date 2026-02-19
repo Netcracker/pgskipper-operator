@@ -408,7 +408,7 @@ replicationController:
 
 connectionPooler:
   install: false
-  dockerImage: edoburu/pgbouncer:1.25.1-p0
+  dockerImage: artifactorycn.netcracker.com:17114/edoburu/pgbouncer:v1.25.1-p0
   replicas: 1
   config:
     databases:
@@ -421,7 +421,8 @@ connectionPooler:
       auth_user: 'pgbouncer'
       auth_query: 'SELECT p_user, p_password FROM public.lookup($1)'
       ignore_startup_parameters: 'options,extra_float_digits'
-  securityContext: {}
+  securityContext:
+        runAsUser: 70
 
 tracing:
   enabled: false
