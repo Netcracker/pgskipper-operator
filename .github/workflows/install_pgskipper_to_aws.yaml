@@ -127,6 +127,18 @@ jobs:
           GITHUB_GROUP=$(echo ${{ github.repository_owner }} | tr '[:upper:]' '[:lower:]')
           IMAGE_TAG=$(echo ${{ github.ref }} | sed 's@refs/tags/@@;s@refs/heads/@@;s@/@_@g')
           HELM_ARGS="$HELM_ARGS --set tests.dockerImage=ghcr.io/${GITHUB_GROUP}/pgskipper-operator-tests:${IMAGE_TAG}"
+          # ATP/S3 storage for test results (secrets and vars)
+          [ -n "${{ secrets.S3_AWS_ACCESS_KEY_ID }}" ] && HELM_ARGS="$HELM_ARGS --set tests.atpStorage.username=${{ secrets.S3_AWS_ACCESS_KEY_ID }}"
+          [ -n "${{ secrets.S3_AWS_SECRET_ACCESS_KEY }}" ] && HELM_ARGS="$HELM_ARGS --set tests.atpStorage.password=${{ secrets.S3_AWS_SECRET_ACCESS_KEY }}"
+          [ -n "${{ vars.ATP_STORAGE_PROVIDER }}" ] && HELM_ARGS="$HELM_ARGS --set tests.atpStorage.provider=${{ vars.ATP_STORAGE_PROVIDER }}"
+          [ -n "${{ vars.ATP_STORAGE_SERVER_URL }}" ] && HELM_ARGS="$HELM_ARGS --set tests.atpStorage.serverUrl=${{ vars.ATP_STORAGE_SERVER_URL }}"
+          [ -n "${{ vars.ATP_STORAGE_SERVER_UI_URL }}" ] && HELM_ARGS="$HELM_ARGS --set tests.atpStorage.serverUiUrl=${{ vars.ATP_STORAGE_SERVER_UI_URL }}"
+          [ -n "${{ vars.ATP_STORAGE_BUCKET }}" ] && HELM_ARGS="$HELM_ARGS --set tests.atpStorage.bucket=${{ vars.ATP_STORAGE_BUCKET }}"
+          [ -n "${{ vars.AWS_REGION }}" ] && HELM_ARGS="$HELM_ARGS --set tests.atpStorage.region=${{ vars.AWS_REGION }}"
+          [ -n "${{ vars.ATP_REPORT_VIEW_UI_URL }}" ] && HELM_ARGS="$HELM_ARGS --set tests.atpReportViewUiUrl=${{ vars.ATP_REPORT_VIEW_UI_URL }}"
+          ENV_NAME="${{ vars.ENVIRONMENT_NAME }}"
+          [ -z "$ENV_NAME" ] && ENV_NAME="${{ github.event.inputs.environment }}"
+          [ -n "$ENV_NAME" ] && HELM_ARGS="$HELM_ARGS --set tests.environmentName=$ENV_NAME"
           
           echo "Helm additional args: $HELM_ARGS"
           

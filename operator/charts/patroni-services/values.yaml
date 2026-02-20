@@ -431,6 +431,19 @@ tests:
   install: true
   dockerImage: ghcr.io/netcracker/pgskipper-operator-tests:main
   podLabels: {}
+  # S3/ATP storage for test results upload (e.g. AWS install, run_tests pipeline)
+  atpStorage:
+    provider: "aws"
+    serverUrl: ""
+    serverUiUrl: ""
+    bucket: ""
+    region: "us-east-1"
+    username: ""
+    password: ""
+  atpReportViewUiUrl: ""
+  environmentName: ""
+  # Extra env vars for integration test pod (optional)
+  env: []
   # One of "full", "basic"or one from testScenarios
   runTestScenarios: "basic"
   testScenarios:

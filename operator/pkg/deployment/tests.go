@@ -134,6 +134,9 @@ func NewIntegrationTestsPod(cr *v1.PatroniServices, cluster *patroniv1.PatroniCl
 			RestartPolicy: corev1.RestartPolicyNever,
 		},
 	}
+	if len(testsSpec.Env) > 0 {
+		pod.Spec.Containers[0].Env = append(pod.Spec.Containers[0].Env, testsSpec.Env...)
+	}
 	if testsSpec.Resources != nil {
 		pod.Spec.Containers[0].Resources = *testsSpec.Resources
 	}
@@ -254,6 +257,9 @@ func NewCoreIntegrationTests(cr *patroniv1.PatroniCore, cluster *patroniv1.Patro
 			},
 			RestartPolicy: corev1.RestartPolicyNever,
 		},
+	}
+	if len(testsSpec.Env) > 0 {
+		pod.Spec.Containers[0].Env = append(pod.Spec.Containers[0].Env, testsSpec.Env...)
 	}
 	if testsSpec.Resources != nil {
 		pod.Spec.Containers[0].Resources = *testsSpec.Resources
