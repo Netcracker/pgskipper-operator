@@ -3,6 +3,9 @@ FROM ghcr.io/elbe0116/qubership-docker-integration-tests:PSUPATPOS-63
 ENV LC_ALL=en_US.UTF-8 \
     LANG=en_US.UTF-8
 
+# Base image may run as non-root; install as root so /root and site-packages are writable
+USER root
+
 COPY docker/pip.conf /root/.pip/pip.conf
 COPY docker/requirements.txt /root/requirements.txt
 
