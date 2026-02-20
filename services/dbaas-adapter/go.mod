@@ -3,7 +3,7 @@ module github.com/Netcracker/pgskipper-dbaas-adapter/postgresql-dbaas-adapter
 go 1.25.5
 
 require (
-	github.com/Netcracker/qubership-dbaas-adapter-core v0.11.0
+	github.com/Netcracker/qubership-dbaas-adapter-core v0.11.1
 	github.com/gofiber/fiber/v2 v2.52.11
 	github.com/google/uuid v1.6.0
 	github.com/jackc/pgconn v1.14.3
@@ -11,9 +11,9 @@ require (
 	github.com/stretchr/testify v1.11.1
 	github.com/valyala/fasthttp v1.52.0
 	go.uber.org/zap v1.27.1
-	k8s.io/api v0.35.0
-	k8s.io/apimachinery v0.35.0
-	k8s.io/client-go v0.35.0
+	k8s.io/api v0.35.1
+	k8s.io/apimachinery v0.35.1
+	k8s.io/client-go v0.35.1
 )
 
 require (
@@ -45,7 +45,7 @@ require (
 	github.com/cespare/xxhash/v2 v2.3.0 // indirect
 	github.com/davecgh/go-spew v1.1.1 // indirect
 	github.com/docker/distribution v2.8.3+incompatible // indirect
-	github.com/go-jose/go-jose/v4 v4.0.1 // indirect
+	github.com/go-jose/go-jose/v4 v4.0.5 // indirect
 	github.com/go-logr/logr v1.4.3 // indirect
 	github.com/go-openapi/jsonpointer v0.21.0 // indirect
 	github.com/go-openapi/jsonreference v0.20.2 // indirect
@@ -55,7 +55,7 @@ require (
 	github.com/hashicorp/errwrap v1.1.0 // indirect
 	github.com/hashicorp/go-cleanhttp v0.5.2 // indirect
 	github.com/hashicorp/go-multierror v1.1.1 // indirect
-	github.com/hashicorp/go-retryablehttp v0.7.6 // indirect
+	github.com/hashicorp/go-retryablehttp v0.7.7 // indirect
 	github.com/hashicorp/go-rootcerts v1.0.2 // indirect
 	github.com/hashicorp/go-secure-stdlib/parseutil v0.1.6 // indirect
 	github.com/hashicorp/go-secure-stdlib/strutil v0.1.2 // indirect
@@ -93,7 +93,7 @@ require (
 	github.com/valyala/bytebufferpool v1.0.0 // indirect
 	github.com/valyala/tcplisten v1.0.0 // indirect
 	go.uber.org/multierr v1.10.0 // indirect
-	golang.org/x/crypto v0.44.0 // indirect
+	golang.org/x/crypto v0.45.0 // indirect
 	golang.org/x/exp v0.0.0-20240112132812-db7319d0e0e3
 	golang.org/x/net v0.47.0 // indirect
 	golang.org/x/oauth2 v0.30.0 // indirect

@@ -8,4 +8,4 @@
 
 # Overview
 
-postgres-backup-daemon allows to run backups periodically and recovery database from this backups.
+Postgres backup-daemon allows to run backups periodically and recovery database from this backups.

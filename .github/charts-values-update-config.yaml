@@ -1,0 +1,31 @@
+---
+
+# Charts release configuration file example
+# This file is used to update the version of the helm charts and images in the values.yaml file
+# It is used in the helm-charts-release action
+# ${release} is replaced with the release version provided in the workflow
+
+charts:
+  - name: patroni-core
+    chart_file: operator/charts/patroni-core/Chart.yaml
+    values_file: operator/charts/patroni-core/values.yaml
+    image:
+      - ghcr.io/netcracker/pgskipper-operator:${release}
+      - ghcr.io/netcracker/pgskipper-operator-transfer:${release}
+      - ghcr.io/netcracker/pgskipper-docker-upgrade:${release}
+      - ghcr.io/netcracker/pgskipper-patroni-16:${release}
+      - ghcr.io/netcracker/pgskipper-patroni-17:${release}
+      - ghcr.io/netcracker/pgskipper-patroni-18:${release}
+      - ghcr.io/netcracker/pgskipper-operator-tests:${release}
+  - name: patroni-services
+    chart_file: operator/charts/patroni-services/Chart.yaml
+    values_file: operator/charts/patroni-services/values.yaml
+    image:
+      - ghcr.io/netcracker/pgskipper-operator:${release}
+      - ghcr.io/netcracker/pgskipper-docker-monitoring-agent:${release}
+      - ghcr.io/netcracker/qubership-docker-query-exporter:${release}
+      - ghcr.io/netcracker/pgskipper-docker-replication-controller:${release}
+      - ghcr.io/netcracker/pgskipper-docker-pgbackrest-sidecar:${release}
+      - ghcr.io/netcracker/pgskipper-docker-backup-daemon:${release}
+      # - ghcr.io/netcracker/pgskipper-docker-dbaas-adapter:${release}
+      - ghcr.io/netcracker/pgskipper-operator-tests:${release}

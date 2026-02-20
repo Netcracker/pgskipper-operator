@@ -1,0 +1,159 @@
+name: Build Pgskipper Components
+run-name: "Dev image for ${{ github.event.repository.name }}: ${{ github.run_number }} - ${{ github.actor }}"
+on:
+  release:
+    types: [created]
+  push:
+    branches:
+      - "main"
+    paths-ignore:
+      - "docs/**"
+      - "CODE-OF-CONDUCT.md"
+      - "CONTRIBUTING.md"
+      - "LICENSE"
+      - "README.md"
+      - "SECURITY.md"
+  pull_request:
+    branches:
+      - "**"
+    paths-ignore:
+      - "docs/**"
+      - "CODE-OF-CONDUCT.md"
+      - "CONTRIBUTING.md"
+      - "LICENSE"
+      - "README.md"
+      - "SECURITY.md"
+  workflow_dispatch:
+    inputs:
+      tags:
+        required: false
+        type: string
+        default: ""
+        description: "Tags"
+      dry-run:
+        required: true
+        type: boolean
+        default: false
+        description: "Dry run mode"
+      replace-symbol:
+        required: false
+        type: string
+        default: "_"
+        description: "Symbol to replace in tags"
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ${{ github.ref_type == 'branch' && format('build-branch-{0}', github.ref_name) || format('build-{0}', github.sha) }}
+  cancel-in-progress: true
+
+env:
+  TAG_NAME: ${{ github.event.release.tag_name || github.ref_name }}
+  PUSH: ${{ (github.event_name != 'workflow_dispatch' || inputs.publish_docker) && github.actor != 'dependabot[bot]' }}
+
+jobs:
+  prepare:
+    name: "Prepare Images and Metadata"
+    runs-on: ubuntu-latest
+    outputs:
+      components: ${{ steps.load.outputs.components }}
+      platforms: ${{ steps.load.outputs.platforms }}
+      tags: "${{ steps.meta.outputs.result }}"
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        with:
+          persist-credentials: true
+          fetch-depth: 0
+
+      - name: Changed Files
+        if: github.event_name != 'release' && github.event_name != 'workflow_dispatch'
+        id: changed-files
+        uses: tj-actions/changed-files@24d32ffd492484c1d75e0c0b894501ddb9d30d62 # v47
+        with:
+          json: true
+          write_output_files: true # .github/outputs/all_changed_files.json
+
+      - id: load
+        name: Load Components and Platforms
+        run: |
+          if [[ "$GITHUB_EVENT_NAME" == "release" || "$GITHUB_EVENT_NAME" == "workflow_dispatch" ]]; then
+            components=$(jq -c '.components' .github/build-config.cfg)
+          fi
+          if [[ "$GITHUB_EVENT_NAME" == "pull_request" || "$GITHUB_EVENT_NAME" == "push" ]]; then
+            all_changed_files=$(jq -c '.' .github/outputs/all_changed_files.json)
+            if [ "$all_changed_files" != "null" ]; then
+                echo "all_changed_files=${all_changed_files}"
+                chmod +x .github/scripts/matrix.sh
+                components=$(./.github/scripts/matrix.sh ".github/build-config.cfg" ".github/outputs/all_changed_files.json")
+            fi
+          fi
+          echo "components=${components}"
+          echo "components=${components}" >> "$GITHUB_OUTPUT"
+          echo "platforms=$(jq -c '.platforms' .github/build-config.cfg)" >> "$GITHUB_OUTPUT"
+
+      - name: Create tags for images
+        uses: netcracker/qubership-workflow-hub/actions/metadata-action@8d542a426ce561c7dce745f6b9cee068d1d7e101 #2.0.10
+        id: meta
+        with:
+          default-template: "{{ref-name}}"
+          extra-tags: ${{ github.event.inputs.tags || '' }}
+          replace-symbol: ${{ github.event.inputs.replace-symbol || '_'}}
+
+  build:
+    name: ${{ matrix.component.name }} Image Build
+    needs: [prepare]
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+    strategy:
+      fail-fast: false
+      matrix:
+        component: ${{ fromJson(needs.prepare.outputs.components) }}
+    steps:
+      - name: Validate
+        run: |
+          if [[ "${{ github.event_name }}" == "workflow_dispatch" && "${{ github.ref }}" == refs/tags* ]]; then
+            echo -e "\033[91mManual workflow run on tags is not allowed!\033[0m"
+            exit 1
+          fi
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Set up QEMU
+        uses: docker/setup-qemu-action@v3
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+      - name: Login to Docker Hub
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${GITHUB_ACTOR}
+          password: ${{secrets.GITHUB_TOKEN}}
+      - name: Prepare Tag
+        run: echo "TAG_NAME=$(echo ${TAG_NAME} | sed 's@refs/tags/@@;s@refs/heads/@@;s@/@_@g')" >> $GITHUB_ENV
+      - name: Get package IDs for delete
+        id: get-ids-for-delete
+        uses: Netcracker/get-package-ids@84bc8eb8bed50218be76e671b3a24c35a1300979
+        with:
+          component-name: ${{ matrix.component.name }}
+          component-tag: ${{ env.TAG_NAME }}
+          access-token: ${{secrets.GITHUB_TOKEN}}
+        if: ${{ env.PUSH }}
+      - name: Build and push
+        uses: docker/build-push-action@16ebe778df0e7752d2cfcbd924afdbbd89c1a755 # v6.6.1
+        with:
+          no-cache: true
+          context: ${{ matrix.component.context }}
+          file: ${{ matrix.component.file }}
+          platforms: ${{ needs.prepare.outputs.platforms }}
+          push: ${{ env.PUSH }}
+          build-args: PG_VERSION=${{ matrix.component.pg_version }}
+          tags: ghcr.io/netcracker/${{ matrix.component.name }}:${{ env.TAG_NAME }}
+          provenance: false
+      - uses: actions/delete-package-versions@e5bc658cc4c965c472efe991f8beea3981499c55 # v5.0.0
+        with:
+          package-name: ${{ matrix.component.name }}
+          package-type: 'container'
+          package-version-ids: ${{ steps.get-ids-for-delete.outputs.ids-for-delete }}
+        if: ${{ steps.get-ids-for-delete.outputs.ids-for-delete != '' }}
