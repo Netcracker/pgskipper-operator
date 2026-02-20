@@ -25,21 +25,11 @@ on:
       - "SECURITY.md"
   workflow_dispatch:
     inputs:
-      tags:
-        required: false
-        type: string
-        default: ""
-        description: "Tags"
-      dry-run:
-        required: true
+      publish_docker:
+        description: "Publish images to ghcr.io/netcracker"
         type: boolean
         default: false
-        description: "Dry run mode"
-      replace-symbol:
         required: false
-        type: string
-        default: "_"
-        description: "Symbol to replace in tags"
 
 permissions:
   contents: read
