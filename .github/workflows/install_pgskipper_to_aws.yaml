@@ -1,0 +1,145 @@
+name: Install Pgskipper to AWS
+
+on:
+  workflow_dispatch:
+    inputs:
+      environment:
+        description: "Environment Name"
+        required: false
+        default: "dev"
+      test_scenario:
+        description: "Test scenario (e.g. basic, patroniBasic, or empty for default)"
+        required: false
+        default: "basic"
+
+jobs:
+  Install-Pgskipper:
+    environment: "${{ github.event.inputs.environment }}"
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Listing downloaded files
+        run: |
+          pwd
+          ls -R ./
+
+      - name: Setup kubectl
+        uses: azure/setup-kubectl@v3
+        with:
+          version: 'v1.32.0'
+
+      - name: Setup Helm
+        uses: azure/setup-helm@v3
+
+      - name: Verify tools
+        run: |
+          kubectl version --client
+          helm version
+          aws --version
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ${{ vars.AWS_REGION || 'us-east-1' }}
+
+      - name: Configure kubeconfig for EKS
+        run: |
+          aws eks update-kubeconfig --region ${{ vars.AWS_REGION || 'us-east-1' }} --name ${{ vars.AWS_CLUSTERNAME }}
+
+      - name: Verify cluster access
+        run: kubectl get nodes
+
+      - name: Install Pgskipper (Patroni Services)
+        run: |
+          # Uninstall Helm release first (cleans CRs and avoids finalizers blocking namespace deletion)
+          echo "Uninstalling Helm release..."
+          helm uninstall pgskipper -n ${{ vars.PGSKIPPER_INSTALL_NAMESPACE }} --wait --timeout=120s || true
+          
+          echo "Deleting namespace..."
+          kubectl delete ns ${{ vars.PGSKIPPER_INSTALL_NAMESPACE }} --timeout=180s --wait=false || true
+          
+          echo "Waiting for namespace deletion to complete..."
+          for i in $(seq 1 90); do
+            if ! kubectl get ns ${{ vars.PGSKIPPER_INSTALL_NAMESPACE }} 2>/dev/null; then
+              echo "Namespace deleted successfully"
+              break
+            fi
+            
+            NS_STATUS=$(kubectl get ns ${{ vars.PGSKIPPER_INSTALL_NAMESPACE }} -o jsonpath='{.status.phase}' 2>/dev/null || echo "")
+            echo "Waiting... ($i/90) - Namespace status: $NS_STATUS"
+            
+            if [ "$i" -gt 30 ] && [ "$NS_STATUS" = "Terminating" ]; then
+              echo "Namespace stuck in Terminating, attempting force delete..."
+              kubectl api-resources --verbs=list --namespaced -o name | xargs -n 1 kubectl get --show-kind --ignore-not-found -n ${{ vars.PGSKIPPER_INSTALL_NAMESPACE }} -o name 2>/dev/null | \
+                xargs -n 1 kubectl patch -n ${{ vars.PGSKIPPER_INSTALL_NAMESPACE }} -p '{"metadata":{"finalizers":[]}}' --type=merge 2>/dev/null || true
+              kubectl get ns ${{ vars.PGSKIPPER_INSTALL_NAMESPACE }} -o json | \
+                jq '.spec.finalizers = []' | \
+                kubectl replace --raw "/api/v1/namespaces/${{ vars.PGSKIPPER_INSTALL_NAMESPACE }}/finalize" -f - || true
+              sleep 5
+            fi
+            
+            sleep 2
+          done
+          
+          if kubectl get ns ${{ vars.PGSKIPPER_INSTALL_NAMESPACE }} 2>/dev/null; then
+            echo "ERROR: Namespace still exists after timeout!"
+            kubectl get ns ${{ vars.PGSKIPPER_INSTALL_NAMESPACE }} -o yaml
+            exit 1
+          fi
+          
+          echo "Creating namespace: ${{ vars.PGSKIPPER_INSTALL_NAMESPACE }}"
+          kubectl create namespace ${{ vars.PGSKIPPER_INSTALL_NAMESPACE }}
+          
+          # AWS EKS values: TLS off, securityContext, tests, minimal components for integration tests
+          cat << 'VALUESEOF' | sed 's/^          //' > /tmp/pgskipper-aws-values.yaml
+          global:
+            tls:
+              enabled: false
+            securityContext: {}
+          operator:
+            image: ghcr.io/netcracker/pgskipper-operator:main
+          tls:
+            enabled: false
+          patroni:
+            clusterName: patroni
+          metricCollector:
+            install: true
+            dockerImage: ghcr.io/netcracker/pgskipper-docker-monitoring-agent:main
+            securityContext: {}
+          backupDaemon:
+            install: true
+            dockerImage: ghcr.io/netcracker/pgskipper-docker-backup-daemon:main
+            securityContext: {}
+          tests:
+            install: true
+            runTestScenarios: basic
+            affinity: null
+          VALUESEOF
+          
+          HELM_ARGS=""
+          HELM_ARGS="$HELM_ARGS --set tests.runTestScenarios=${{ github.event.inputs.test_scenario || 'basic' }}"
+          # Use tests image from this repo (build.yaml pushes to ghcr.io/owner/pgskipper-operator-tests:TAG)
+          GITHUB_GROUP=$(echo ${{ github.repository_owner }} | tr '[:upper:]' '[:lower:]')
+          IMAGE_TAG=$(echo ${{ github.ref }} | sed 's@refs/tags/@@;s@refs/heads/@@;s@/@_@g')
+          HELM_ARGS="$HELM_ARGS --set tests.dockerImage=ghcr.io/${GITHUB_GROUP}/pgskipper-operator-tests:${IMAGE_TAG}"
+          
+          echo "Helm additional args: $HELM_ARGS"
+          
+          helm install --namespace=${{ vars.PGSKIPPER_INSTALL_NAMESPACE }} \
+            --create-namespace \
+            -f ./operator/charts/patroni-services/values.yaml \
+            -f /tmp/pgskipper-aws-values.yaml \
+            pgskipper ./operator/charts/patroni-services \
+            $HELM_ARGS
+          
+          echo "Waiting for operator and Patroni to be ready..."
+          kubectl wait --for=condition=ready pod -l name=postgres-operator -n ${{ vars.PGSKIPPER_INSTALL_NAMESPACE }} --timeout=300s || true
+          kubectl wait --for=condition=ready pod -l app=patroni -n ${{ vars.PGSKIPPER_INSTALL_NAMESPACE }} --timeout=600s || true
+          
+          echo "Pgskipper installation completed"
+          kubectl get pods -n ${{ vars.PGSKIPPER_INSTALL_NAMESPACE }}
