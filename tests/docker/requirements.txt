@@ -1,3 +1,4 @@
+# Keep same set as before; only fix versions that break build/K8s SSL (align with base image)
 aniso8601==10.0.1
 cachetools==4.2.4
 certifi==2024.7.4
@@ -11,10 +12,12 @@ importlib-metadata==4.11.3
 ipaddress==1.0.23
 itsdangerous==2.1.2
 Jinja2==3.1.6
-kubernetes==31.0.0
+# Align with base image to avoid K8s API/SSL errors (was 31.0.0)
+kubernetes==34.1.0
 MarkupSafe==3.0.3
 oauthlib==3.3.1
-psycopg2==2.9.10
+# Binary build — no build-base/postgresql-dev needed (was psycopg2==2.9.10)
+psycopg2-binary==2.9.10
 pyasn1==0.6.2
 pyasn1-modules==0.4.2
 PyJWT==2.4.0
@@ -31,7 +34,8 @@ ruamel.yaml==0.19.1
 ruamel.yaml.clib==0.2.12
 six==1.16.0
 typing_extensions==4.2.0
-urllib3==2.6.3
+# Align with base image (was 2.6.3)
+urllib3~=2.3.0
 websocket-client==1.9.0
 Werkzeug==3.1.5
 zipp==3.23.0
