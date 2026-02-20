@@ -1,0 +1,18 @@
+{{ if and (.Capabilities.APIVersions.Has "gateway.networking.k8s.io/v1") (eq .Values.PAAS_PLATFORM "KUBERNETES") -}}
+{{ if and .Values.powaUI.install .Values.tls.enabled }}
+apiVersion: gateway.networking.k8s.io/v1
+kind: BackendTLSPolicy
+metadata:
+  name: powa-ui-backend-tls-policy
+spec:
+  targetRefs:
+  - group: ""
+    kind: Service
+    name: powa-ui
+  validation:
+    hostname: {{ .Values.powaUI.ingress.host  | quote }}
+    caCertificateRefs:
+    - kind: Secret
+      name: {{ include "postgres.certServicesSecret" . }}
+{{- end }}
+{{- end }}
