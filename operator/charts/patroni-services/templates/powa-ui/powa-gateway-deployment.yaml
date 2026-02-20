@@ -1,0 +1,22 @@
+{{- if and (.Capabilities.APIVersions.Has "gateway.networking.k8s.io/v1") (eq .Values.PAAS_PLATFORM "KUBERNETES") -}}
+{{ if .Values.powaUI.install }}
+apiVersion: gateway.networking.k8s.io/v1
+kind: HTTPRoute
+metadata:
+  name: powa-ui-httproute
+spec:
+  parentRefs:
+  - name: {{ .Values.powaUI.ingress.gatewayName | default "default-external-gateway" }}
+    namespace: {{ .Values.powaUI.ingress.envoyNamespace | default "envoy-gateway" }}    # Note that this "main" route targets port 443 (HTTPS) specifically
+    port: 443
+  hostnames: [{{ .Values.powaUI.ingress.host  | quote }}]
+  rules:
+  - matches:
+    - path:
+        type: PathPrefix
+        value: /
+    backendRefs:
+    - name: powa-ui
+      port: 8080
+{{- end }}
+{{- end }}
