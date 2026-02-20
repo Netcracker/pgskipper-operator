@@ -154,6 +154,7 @@ jobs:
           tags: ghcr.io/${{ env.GITHUB_GROUP }}/${{ matrix.component.name }}:${{ env.TAG_NAME }}
           provenance: false
       - uses: actions/delete-package-versions@e5bc658cc4c965c472efe991f8beea3981499c55 # v5.0.0
+        continue-on-error: true
         with:
           package-name: ${{ matrix.component.name }}
           package-type: 'container'
