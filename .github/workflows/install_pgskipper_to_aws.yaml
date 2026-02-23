@@ -123,11 +123,13 @@ jobs:
             --dry-run=client -o yaml | kubectl apply -f -
           
           # AWS EKS values: TLS off, securityContext, tests, minimal components for integration tests
+          # GLOBAL_SECURITY_CONTEXT: false so operator does not set runAsNonRoot on containers (backup-daemon image runs as root)
           cat << 'VALUESEOF' | sed 's/^          //' > /tmp/pgskipper-aws-values.yaml
           global:
             tls:
               enabled: false
             securityContext: {}
+          GLOBAL_SECURITY_CONTEXT: "false"
           operator:
             image: ghcr.io/netcracker/pgskipper-operator:main
           tls:
