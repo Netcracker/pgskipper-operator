@@ -83,7 +83,7 @@ func (r *PoolerReconciler) Reconcile() error {
 		return err
 	}
 
-	poolerDeployment := pooler.NewPoolerDeployment(cr, cr.Spec.ServiceAccountName, creds, newPatroniName)
+	poolerDeployment := pooler.NewPoolerDeployment(cr, cr.Spec.ServiceAccountName)
 	if cr.Spec.PrivateRegistry.Enabled {
 		for _, name := range cr.Spec.PrivateRegistry.Names {
 			poolerDeployment.Spec.Template.Spec.ImagePullSecrets = append(poolerDeployment.Spec.Template.Spec.ImagePullSecrets, corev1.LocalObjectReference{Name: name})

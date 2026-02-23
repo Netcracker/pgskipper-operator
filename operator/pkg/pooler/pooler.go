@@ -50,7 +50,7 @@ type PgBouncerCreds struct {
 	password string
 }
 
-func NewPoolerDeployment(cr *v1.PatroniServices, sa string, creds *PgBouncerCreds, newPatroniName string) *appsv1.Deployment {
+func NewPoolerDeployment(cr *v1.PatroniServices, sa string) *appsv1.Deployment {
 	spec := cr.Spec.Pooler
 	deploymentName := DeploymentName
 	dockerImage := spec.Image
@@ -101,33 +101,20 @@ func NewPoolerDeployment(cr *v1.PatroniServices, sa string, creds *PgBouncerCred
 							Name:            deploymentName,
 							ImagePullPolicy: cr.Spec.ImagePullPolicy,
 							Image:           dockerImage,
-							Command:         []string{},
-							Args:            []string{},
-							Env: []corev1.EnvVar{
-								{
-									Name:  "POSTGRESQL_HOST",
-									Value: newPatroniName,
-								},
-								{
-									Name:  "POSTGRESQL_PASSWORD",
-									Value: creds.password,
-								},
-								{
-									Name:  "POSTGRESQL_USERNAME",
-									Value: creds.username,
-								},
-							},
+							Env:             []corev1.EnvVar{},
 							Ports: []corev1.ContainerPort{
 								{ContainerPort: 6432, Name: "pg", Protocol: corev1.ProtocolTCP},
 							},
 							VolumeMounts: []corev1.VolumeMount{
 								{
-									MountPath: "/bitnami/pgbouncer/conf",
+									MountPath: "/etc/pgbouncer/pgbouncer.ini",
 									Name:      "config-volume",
+									SubPath:   "pgbouncer.ini",
 								},
 								{
-									MountPath: "/etc/pgbouncer/",
+									MountPath: "/etc/pgbouncer/userlist.txt",
 									Name:      "auth-volume",
+									SubPath:   "userlist.txt",
 								},
 							},
 							LivenessProbe: &corev1.Probe{
