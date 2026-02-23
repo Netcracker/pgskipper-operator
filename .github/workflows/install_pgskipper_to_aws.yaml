@@ -21,6 +21,22 @@ jobs:
       - name: Checkout Code
         uses: actions/checkout@v4
 
+      - name: Validate required Environment variables
+        run: |
+          MISSING=""
+          [ -z "${{ vars.PGSKIPPER_INSTALL_NAMESPACE }}" ] && MISSING="${MISSING} PGSKIPPER_INSTALL_NAMESPACE"
+          [ -z "${{ vars.AWS_CLUSTERNAME }}" ] && MISSING="${MISSING} AWS_CLUSTERNAME"
+          [ -z "${{ secrets.AWS_ACCESS_KEY_ID }}" ] && MISSING="${MISSING} AWS_ACCESS_KEY_ID"
+          [ -z "${{ secrets.AWS_SECRET_ACCESS_KEY }}" ] && MISSING="${MISSING} AWS_SECRET_ACCESS_KEY"
+          if [ -n "$MISSING" ]; then
+            echo "::error::Missing required configuration in Environment '${{ github.event.inputs.environment }}'. Set the following Variables (and Secrets):$MISSING"
+            echo "In GitHub: Settings → Environments → ${{ github.event.inputs.environment }} → add Variables: PGSKIPPER_INSTALL_NAMESPACE, AWS_CLUSTERNAME; Secrets: AWS_ACCESS_KEY_ID, AWS_SECRET_ACCESS_KEY. Optionally AWS_REGION (default us-east-1)."
+            exit 1
+          fi
+          echo "PGSKIPPER_INSTALL_NAMESPACE=${{ vars.PGSKIPPER_INSTALL_NAMESPACE }}"
+          echo "AWS_CLUSTERNAME=${{ vars.AWS_CLUSTERNAME }}"
+          echo "AWS_REGION=${{ vars.AWS_REGION || 'us-east-1' }}"
+
       - name: Listing downloaded files
         run: |
           pwd
@@ -94,6 +110,17 @@ jobs:
           
           echo "Creating namespace: ${{ vars.PGSKIPPER_INSTALL_NAMESPACE }}"
           kubectl create namespace ${{ vars.PGSKIPPER_INSTALL_NAMESPACE }}
+          
+          # Operator requires these secrets; chart only creates them when externalDataBase is set
+          echo "Creating postgres-credentials and replicator-credentials secrets..."
+          kubectl create secret generic postgres-credentials -n ${{ vars.PGSKIPPER_INSTALL_NAMESPACE }} \
+            --from-literal=username=postgres \
+            --from-literal=password='p@ssWOrD1' \
+            --dry-run=client -o yaml | kubectl apply -f -
+          kubectl create secret generic replicator-credentials -n ${{ vars.PGSKIPPER_INSTALL_NAMESPACE }} \
+            --from-literal=username=replicator \
+            --from-literal=password=replicator \
+            --dry-run=client -o yaml | kubectl apply -f -
           
           # AWS EKS values: TLS off, securityContext, tests, minimal components for integration tests
           cat << 'VALUESEOF' | sed 's/^          //' > /tmp/pgskipper-aws-values.yaml
