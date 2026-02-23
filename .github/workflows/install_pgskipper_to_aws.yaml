@@ -142,6 +142,8 @@ jobs:
             install: true
             dockerImage: ghcr.io/netcracker/pgskipper-docker-backup-daemon:main
             securityContext: {}
+            storage:
+              storageClass: gp2
           tests:
             install: true
             runTestScenarios: basic
