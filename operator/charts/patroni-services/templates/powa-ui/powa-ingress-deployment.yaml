@@ -13,6 +13,7 @@ metadata:
     nginx.ingress.kubernetes.io/proxy-ssl-name: '{{ printf "powa-ui.%s" .Release.Namespace }}'
     nginx.ingress.kubernetes.io/proxy-ssl-secret: '{{ printf "%s/%s" .Release.Namespace (include "postgres.certServicesSecret" .) }}'
   {{- end }}
+    gateway-api-converter.netcracker.com/ignore: "true"
   name: powa-ui-ingress
 spec:
   {{- if .Values.tls.enabled }}
