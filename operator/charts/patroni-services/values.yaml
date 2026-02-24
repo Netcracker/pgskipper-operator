@@ -177,6 +177,7 @@ backupDaemon:
   backupSchedule: "0 0/7 * * *"
 
   #  pgHost: pg-patroni.postgres-service
+  # clusterDomain: cluster.local  # K8s cluster DNS domain; used to build FQDN for pgHost (e.g. pg-patroni.NAMESPACE.svc.cluster.local)
   # The eviction policy for backup daemon: period and action. The default value is 7d/delete.
   evictionPolicy: "7d/delete"
   backupTimeout: 300

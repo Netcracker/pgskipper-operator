@@ -248,19 +248,20 @@ Get TLS secret name for services
 {{- end -}}
 
 {{/*
-Postgres host for backup daemon
+Postgres host for backup daemon. Uses FQDN (.svc.cluster.local) for reliable DNS in Kubernetes (e.g. EKS).
 */}}
 {{- define "backupDaemon.pgHost" -}}
+{{- $clusterDomain := default "cluster.local" .Values.backupDaemon.clusterDomain -}}
 {{- if .Values.connectionPooler.install  -}}
 pg-{{ default "patroni" .Values.patroni.clusterName }}-direct
 {{- else if .Values.externalDataBase }}
 {{- if or (eq (lower .Values.externalDataBase.type) "azure")  (eq (lower .Values.externalDataBase.type) "rds") }}
-{{- printf "%s.%s" "pg-patroni" .Release.Namespace }}
+{{- printf "pg-patroni.%s.svc.%s" .Release.Namespace $clusterDomain }}
 {{- else }}
-{{- default (printf "%s.%s" "pg-patroni" .Release.Namespace) .Values.backupDaemon.pgHost }}
+{{- default (printf "pg-patroni.%s.svc.%s" .Release.Namespace $clusterDomain) .Values.backupDaemon.pgHost }}
 {{- end }}
 {{- else }}
-{{- default (printf "%s.%s" "pg-patroni" .Release.Namespace) .Values.backupDaemon.pgHost }}
+{{- default (printf "pg-patroni.%s.svc.%s" .Release.Namespace $clusterDomain) .Values.backupDaemon.pgHost }}
 {{- end }}
 {{- end -}}
 

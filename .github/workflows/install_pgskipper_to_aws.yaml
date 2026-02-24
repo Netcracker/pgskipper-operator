@@ -72,8 +72,9 @@ jobs:
 
       - name: Install Pgskipper (Patroni Services)
         run: |
-          # Uninstall Helm release first (cleans CRs and avoids finalizers blocking namespace deletion)
-          echo "Uninstalling Helm release..."
+          # Uninstall Helm releases first (cleans CRs and avoids finalizers blocking namespace deletion)
+          echo "Uninstalling Helm releases..."
+          helm uninstall pgskipper-patroni -n ${{ vars.PGSKIPPER_INSTALL_NAMESPACE }} --wait --timeout=120s || true
           helm uninstall pgskipper -n ${{ vars.PGSKIPPER_INSTALL_NAMESPACE }} --wait --timeout=120s || true
           
           echo "Deleting namespace..."
@@ -181,8 +182,20 @@ jobs:
             pgskipper ./operator/charts/patroni-services \
             $HELM_ARGS
           
-          echo "Waiting for operator and Patroni to be ready..."
+          # Install patroni-core so Patroni pods and Service pg-patroni are created (by operator with OPERATOR_ROLE=patroni).
+          # Without this, only PatroniServices controller runs and backup daemon has no Postgres to connect to.
+          echo "Installing patroni-core chart (PatroniCore CR + patroni-core-operator)..."
+          helm install --namespace=${{ vars.PGSKIPPER_INSTALL_NAMESPACE }} \
+            --create-namespace \
+            -f ./operator/charts/patroni-core/values.yaml \
+            --set tls.enabled=false \
+            --set patroni.clusterName=patroni \
+            --set operator.image=ghcr.io/netcracker/pgskipper-operator:main \
+            pgskipper-patroni ./operator/charts/patroni-core
+          
+          echo "Waiting for operators and Patroni to be ready..."
           kubectl wait --for=condition=ready pod -l name=postgres-operator -n ${{ vars.PGSKIPPER_INSTALL_NAMESPACE }} --timeout=300s || true
+          kubectl wait --for=condition=ready pod -l name=patroni-core-operator -n ${{ vars.PGSKIPPER_INSTALL_NAMESPACE }} --timeout=300s || true
           kubectl wait --for=condition=ready pod -l app=patroni -n ${{ vars.PGSKIPPER_INSTALL_NAMESPACE }} --timeout=600s || true
           
           echo "Pgskipper installation completed"
