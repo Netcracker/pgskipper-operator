@@ -97,8 +97,10 @@ func (r *BackupDaemonReconciler) Reconcile() error {
 		return err
 	}
 
-	//Adding securityContexts
-	backupDaemonDeployment.Spec.Template.Spec.Containers[0].SecurityContext = util.GetDefaultSecurityContext()
+	// Adding securityContexts: when CR explicitly sets runAsNonRoot=false (e.g. for root-based backup-daemon image), do not set container SecurityContext; otherwise use default
+	if bdSpec.SecurityContext.RunAsNonRoot == nil || *bdSpec.SecurityContext.RunAsNonRoot {
+		backupDaemonDeployment.Spec.Template.Spec.Containers[0].SecurityContext = util.GetDefaultSecurityContext()
+	}
 
 	// External database Section
 	if cr.Spec.ExternalDataBase != nil {
