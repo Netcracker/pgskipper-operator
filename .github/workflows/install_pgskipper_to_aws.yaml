@@ -11,6 +11,14 @@ on:
         description: "Test scenario (e.g. basic, patroniBasic, or empty for default)"
         required: false
         default: "basic"
+      repository:
+        description: "Repo to checkout (e.g. owner/pgskipper-operator-demo). Empty = this repo (use when running from your fork)."
+        required: false
+        default: ""
+      ref:
+        description: "Branch or ref to checkout (e.g. main). Used only if repository is set."
+        required: false
+        default: "main"
 
 jobs:
   Install-Pgskipper:
@@ -20,6 +28,9 @@ jobs:
     steps:
       - name: Checkout Code
         uses: actions/checkout@v4
+        with:
+          repository: ${{ github.event.inputs.repository || github.repository }}
+          ref: ${{ github.event.inputs.ref || github.ref }}
 
       - name: Validate required Environment variables
         run: |
@@ -123,6 +134,11 @@ jobs:
             --from-literal=password=replicator \
             --dry-run=client -o yaml | kubectl apply -f -
           
+          # Image registry/tag from the repo that triggered the workflow (your fork = your images)
+          GITHUB_GROUP=$(echo ${{ github.repository_owner }} | tr '[:upper:]' '[:lower:]')
+          IMAGE_TAG=$(echo ${{ github.ref }} | sed 's@refs/tags/@@;s@refs/heads/@@;s@/@_@g')
+          echo "Using images: ghcr.io/${GITHUB_GROUP}/...:${IMAGE_TAG}"
+          
           # AWS EKS values: TLS off, securityContext, tests, minimal components for integration tests
           # GLOBAL_SECURITY_CONTEXT: false so operator does not set runAsNonRoot on containers (backup-daemon image runs as root)
           cat << 'VALUESEOF' | sed 's/^          //' > /tmp/pgskipper-aws-values.yaml
@@ -131,19 +147,15 @@ jobs:
               enabled: false
             securityContext: {}
           GLOBAL_SECURITY_CONTEXT: "false"
-          operator:
-            image: ghcr.io/netcracker/pgskipper-operator:main
           tls:
             enabled: false
           patroni:
             clusterName: patroni
           metricCollector:
             install: true
-            dockerImage: ghcr.io/netcracker/pgskipper-docker-monitoring-agent:main
             securityContext: {}
           backupDaemon:
             install: true
-            dockerImage: ghcr.io/netcracker/pgskipper-docker-backup-daemon:main
             securityContext:
               runAsNonRoot: false
             storage:
@@ -155,10 +167,10 @@ jobs:
           VALUESEOF
           
           HELM_ARGS=""
+          HELM_ARGS="$HELM_ARGS --set operator.image=ghcr.io/${GITHUB_GROUP}/pgskipper-operator:${IMAGE_TAG}"
+          HELM_ARGS="$HELM_ARGS --set metricCollector.dockerImage=ghcr.io/${GITHUB_GROUP}/pgskipper-docker-monitoring-agent:${IMAGE_TAG}"
+          HELM_ARGS="$HELM_ARGS --set backupDaemon.dockerImage=ghcr.io/${GITHUB_GROUP}/pgskipper-docker-backup-daemon:${IMAGE_TAG}"
           HELM_ARGS="$HELM_ARGS --set tests.runTestScenarios=${{ github.event.inputs.test_scenario || 'basic' }}"
-          # Use tests image from this repo (build.yaml pushes to ghcr.io/owner/pgskipper-operator-tests:TAG)
-          GITHUB_GROUP=$(echo ${{ github.repository_owner }} | tr '[:upper:]' '[:lower:]')
-          IMAGE_TAG=$(echo ${{ github.ref }} | sed 's@refs/tags/@@;s@refs/heads/@@;s@/@_@g')
           HELM_ARGS="$HELM_ARGS --set tests.dockerImage=ghcr.io/${GITHUB_GROUP}/pgskipper-operator-tests:${IMAGE_TAG}"
           # ATP/S3 storage for test results (secrets and vars)
           [ -n "${{ secrets.S3_AWS_ACCESS_KEY_ID }}" ] && HELM_ARGS="$HELM_ARGS --set tests.atpStorage.username=${{ secrets.S3_AWS_ACCESS_KEY_ID }}"
@@ -191,7 +203,8 @@ jobs:
             -f ./operator/charts/patroni-core/values.yaml \
             --set tls.enabled=false \
             --set patroni.clusterName=patroni \
-            --set operator.image=ghcr.io/netcracker/pgskipper-operator:main \
+            --set operator.image=ghcr.io/${GITHUB_GROUP}/pgskipper-operator:${IMAGE_TAG} \
+            --set patroni.dockerImage=ghcr.io/${GITHUB_GROUP}/pgskipper-docker-patroni-16:${IMAGE_TAG} \
             --set patroni.storage.storageClass=gp2 \
             --set patroni.fsGroup=26 \
             --set GLOBAL_SECURITY_CONTEXT="false" \
@@ -199,6 +212,11 @@ jobs:
             pgskipper-patroni ./operator/charts/patroni-core
           
           echo "State after patroni-core install (diagnostics)..."
+          echo "--- Checkout ref (chart source): ${{ github.ref }} ${{ github.sha }} ---"
+          echo "--- PatroniCore spec.patroni (securityContext must have fsGroup: 26) ---"
+          kubectl get patronicore -n ${{ vars.PGSKIPPER_INSTALL_NAMESPACE }} -o jsonpath='{.items[0].spec.patroni}' 2>/dev/null | python3 -m json.tool 2>/dev/null || kubectl get patronicore -n ${{ vars.PGSKIPPER_INSTALL_NAMESPACE }} -o yaml 2>/dev/null | head -80
+          echo "--- StatefulSet pod template securityContext ---"
+          kubectl get statefulset -n ${{ vars.PGSKIPPER_INSTALL_NAMESPACE }} -l pgcluster=patroni -o jsonpath='{.items[0].spec.template.spec.securityContext}' 2>/dev/null | python3 -m json.tool 2>/dev/null || echo "(none or not found)"
           kubectl get pods -n ${{ vars.PGSKIPPER_INSTALL_NAMESPACE }} -o wide
           kubectl get patronicores -n ${{ vars.PGSKIPPER_INSTALL_NAMESPACE }} 2>/dev/null || true
           kubectl get statefulset,svc,pvc -n ${{ vars.PGSKIPPER_INSTALL_NAMESPACE }} 2>/dev/null || true
