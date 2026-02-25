@@ -212,6 +212,7 @@ jobs:
             --set patroni.securityContext.fsGroup=26 \
             --set GLOBAL_SECURITY_CONTEXT="false" \
             --set createCredentials=false \
+            --set tests.dockerImage=ghcr.io/${GITHUB_GROUP}/pgskipper-operator-tests:${IMAGE_TAG} \
             pgskipper-patroni ./operator/charts/patroni-core
           
           echo "State after patroni-core install (diagnostics)..."
