@@ -249,7 +249,7 @@ spec:
         {{- end }}
 {{ end }}
     pgNodeQty: {{ ( include "postgres.replicasCount" . ) }}
-    {{- if or .Values.tests.environmentName (and .Values.tests.atpStorage .Values.tests.atpStorage.provider) (and .Values.tests.env (len .Values.tests.env | gt 0)) }}
+    {{- if or .Values.tests.environmentName (and .Values.tests.atpStorage .Values.tests.atpStorage.provider) (gt (len (.Values.tests.env | default list)) 0) }}
     env:
     {{- if .Values.tests.environmentName }}
     - name: ENVIRONMENT_NAME
