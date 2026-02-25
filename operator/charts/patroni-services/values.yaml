@@ -408,7 +408,7 @@ replicationController:
 
 connectionPooler:
   install: false
-  dockerImage: edoburu/pgbouncer:v1.25.1-p0
+  dockerImage: docker.io/edoburu/pgbouncer:v1.25.1-p0
   replicas: 1
   config:
     databases:
