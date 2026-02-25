@@ -1093,6 +1093,20 @@ spec:
                     items:
                       type: string
                     type: array
+                  env:
+                    description: List of environment variables for the integration test pod (e.g. ATP_STORAGE_*)
+                    items:
+                      type: object
+                      required:
+                        - name
+                      properties:
+                        name:
+                          type: string
+                        value:
+                          type: string
+                        valueFrom:
+                          type: object
+                    type: array
                 type: object
               ldap:
                 properties:
