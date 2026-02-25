@@ -184,6 +184,7 @@ jobs:
           
           # Install patroni-core so Patroni pods and Service pg-patroni are created (by operator with OPERATOR_ROLE=patroni).
           # Without this, only PatroniServices controller runs and backup daemon has no Postgres to connect to.
+          # patroni.fsGroup=26 makes the data volume writable by postgres user (GID 26), required to avoid "Permission denied" on /var/lib/pgsql/data.
           echo "Installing patroni-core chart (PatroniCore CR + patroni-core-operator)..."
           helm install --namespace=${{ vars.PGSKIPPER_INSTALL_NAMESPACE }} \
             --create-namespace \
