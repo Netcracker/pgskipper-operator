@@ -191,7 +191,29 @@ jobs:
             --set tls.enabled=false \
             --set patroni.clusterName=patroni \
             --set operator.image=ghcr.io/netcracker/pgskipper-operator:main \
+            --set patroni.storage.storageClass=gp2 \
+            --set patroni.fsGroup=26 \
+            --set GLOBAL_SECURITY_CONTEXT="false" \
+            --set createCredentials=false \
             pgskipper-patroni ./operator/charts/patroni-core
+          
+          echo "State after patroni-core install (diagnostics)..."
+          kubectl get pods -n ${{ vars.PGSKIPPER_INSTALL_NAMESPACE }} -o wide
+          kubectl get patronicores -n ${{ vars.PGSKIPPER_INSTALL_NAMESPACE }} 2>/dev/null || true
+          kubectl get statefulset,svc,pvc -n ${{ vars.PGSKIPPER_INSTALL_NAMESPACE }} 2>/dev/null || true
+          POD=$(kubectl get pods -n ${{ vars.PGSKIPPER_INSTALL_NAMESPACE }} -l name=patroni-core-operator -o jsonpath='{.items[0].metadata.name}' 2>/dev/null || true)
+          if [ -n "$POD" ]; then
+            echo "--- patroni-core-operator pod status ---"
+            kubectl get pod "$POD" -n ${{ vars.PGSKIPPER_INSTALL_NAMESPACE }} -o wide
+            if [ "$(kubectl get pod "$POD" -n ${{ vars.PGSKIPPER_INSTALL_NAMESPACE }} -o jsonpath='{.status.phase}' 2>/dev/null)" != "Running" ]; then
+              echo "--- describe (patroni-core-operator not Running) ---"
+              kubectl describe pod "$POD" -n ${{ vars.PGSKIPPER_INSTALL_NAMESPACE }} | tail -80
+              echo "--- logs ---"
+              kubectl logs "$POD" -n ${{ vars.PGSKIPPER_INSTALL_NAMESPACE }} --tail=100 2>/dev/null || true
+            fi
+          else
+            echo "No patroni-core-operator pod found."
+          fi
           
           echo "Waiting for operators and Patroni to be ready..."
           kubectl wait --for=condition=ready pod -l name=postgres-operator -n ${{ vars.PGSKIPPER_INSTALL_NAMESPACE }} --timeout=300s || true

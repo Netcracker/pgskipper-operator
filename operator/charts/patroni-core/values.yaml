@@ -7,6 +7,9 @@ postgresUser: postgres
 # The password for the database superuser.
 postgresPassword: "p@ssWOrD1"
 replicatorPassword: "replicator"
+# Set to false when postgres-credentials and replicator-credentials are created outside the chart (e.g. by CI).
+# When false, the chart skips creating these secrets so Helm install does not conflict with existing resources.
+# createCredentials: true
 
 podLabels: {}
 
