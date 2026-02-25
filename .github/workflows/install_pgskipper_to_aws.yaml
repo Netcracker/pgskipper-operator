@@ -168,15 +168,20 @@ jobs:
           
           ENV_NAME="${{ vars.ENVIRONMENT_NAME }}"
           [ -z "$ENV_NAME" ] && ENV_NAME="${{ github.event.inputs.environment }}"
-          # Tests image + ATP/S3 storage for test results (used by both patroni-services and patroni-core)
+          AWS_REGION="${{ vars.AWS_REGION }}"
+          [ -z "$AWS_REGION" ] && AWS_REGION="us-east-1"
+          ATP_PROVIDER="${{ vars.ATP_STORAGE_PROVIDER }}"
+          [ -z "$ATP_PROVIDER" ] && ATP_PROVIDER="aws"
+          # Tests image + ATP/S3 storage for test results (used by both patroni-services and patroni-core).
+          # Always set provider and region so integrationTests.env is never empty (chart needs at least one of env/environmentName/atpStorage.provider).
           TESTS_ATP_ARGS="--set tests.dockerImage=ghcr.io/${GITHUB_GROUP}/pgskipper-operator-tests:${IMAGE_TAG}"
+          TESTS_ATP_ARGS="$TESTS_ATP_ARGS --set tests.atpStorage.provider=${ATP_PROVIDER}"
+          TESTS_ATP_ARGS="$TESTS_ATP_ARGS --set tests.atpStorage.region=${AWS_REGION}"
           [ -n "${{ secrets.S3_AWS_ACCESS_KEY_ID }}" ] && TESTS_ATP_ARGS="$TESTS_ATP_ARGS --set tests.atpStorage.username=${{ secrets.S3_AWS_ACCESS_KEY_ID }}"
           [ -n "${{ secrets.S3_AWS_SECRET_ACCESS_KEY }}" ] && TESTS_ATP_ARGS="$TESTS_ATP_ARGS --set tests.atpStorage.password=${{ secrets.S3_AWS_SECRET_ACCESS_KEY }}"
-          [ -n "${{ vars.ATP_STORAGE_PROVIDER }}" ] && TESTS_ATP_ARGS="$TESTS_ATP_ARGS --set tests.atpStorage.provider=${{ vars.ATP_STORAGE_PROVIDER }}"
           [ -n "${{ vars.ATP_STORAGE_SERVER_URL }}" ] && TESTS_ATP_ARGS="$TESTS_ATP_ARGS --set tests.atpStorage.serverUrl=${{ vars.ATP_STORAGE_SERVER_URL }}"
           [ -n "${{ vars.ATP_STORAGE_SERVER_UI_URL }}" ] && TESTS_ATP_ARGS="$TESTS_ATP_ARGS --set tests.atpStorage.serverUiUrl=${{ vars.ATP_STORAGE_SERVER_UI_URL }}"
           [ -n "${{ vars.ATP_STORAGE_BUCKET }}" ] && TESTS_ATP_ARGS="$TESTS_ATP_ARGS --set tests.atpStorage.bucket=${{ vars.ATP_STORAGE_BUCKET }}"
-          [ -n "${{ vars.AWS_REGION }}" ] && TESTS_ATP_ARGS="$TESTS_ATP_ARGS --set tests.atpStorage.region=${{ vars.AWS_REGION }}"
           [ -n "${{ vars.ATP_REPORT_VIEW_UI_URL }}" ] && TESTS_ATP_ARGS="$TESTS_ATP_ARGS --set tests.atpReportViewUiUrl=${{ vars.ATP_REPORT_VIEW_UI_URL }}"
           [ -n "$ENV_NAME" ] && TESTS_ATP_ARGS="$TESTS_ATP_ARGS --set tests.environmentName=$ENV_NAME"
           
@@ -221,6 +226,8 @@ jobs:
           
           echo "State after patroni-core install (diagnostics)..."
           echo "--- Checkout ref (chart source): ${{ github.ref }} ${{ github.sha }} ---"
+          echo "--- PatroniCore spec.integrationTests (env here must appear in test pod) ---"
+          kubectl get patronicore -n ${{ vars.PGSKIPPER_INSTALL_NAMESPACE }} -o yaml 2>/dev/null | grep -A300 "integrationTests:" | head -120 || echo "(no integrationTests in CR)"
           echo "--- PatroniCore spec.patroni (securityContext must have fsGroup: 26) ---"
           kubectl get patronicore -n ${{ vars.PGSKIPPER_INSTALL_NAMESPACE }} -o jsonpath='{.items[0].spec.patroni}' 2>/dev/null | python3 -m json.tool 2>/dev/null || kubectl get patronicore -n ${{ vars.PGSKIPPER_INSTALL_NAMESPACE }} -o yaml 2>/dev/null | head -80
           echo "--- StatefulSet pod template securityContext ---"

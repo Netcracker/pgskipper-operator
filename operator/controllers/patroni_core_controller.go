@@ -460,6 +460,9 @@ func (pr *PatroniCoreReconciler) AddExcludeLabelToCm(c client.Client, cmName str
 
 func (pr *PatroniCoreReconciler) createTestsPods(cr *qubershipv1.PatroniCore) error {
 	if cr.Spec.IntegrationTests != nil {
+		if n := len(cr.Spec.IntegrationTests.Env); n > 0 {
+			pr.logger.Info("CR has integrationTests.env, passing to test pod", zap.Int("envCount", n))
+		}
 		integrationTestsPod := deployment.NewCoreIntegrationTests(cr, utils.GetPatroniClusterSettings(cr.Spec.Patroni.ClusterName))
 		state, err := utils.GetPodPhase(integrationTestsPod)
 		if err != nil {
