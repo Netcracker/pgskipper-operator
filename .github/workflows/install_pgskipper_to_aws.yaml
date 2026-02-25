@@ -201,6 +201,8 @@ jobs:
           # patroni.fsGroup=26 so data volume is writable by postgres user (GID 26), avoids "Permission denied" on /var/lib/pgsql/data.
           echo "--- Chart CR manifest (patroni.securityContext must appear) ---"
           helm template pgskipper-patroni ./operator/charts/patroni-core -f ./operator/charts/patroni-core/values.yaml --set patroni.fsGroup=26 --set createCredentials=false -s templates/cr.yaml 2>/dev/null | grep -A3 securityContext || echo "(no securityContext in rendered CR - check cr.yaml and values)"
+          echo "--- PatroniCore integrationTests (env here will be in the test pod; if empty, set ATP/S3 vars in Environment) ---"
+          helm template pgskipper-patroni ./operator/charts/patroni-core -f ./operator/charts/patroni-core/values.yaml --set patroni.fsGroup=26 --set createCredentials=false $TESTS_ATP_ARGS -s templates/cr.yaml 2>/dev/null | grep -A200 "integrationTests:" | head -120
           echo "Installing patroni-core chart (PatroniCore CR + patroni-core-operator)..."
           helm install --namespace=${{ vars.PGSKIPPER_INSTALL_NAMESPACE }} \
             --create-namespace \
