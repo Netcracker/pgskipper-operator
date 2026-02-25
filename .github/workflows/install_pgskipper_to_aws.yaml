@@ -166,24 +166,26 @@ jobs:
             affinity: null
           VALUESEOF
           
+          ENV_NAME="${{ vars.ENVIRONMENT_NAME }}"
+          [ -z "$ENV_NAME" ] && ENV_NAME="${{ github.event.inputs.environment }}"
+          # Tests image + ATP/S3 storage for test results (used by both patroni-services and patroni-core)
+          TESTS_ATP_ARGS="--set tests.dockerImage=ghcr.io/${GITHUB_GROUP}/pgskipper-operator-tests:${IMAGE_TAG}"
+          [ -n "${{ secrets.S3_AWS_ACCESS_KEY_ID }}" ] && TESTS_ATP_ARGS="$TESTS_ATP_ARGS --set tests.atpStorage.username=${{ secrets.S3_AWS_ACCESS_KEY_ID }}"
+          [ -n "${{ secrets.S3_AWS_SECRET_ACCESS_KEY }}" ] && TESTS_ATP_ARGS="$TESTS_ATP_ARGS --set tests.atpStorage.password=${{ secrets.S3_AWS_SECRET_ACCESS_KEY }}"
+          [ -n "${{ vars.ATP_STORAGE_PROVIDER }}" ] && TESTS_ATP_ARGS="$TESTS_ATP_ARGS --set tests.atpStorage.provider=${{ vars.ATP_STORAGE_PROVIDER }}"
+          [ -n "${{ vars.ATP_STORAGE_SERVER_URL }}" ] && TESTS_ATP_ARGS="$TESTS_ATP_ARGS --set tests.atpStorage.serverUrl=${{ vars.ATP_STORAGE_SERVER_URL }}"
+          [ -n "${{ vars.ATP_STORAGE_SERVER_UI_URL }}" ] && TESTS_ATP_ARGS="$TESTS_ATP_ARGS --set tests.atpStorage.serverUiUrl=${{ vars.ATP_STORAGE_SERVER_UI_URL }}"
+          [ -n "${{ vars.ATP_STORAGE_BUCKET }}" ] && TESTS_ATP_ARGS="$TESTS_ATP_ARGS --set tests.atpStorage.bucket=${{ vars.ATP_STORAGE_BUCKET }}"
+          [ -n "${{ vars.AWS_REGION }}" ] && TESTS_ATP_ARGS="$TESTS_ATP_ARGS --set tests.atpStorage.region=${{ vars.AWS_REGION }}"
+          [ -n "${{ vars.ATP_REPORT_VIEW_UI_URL }}" ] && TESTS_ATP_ARGS="$TESTS_ATP_ARGS --set tests.atpReportViewUiUrl=${{ vars.ATP_REPORT_VIEW_UI_URL }}"
+          [ -n "$ENV_NAME" ] && TESTS_ATP_ARGS="$TESTS_ATP_ARGS --set tests.environmentName=$ENV_NAME"
+          
           HELM_ARGS=""
           HELM_ARGS="$HELM_ARGS --set operator.image=ghcr.io/${GITHUB_GROUP}/pgskipper-operator:${IMAGE_TAG}"
           HELM_ARGS="$HELM_ARGS --set metricCollector.dockerImage=ghcr.io/${GITHUB_GROUP}/pgskipper-docker-monitoring-agent:${IMAGE_TAG}"
           HELM_ARGS="$HELM_ARGS --set backupDaemon.dockerImage=ghcr.io/${GITHUB_GROUP}/pgskipper-docker-backup-daemon:${IMAGE_TAG}"
           HELM_ARGS="$HELM_ARGS --set tests.runTestScenarios=${{ github.event.inputs.test_scenario || 'basic' }}"
-          HELM_ARGS="$HELM_ARGS --set tests.dockerImage=ghcr.io/${GITHUB_GROUP}/pgskipper-operator-tests:${IMAGE_TAG}"
-          # ATP/S3 storage for test results (secrets and vars)
-          [ -n "${{ secrets.S3_AWS_ACCESS_KEY_ID }}" ] && HELM_ARGS="$HELM_ARGS --set tests.atpStorage.username=${{ secrets.S3_AWS_ACCESS_KEY_ID }}"
-          [ -n "${{ secrets.S3_AWS_SECRET_ACCESS_KEY }}" ] && HELM_ARGS="$HELM_ARGS --set tests.atpStorage.password=${{ secrets.S3_AWS_SECRET_ACCESS_KEY }}"
-          [ -n "${{ vars.ATP_STORAGE_PROVIDER }}" ] && HELM_ARGS="$HELM_ARGS --set tests.atpStorage.provider=${{ vars.ATP_STORAGE_PROVIDER }}"
-          [ -n "${{ vars.ATP_STORAGE_SERVER_URL }}" ] && HELM_ARGS="$HELM_ARGS --set tests.atpStorage.serverUrl=${{ vars.ATP_STORAGE_SERVER_URL }}"
-          [ -n "${{ vars.ATP_STORAGE_SERVER_UI_URL }}" ] && HELM_ARGS="$HELM_ARGS --set tests.atpStorage.serverUiUrl=${{ vars.ATP_STORAGE_SERVER_UI_URL }}"
-          [ -n "${{ vars.ATP_STORAGE_BUCKET }}" ] && HELM_ARGS="$HELM_ARGS --set tests.atpStorage.bucket=${{ vars.ATP_STORAGE_BUCKET }}"
-          [ -n "${{ vars.AWS_REGION }}" ] && HELM_ARGS="$HELM_ARGS --set tests.atpStorage.region=${{ vars.AWS_REGION }}"
-          [ -n "${{ vars.ATP_REPORT_VIEW_UI_URL }}" ] && HELM_ARGS="$HELM_ARGS --set tests.atpReportViewUiUrl=${{ vars.ATP_REPORT_VIEW_UI_URL }}"
-          ENV_NAME="${{ vars.ENVIRONMENT_NAME }}"
-          [ -z "$ENV_NAME" ] && ENV_NAME="${{ github.event.inputs.environment }}"
-          [ -n "$ENV_NAME" ] && HELM_ARGS="$HELM_ARGS --set tests.environmentName=$ENV_NAME"
+          HELM_ARGS="$HELM_ARGS $TESTS_ATP_ARGS"
           
           echo "Helm additional args: $HELM_ARGS"
           
@@ -212,7 +214,7 @@ jobs:
             --set patroni.securityContext.fsGroup=26 \
             --set GLOBAL_SECURITY_CONTEXT="false" \
             --set createCredentials=false \
-            --set tests.dockerImage=ghcr.io/${GITHUB_GROUP}/pgskipper-operator-tests:${IMAGE_TAG} \
+            $TESTS_ATP_ARGS \
             pgskipper-patroni ./operator/charts/patroni-core
           
           echo "State after patroni-core install (diagnostics)..."
