@@ -40,9 +40,15 @@ spec:
     synchronousMode: {{ default "false" .Values.patroni.synchronousMode }}
     createEndpoint: {{ default "false" .Values.patroni.createEndpoint }}
     {{ end }}
-    {{ if .Values.patroni.fsGroup }}
-    fsGroup: {{ .Values.patroni.fsGroup }}
-    {{ end }}
+    {{- if or .Values.patroni.securityContext .Values.patroni.fsGroup }}
+    securityContext:
+      {{- if .Values.patroni.securityContext }}
+      {{- toYaml .Values.patroni.securityContext | nindent 6 }}
+      {{- end }}
+      {{- if .Values.patroni.fsGroup }}
+      fsGroup: {{ .Values.patroni.fsGroup }}
+      {{- end }}
+    {{- end }}
     {{ if .Values.patroni.affinity }}
     affinity: {{ .Values.patroni.affinity | toJson }}
     {{ else if .Values.affinity }}
