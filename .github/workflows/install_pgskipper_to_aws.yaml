@@ -197,6 +197,8 @@ jobs:
           # Install patroni-core so Patroni pods and Service pg-patroni are created (by operator with OPERATOR_ROLE=patroni).
           # Without this, only PatroniServices controller runs and backup daemon has no Postgres to connect to.
           # patroni.fsGroup=26 so data volume is writable by postgres user (GID 26), avoids "Permission denied" on /var/lib/pgsql/data.
+          echo "--- Chart CR manifest (patroni.securityContext must appear) ---"
+          helm template pgskipper-patroni ./operator/charts/patroni-core -f ./operator/charts/patroni-core/values.yaml --set patroni.fsGroup=26 --set createCredentials=false -s templates/cr.yaml 2>/dev/null | grep -A3 securityContext || echo "(no securityContext in rendered CR - check cr.yaml and values)"
           echo "Installing patroni-core chart (PatroniCore CR + patroni-core-operator)..."
           helm install --namespace=${{ vars.PGSKIPPER_INSTALL_NAMESPACE }} \
             --create-namespace \
@@ -239,5 +241,7 @@ jobs:
           kubectl wait --for=condition=ready pod -l name=patroni-core-operator -n ${{ vars.PGSKIPPER_INSTALL_NAMESPACE }} --timeout=300s || true
           kubectl wait --for=condition=ready pod -l app=patroni -n ${{ vars.PGSKIPPER_INSTALL_NAMESPACE }} --timeout=600s || true
           
+          echo "--- StatefulSet securityContext (after operator reconcile; must have fsGroup: 26) ---"
+          kubectl get statefulset -n ${{ vars.PGSKIPPER_INSTALL_NAMESPACE }} -l pgcluster=patroni -o jsonpath='{.items[0].spec.template.spec.securityContext}' 2>/dev/null | python3 -m json.tool 2>/dev/null || echo "(none or not found)"
           echo "Pgskipper installation completed"
           kubectl get pods -n ${{ vars.PGSKIPPER_INSTALL_NAMESPACE }}
