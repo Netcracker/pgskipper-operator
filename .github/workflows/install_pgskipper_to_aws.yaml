@@ -209,6 +209,7 @@ jobs:
             --set patroni.dockerImage=ghcr.io/${GITHUB_GROUP}/pgskipper-docker-patroni-16:${IMAGE_TAG} \
             --set patroni.storage.storageClass=gp2 \
             --set patroni.fsGroup=26 \
+            --set patroni.securityContext.fsGroup=26 \
             --set GLOBAL_SECURITY_CONTEXT="false" \
             --set createCredentials=false \
             pgskipper-patroni ./operator/charts/patroni-core
