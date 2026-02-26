@@ -250,13 +250,11 @@ spec:
 {{ end }}
     pgNodeQty: {{ ( include "postgres.replicasCount" . ) }}
     {{- $atp := .Values.tests.atpStorage | default dict }}
-    {{- if or .Values.tests.environmentName .Values.tests.atpStorage .Values.tests.atpReportViewUiUrl (gt (len (.Values.tests.env | default list)) 0) }}
     env:
     {{- if .Values.tests.environmentName }}
     - name: ENVIRONMENT_NAME
       value: {{ .Values.tests.environmentName | quote }}
     {{- end }}
-    {{- if .Values.tests.atpStorage }}
     - name: ATP_STORAGE_PROVIDER
       value: {{ ($atp.provider | default "aws") | quote }}
     - name: ATP_STORAGE_REGION
@@ -281,14 +279,12 @@ spec:
     - name: ATP_STORAGE_PASSWORD
       value: {{ $atp.password | quote }}
     {{- end }}
-    {{- end }}
     {{- if .Values.tests.atpReportViewUiUrl }}
     - name: ATP_REPORT_VIEW_UI_URL
       value: {{ .Values.tests.atpReportViewUiUrl | quote }}
     {{- end }}
     {{- if .Values.tests.env }}
     {{- toYaml .Values.tests.env | nindent 4 }}
-    {{- end }}
     {{- end }}
 {{ end }}
 {{ if .Values.runTestsOnly }}
