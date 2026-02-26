@@ -1,0 +1,98 @@
+# Upgrade only the patroni-core Helm release to inject integrationTests.env into the CR.
+# Use when the CR was installed without ATP/S3 env (e.g. before workflow fix) and you don't want a full reinstall.
+name: Upgrade PatroniCore env to AWS
+
+on:
+  workflow_dispatch:
+    inputs:
+      environment:
+        description: "Environment Name (must have vars/secrets set)"
+        required: false
+        default: "dev"
+      repository:
+        description: "Repo to checkout. Empty = this repo."
+        required: false
+        default: ""
+      ref:
+        description: "Branch or ref to checkout"
+        required: false
+        default: "main"
+
+jobs:
+  Upgrade-PatroniCore-Env:
+    environment: "${{ github.event.inputs.environment }}"
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+        with:
+          repository: ${{ github.event.inputs.repository || github.repository }}
+          ref: ${{ github.event.inputs.ref || github.ref }}
+
+      - name: Validate required Environment variables
+        run: |
+          MISSING=""
+          [ -z "${{ vars.PGSKIPPER_INSTALL_NAMESPACE }}" ] && MISSING="${MISSING} PGSKIPPER_INSTALL_NAMESPACE"
+          [ -z "${{ vars.AWS_CLUSTERNAME }}" ] && MISSING="${MISSING} AWS_CLUSTERNAME"
+          [ -z "${{ secrets.AWS_ACCESS_KEY_ID }}" ] && MISSING="${MISSING} AWS_ACCESS_KEY_ID"
+          [ -z "${{ secrets.AWS_SECRET_ACCESS_KEY }}" ] && MISSING="${MISSING} AWS_SECRET_ACCESS_KEY"
+          if [ -n "$MISSING" ]; then
+            echo "::error::Missing:$MISSING"
+            exit 1
+          fi
+
+      - name: Setup kubectl
+        uses: azure/setup-kubectl@v3
+        with:
+          version: 'v1.32.0'
+
+      - name: Setup Helm
+        uses: azure/setup-helm@v3
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ${{ vars.AWS_REGION || 'us-east-1' }}
+
+      - name: Configure kubeconfig for EKS
+        run: |
+          aws eks update-kubeconfig --region ${{ vars.AWS_REGION || 'us-east-1' }} --name ${{ vars.AWS_CLUSTERNAME }}
+
+      - name: Upgrade patroni-core (inject integrationTests.env)
+        run: |
+          NS="${{ vars.PGSKIPPER_INSTALL_NAMESPACE }}"
+          GITHUB_GROUP=$(echo ${{ github.repository_owner }} | tr '[:upper:]' '[:lower:]')
+          IMAGE_TAG=$(echo ${{ github.ref }} | sed 's@refs/tags/@@;s@refs/heads/@@;s@/@_@g')
+          ENV_NAME="${{ vars.ENVIRONMENT_NAME }}"
+          [ -z "$ENV_NAME" ] && ENV_NAME="${{ github.event.inputs.environment }}"
+          AWS_REGION="${{ vars.AWS_REGION }}"
+          [ -z "$AWS_REGION" ] && AWS_REGION="us-east-1"
+          ATP_PROVIDER="${{ vars.ATP_STORAGE_PROVIDER }}"
+          [ -z "$ATP_PROVIDER" ] && ATP_PROVIDER="aws"
+
+          TESTS_ATP_ARGS="--set tests.dockerImage=ghcr.io/${GITHUB_GROUP}/pgskipper-operator-tests:${IMAGE_TAG}"
+          TESTS_ATP_ARGS="$TESTS_ATP_ARGS --set tests.atpStorage.provider=${ATP_PROVIDER}"
+          TESTS_ATP_ARGS="$TESTS_ATP_ARGS --set tests.atpStorage.region=${AWS_REGION}"
+          [ -n "${{ secrets.S3_AWS_ACCESS_KEY_ID }}" ] && TESTS_ATP_ARGS="$TESTS_ATP_ARGS --set tests.atpStorage.username=${{ secrets.S3_AWS_ACCESS_KEY_ID }}"
+          [ -n "${{ secrets.S3_AWS_SECRET_ACCESS_KEY }}" ] && TESTS_ATP_ARGS="$TESTS_ATP_ARGS --set tests.atpStorage.password=${{ secrets.S3_AWS_SECRET_ACCESS_KEY }}"
+          [ -n "${{ vars.ATP_STORAGE_SERVER_URL }}" ] && TESTS_ATP_ARGS="$TESTS_ATP_ARGS --set tests.atpStorage.serverUrl=${{ vars.ATP_STORAGE_SERVER_URL }}"
+          [ -n "${{ vars.ATP_STORAGE_SERVER_UI_URL }}" ] && TESTS_ATP_ARGS="$TESTS_ATP_ARGS --set tests.atpStorage.serverUiUrl=${{ vars.ATP_STORAGE_SERVER_UI_URL }}"
+          [ -n "${{ vars.ATP_STORAGE_BUCKET }}" ] && TESTS_ATP_ARGS="$TESTS_ATP_ARGS --set tests.atpStorage.bucket=${{ vars.ATP_STORAGE_BUCKET }}"
+          [ -n "${{ vars.ATP_REPORT_VIEW_UI_URL }}" ] && TESTS_ATP_ARGS="$TESTS_ATP_ARGS --set tests.atpReportViewUiUrl=${{ vars.ATP_REPORT_VIEW_UI_URL }}"
+          [ -n "$ENV_NAME" ] && TESTS_ATP_ARGS="$TESTS_ATP_ARGS --set tests.environmentName=$ENV_NAME"
+
+          echo "Upgrading pgskipper-patroni in $NS with TESTS_ATP_ARGS (env will be in CR)..."
+          # -f values.yaml ensures chart defaults (tests.atpStorage, etc.) are in the merge; --reuse-values then overlay; --set overrides.
+          helm upgrade --namespace="$NS" --install \
+            -f ./operator/charts/patroni-core/values.yaml \
+            --reuse-values \
+            $TESTS_ATP_ARGS \
+            pgskipper-patroni ./operator/charts/patroni-core
+
+          echo "--- PatroniCore spec.integrationTests (env should appear below) ---"
+          kubectl get patronicore -n "$NS" -o yaml | grep -A200 "integrationTests:" | head -80
+
+          echo "Delete the test pod so the operator recreates it with env: kubectl delete pod integration-robot-tests -n $NS"

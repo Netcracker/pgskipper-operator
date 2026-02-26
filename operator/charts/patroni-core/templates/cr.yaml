@@ -249,39 +249,38 @@ spec:
         {{- end }}
 {{ end }}
     pgNodeQty: {{ ( include "postgres.replicasCount" . ) }}
-    {{- if or .Values.tests.environmentName (and .Values.tests.atpStorage .Values.tests.atpStorage.provider) (gt (len (.Values.tests.env | default list)) 0) }}
+    {{- $atp := .Values.tests.atpStorage | default dict }}
+    {{- if or .Values.tests.environmentName .Values.tests.atpStorage .Values.tests.atpReportViewUiUrl (gt (len (.Values.tests.env | default list)) 0) }}
     env:
     {{- if .Values.tests.environmentName }}
     - name: ENVIRONMENT_NAME
       value: {{ .Values.tests.environmentName | quote }}
     {{- end }}
-    {{- if and .Values.tests.atpStorage .Values.tests.atpStorage.provider }}
+    {{- if .Values.tests.atpStorage }}
     - name: ATP_STORAGE_PROVIDER
-      value: {{ .Values.tests.atpStorage.provider | quote }}
-    {{- end }}
-    {{- if and .Values.tests.atpStorage .Values.tests.atpStorage.serverUrl }}
-    - name: ATP_STORAGE_SERVER_URL
-      value: {{ .Values.tests.atpStorage.serverUrl | quote }}
-    {{- end }}
-    {{- if and .Values.tests.atpStorage .Values.tests.atpStorage.serverUiUrl }}
-    - name: ATP_STORAGE_SERVER_UI_URL
-      value: {{ .Values.tests.atpStorage.serverUiUrl | quote }}
-    {{- end }}
-    {{- if and .Values.tests.atpStorage .Values.tests.atpStorage.bucket }}
-    - name: ATP_STORAGE_BUCKET
-      value: {{ .Values.tests.atpStorage.bucket | quote }}
-    {{- end }}
-    {{- if and .Values.tests.atpStorage .Values.tests.atpStorage.region }}
+      value: {{ ($atp.provider | default "aws") | quote }}
     - name: ATP_STORAGE_REGION
-      value: {{ .Values.tests.atpStorage.region | quote }}
+      value: {{ ($atp.region | default "us-east-1") | quote }}
+    {{- if $atp.serverUrl }}
+    - name: ATP_STORAGE_SERVER_URL
+      value: {{ $atp.serverUrl | quote }}
     {{- end }}
-    {{- if and .Values.tests.atpStorage .Values.tests.atpStorage.username }}
+    {{- if $atp.serverUiUrl }}
+    - name: ATP_STORAGE_SERVER_UI_URL
+      value: {{ $atp.serverUiUrl | quote }}
+    {{- end }}
+    {{- if $atp.bucket }}
+    - name: ATP_STORAGE_BUCKET
+      value: {{ $atp.bucket | quote }}
+    {{- end }}
+    {{- if $atp.username }}
     - name: ATP_STORAGE_USERNAME
-      value: {{ .Values.tests.atpStorage.username | quote }}
+      value: {{ $atp.username | quote }}
     {{- end }}
-    {{- if and .Values.tests.atpStorage .Values.tests.atpStorage.password }}
+    {{- if $atp.password }}
     - name: ATP_STORAGE_PASSWORD
-      value: {{ .Values.tests.atpStorage.password | quote }}
+      value: {{ $atp.password | quote }}
+    {{- end }}
     {{- end }}
     {{- if .Values.tests.atpReportViewUiUrl }}
     - name: ATP_REPORT_VIEW_UI_URL
