@@ -8,17 +8,9 @@ on:
         required: false
         default: "dev"
       test_scenario:
-        description: "Test scenario (e.g. basic, patroniBasic, or empty for default)"
+        description: "Test scenario (e.g. basic, full, patroniBasic)"
         required: false
         default: "basic"
-      repository:
-        description: "Repo to checkout (e.g. owner/pgskipper-operator-demo). Empty = this repo (use when running from your fork)."
-        required: false
-        default: ""
-      ref:
-        description: "Branch or ref to checkout (e.g. main). Used only if repository is set."
-        required: false
-        default: "main"
 
 jobs:
   Install-Pgskipper:
@@ -28,9 +20,6 @@ jobs:
     steps:
       - name: Checkout Code
         uses: actions/checkout@v4
-        with:
-          repository: ${{ github.event.inputs.repository || github.repository }}
-          ref: ${{ github.event.inputs.ref || github.ref }}
 
       - name: Validate required Environment variables
         run: |
@@ -174,7 +163,10 @@ jobs:
           [ -z "$ATP_PROVIDER" ] && ATP_PROVIDER="aws"
           # Tests image + ATP/S3 storage for test results (used by both patroni-services and patroni-core).
           # Always set provider and region so integrationTests.env is never empty (chart needs at least one of env/environmentName/atpStorage.provider).
+          TEST_SCENARIO="${{ github.event.inputs.test_scenario }}"
+          [ -z "$TEST_SCENARIO" ] && TEST_SCENARIO="basic"
           TESTS_ATP_ARGS="--set tests.dockerImage=ghcr.io/${GITHUB_GROUP}/pgskipper-operator-tests:${IMAGE_TAG}"
+          TESTS_ATP_ARGS="$TESTS_ATP_ARGS --set tests.runTestScenarios=${TEST_SCENARIO}"
           TESTS_ATP_ARGS="$TESTS_ATP_ARGS --set tests.atpStorage.provider=${ATP_PROVIDER}"
           TESTS_ATP_ARGS="$TESTS_ATP_ARGS --set tests.atpStorage.region=${AWS_REGION}"
           [ -n "${{ secrets.S3_AWS_ACCESS_KEY_ID }}" ] && TESTS_ATP_ARGS="$TESTS_ATP_ARGS --set tests.atpStorage.username=${{ secrets.S3_AWS_ACCESS_KEY_ID }}"
@@ -189,7 +181,7 @@ jobs:
           HELM_ARGS="$HELM_ARGS --set operator.image=ghcr.io/${GITHUB_GROUP}/pgskipper-operator:${IMAGE_TAG}"
           HELM_ARGS="$HELM_ARGS --set metricCollector.dockerImage=ghcr.io/${GITHUB_GROUP}/pgskipper-docker-monitoring-agent:${IMAGE_TAG}"
           HELM_ARGS="$HELM_ARGS --set backupDaemon.dockerImage=ghcr.io/${GITHUB_GROUP}/pgskipper-docker-backup-daemon:${IMAGE_TAG}"
-          HELM_ARGS="$HELM_ARGS --set tests.runTestScenarios=${{ github.event.inputs.test_scenario || 'basic' }}"
+          HELM_ARGS="$HELM_ARGS --set tests.runTestScenarios=${TEST_SCENARIO}"
           HELM_ARGS="$HELM_ARGS $TESTS_ATP_ARGS"
           
           echo "Helm additional args: $HELM_ARGS"
@@ -228,8 +220,9 @@ jobs:
             pgskipper-patroni ./operator/charts/patroni-core
           
           echo "State after patroni-core install (diagnostics)..."
+          echo "--- Test scenario: ${TEST_SCENARIO} → CR runTestScenarios → pod TESTS_TAGS (full→patroni*, basic→patroni_basic) ---"
           echo "--- Checkout ref (chart source): ${{ github.ref }} ${{ github.sha }} ---"
-          echo "--- PatroniCore spec.integrationTests (env here must appear in test pod) ---"
+          echo "--- PatroniCore spec.integrationTests (runTestScenarios + env; operator maps to pod TESTS_TAGS) ---"
           kubectl get patronicore -n ${{ vars.PGSKIPPER_INSTALL_NAMESPACE }} -o yaml 2>/dev/null | grep -A300 "integrationTests:" | head -120 || echo "(no integrationTests in CR)"
           echo "Deleting integration test pod so operator recreates it with env from CR..."
           kubectl delete pod integration-robot-tests -n ${{ vars.PGSKIPPER_INSTALL_NAMESPACE }} --ignore-not-found=true --wait=false || true
