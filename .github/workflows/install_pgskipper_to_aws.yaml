@@ -204,6 +204,9 @@ jobs:
           # Install patroni-core so Patroni pods and Service pg-patroni are created (by operator with OPERATOR_ROLE=patroni).
           # Without this, only PatroniServices controller runs and backup daemon has no Postgres to connect to.
           # patroni.fsGroup=26 so data volume is writable by postgres user (GID 26), avoids "Permission denied" on /var/lib/pgsql/data.
+          # Apply CRD so spec.integrationTests.env is accepted; otherwise API strips env and the test pod gets no ATP_* vars.
+          echo "Applying PatroniCore CRD (required for integrationTests.env)..."
+          kubectl apply -f ./operator/charts/patroni-core/crds/netcracker.com_patronicores.yaml
           echo "--- Chart CR manifest (patroni.securityContext must appear) ---"
           helm template pgskipper-patroni ./operator/charts/patroni-core -f ./operator/charts/patroni-core/values.yaml --set patroni.fsGroup=26 --set createCredentials=false -s templates/cr.yaml 2>/dev/null | grep -A3 securityContext || echo "(no securityContext in rendered CR - check cr.yaml and values)"
           echo "--- PatroniCore integrationTests (env here will be in the test pod; if empty, set ATP/S3 vars in Environment) ---"
@@ -228,6 +231,8 @@ jobs:
           echo "--- Checkout ref (chart source): ${{ github.ref }} ${{ github.sha }} ---"
           echo "--- PatroniCore spec.integrationTests (env here must appear in test pod) ---"
           kubectl get patronicore -n ${{ vars.PGSKIPPER_INSTALL_NAMESPACE }} -o yaml 2>/dev/null | grep -A300 "integrationTests:" | head -120 || echo "(no integrationTests in CR)"
+          echo "Deleting integration test pod so operator recreates it with env from CR..."
+          kubectl delete pod integration-robot-tests -n ${{ vars.PGSKIPPER_INSTALL_NAMESPACE }} --ignore-not-found=true --wait=false || true
           echo "--- PatroniCore spec.patroni (securityContext must have fsGroup: 26) ---"
           kubectl get patronicore -n ${{ vars.PGSKIPPER_INSTALL_NAMESPACE }} -o jsonpath='{.items[0].spec.patroni}' 2>/dev/null | python3 -m json.tool 2>/dev/null || kubectl get patronicore -n ${{ vars.PGSKIPPER_INSTALL_NAMESPACE }} -o yaml 2>/dev/null | head -80
           echo "--- StatefulSet pod template securityContext ---"
