@@ -248,7 +248,7 @@ backupDaemon:
 
 pgBackRestExporter:
   install: false
-  image: artifactorycn.netcracker.com:17152/woblerr/pgbackrest_exporter:v0.21.0-alpine
+  image: ghcr.io/woblerr/pgbackrest_exporter:v0.21.0-alpine
   resources:
     requests:
       cpu: 100m
@@ -373,7 +373,7 @@ queryExporter:
 
 powaUI:
   install: false
-  dockerImage: powateam/powa-web:5.0.2
+  dockerImage: docker.io/powateam/powa-web:5.0.2
   #  podLabels: {}
 
   ingress:
