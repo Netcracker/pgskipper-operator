@@ -103,7 +103,7 @@ Insert Test Record
     ${res}=  Execute Query   ${MASTERHOST}  select * from test_insert_robot where id=${RID}   dbname=${database}
     Should Be True   """${EXPECTED}""" in """${res}"""   msg=[insert test record] Expected string ${EXPECTED} not found on ${MASTERHOST} : res: ${res}
     Log To Console  Test records found on ${MASTERHOST}
-    [Return]   ${RID}   ${EXPECTED}
+    RETURN   ${RID}   ${EXPECTED}
 
 Check Test Record
     [Arguments]    ${pod_name}   ${RID}   ${EXPECTED}    ${database}=postgres

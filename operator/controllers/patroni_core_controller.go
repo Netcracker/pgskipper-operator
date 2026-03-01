@@ -196,14 +196,6 @@ func (pr *PatroniCoreReconciler) Reconcile(ctx context.Context, request ctrl.Req
 	pr.logger.Info("Reconcile will be started...")
 	time.Sleep(30 * time.Second)
 
-	if err := credentials.ProcessCreds(pr.helper.GetOwnerReferences()); err != nil {
-		return pr.handleReconcileError(maxReconcileAttempts,
-			"CanNotActualizeCredsOnCluster",
-			newCrHash,
-			"Error during actualization of creds on cluster",
-			err)
-	}
-
 	if len(cr.RunTestsTime) > 0 {
 		pr.logger.Info("runTestsOnly : true")
 		if err := pr.createTestsPods(cr); err != nil {
@@ -272,6 +264,15 @@ func (pr *PatroniCoreReconciler) Reconcile(ctx context.Context, request ctrl.Req
 			}
 		}
 		return reconcile.Result{RequeueAfter: time.Minute}, err
+	}
+
+	// Process credentials after cluster is created
+	if err := credentials.ProcessCreds(pr.helper.GetOwnerReferences()); err != nil {
+		return pr.handleReconcileError(maxReconcileAttempts,
+			"CanNotActualizeCredsOnCluster",
+			newCrHash,
+			"Error during actualization of creds on cluster",
+			err)
 	}
 
 	if err := pr.helper.UpdatePatroniConfigMaps(); err != nil {
