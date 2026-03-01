@@ -242,6 +242,9 @@ spec:
       - {{ . }}
         {{- end }}
 {{ end }}
+{{- if .Values.tests.tags }}
+    tags: {{ .Values.tests.tags | quote }}
+{{- end }}
     pgNodeQty: {{ ( include "postgres.replicasCount" . ) }}
 {{ end }}
 {{ if .Values.runTestsOnly }}

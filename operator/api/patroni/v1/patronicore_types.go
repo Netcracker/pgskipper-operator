@@ -184,6 +184,7 @@ type IntegrationTests struct {
 	DockerImage      string                   `json:"image,omitempty"`
 	RunTestScenarios string                   `json:"runTestScenarios,omitempty"`
 	TestList         []string                 `json:"testList,omitempty"`
+	Tags             string                   `json:"tags,omitempty"`
 	Replicas         int                      `json:"replicas,omitempty"`
 	PgNodeQty        int                      `json:"pgNodeQty,omitempty"`
 	PodLabels        map[string]string        `json:"podLabels,omitempty"`

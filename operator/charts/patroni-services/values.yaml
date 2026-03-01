@@ -434,6 +434,7 @@ tests:
   podLabels: {}
   # One of "full", "basic"or one from testScenarios
   runTestScenarios: "basic"
+  tags: ""
   testScenarios:
     patroniSimple:
       - check_patroni_rest
