@@ -26,6 +26,7 @@ import (
 	"go.uber.org/zap"
 
 	appsv1 "k8s.io/api/apps/v1"
+	batchv1 "k8s.io/api/batch/v1"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/types"
@@ -319,6 +320,59 @@ func WaitForCompletePod(pod *corev1.Pod) (string, error) {
 	}
 	state, _ := GetPodPhase(pod)
 	return state, nil
+}
+
+func GetJobStatus(job *batchv1.Job) (string, error) {
+	foundJob := &batchv1.Job{}
+	err := k8sClient.Get(context.TODO(), types.NamespacedName{
+		Name: job.Name, Namespace: job.Namespace,
+	}, foundJob)
+	if err == nil {
+		for _, condition := range foundJob.Status.Conditions {
+			if condition.Type == batchv1.JobComplete && condition.Status == corev1.ConditionTrue {
+				return "Succeeded", nil
+			}
+			if condition.Type == batchv1.JobFailed && condition.Status == corev1.ConditionTrue {
+				return "Failed", nil
+			}
+		}
+		if foundJob.Status.Active > 0 {
+			return "Running", nil
+		}
+		return "Pending", nil
+	} else if errors.IsNotFound(err) {
+		return "NotFound", nil
+	}
+	return "Error", err
+}
+
+func WaitForCompleteJob(job *batchv1.Job) (string, error) {
+	if pollErr := wait.PollUntilContextTimeout(context.Background(), 10*time.Second, 240*time.Minute, true, func(ctx context.Context) (done bool, err error) {
+		state, err := GetJobStatus(job)
+		uLog.Info(fmt.Sprintf("Waiting for the job status Succeeded or Failed. Job status: %s", state))
+		if state == "Succeeded" || state == "Failed" {
+			return true, nil
+		}
+		return false, err
+	}); pollErr != nil {
+		return "TimeOut", pollErr
+	}
+	state, _ := GetJobStatus(job)
+	return state, nil
+}
+
+func WaitDeleteJob(job *batchv1.Job) error {
+	if pollErr := wait.PollUntilContextTimeout(context.Background(), 5*time.Second, 5*time.Minute, true, func(ctx context.Context) (done bool, err error) {
+		state, err := GetJobStatus(job)
+		if state == "NotFound" {
+			return true, nil
+		}
+		uLog.Info(fmt.Sprintf("Waiting for job %s to be deleted. Current status: %s", job.Name, state))
+		return false, err
+	}); pollErr != nil {
+		return pollErr
+	}
+	return nil
 }
 
 func WaitForRunningPod(pod *corev1.Pod) (string, error) {

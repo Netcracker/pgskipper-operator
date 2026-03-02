@@ -33,6 +33,7 @@ import (
 	"go.uber.org/zap"
 	appsv1 "k8s.io/api/apps/v1"
 	k8sauth "k8s.io/api/authentication/v1"
+	batchv1 "k8s.io/api/batch/v1"
 	corev1 "k8s.io/api/core/v1"
 	discoveryv1 "k8s.io/api/discovery/v1"
 	"k8s.io/apimachinery/pkg/api/equality"
@@ -246,6 +247,52 @@ func (rm *ResourceManager) CreatePod(pod *corev1.Pod) error {
 	err := rm.kubeClient.Create(context.TODO(), pod)
 	if err != nil {
 		logger.Error(fmt.Sprintf("Failed to create Pod %v", pod.Name), zap.Error(err))
+		return err
+	}
+	return nil
+}
+
+func (rm *ResourceManager) CreateJob(job *batchv1.Job) error {
+	logger.Info(fmt.Sprintf("Creating job %v", job.Name))
+	job.OwnerReferences = rm.GetOwnerReferences()
+	err := rm.kubeClient.Create(context.TODO(), job)
+	if err != nil {
+		logger.Error(fmt.Sprintf("Failed to create Job %v", job.Name), zap.Error(err))
+		return err
+	}
+	return nil
+}
+
+func (rm *ResourceManager) DeleteJob(job *batchv1.Job) error {
+	foundJob := &batchv1.Job{}
+	err := rm.kubeClient.Get(context.TODO(), types.NamespacedName{
+		Name: job.Name, Namespace: util.GetNameSpace(),
+	}, foundJob)
+	if err != nil {
+		if errors.IsNotFound(err) {
+			logger.Info(fmt.Sprintf("Job %s does not exist, nothing to delete", job.Name))
+			return nil
+		}
+		logger.Error(fmt.Sprintf("Error getting Job %v", job.Name), zap.Error(err))
+		return err
+	}
+	propagation := metav1.DeletePropagationBackground
+	if err := rm.kubeClient.Delete(context.TODO(), foundJob, &client.DeleteOptions{
+		PropagationPolicy: &propagation,
+	}); err != nil {
+		logger.Error(fmt.Sprintf("Error deleting Job %v", foundJob.Name), zap.Error(err))
+		return err
+	}
+	return nil
+}
+
+func (rm *ResourceManager) DeleteJobWithWaiting(job *batchv1.Job) error {
+	err := rm.DeleteJob(job)
+	if err != nil {
+		return err
+	}
+	err = util.WaitDeleteJob(job)
+	if err != nil {
 		return err
 	}
 	return nil

@@ -450,28 +450,24 @@ func (r *PostgresServiceReconciler) reconcilePostgresServiceCluster(cr *qubershi
 
 func (r *PostgresServiceReconciler) createTestsPods(cr *qubershipv1.PatroniServices) error {
 	if cr.Spec.IntegrationTests != nil {
-		integrationTestsPod := deployment.NewIntegrationTestsPod(cr, utils.GetPatroniClusterSettings(cr.Spec.Patroni.ClusterName))
-		state, err := utils.GetPodPhase(integrationTestsPod)
+		integrationTestsJob := deployment.NewIntegrationTestsJob(cr, utils.GetPatroniClusterSettings(cr.Spec.Patroni.ClusterName))
+		state, err := utils.GetJobStatus(integrationTestsJob)
 		if err != nil {
 			return err
 		}
 		if state != "Running" {
 			if state != "NotFound" {
-				if err := r.helper.DeletePodWithWaiting(integrationTestsPod); err != nil {
-					r.logger.Error("Error deleting pod with tests. Let's try to continue.", zap.Error(err))
+				if err := r.helper.DeleteJobWithWaiting(integrationTestsJob); err != nil {
+					r.logger.Error("Error deleting job with tests. Let's try to continue.", zap.Error(err))
 				}
 			}
-			if cr.Spec.Policies != nil {
-				r.logger.Info("Policies is not empty, setting them to Test Pod")
-				integrationTestsPod.Spec.Tolerations = cr.Spec.Policies.Tolerations
-			}
-			if err := r.helper.CreatePod(integrationTestsPod); err != nil {
+			if err := r.helper.CreateJob(integrationTestsJob); err != nil {
 				return err
 			}
 		}
-		state, err = utils.WaitForCompletePod(integrationTestsPod)
+		state, err = utils.WaitForCompleteJob(integrationTestsJob)
 		if err != nil {
-			return &deployerrors.TestsError{Msg: "State of the test pods is unknown."}
+			return &deployerrors.TestsError{Msg: "State of the test job is unknown."}
 		}
 		switch state {
 		case "Succeeded":
@@ -480,19 +476,19 @@ func (r *PostgresServiceReconciler) createTestsPods(cr *qubershipv1.PatroniServi
 			}
 		case "Failed":
 			{
-				return &deployerrors.TestsError{Msg: "Tests pod ended with an error."}
+				return &deployerrors.TestsError{Msg: "Tests job ended with an error."}
 			}
 		case "Running":
 			{
-				return &deployerrors.TestsError{Msg: "Tests pod Phase: Running. Tests take too long to run"}
+				return &deployerrors.TestsError{Msg: "Tests job still running. Tests take too long to run"}
 			}
 		case "Pending":
 			{
-				return &deployerrors.TestsError{Msg: "Tests pod Phase: Pending."}
+				return &deployerrors.TestsError{Msg: "Tests job status: Pending."}
 			}
 		default:
 			{
-				return &deployerrors.TestsError{Msg: "State of the test pods is unknown."}
+				return &deployerrors.TestsError{Msg: "State of the test job is unknown."}
 			}
 		}
 	}

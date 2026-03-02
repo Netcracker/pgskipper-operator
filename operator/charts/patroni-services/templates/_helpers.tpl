@@ -354,6 +354,33 @@ ReadOnly Postgres host for DBaaS adapter
 {{- end -}}
 
 {{- define "supplementary-tests.monitoredImages" -}}
+{{- $images := list -}}
+{{- if .Values.backupDaemon -}}
+{{- if .Values.backupDaemon.install -}}
+{{- $images = append $images (printf "deployment postgres-backup-daemon postgres-backup-daemon %s" .Values.backupDaemon.dockerImage) -}}
+{{- end -}}
+{{- end -}}
+{{- if .Values.metricCollector -}}
+{{- if .Values.metricCollector.install -}}
+{{- $images = append $images (printf "deployment monitoring-collector monitoring-collector %s" .Values.metricCollector.dockerImage) -}}
+{{- end -}}
+{{- end -}}
+{{- if .Values.dbaas -}}
+{{- if .Values.dbaas.install -}}
+{{- $images = append $images (printf "deployment dbaas-postgres-adapter dbaas-postgres-adapter %s" .Values.dbaas.dockerImage) -}}
+{{- end -}}
+{{- end -}}
+{{- if .Values.queryExporter -}}
+{{- if .Values.queryExporter.install -}}
+{{- $images = append $images (printf "deployment query-exporter query-exporter %s" .Values.queryExporter.dockerImage) -}}
+{{- end -}}
+{{- end -}}
+{{- if .Values.replicationController -}}
+{{- if .Values.replicationController.install -}}
+{{- $images = append $images (printf "deployment replication-controller replication-controller %s" .Values.replicationController.dockerImage) -}}
+{{- end -}}
+{{- end -}}
+{{- join "," $images -}}
 {{- end -}}
 
 {{/*

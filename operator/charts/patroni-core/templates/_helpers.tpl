@@ -175,4 +175,12 @@ Init container section for postgres-operator
 {{- end }}
 
 {{- define "patroni-tests.monitoredImages" -}}
+{{- $images := list -}}
+{{- if .Values.patroni -}}
+{{- $images = append $images (printf "statefulset pg-%s patroni %s" .Values.patroni.clusterName .Values.patroni.dockerImage) -}}
+{{- end -}}
+{{- if .Values.operator -}}
+{{- $images = append $images (printf "deployment pgskipper-operator pgskipper-operator %s" .Values.operator.image) -}}
+{{- end -}}
+{{- join "," $images -}}
 {{- end -}}

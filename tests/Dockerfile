@@ -33,4 +33,4 @@ USER 1001
 WORKDIR /app
 
 ENTRYPOINT [ "/opt/uid_entrypoint" ]
-CMD ["robot -i ${TESTS_TAGS} /test_runs/"]
+CMD ["sh", "-c", "robot -i ${TESTS_TAGS} /test_runs/"]
