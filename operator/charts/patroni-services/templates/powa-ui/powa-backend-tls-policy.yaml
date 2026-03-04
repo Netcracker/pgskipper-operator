@@ -12,7 +12,8 @@ spec:
   validation:
     hostname: {{ .Values.powaUI.ingress.host  | quote }}
     caCertificateRefs:
-    - kind: Secret
+    - group: ""
+      kind: Secret
       name: {{ include "postgres.certServicesSecret" . }}
 {{- end }}
 {{- end }}
