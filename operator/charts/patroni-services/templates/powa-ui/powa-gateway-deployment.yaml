@@ -4,6 +4,8 @@ apiVersion: gateway.networking.k8s.io/v1
 kind: HTTPRoute
 metadata:
   name: powa-ui-httproute
+  labels:
+    {{ include "kubernetes.labels" . | nindent 4 }}
 spec:
   parentRefs:
   - name: {{ .Values.powaUI.ingress.gatewayName | default "default-external-gateway" }}
