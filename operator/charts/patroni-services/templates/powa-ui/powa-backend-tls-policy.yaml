@@ -12,7 +12,7 @@ spec:
     kind: Service
     name: powa-ui
   validation:
-    hostname: {{ .Values.powaUI.ingress.host  | quote }}
+    hostname: {{ printf "powa-ui.%s" .Release.Namespace | quote }}
     caCertificateRefs:
     - group: ""
       kind: Secret
