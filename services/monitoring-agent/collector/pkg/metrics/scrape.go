@@ -356,7 +356,7 @@ func (s *Scraper) calculatePGClusterStatusForMissingMaster(podItems []v1.Pod) (s
 	}
 	pod := podItems[0]
 
-	RTO, _ := strconv.ParseFloat(util.GetEnvValueFromPod(pod, "PATRONI_TTL", "60"), 64)
+	RTO, _ := strconv.ParseFloat(util.GetEnvValueFromPod(pod, "PATRONI_TTL", "30"), 64)
 	RPO, _ := strconv.ParseFloat(util.GetEnvValueFromPod(pod, "PATRONI_MAXIMUM_LAG_ON_FAILOVER", "1048576"), 64)
 	podIdentity := util.GetPodIdentity(pod)
 	logger.Info(fmt.Sprintf("RTO: %f, RPO: %f", RTO, RPO))
