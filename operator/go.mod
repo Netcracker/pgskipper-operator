@@ -15,7 +15,7 @@ require (
 	github.com/pkg/errors v0.9.1
 	go.uber.org/zap v1.27.1
 	golang.org/x/crypto v0.48.0
-	google.golang.org/api v0.266.0
+	google.golang.org/api v0.268.0
 	gopkg.in/yaml.v2 v2.4.0
 	k8s.io/api v0.35.1
 	k8s.io/apimachinery v0.35.1
