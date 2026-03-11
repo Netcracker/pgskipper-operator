@@ -45,7 +45,7 @@ jobs:
       - name: Load Docker Configuration
         id: load_component
         run: |
-          verify=$(cat "$GITHUB_WORKSPACE/.github/docker-build-config.json" | jq '
+          verify=$(cat "$GITHUB_WORKSPACE/.github/build-config.cfg" | jq '
           def verify_structure:
           .components as $components
           | .platforms as $platforms
@@ -56,12 +56,12 @@ jobs:
           | if . then true else false end
           ')
           if [ ${verify} == 'true' ]; then
-            echo "✅ $GITHUB_WORKSPACE/.github/docker-build-config.json file is valid"
-            components=$(jq -c ".components" "$GITHUB_WORKSPACE/.github/docker-build-config.json")
-            platforms=$(jq -c ".platforms" "$GITHUB_WORKSPACE/.github/docker-build-config.json")
+            echo "✅ $GITHUB_WORKSPACE/.github/build-config.cfg file is valid"
+            components=$(jq -c ".components" "$GITHUB_WORKSPACE/.github/build-config.cfg")
+            platforms=$(jq -c ".platforms" "$GITHUB_WORKSPACE/.github/build-config.cfg")
           else
-            echo "❗ $GITHUB_WORKSPACE/.github/docker-build-config.json file is invalid"
-            echo "❗ $GITHUB_WORKSPACE/.github/docker-build-config.json file is invalid" >> $GITHUB_STEP_SUMMARY
+            echo "❗ $GITHUB_WORKSPACE/.github/build-config.cfg file is invalid"
+            echo "❗ $GITHUB_WORKSPACE/.github/build-config.cfg file is invalid" >> $GITHUB_STEP_SUMMARY
             exit 1
           fi
           echo "components=${components}" >> $GITHUB_OUTPUT
@@ -106,7 +106,7 @@ jobs:
         uses: netcracker/qubership-workflow-hub/actions/charts-values-update-action@v2.0.1
         with:
           release-version: ${{ inputs.release }}
-          config-file: .github/helm-charts-release-config.yaml
+          config-file: .github/charts-values-update-config.yaml
         env:
           ${{ insert }}: ${{ vars }}
       - name: "Debug"
