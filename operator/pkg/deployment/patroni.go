@@ -173,10 +173,6 @@ func NewPatroniStatefulset(cr *patroniv1.PatroniCore, deploymentIdx int, cluster
 									},
 								},
 								{
-									Name:  "PATRONI_TTL",
-									Value: "60",
-								},
-								{
 									Name:  "PG_MAX_CONNECTIONS",
 									Value: getMaxConnections(cr),
 								},
