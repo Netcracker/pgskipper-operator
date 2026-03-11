@@ -20,7 +20,7 @@ google-auth-httplib2==0.2.0
 googleapis-common-protos==1.70.0
 gunicorn==23.0.0
 httplib2==0.21.0
-idna==3.7
+idna==3.11
 importlib-metadata==4.8.3
 ipaddress==1.0.23
 jmespath==1.1.0
