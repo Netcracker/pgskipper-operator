@@ -25,6 +25,7 @@ import (
 	"github.com/Netcracker/pgskipper-monitoring-agent/collector/pkg/util"
 	dto "github.com/prometheus/client_model/go"
 	"github.com/prometheus/common/expfmt"
+	"github.com/prometheus/common/model"
 	"go.uber.org/zap"
 )
 
@@ -83,7 +84,7 @@ func (s *Scraper) processUrlCollect(url string) []byte {
 
 func parseMF(data string) (map[string]*dto.MetricFamily, error) {
 
-	var parser expfmt.TextParser
+	parser := expfmt.NewTextParser(model.LegacyValidation)
 	mf, err := parser.TextToMetricFamilies(strings.NewReader(data))
 	if err != nil {
 		return nil, err
