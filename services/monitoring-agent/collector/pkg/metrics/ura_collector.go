@@ -152,7 +152,7 @@ func (s *Scraper) processConfigMap(data map[string]string) {
 func handleSourceOfMetric(s *Scraper, parameters map[string]interface{}, paramType interface{}, metricType interface{}, module map[string]interface{}) error {
 	var jsonData map[string]interface{}
 	if paramType == "url" {
-		url := parseSSLMode(parameters["url"].(string))
+		url := parseSSLMode(parameters["url"].(string), parameters)
 		if metricType == "json" {
 			byteData := s.processUrlCollect(url)
 			if len(byteData) != 0 {
@@ -172,7 +172,15 @@ func handleSourceOfMetric(s *Scraper, parameters map[string]interface{}, paramTy
 	return nil
 }
 
-func parseSSLMode(url string) string {
+func parseSSLMode(url string, parameters map[string]interface{}) string {
+	// handle dbaas case
+	if name, ok := parameters["service_name"].(string); ok && name == "dbaas-postgres-adapter" {
+		if util.GetEnv("EXTERNAL_TLS_ENABLED", "false") == "true" {
+			return strings.Replace(url, "http", "https", -1)
+		}
+		return url
+	}
+
 	if util.GetEnv("PGSSLMODE", "prefer") == "require" {
 		return strings.Replace(url, "http", "https", -1)
 	}
