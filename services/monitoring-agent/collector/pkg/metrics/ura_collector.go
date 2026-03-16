@@ -174,7 +174,7 @@ func handleSourceOfMetric(s *Scraper, parameters map[string]interface{}, paramTy
 
 func parseSSLMode(url string, parameters map[string]interface{}) string {
 	// handle dbaas case
-	if name, ok := parameters["service_name"].(string); ok && name == "dbaas-postgres-adapter" {
+	if name, ok := parameters["service_name"]; ok && name.(string) == "dbaas-postgres-adapter" {
 		if util.GetEnv("EXTERNAL_TLS_ENABLED", "false") == "true" {
 			return strings.Replace(url, "http", "https", -1)
 		}
