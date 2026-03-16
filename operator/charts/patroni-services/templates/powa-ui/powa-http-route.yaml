@@ -8,8 +8,8 @@ metadata:
     {{ include "kubernetes.labels" . | nindent 4 }}
 spec:
   parentRefs:
-  - name: {{ .Values.powaUI.ingress.gatewayName | default "default-external-gateway" }}
-    namespace: {{ .Values.powaUI.ingress.envoyNamespace | default "envoy-gateway" }}
+  - name: {{ include "gateway.name" . }}
+    namespace: {{ include "gateway.namespace" . }}
     port: 80
   hostnames: [{{ .Values.powaUI.ingress.host  | quote }}]
   rules:
