@@ -32,6 +32,5 @@ updates:
   - package-ecosystem: "pip"
     directories:
       - "/tests/docker"
-      - "/services/backup-daemon"
     schedule:
       interval: "weekly"
