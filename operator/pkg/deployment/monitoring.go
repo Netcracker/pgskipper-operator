@@ -45,6 +45,7 @@ func NewMonitoringDeployment(metricCollector *netcrackerv1.MetricCollector, pgcl
 	if metricCollector.SslMode != "" {
 		sslMode = metricCollector.SslMode
 	}
+	internalTlsEnabled := util.InternalTlsEnabled()
 	deployment := &appsv1.Deployment{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      MetricCollectorDeploymentName,
@@ -184,6 +185,10 @@ func NewMonitoringDeployment(metricCollector *netcrackerv1.MetricCollector, pgcl
 								{
 									Name:  "PGSSLMODE",
 									Value: sslMode,
+								},
+								{
+									Name:  "INTERNAL_TLS_ENABLED",
+									Value: internalTlsEnabled,
 								},
 							}, getDevEnvs(metricCollector)...),
 							VolumeMounts: []corev1.VolumeMount{
