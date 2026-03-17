@@ -49,4 +49,3 @@ jobs:
             exit 1
           fi
           echo "All tests completed successfully or not required"
-
