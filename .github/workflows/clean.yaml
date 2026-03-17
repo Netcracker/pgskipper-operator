@@ -1,9 +1,8 @@
-name: Remove Patroni Artifacts for deleted branch
+name: Remove Artifacts for deleted branch
 on: delete
 
 env:
-  COMPONENT_NAME: pgskipper-patroni
-  TAG_NAME: ${{ github.event.ref }}
+  TAG_NAME: ${{ github.event.ref_name }}
 
 jobs:
   delete:
@@ -15,6 +14,18 @@ jobs:
       fail-fast: false
       matrix:
         component:
+          - name: pgskipper-operator
+            context: ""
+          - name: pgskipper-operator-tests
+            context: ""
+          - name: pgskipper-operator-transfer
+            context: ""
+          - name: pgskipper-docker-backup-daemon
+            context: ""
+          - name: pgskipper-docker-dbaas-adapter
+            context: ""
+          - name: pgskipper-docker-monitoring-agent
+            context: ""
           - name: pgskipper-docker-patroni-18
             context: ""
           - name: pgskipper-docker-patroni-17
@@ -22,6 +33,14 @@ jobs:
           - name: pgskipper-docker-patroni-16
             context: ""
           - name: pgskipper-docker-patroni-15
+            context: ""
+          - name: pgskipper-docker-pgbackrest-sidecar
+            context: ""
+          - name: pgskipper-docker-query-exporter
+            context: ""
+          - name: pgskipper-docker-replication-controller
+            context: ""
+          - name: pgskipper-docker-upgrade
             context: ""
     steps:
       - name: Prepare Tag

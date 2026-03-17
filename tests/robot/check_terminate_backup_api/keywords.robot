@@ -37,4 +37,4 @@ Prepare Auth
     ${POSTGRES_USER}=  Get Environment Variable  POSTGRES_USER  default=postgres
     ${PG_ROOT_PASSWORD}=  Get Environment Variable  PG_ROOT_PASSWORD
     ${auth}=  Create List  ${POSTGRES_USER}  ${PG_ROOT_PASSWORD}
-    reterun  ${auth}
+    [Return]  ${auth}

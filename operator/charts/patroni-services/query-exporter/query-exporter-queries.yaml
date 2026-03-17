@@ -952,7 +952,7 @@ queries:
       JOIN pg_roles ON pg_stat_activity.usename = pg_roles.rolname WHERE datname <>
       '' GROUP BY usename, rolconnlimit ORDER BY role_cnt DESC) t1 FULL OUTER JOIN  (SELECT
       count(*) not_idle_cnt, usename FROM pg_stat_activity WHERE state <> 'idle' and
-      datname <> '' GROUP BY datname, usename ORDER BY not_idle_cnt desc) t2 on (t1.usename
+      datname <> '' and usename <> '' GROUP BY usename ORDER BY not_idle_cnt desc) t2 on (t1.usename
       = t2.usename) order by connection_by_role_with_limit_role_cnt desc;
   connection_count_stat_query:
     databases:

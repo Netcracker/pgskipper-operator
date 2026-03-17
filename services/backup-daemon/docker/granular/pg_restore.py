@@ -350,7 +350,7 @@ class PostgreSQLRestoreWorker(Thread):
                                                                           configs.postgresql_port())
                     self.log.debug(self.log_msg("command WriteToFile: {} ".format(commandWriteToFile)))
                     self.log.debug(self.log_msg("command Restore: {} ".format( commandRest)))
-                    with open(stderr_path, 'a') as stderr:
+                    with open(stderr_path, 'a+') as stderr:
                         with open(stdout_path, 'a+') as stdout:
                             p = subprocess.Popen(commandWriteToFile, shell=True,
                                                  stdout=stdout, stderr=stderr)

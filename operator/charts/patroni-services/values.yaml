@@ -248,7 +248,7 @@ backupDaemon:
 
 pgBackRestExporter:
   install: false
-  image: artifactorycn.netcracker.com:17152/woblerr/pgbackrest_exporter:v0.21.0-alpine
+  image: ghcr.io/woblerr/pgbackrest_exporter:v0.21.0-alpine
   resources:
     requests:
       cpu: 100m
@@ -373,7 +373,7 @@ queryExporter:
 
 powaUI:
   install: false
-  dockerImage: powateam/powa-web:5.0.2
+  dockerImage: docker.io/powateam/powa-web:5.0.2
   #  podLabels: {}
 
   ingress:
@@ -408,7 +408,7 @@ replicationController:
 
 connectionPooler:
   install: false
-  dockerImage: bitnami/pgbouncer:1.17.0-debian-11-r62
+  dockerImage: docker.io/edoburu/pgbouncer:v1.25.1-p0
   replicas: 1
   config:
     databases:
@@ -421,7 +421,8 @@ connectionPooler:
       auth_user: 'pgbouncer'
       auth_query: 'SELECT p_user, p_password FROM public.lookup($1)'
       ignore_startup_parameters: 'options,extra_float_digits'
-  securityContext: {}
+  securityContext:
+        runAsUser: 70
 
 tracing:
   enabled: false

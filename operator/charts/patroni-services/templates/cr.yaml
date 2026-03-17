@@ -117,7 +117,7 @@ spec:
       secretAccessKey: {{ .Values.backupDaemon.s3Storage.secretAccessKey }}
       bucket: {{ .Values.backupDaemon.s3Storage.bucket }}
       prefix: {{ default "postgres" .Values.backupDaemon.s3Storage.prefix }}
-      untrustedCert: {{ .Values.backupDaemon.s3Storage.untrustedCert }}
+      untrustedCert: {{ default "true" .Values.backupDaemon.s3Storage.untrustedCert }}
       region: {{ .Values.backupDaemon.s3Storage.region }}
   {{ end }}
   {{ if .Values.backupDaemon.externalPv }}

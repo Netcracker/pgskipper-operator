@@ -101,6 +101,6 @@ func getCommonMetrics() map[string]string {
 		"pg_is_in_backup":          "SELECT case pg_is_in_backup when 't' then 1 else 0 end pg_is_in_backup from pg_is_in_backup()",
 		"xact_sum":                 "select sum(xact_commit + xact_rollback) :: bigint from pg_stat_database",
 		"postgres_max_connections": "SELECT setting::int FROM pg_settings WHERE name = 'max_connections'",
-		"query_max_time":           "SELECT COALESCE(trunc(extract(epoch from (now() - min(query_start)))), 0) FROM pg_stat_activity WHERE state='active' AND usename != 'replicator' AND wait_event_type ||'.'|| wait_event != 'Client.WalSenderWaitForWAL'",
+		"query_max_time":           "SELECT COALESCE(trunc(extract(epoch from (now() - min(query_start)))), 0) FROM pg_stat_activity WHERE state='active' AND usename != 'replicator' AND lower(wait_event_type ||'.'|| wait_event) != 'client.walsenderwaitforwal'",
 	}
 }

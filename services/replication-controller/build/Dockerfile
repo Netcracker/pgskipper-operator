@@ -1,4 +1,4 @@
-FROM --platform=$BUILDPLATFORM golang:1.25-alpine3.23 AS builder
+FROM --platform=$BUILDPLATFORM golang:1.26-alpine3.23 AS builder
 
 ENV GOSUMDB=off
 
@@ -18,7 +18,7 @@ RUN go mod tidy
 # Build
 ARG TARGETOS TARGETARCH
 RUN CGO_ENABLED=0 GOOS=$TARGETOS GOARCH=$TARGETARCH CGO_ENABLED=0 go build -o ./build/_output/bin/pgskipper-replication-controller \
-				-gcflags all=-trimpath=${GOPATH} -asmflags all=-trimpath=${GOPATH} ./cmd/pgskipper-replication-controller
+    -gcflags all=-trimpath=${GOPATH} -asmflags all=-trimpath=${GOPATH} ./cmd/pgskipper-replication-controller
 
 FROM alpine:3.23
 

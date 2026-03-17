@@ -176,7 +176,7 @@ patroni:
   patroniParams:
     - "failsafe_mode: true"
     - "primary_start_timeout: 30"
-    - "retry_timeout: 600"
+    - "retry_timeout: 10"
 
   # Storage section.
   storage:
