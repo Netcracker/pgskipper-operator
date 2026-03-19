@@ -93,7 +93,6 @@ jobs:
   build:
     name: ${{ matrix.component.name }} Image Build
     needs: [prepare]
-    if: needs.prepare.outputs.components != '' && needs.prepare.outputs.components != 'null' && needs.prepare.outputs.components != '[]'
     runs-on: ubuntu-latest
     permissions:
       contents: read
@@ -148,25 +147,3 @@ jobs:
           package-type: 'container'
           package-version-ids: ${{ steps.get-ids-for-delete.outputs.ids-for-delete }}
         if: ${{ steps.get-ids-for-delete.outputs.ids-for-delete != '' }}
-  services-build-status:
-    name: "Services Build Status"
-    runs-on: ubuntu-latest
-    needs: [prepare, build]
-    if: always()
-    steps:
-      - name: Check build status
-        run: |
-          if [[ "${{ needs.prepare.result }}" == "failure" || "${{ needs.prepare.result }}" == "cancelled" ]]; then
-            echo "Prepare job failed or was cancelled"
-            exit 1
-          fi
-          if [[ "${{ needs.build.result }}" == "failure" || "${{ needs.build.result }}" == "cancelled" ]]; then
-            echo "Build job failed or was cancelled"
-            exit 1
-          fi
-          if [[ "${{ needs.build.result }}" == "skipped" ]]; then
-            echo "Build job was skipped - this is OK"
-            exit 0
-          fi
-          echo "All builds completed successfully!"
-          exit 0
