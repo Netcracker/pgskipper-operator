@@ -42,7 +42,7 @@ operatorInit:
 ##  This section describes values for postgres-operator deployment
 operator:
   # Docker Image that will be used to Postgres Operator deployment
-  image: ghcr.io/netcracker/pgskipper-operator:main
+  image: ghcr.io/netcracker/pgskipper-operator:1.53.4
   podLabels: {}
   securityContext: {}
   waitTimeout: 10
@@ -219,7 +219,7 @@ patroni:
   majorUpgrade:
     enabled: false
     #    initDbParams: "--encoding=UTF8 --data-checksums --lc-collate=C --lc-ctype=C"
-    dockerUpgradeImage: ghcr.io/netcracker/pgskipper-docker-upgrade:main
+    dockerUpgradeImage: ghcr.io/netcracker/pgskipper-docker-upgrade:1.53.4
   securityContext: {}
     #    fsGroupChangePolicy: OnRootMismatch
     #  pgWalStorageAutoManage: false
@@ -272,7 +272,7 @@ patroni:
 
 tests:
   install: true
-  dockerImage: ghcr.io/netcracker/pgskipper-operator-tests:main
+  dockerImage: ghcr.io/netcracker/pgskipper-operator-tests:1.53.4
   podLabels: {}
   # One of "full", "basic"or one from testScenarios
   runTestScenarios: "basic"
