@@ -69,7 +69,7 @@ jobs:
 
   docker-check-build:
     needs: [load-docker-build-components, check-tag]
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-22.04
     strategy:
       fail-fast: true
       matrix:
@@ -116,7 +116,7 @@ jobs:
 
   docker-build:
     needs: [chart-release-prepare, load-docker-build-components]
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-22.04
     strategy:
       fail-fast: true
       matrix:
