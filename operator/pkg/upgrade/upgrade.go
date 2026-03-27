@@ -485,7 +485,7 @@ func (u *Upgrade) ProceedUpgrade(cr *v1.PatroniCore, cluster *v1.PatroniClusterS
 
 	logger.Info("Leader Upgrade completed")
 
-	if err := opUtil.WaitForPatroni(cr, cluster.PatroniMasterSelectors, cluster.PatroniReplicasSelector); err != nil {
+	if err := opUtil.WaitForPatroniWithReplicaTimeout(cr, cluster.PatroniMasterSelectors, cluster.PatroniReplicasSelector, 600*time.Minute); err != nil {
 		return err
 	}
 

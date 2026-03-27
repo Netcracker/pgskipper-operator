@@ -25,6 +25,7 @@ import (
 	"github.com/Netcracker/pgskipper-monitoring-agent/collector/pkg/util"
 	dto "github.com/prometheus/client_model/go"
 	"github.com/prometheus/common/expfmt"
+	"github.com/prometheus/common/model"
 	"go.uber.org/zap"
 )
 
@@ -83,7 +84,7 @@ func (s *Scraper) processUrlCollect(url string) []byte {
 
 func parseMF(data string) (map[string]*dto.MetricFamily, error) {
 
-	var parser expfmt.TextParser
+	parser := expfmt.NewTextParser(model.LegacyValidation)
 	mf, err := parser.TextToMetricFamilies(strings.NewReader(data))
 	if err != nil {
 		return nil, err
@@ -151,7 +152,7 @@ func (s *Scraper) processConfigMap(data map[string]string) {
 func handleSourceOfMetric(s *Scraper, parameters map[string]interface{}, paramType interface{}, metricType interface{}, module map[string]interface{}) error {
 	var jsonData map[string]interface{}
 	if paramType == "url" {
-		url := parseSSLMode(parameters["url"].(string))
+		url := parseSSLMode(parameters["url"].(string), parameters)
 		if metricType == "json" {
 			byteData := s.processUrlCollect(url)
 			if len(byteData) != 0 {
@@ -171,7 +172,15 @@ func handleSourceOfMetric(s *Scraper, parameters map[string]interface{}, paramTy
 	return nil
 }
 
-func parseSSLMode(url string) string {
+func parseSSLMode(url string, parameters map[string]interface{}) string {
+	// handle dbaas case
+	if name, ok := parameters["service_name"]; ok && name.(string) == "dbaas-postgres-adapter" {
+		if util.GetEnv("INTERNAL_TLS_ENABLED", "false") == "true" {
+			return strings.Replace(url, "http", "https", -1)
+		}
+		return url
+	}
+
 	if util.GetEnv("PGSSLMODE", "prefer") == "require" {
 		return strings.Replace(url, "http", "https", -1)
 	}

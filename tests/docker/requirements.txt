@@ -8,8 +8,8 @@ click==8.1.2
 Flask==2.2.5
 Flask-RESTful==0.3.9
 google-auth==2.3.3
-idna==3.7
-importlib-metadata==4.11.3
+idna==3.11
+importlib-metadata==8.7.1
 ipaddress==1.0.23
 itsdangerous==2.1.2
 Jinja2==3.1.6
@@ -19,19 +19,18 @@ MarkupSafe==3.0.3
 oauthlib==3.3.1
 # Binary build — no build-base/postgresql-dev needed (was psycopg2==2.9.10)
 psycopg2-binary==2.9.10
-pyasn1==0.6.2
+pyasn1==0.6.3
 pyasn1-modules==0.4.2
 # Match base image (was 2.4.0)
-pyjwt==2.10.1
-python-dateutil==2.8.2
+PyJWT==2.4.0
+python-dateutil==2.9.0.post0
 python-string-utils==1.0.0
-pytz==2022.1
+pytz==2026.1.post1
 requests==2.32.5
 requests-oauthlib==2.0.0
 # Match base image — avoid downgrade conflict (was 5.0)
 robotframework==7.3.2
 robotframework-databaselibrary==1.2.4
-# Match base image (was 0.9)
 robotframework-requests==0.9.7
 rsa==4.8
 ruamel.yaml==0.19.1

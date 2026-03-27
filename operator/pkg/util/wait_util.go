@@ -244,8 +244,8 @@ func WaitForLeader(patroniMasterSelector map[string]string) error {
 	})
 }
 
-func waitForReplicas(patroniReplicasSelector map[string]string, numberOfReplicas int) error {
-	return wait.PollUntilContextTimeout(context.Background(), time.Second, getWaitTimeout(), true, func(ctx context.Context) (done bool, err error) {
+func waitForReplicas(patroniReplicasSelector map[string]string, numberOfReplicas int, timeout time.Duration) error {
+	return wait.PollUntilContextTimeout(context.Background(), time.Second, timeout, true, func(ctx context.Context) (done bool, err error) {
 		return checkPodsByLabel(patroniReplicasSelector, numberOfReplicas)
 	})
 }
@@ -263,12 +263,23 @@ func WaitForMetricCollector() error {
 }
 
 func WaitForPatroni(cr *v1.PatroniCore, patroniMasterSelector map[string]string, patroniReplicasSelector map[string]string) error {
+	return WaitForPatroniWithReplicaTimeout(cr, patroniMasterSelector, patroniReplicasSelector, 0)
+}
+
+func WaitForPatroniWithReplicaTimeout(cr *v1.PatroniCore, patroniMasterSelector map[string]string, patroniReplicasSelector map[string]string, timeout time.Duration) error {
 	if cr.Spec.Patroni.Dcs.Type == "kubernetes" {
 		if err := WaitForLeader(patroniMasterSelector); err != nil {
 			uLog.Error("Failed to wait for master, exiting", zap.Error(err))
 			return err
 		}
-		if err := waitForReplicas(patroniReplicasSelector, cr.Spec.Patroni.Replicas-1); err != nil {
+
+		// use biggest timeout for replicas
+		operatorTimeout := getWaitTimeout()
+		if timeout < operatorTimeout {
+			timeout = operatorTimeout
+		}
+
+		if err := waitForReplicas(patroniReplicasSelector, cr.Spec.Patroni.Replicas-1, timeout); err != nil {
 			uLog.Error("Failed to wait for replicas, exiting", zap.Error(err))
 			return err
 		}

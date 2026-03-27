@@ -525,7 +525,8 @@ class PostgreSQLDumpWorker(Thread):
                 self.backup_single_database(database)
                 self.on_success(database)
             except Exception as e:  # Call on_failure here to mark database backup failed on any exception.
-                self.on_failure(database, e)
+                if not self.is_cancelled():
+                    self.on_failure(database, e)
                 raise e
             finally:
                 self.cleanup(database)
@@ -573,6 +574,8 @@ class PostgreSQLDumpWorker(Thread):
             self._mark_done(backups.BackupStatus.SUCCESSFUL)
             self.log.info(self.log_msg("Backup request processing has been completed."))
         except Exception as e:
+            if self.is_cancelled():
+                return
             self.log.exception(self.log_msg("Backup request processing has failed."))
             self.update_status('errorMessage', f'Backup failed: {e}')
             self._mark_done(backups.BackupStatus.FAILED)

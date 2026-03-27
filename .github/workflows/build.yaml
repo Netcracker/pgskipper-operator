@@ -25,31 +25,21 @@ on:
       - "SECURITY.md"
   workflow_dispatch:
     inputs:
-      tags:
-        required: false
-        type: string
-        default: ""
-        description: "Tags"
-      dry-run:
-        required: true
+      publish_docker:
+        description: "Publish images to ghcr.io/netcracker"
         type: boolean
         default: false
-        description: "Dry run mode"
-      replace-symbol:
         required: false
-        type: string
-        default: "_"
-        description: "Symbol to replace in tags"
 
 permissions:
   contents: read
 
 concurrency:
   group: ${{ github.ref_type == 'branch' && format('build-branch-{0}', github.ref_name) || format('build-{0}', github.sha) }}
-  cancel-in-progress: true
+  cancel-in-progress: ${{ github.ref_name != 'main' }}
 
 env:
-  TAG_NAME: ${{ github.event.release.tag_name || github.ref_name }}
+  TAG_NAME: ${{ github.event.release.tag_name || github.head_ref || github.ref_name }}
   PUSH: ${{ (github.event_name != 'workflow_dispatch' || inputs.publish_docker) && github.actor != 'dependabot[bot]' }}
 
 jobs:
@@ -107,7 +97,7 @@ jobs:
   build:
     name: ${{ matrix.component.name }} Image Build
     needs: [prepare]
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-22.04
     permissions:
       contents: read
       packages: write
