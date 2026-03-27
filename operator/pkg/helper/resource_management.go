@@ -756,6 +756,7 @@ func (rm *ResourceManager) CreateServiceIfNotExists(service *corev1.Service) err
 	}, foundService)
 	if err != nil && errors.IsNotFound(err) {
 		logger.Info(fmt.Sprintf("Creating %s k8s service", service.Name))
+		service.OwnerReferences = rm.GetOwnerReferences()
 		service.Labels = rm.getLabels(service.ObjectMeta)
 		err = rm.kubeClient.Create(context.TODO(), service)
 		if err != nil {
@@ -775,6 +776,7 @@ func (rm *ResourceManager) CreateConfigMapIfNotExists(cm *corev1.ConfigMap) erro
 	}, foundCm)
 	if err != nil && errors.IsNotFound(err) {
 		logger.Info(fmt.Sprintf("Creating %s configMap", cm.Name))
+		cm.OwnerReferences = rm.GetOwnerReferences()
 		cm.Labels = rm.getLabels(cm.ObjectMeta)
 		err = rm.kubeClient.Create(context.TODO(), cm)
 		if err != nil {
