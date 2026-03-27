@@ -1,4 +1,4 @@
-FROM ghcr.io/elbe0116/qubership-docker-integration-tests:PSUPATPOS-63
+FROM ghcr.io/netcracker/qubership-docker-integration-tests:main
 
 ENV LC_ALL=en_US.UTF-8 \
     LANG=en_US.UTF-8
@@ -10,6 +10,7 @@ COPY docker/pip.conf /root/.pip/pip.conf
 COPY docker/requirements.txt /root/requirements.txt
 
 RUN set -x \
+    && apk add --update --no-cache build-base postgresql-dev \
     && pip3 install --no-cache-dir -r /root/requirements.txt \
     && pip3 uninstall -y pip
 
