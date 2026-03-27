@@ -117,7 +117,7 @@ spec:
       secretAccessKey: {{ .Values.backupDaemon.s3Storage.secretAccessKey }}
       bucket: {{ .Values.backupDaemon.s3Storage.bucket }}
       prefix: {{ default "postgres" .Values.backupDaemon.s3Storage.prefix }}
-      untrustedCert: {{ default "true" .Values.backupDaemon.s3Storage.untrustedCert }}
+      untrustedCert: {{ .Values.backupDaemon.s3Storage.untrustedCert }}
       region: {{ .Values.backupDaemon.s3Storage.region }}
   {{ end }}
   {{ if .Values.backupDaemon.externalPv }}
@@ -423,6 +423,45 @@ spec:
         {{- end }}
 {{ end }}
     pgNodeQty: {{ default "1" .Values.patroni.replicas }}
+    {{- if or .Values.tests.environmentName (and .Values.tests.atpStorage .Values.tests.atpStorage.provider) }}
+    env:
+    {{- if .Values.tests.environmentName }}
+    - name: ENVIRONMENT_NAME
+      value: {{ .Values.tests.environmentName | quote }}
+    {{- end }}
+    {{- if .Values.tests.atpStorage.provider }}
+    - name: ATP_STORAGE_PROVIDER
+      value: {{ .Values.tests.atpStorage.provider | quote }}
+    {{- end }}
+    {{- if .Values.tests.atpStorage.serverUrl }}
+    - name: ATP_STORAGE_SERVER_URL
+      value: {{ .Values.tests.atpStorage.serverUrl | quote }}
+    {{- end }}
+    {{- if .Values.tests.atpStorage.serverUiUrl }}
+    - name: ATP_STORAGE_SERVER_UI_URL
+      value: {{ .Values.tests.atpStorage.serverUiUrl | quote }}
+    {{- end }}
+    {{- if .Values.tests.atpStorage.bucket }}
+    - name: ATP_STORAGE_BUCKET
+      value: {{ .Values.tests.atpStorage.bucket | quote }}
+    {{- end }}
+    {{- if .Values.tests.atpStorage.region }}
+    - name: ATP_STORAGE_REGION
+      value: {{ .Values.tests.atpStorage.region | quote }}
+    {{- end }}
+    {{- if .Values.tests.atpStorage.username }}
+    - name: ATP_STORAGE_USERNAME
+      value: {{ .Values.tests.atpStorage.username | quote }}
+    {{- end }}
+    {{- if .Values.tests.atpStorage.password }}
+    - name: ATP_STORAGE_PASSWORD
+      value: {{ .Values.tests.atpStorage.password | quote }}
+    {{- end }}
+    {{- if .Values.tests.atpReportViewUiUrl }}
+    - name: ATP_REPORT_VIEW_UI_URL
+      value: {{ .Values.tests.atpReportViewUiUrl | quote }}
+    {{- end }}
+    {{- end }}
 {{ end }}
 {{ if .Values.runTestsOnly }}
 runTestsTime: {{ now | unixEpoch | quote }}

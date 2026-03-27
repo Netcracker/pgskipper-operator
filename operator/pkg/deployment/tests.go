@@ -75,7 +75,6 @@ func NewIntegrationTestsPod(cr *v1.PatroniServices, cluster *patroniv1.PatroniCl
 					Image:           dockerImage,
 					ImagePullPolicy: cr.Spec.ImagePullPolicy,
 					SecurityContext: util.GetDefaultSecurityContext(),
-					Args:            []string{"robot", "-i", tastsTags, "/test_runs/"},
 					Env: []corev1.EnvVar{
 						{
 							Name: "POSTGRES_USER",
@@ -192,7 +191,6 @@ func NewCoreIntegrationTests(cr *patroniv1.PatroniCore, cluster *patroniv1.Patro
 					Image:           dockerImage,
 					ImagePullPolicy: cr.Spec.ImagePullPolicy,
 					SecurityContext: util.GetDefaultSecurityContext(),
-					Args:            []string{"robot", "-i", tastsTags, "/test_runs/"},
 					Env: []corev1.EnvVar{
 						{
 							Name: "POSTGRES_USER",

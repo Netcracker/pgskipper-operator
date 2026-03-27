@@ -40,9 +40,15 @@ spec:
     synchronousMode: {{ default "false" .Values.patroni.synchronousMode }}
     createEndpoint: {{ default "false" .Values.patroni.createEndpoint }}
     {{ end }}
-    {{ if .Values.patroni.fsGroup }}
-    fsGroup: {{ .Values.patroni.fsGroup }}
-    {{ end }}
+    {{- if or .Values.patroni.securityContext .Values.patroni.fsGroup }}
+    securityContext:
+      {{- if .Values.patroni.securityContext }}
+      {{- toYaml .Values.patroni.securityContext | nindent 6 }}
+      {{- end }}
+      {{- if .Values.patroni.fsGroup }}
+      fsGroup: {{ .Values.patroni.fsGroup }}
+      {{- end }}
+    {{- end }}
     {{ if .Values.patroni.affinity }}
     affinity: {{ .Values.patroni.affinity | toJson }}
     {{ else if .Values.affinity }}
@@ -243,6 +249,40 @@ spec:
         {{- end }}
 {{ end }}
     pgNodeQty: {{ ( include "postgres.replicasCount" . ) }}
+    {{- $atp := .Values.tests.atpStorage | default dict }}
+    env:
+    {{- if .Values.tests.environmentName }}
+    - name: ENVIRONMENT_NAME
+      value: {{ .Values.tests.environmentName | quote }}
+    {{- end }}
+    - name: ATP_STORAGE_PROVIDER
+      value: {{ ($atp.provider | default "aws") | quote }}
+    - name: ATP_STORAGE_REGION
+      value: {{ ($atp.region | default "us-east-1") | quote }}
+    {{- if $atp.serverUrl }}
+    - name: ATP_STORAGE_SERVER_URL
+      value: {{ $atp.serverUrl | quote }}
+    {{- end }}
+    {{- if $atp.serverUiUrl }}
+    - name: ATP_STORAGE_SERVER_UI_URL
+      value: {{ $atp.serverUiUrl | quote }}
+    {{- end }}
+    {{- if $atp.bucket }}
+    - name: ATP_STORAGE_BUCKET
+      value: {{ $atp.bucket | quote }}
+    {{- end }}
+    {{- if $atp.username }}
+    - name: ATP_STORAGE_USERNAME
+      value: {{ $atp.username | quote }}
+    {{- end }}
+    {{- if $atp.password }}
+    - name: ATP_STORAGE_PASSWORD
+      value: {{ $atp.password | quote }}
+    {{- end }}
+    {{- if .Values.tests.atpReportViewUiUrl }}
+    - name: ATP_REPORT_VIEW_UI_URL
+      value: {{ .Values.tests.atpReportViewUiUrl | quote }}
+    {{- end }}
 {{ end }}
 {{ if .Values.runTestsOnly }}
 runTestsTime: {{ now | unixEpoch | quote }}

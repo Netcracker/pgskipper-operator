@@ -7,6 +7,9 @@ postgresUser: postgres
 # The password for the database superuser.
 postgresPassword: "p@ssWOrD1"
 replicatorPassword: "replicator"
+# Set to false when postgres-credentials and replicator-credentials are created outside the chart (e.g. by CI).
+# When false, the chart skips creating these secrets so Helm install does not conflict with existing resources.
+# createCredentials: true
 
 podLabels: {}
 
@@ -101,9 +104,8 @@ patroni:
   podLabels: {}
   podAnnotations: {}
   configMapAnnotations: {}
-  # patroni.fsGroup. Specifies fsGroup that will be used in Patroni Pod Spec.
-  # Useful in case of k8s installation and provisioned storage
-  #  fsGroup: 26
+  # patroni.fsGroup. Specifies fsGroup that will be used in Patroni Pod Spec (data volume writable by postgres GID 26).
+  fsGroup: 26
   #  affinity: {
   #    "podAffinity": {
   #      "preferredDuringSchedulingIgnoredDuringExecution": [
@@ -134,7 +136,6 @@ patroni:
   #      ]
   #    }
   #  }
-  #  fsGroup: 26
   # patroni.affinity parameter. Configures a `podAffinityTerm`. Possible values are required and preferred
 
   #  synchronousMode: true
@@ -176,7 +177,7 @@ patroni:
   patroniParams:
     - "failsafe_mode: true"
     - "primary_start_timeout: 30"
-    - "retry_timeout: 10"
+    - "retry_timeout: 600"
 
   # Storage section.
   storage:
@@ -274,6 +275,17 @@ tests:
   install: true
   dockerImage: ghcr.io/netcracker/pgskipper-operator-tests:main
   podLabels: {}
+  # S3/ATP storage for test results (defaults; override from GitHub vars/secrets in workflow)
+  atpStorage:
+    provider: "aws"
+    serverUrl: "https://s3.amazonaws.com"
+    serverUiUrl: "https://console.test.com"
+    bucket: ""
+    region: "us-east-1"
+    username: ""
+    password: ""
+  atpReportViewUiUrl: "https://test.com"
+  environmentName: "pgskipper-operator"
   # One of "full", "basic"or one from testScenarios
   runTestScenarios: "basic"
   testScenarios:
