@@ -142,15 +142,17 @@ func UpdatePgbackRestSettings(configMap *corev1.ConfigMap, settings interface{},
 	return configMap, nil
 }
 
-func AddStandbyClusterSettings(cr *patroniv1.PatroniCore, configMap *corev1.ConfigMap, configMapKey string) {
+func AddStandbyClusterSettings(cr *patroniv1.PatroniCore, configMap *corev1.ConfigMap, configMapKey string) error {
 	logger.Info("Apply standby cluster configuration in patroni template config map")
 	standbyClusterConfiguration := getStandbyClusterConfiguration(cr)
-	updateStandbyClusterSettings(configMap, standbyClusterConfiguration, configMapKey)
+	_, err := updateStandbyClusterSettings(configMap, standbyClusterConfiguration, configMapKey)
+	return err
 }
 
-func DeleteStandbyClusterSettings(configMap *corev1.ConfigMap, configMapKey string) {
+func DeleteStandbyClusterSettings(configMap *corev1.ConfigMap, configMapKey string) error {
 	logger.Info("Delete standby cluster configuration in patroni template config map")
-	updateStandbyClusterSettings(configMap, "", configMapKey)
+	_, err := updateStandbyClusterSettings(configMap, "", configMapKey)
+	return err
 }
 
 func ClearStandbyClusterConfigurationConfigMap(patroniUrl string) error {
@@ -330,20 +332,41 @@ func GetCommandForPgbackrest(cr *patroniv1.PatroniCore, command string) string {
 	return command
 }
 
-func updateStandbyClusterSettings(configMap *corev1.ConfigMap, settings interface{}, configMapKey string) *corev1.ConfigMap {
+func updateStandbyClusterSettings(configMap *corev1.ConfigMap, settings interface{}, configMapKey string) (*corev1.ConfigMap, error) {
 
 	var config map[string]interface{}
 	err := yaml.Unmarshal([]byte(configMap.Data[configMapKey]), &config)
 	if err != nil {
 		logger.Error("Could not unmarshal patroni config map", zap.Error(err))
+		return configMap, fmt.Errorf("could not unmarshal patroni config map: %w", err)
 	}
-	config["bootstrap"].(map[interface{}]interface{})["dcs"].(map[interface{}]interface{})["standby_cluster"] = settings
+
+	if config == nil {
+		logger.Error("Config map is nil after unmarshal")
+		return configMap, fmt.Errorf("config map is nil after unmarshal")
+	}
+
+	bootstrap, ok := config["bootstrap"].(map[interface{}]interface{})
+	if !ok || bootstrap == nil {
+		logger.Error("Config map missing 'bootstrap' section or wrong type")
+		return configMap, fmt.Errorf("config map missing 'bootstrap' section or wrong type")
+	}
+
+	dcs, ok := bootstrap["dcs"].(map[interface{}]interface{})
+	if !ok || dcs == nil {
+		logger.Error("Config map missing 'bootstrap.dcs' section or wrong type")
+		return configMap, fmt.Errorf("config map missing 'bootstrap.dcs' section or wrong type")
+	}
+
+	dcs["standby_cluster"] = settings
+
 	result, err := yaml.Marshal(config)
 	if err != nil {
 		logger.Error("Could not marshal patroni config map", zap.Error(err))
+		return configMap, fmt.Errorf("could not marshal patroni config map: %w", err)
 	}
 	configMap.Data[configMapKey] = string(result)
-	return configMap
+	return configMap, nil
 }
 
 func UpdatePostgreSQLParams(patroni *patroniv1.Patroni, patroniUrl string) error {
