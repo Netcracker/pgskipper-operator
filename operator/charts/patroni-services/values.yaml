@@ -444,8 +444,6 @@ tests:
     password: ""
   atpReportViewUiUrl: ""
   environmentName: ""
-  # Extra env vars for integration test pod (optional)
-  env: []
   # One of "full", "basic"or one from testScenarios
   runTestScenarios: "basic"
   testScenarios:

@@ -1093,20 +1093,6 @@ spec:
                     items:
                       type: string
                     type: array
-                  env:
-                    description: List of environment variables for the integration test pod (e.g. ATP_STORAGE_*)
-                    items:
-                      type: object
-                      required:
-                        - name
-                      properties:
-                        name:
-                          type: string
-                        value:
-                          type: string
-                        valueFrom:
-                          type: object
-                    type: array
                 type: object
               ldap:
                 properties:
@@ -2650,9 +2636,10 @@ spec:
                         operator:
                           description: |-
                             Operator represents a key's relationship to the value.
-                            Valid operators are Exists and Equal. Defaults to Equal.
+                            Valid operators are Exists, Equal, Lt, and Gt. Defaults to Equal.
                             Exists is equivalent to wildcard for value, so that a pod can
                             tolerate all taints of a particular category.
+                            Lt and Gt perform numeric comparisons (requires feature gate TaintTolerationComparisonOperators).
                           type: string
                         tolerationSeconds:
                           description: |-

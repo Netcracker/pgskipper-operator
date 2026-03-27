@@ -117,7 +117,7 @@ spec:
       secretAccessKey: {{ .Values.backupDaemon.s3Storage.secretAccessKey }}
       bucket: {{ .Values.backupDaemon.s3Storage.bucket }}
       prefix: {{ default "postgres" .Values.backupDaemon.s3Storage.prefix }}
-      untrustedCert: {{ default "true" .Values.backupDaemon.s3Storage.untrustedCert }}
+      untrustedCert: {{ .Values.backupDaemon.s3Storage.untrustedCert }}
       region: {{ .Values.backupDaemon.s3Storage.region }}
   {{ end }}
   {{ if .Values.backupDaemon.externalPv }}
@@ -423,7 +423,7 @@ spec:
         {{- end }}
 {{ end }}
     pgNodeQty: {{ default "1" .Values.patroni.replicas }}
-    {{- if or .Values.tests.environmentName (and .Values.tests.atpStorage .Values.tests.atpStorage.provider) (and .Values.tests.env (len .Values.tests.env | gt 0)) }}
+    {{- if or .Values.tests.environmentName (and .Values.tests.atpStorage .Values.tests.atpStorage.provider) }}
     env:
     {{- if .Values.tests.environmentName }}
     - name: ENVIRONMENT_NAME
@@ -460,9 +460,6 @@ spec:
     {{- if .Values.tests.atpReportViewUiUrl }}
     - name: ATP_REPORT_VIEW_UI_URL
       value: {{ .Values.tests.atpReportViewUiUrl | quote }}
-    {{- end }}
-    {{- if .Values.tests.env }}
-    {{- toYaml .Values.tests.env | nindent 4 }}
     {{- end }}
     {{- end }}
 {{ end }}

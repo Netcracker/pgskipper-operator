@@ -209,7 +209,6 @@ type IntegrationTests struct {
 	PgNodeQty        int                      `json:"pgNodeQty,omitempty"`
 	PodLabels        map[string]string        `json:"podLabels,omitempty"`
 	Affinity         v1.Affinity              `json:"affinity,omitempty"`
-	Env              []v1.EnvVar              `json:"env,omitempty"`
 }
 
 // ExternalDataBase defines the desired state of ExternalDataBase

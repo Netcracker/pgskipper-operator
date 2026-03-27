@@ -1,5 +1,5 @@
-# Upgrade only the patroni-core Helm release to inject integrationTests.env into the CR.
-# Use when the CR was installed without ATP/S3 env (e.g. before workflow fix) and you don't want a full reinstall.
+# Upgrade only the patroni-core Helm release to inject ATP-related settings into the CR (spec.integrationTests).
+# Use when the CR was installed without ATP/S3 values and you don't want a full reinstall.
 name: Upgrade PatroniCore env to AWS
 
 on:
@@ -61,7 +61,7 @@ jobs:
         run: |
           aws eks update-kubeconfig --region ${{ vars.AWS_REGION || 'us-east-1' }} --name ${{ vars.AWS_CLUSTERNAME }}
 
-      - name: Upgrade patroni-core (inject integrationTests.env)
+      - name: Upgrade patroni-core (inject ATP Helm values)
         run: |
           NS="${{ vars.PGSKIPPER_INSTALL_NAMESPACE }}"
           GITHUB_GROUP=$(echo ${{ github.repository_owner }} | tr '[:upper:]' '[:lower:]')
@@ -84,7 +84,7 @@ jobs:
           [ -n "${{ vars.ATP_REPORT_VIEW_UI_URL }}" ] && TESTS_ATP_ARGS="$TESTS_ATP_ARGS --set tests.atpReportViewUiUrl=${{ vars.ATP_REPORT_VIEW_UI_URL }}"
           [ -n "$ENV_NAME" ] && TESTS_ATP_ARGS="$TESTS_ATP_ARGS --set tests.environmentName=$ENV_NAME"
 
-          echo "Upgrading pgskipper-patroni in $NS with TESTS_ATP_ARGS (env will be in CR)..."
+          echo "Upgrading pgskipper-patroni in $NS with TESTS_ATP_ARGS..."
           # -f values.yaml ensures chart defaults (tests.atpStorage, etc.) are in the merge; --reuse-values then overlay; --set overrides.
           helm upgrade --namespace="$NS" --install \
             -f ./operator/charts/patroni-core/values.yaml \
@@ -92,7 +92,7 @@ jobs:
             $TESTS_ATP_ARGS \
             pgskipper-patroni ./operator/charts/patroni-core
 
-          echo "--- PatroniCore spec.integrationTests (env should appear below) ---"
+          echo "--- PatroniCore spec.integrationTests ---"
           kubectl get patronicore -n "$NS" -o yaml | grep -A200 "integrationTests:" | head -80
 
           echo "Delete the test pod so the operator recreates it with env: kubectl delete pod integration-robot-tests -n $NS"

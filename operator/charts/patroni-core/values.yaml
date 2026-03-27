@@ -177,7 +177,7 @@ patroni:
   patroniParams:
     - "failsafe_mode: true"
     - "primary_start_timeout: 30"
-    - "retry_timeout: 10"
+    - "retry_timeout: 600"
 
   # Storage section.
   storage:
@@ -286,7 +286,6 @@ tests:
     password: ""
   atpReportViewUiUrl: "https://test.com"
   environmentName: "pgskipper-operator"
-  env: []
   # One of "full", "basic"or one from testScenarios
   runTestScenarios: "basic"
   testScenarios:

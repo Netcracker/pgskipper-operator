@@ -283,9 +283,6 @@ spec:
     - name: ATP_REPORT_VIEW_UI_URL
       value: {{ .Values.tests.atpReportViewUiUrl | quote }}
     {{- end }}
-    {{- if .Values.tests.env }}
-    {{- toYaml .Values.tests.env | nindent 4 }}
-    {{- end }}
 {{ end }}
 {{ if .Values.runTestsOnly }}
 runTestsTime: {{ now | unixEpoch | quote }}
