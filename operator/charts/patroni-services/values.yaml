@@ -177,6 +177,7 @@ backupDaemon:
   backupSchedule: "0 0/7 * * *"
 
   #  pgHost: pg-patroni.postgres-service
+  # clusterDomain: cluster.local  # K8s cluster DNS domain; used to build FQDN for pgHost (e.g. pg-patroni.NAMESPACE.svc.cluster.local)
   # The eviction policy for backup daemon: period and action. The default value is 7d/delete.
   evictionPolicy: "7d/delete"
   backupTimeout: 300
@@ -432,6 +433,19 @@ tests:
   install: true
   dockerImage: ghcr.io/netcracker/pgskipper-operator-tests:main
   podLabels: {}
+  # S3/ATP storage for test results upload (e.g. AWS install, run_tests pipeline)
+  atpStorage:
+    provider: "aws"
+    serverUrl: "https://s3.amazonaws.com"
+    serverUiUrl: "https://console.test.com"
+    bucket: ""
+    region: "us-east-1"
+    username: ""
+    password: ""
+  atpReport:
+    enabled: false
+  atpReportViewUiUrl: "https://test.com"
+  environmentName: "pgskipper-operator"
   # One of "full", "basic"or one from testScenarios
   runTestScenarios: "basic"
   testScenarios:
@@ -474,3 +488,4 @@ CLOUD_PUBLIC_HOST: "k8s.default"
 # DBAAS_CLUSTER_DBA_CREDENTIALS_PASSWORD: "user-2"
 # MONITORING_ENABLED: false
 # INFRA_POSTGRES_FS_GROUP: 26
+

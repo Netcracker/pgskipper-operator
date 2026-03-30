@@ -1,3 +1,4 @@
+#checkov:skip=CKV_DOCKER_3:User is not required for backup daemon container
 FROM --platform=$BUILDPLATFORM golang:1.25-alpine3.23 AS builder
 
 ENV GO111MODULE=on

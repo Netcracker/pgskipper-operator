@@ -274,6 +274,19 @@ tests:
   install: true
   dockerImage: ghcr.io/netcracker/pgskipper-operator-tests:main
   podLabels: {}
+  # S3/ATP storage for test results (defaults; override from GitHub vars/secrets in workflow)
+  atpStorage:
+    provider: "aws"
+    serverUrl: "https://s3.amazonaws.com"
+    serverUiUrl: "https://console.test.com"
+    bucket: ""
+    region: "us-east-1"
+    username: ""
+    password: ""
+  atpReport:
+    enabled: false
+  atpReportViewUiUrl: "https://test.com"
+  environmentName: "pgskipper-operator"
   # One of "full", "basic"or one from testScenarios
   runTestScenarios: "basic"
   testScenarios:
