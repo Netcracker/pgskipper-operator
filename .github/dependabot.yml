@@ -10,7 +10,10 @@ updates:
       - "/services/pgbackrest-sidecar"
       - "/services/replication-controller"
     schedule:
-      interval: "weekly"
+      interval: "monthly"
+    groups:
+      monorepo-dependencies:
+        group-by: dependency-name
 
   # Docker images
   - package-ecosystem: "docker"
@@ -26,11 +29,14 @@ updates:
       - "/services/replication-controller/build"
       - "/services/upgrade"
     schedule:
-      interval: "weekly"
+      interval: "monthly"
+    groups:
+      monorepo-dependencies:
+        group-by: dependency-name
 
   # Python dependencies for tests docker image
   - package-ecosystem: "pip"
     directories:
       - "/tests/docker"
     schedule:
-      interval: "weekly"
+      interval: "monthly"
