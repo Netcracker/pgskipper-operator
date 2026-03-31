@@ -4,7 +4,7 @@ go 1.25.5
 
 require (
 	github.com/google/uuid v1.6.0
-	github.com/jackc/pgx/v5 v5.8.0
+	github.com/jackc/pgx/v5 v5.9.1
 	github.com/prometheus/client_model v0.6.2
 	github.com/prometheus/common v0.66.1
 	github.com/twmb/franz-go v1.17.1
