@@ -26,3 +26,4 @@ Test Hardcoded Images For Supplementary Services
     ${dd_images}=  Get Dd Images From Config Map  supplementary-tests-config
     Skip If  '${dd_images}' == '${None}'  There is no dd, not possible to check case!
     Compare Images From Resources With Dd  ${dd_images}
+
