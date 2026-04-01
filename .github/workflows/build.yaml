@@ -94,7 +94,7 @@ jobs:
     name: ${{ matrix.component.name }} Image Build
     needs: [prepare]
     if: needs.prepare.outputs.components != '' && needs.prepare.outputs.components != 'null' && needs.prepare.outputs.components != '[]'
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-22.04
     permissions:
       contents: read
       packages: write
