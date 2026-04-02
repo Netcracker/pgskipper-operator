@@ -1,6 +1,6 @@
 module github.com/Netcracker/pgskipper-operator
 
-go 1.25.8
+go 1.25.7
 
 require (
 	github.com/Netcracker/qubership-credential-manager v0.0.14
