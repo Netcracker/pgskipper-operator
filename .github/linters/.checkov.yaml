@@ -2,6 +2,12 @@
 
 quiet: true
 
+# Files under Helm templates/ are not valid YAML until `helm template` runs (they contain {{ ... }}).
+# Checkov still feeds some of them to YAML-based runners (e.g. CloudFormation), which then fail to parse.
+# Excluding template sources is the recommended approach; use the Helm chart scan (values + Chart.yaml) for policy checks.
+skip-path:
+  - ^operator/charts/[^/]+/templates/
+
 skip-check:
 # https://www.checkov.io/5.Policy%20Index/kubernetes.html
 - CKV_K8S_15 # Image Pull Policy should be Always

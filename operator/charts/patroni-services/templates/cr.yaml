@@ -423,6 +423,49 @@ spec:
         {{- end }}
 {{ end }}
     pgNodeQty: {{ default "1" .Values.patroni.replicas }}
+    {{- if or .Values.tests.environmentName (and .Values.tests.atpStorage .Values.tests.atpStorage.provider) }}
+    env:
+    {{- if .Values.tests.environmentName }}
+    - name: ENVIRONMENT_NAME
+      value: {{ .Values.tests.environmentName | quote }}
+    {{- end }}
+    {{- if .Values.tests.atpStorage.provider }}
+    - name: ATP_STORAGE_PROVIDER
+      value: {{ .Values.tests.atpStorage.provider | quote }}
+    {{- end }}
+    {{- if .Values.tests.atpStorage.serverUrl }}
+    - name: ATP_STORAGE_SERVER_URL
+      value: {{ .Values.tests.atpStorage.serverUrl | quote }}
+    {{- end }}
+    {{- if .Values.tests.atpStorage.serverUiUrl }}
+    - name: ATP_STORAGE_SERVER_UI_URL
+      value: {{ .Values.tests.atpStorage.serverUiUrl | quote }}
+    {{- end }}
+    {{- if .Values.tests.atpStorage.bucket }}
+    - name: ATP_STORAGE_BUCKET
+      value: {{ .Values.tests.atpStorage.bucket | quote }}
+    {{- end }}
+    {{- if .Values.tests.atpStorage.region }}
+    - name: ATP_STORAGE_REGION
+      value: {{ .Values.tests.atpStorage.region | quote }}
+    {{- end }}
+    - name: ATP_REPORT_ENABLED
+      value: {{ .Values.tests.atpReport.enabled | quote }}
+    - name: ATP_STORAGE_USERNAME
+      valueFrom:
+        secretKeyRef:
+          name: {{ include "helm-chart.fullname" . }}-tests-atp-storage-secret
+          key: atp-storage-username
+    - name: ATP_STORAGE_PASSWORD
+      valueFrom:
+        secretKeyRef:
+          name: {{ include "helm-chart.fullname" . }}-tests-atp-storage-secret
+          key: atp-storage-password
+    {{- if .Values.tests.atpReportViewUiUrl }}
+    - name: ATP_REPORT_VIEW_UI_URL
+      value: {{ .Values.tests.atpReportViewUiUrl | quote }}
+    {{- end }}
+    {{- end }}
 {{ end }}
 {{ if .Values.runTestsOnly }}
 runTestsTime: {{ now | unixEpoch | quote }}

@@ -75,7 +75,12 @@ func NewIntegrationTestsPod(cr *v1.PatroniServices, cluster *patroniv1.PatroniCl
 					Image:           dockerImage,
 					ImagePullPolicy: cr.Spec.ImagePullPolicy,
 					SecurityContext: util.GetDefaultSecurityContext(),
-					Args:            []string{"robot", "-i", tastsTags, "/test_runs/"},
+					// Args are not set: the integration-tests image is built with ENTRYPOINT/CMD that run
+					// the wrapper flow (see tests/Dockerfile: pgskipper-robot-entrypoint.sh, run-robot).
+					// Kubernetes Container.Args replaces the image CMD and would bypass that flow.
+					// Test selection is passed via TESTS_TAGS in env below.
+					// Previous explicit invocation was:
+					// Args: []string{"robot", "-i", tastsTags, "/test_runs/"},
 					Env: []corev1.EnvVar{
 						{
 							Name: "POSTGRES_USER",
@@ -192,7 +197,12 @@ func NewCoreIntegrationTests(cr *patroniv1.PatroniCore, cluster *patroniv1.Patro
 					Image:           dockerImage,
 					ImagePullPolicy: cr.Spec.ImagePullPolicy,
 					SecurityContext: util.GetDefaultSecurityContext(),
-					Args:            []string{"robot", "-i", tastsTags, "/test_runs/"},
+					// Args are not set: the integration-tests image is built with ENTRYPOINT/CMD that run
+					// the wrapper flow (see tests/Dockerfile: pgskipper-robot-entrypoint.sh, run-robot).
+					// Kubernetes Container.Args replaces the image CMD and would bypass that flow.
+					// Test selection is passed via TESTS_TAGS in env below.
+					// Previous explicit invocation was:
+					// Args: []string{"robot", "-i", tastsTags, "/test_runs/"},
 					Env: []corev1.EnvVar{
 						{
 							Name: "POSTGRES_USER",

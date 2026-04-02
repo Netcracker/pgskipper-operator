@@ -243,6 +243,44 @@ spec:
         {{- end }}
 {{ end }}
     pgNodeQty: {{ ( include "postgres.replicasCount" . ) }}
+    {{- $atp := .Values.tests.atpStorage | default dict }}
+    env:
+    {{- if .Values.tests.environmentName }}
+    - name: ENVIRONMENT_NAME
+      value: {{ .Values.tests.environmentName | quote }}
+    {{- end }}
+    - name: ATP_STORAGE_PROVIDER
+      value: {{ ($atp.provider | default "aws") | quote }}
+    - name: ATP_STORAGE_REGION
+      value: {{ ($atp.region | default "us-east-1") | quote }}
+    {{- if $atp.serverUrl }}
+    - name: ATP_STORAGE_SERVER_URL
+      value: {{ $atp.serverUrl | quote }}
+    {{- end }}
+    {{- if $atp.serverUiUrl }}
+    - name: ATP_STORAGE_SERVER_UI_URL
+      value: {{ $atp.serverUiUrl | quote }}
+    {{- end }}
+    {{- if $atp.bucket }}
+    - name: ATP_STORAGE_BUCKET
+      value: {{ $atp.bucket | quote }}
+    {{- end }}
+    - name: ATP_REPORT_ENABLED
+      value: {{ .Values.tests.atpReport.enabled | quote }}
+    - name: ATP_STORAGE_USERNAME
+      valueFrom:
+        secretKeyRef:
+          name: {{ include "patroni-core.fullname" . }}-tests-atp-storage-secret
+          key: atp-storage-username
+    - name: ATP_STORAGE_PASSWORD
+      valueFrom:
+        secretKeyRef:
+          name: {{ include "patroni-core.fullname" . }}-tests-atp-storage-secret
+          key: atp-storage-password
+    {{- if .Values.tests.atpReportViewUiUrl }}
+    - name: ATP_REPORT_VIEW_UI_URL
+      value: {{ .Values.tests.atpReportViewUiUrl | quote }}
+    {{- end }}
 {{ end }}
 {{ if .Values.runTestsOnly }}
 runTestsTime: {{ now | unixEpoch | quote }}

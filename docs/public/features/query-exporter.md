@@ -29,7 +29,7 @@ However for managed databases these extensions must be enabled for database inst
 
 ## Migration from postgres-exporter
 
-Please check [new queries format](/charts/patroni-services/query-exporter/query-exporter-queries.yaml) for query-exporter.
+Please check [new queries format](/operator/charts/patroni-services/query-exporter/query-exporter-queries.yaml) for query-exporter.
 For custom queries two sections must be used in config: `metrics` and `queries`.
 
 Queries section includes map of queries. Each query now include next mandatory fields:
@@ -174,7 +174,7 @@ In this case query `pg_example` will be executed for all databases matching at l
 
 In postgres-operator new watchers are created for namespaces, listed in deployment parameters.
 These watchers react to Create, Update, Delete events for config maps with labels from `queryExporter.customQueries.labels` parameter and mandatory label
-```query-exporter: custom-queries```. Config maps should contain metrics with custom queries for Query Exporter. Metrics must correspond to the [query exporter format](/charts/patroni-services/query-exporter/query-exporter-queries.yaml) and must meet [metric naming rules](https://prometheus.io/docs/concepts/data_model/#metric-names-and-labels)).
+```query-exporter: custom-queries```. Config maps should contain metrics with custom queries for Query Exporter. Metrics must correspond to the [query exporter format](/operator/charts/patroni-services/query-exporter/query-exporter-queries.yaml) and must meet [metric naming rules](https://prometheus.io/docs/concepts/data_model/#metric-names-and-labels)).
 After the Create event, changes from created config map will be appended to `query-exporter-queries` config map.
 After the Modify event, changes from config map will be replaced in `query-exporter-queries` config map.
 After the Delete event, changes from config map will be deleted from `query-exporter-queries` config map.
@@ -202,7 +202,7 @@ queryExporter:
     - "pg_lock_tree_query"
     - "connection_by_role_with_limit_query"
 ```
-Names of the queries can be found in [query-exporter-queries](/charts/patroni-services/query-exporter/query-exporter-queries.yaml) configmap. All metrics for excluded query will be automatically excluded.
+Names of the queries can be found in [query-exporter-queries](/operator/charts/patroni-services/query-exporter/query-exporter-queries.yaml) configmap. All metrics for excluded query will be automatically excluded.
 
 
 # Self monitoring
