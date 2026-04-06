@@ -1,0 +1,5 @@
+# Default environment - for cloud/remote Kubernetes clusters
+# This is a generic configuration for external clusters
+
+storageClass: standard
+dockerContext: default

@@ -90,9 +90,13 @@ func (r *PatroniReconciler) Reconcile() error {
 	}
 
 	if isStandbyClusterPresent {
-		patroni.AddStandbyClusterSettings(cr, patroniConfigMap, r.cluster.ConfigMapKey)
+		if err := patroni.AddStandbyClusterSettings(cr, patroniConfigMap, r.cluster.ConfigMapKey); err != nil {
+			return err
+		}
 	} else {
-		patroni.DeleteStandbyClusterSettings(patroniConfigMap, r.cluster.ConfigMapKey)
+		if err := patroni.DeleteStandbyClusterSettings(patroniConfigMap, r.cluster.ConfigMapKey); err != nil {
+			return err
+		}
 	}
 	if (patroniSpec.Dcs.Type == "etcd") || (patroniSpec.Dcs.Type == "etcd3") {
 		patroni.AddEtcdSettings(cr, patroniConfigMap, r.cluster.ConfigMapKey)
@@ -456,6 +460,14 @@ func (r *PatroniReconciler) processPatroniServices(cr *v1.PatroniCore, patroniSp
 			}
 		}
 	}
+
+	// Create patroni headless service for DNS-based pod discovery
+	patroniHeadless := deployment.GetPatroniHeadless(r.cluster.ClusterName)
+	if err := r.helper.ResourceManager.CreateOrUpdateService(patroniHeadless); err != nil {
+		logger.Error(fmt.Sprintf("Cannot create service %s", patroniHeadless.Name), zap.Error(err))
+		return err
+	}
+
 	return nil
 }
 
