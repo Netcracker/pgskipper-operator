@@ -1,5 +1,5 @@
 {{- if and (.Capabilities.APIVersions.Has "gateway.networking.k8s.io/v1") (eq .Values.PAAS_PLATFORM "KUBERNETES") -}}
-{{ if .Values.powaUI.install }}
+{{ if and .Values.powaUI.install .Values.powaUI.ingress.enabled }}
 apiVersion: gateway.networking.k8s.io/v1
 kind: HTTPRoute
 metadata:
