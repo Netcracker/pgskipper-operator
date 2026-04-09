@@ -17,12 +17,12 @@ Compare Images From Resources With Dd
 *** Test Cases ***
 Test Hardcoded Images For Core Services
     [Tags]  patroni basic  check_pg_images
-    ${dd_images}=  Get Dd Images From Config Map  patroni-tests-config
-    Skip If  '${dd_images}' == '${None}'  There is no dd, not possible to check case!
+    ${dd_images}=  Get Environment Variable  DD_IMAGES
+    Skip If  '${dd_images}' == '${None}' or '${dd_images}' == ''  There is no dd, not possible to check case!
     Compare Images From Resources With Dd  ${dd_images}
 
 Test Hardcoded Images For Supplementary Services
     [Tags]  backup basic  check_pg_images
-    ${dd_images}=  Get Dd Images From Config Map  supplementary-tests-config
-    Skip If  '${dd_images}' == '${None}'  There is no dd, not possible to check case!
+    ${dd_images}=  Get Environment Variable  DD_IMAGES
+    Skip If  '${dd_images}' == '${None}' or '${dd_images}' == ''  There is no dd, not possible to check case!
     Compare Images From Resources With Dd  ${dd_images}
