@@ -1,6 +1,6 @@
 module github.com/Netcracker/qubership-query-exporter
 
-go 1.26.0
+go 1.26.2
 
 require (
 	github.com/godror/godror v0.49.2
