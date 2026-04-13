@@ -100,7 +100,6 @@ function handle_master_upgrade() {
 
     ls -la $MIGRATION_PATH
 
-    set +e
     echo "[$(date +%Y-%m-%dT%H:%M:%S)] Check cluster before upgrade"
       /usr/lib/postgresql/"${PG_VERSION_TARGET}"/bin/pg_upgrade \
       --old-datadir "/var/lib/pgsql/data/${DATA_DIR}" \
@@ -111,7 +110,6 @@ function handle_master_upgrade() {
       > /var/lib/pgsql/data/check_result
 
     CHECK_CODE=$?
-    set -e
 
     if [[ "$CHECK_CODE" -ne 0 ]]; then
         echo "[$(date +%Y-%m-%dT%H:%M:%S)] Check cluster before upgrade - Failed."
@@ -214,6 +212,8 @@ function check_user(){
           fi
         fi
 
+        set +e
+
     fi
 }
 
@@ -246,8 +246,8 @@ check_pgsql_version
 
 if [[ "${TYPE}" == "master" ]]; then
     handle_master_upgrade
-    exit $?
 elif [[ "${TYPE}" == "replica" ]]; then
     handle_replica_upgrade
-    exit $?
 fi
+
+exit 0
