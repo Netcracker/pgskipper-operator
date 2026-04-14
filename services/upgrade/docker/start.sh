@@ -212,6 +212,8 @@ function check_user(){
           fi
         fi
 
+        set +e
+
     fi
 }
 
