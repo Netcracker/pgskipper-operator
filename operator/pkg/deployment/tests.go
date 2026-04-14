@@ -35,7 +35,6 @@ var (
 func NewIntegrationTestsPod(cr *v1.PatroniServices, cluster *patroniv1.PatroniClusterSettings) *corev1.Pod {
 	testsSpec := cr.Spec.IntegrationTests
 	var testsTags string
-	opt := true
 	pgHost := cluster.PostgresServiceName
 	scenario := strings.ToLower(testsSpec.RunTestScenarios)
 	if scenario == "full" {
@@ -125,16 +124,6 @@ func NewIntegrationTestsPod(cr *v1.PatroniServices, cluster *patroniv1.PatroniCl
 								},
 							},
 						},
-						{
-							Name: "DD_IMAGES",
-							ValueFrom: &corev1.EnvVarSource{
-								ConfigMapKeyRef: &corev1.ConfigMapKeySelector{
-									LocalObjectReference: corev1.LocalObjectReference{Name: "supplementary-tests-config"},
-									Key:                  "dd_images",
-									Optional:             &opt,
-								},
-							},
-						},
 					},
 					VolumeMounts: []corev1.VolumeMount{},
 				},
@@ -158,7 +147,6 @@ func NewIntegrationTestsPod(cr *v1.PatroniServices, cluster *patroniv1.PatroniCl
 func NewCoreIntegrationTests(cr *patroniv1.PatroniCore, cluster *patroniv1.PatroniClusterSettings) *corev1.Pod {
 	testsSpec := cr.Spec.IntegrationTests
 	var testsTags string
-	opt := true
 	pgHost := cluster.PostgresServiceName
 	scenario := strings.ToLower(testsSpec.RunTestScenarios)
 	if cr.Spec.Patroni.StandbyCluster != nil {
@@ -256,14 +244,8 @@ func NewCoreIntegrationTests(cr *patroniv1.PatroniCore, cluster *patroniv1.Patro
 							},
 						},
 						{
-							Name: "DD_IMAGES",
-							ValueFrom: &corev1.EnvVarSource{
-								ConfigMapKeyRef: &corev1.ConfigMapKeySelector{
-									LocalObjectReference: corev1.LocalObjectReference{Name: "patroni-tests-config"},
-									Key:                  "dd_images",
-									Optional:             &opt,
-								},
-							},
+							Name:  "MONITORED_IMAGES",
+							Value: testsSpec.MonitoredImages,
 						},
 					},
 					VolumeMounts: []corev1.VolumeMount{},

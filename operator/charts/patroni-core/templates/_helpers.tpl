@@ -175,4 +175,10 @@ Init container section for postgres-operator
 {{- end }}
 
 {{- define "patroni-tests.monitoredImages" -}}
+  {{- if .Values.deployDescriptor -}}
+    {{- printf "deployment patroni-core-operator patroni-core-operator %s, " (include "find_image" (dict "deployName" "patroni_core" "SERVICE_NAME" "patroni-core" "vals" .Values "default" "not_found")) -}}
+    {{- if .Values.patroni.install -}}
+      {{- printf "statefulset pg-%s-node1 pg-%s-node1 %s, " (.Values.patroni.clusterName) (.Values.patroni.clusterName) (include "find_image" (dict "deployName" "pg_patroni" "SERVICE_NAME" "pg_patroni" "vals" .Values "default" "not_found")) -}}
+    {{- end -}}
+  {{- end -}}
 {{- end -}}

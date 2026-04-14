@@ -188,6 +188,7 @@ type IntegrationTests struct {
 	PgNodeQty        int                      `json:"pgNodeQty,omitempty"`
 	PodLabels        map[string]string        `json:"podLabels,omitempty"`
 	Affinity         v1.Affinity              `json:"affinity,omitempty"`
+	MonitoredImages  string                   `json:"monitoredImages,omitempty"`
 }
 
 type Policies struct {
