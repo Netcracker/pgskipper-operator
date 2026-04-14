@@ -16,9 +16,11 @@ Get Image Tag
 
 Compare Images From Resources
     [Arguments]  ${images}
-    ${stripped_resources}=  Strip String  ${images}  characters=,  mode=right
-    @{list_resources}=  Split String  ${stripped_resources}  ,
+    @{list_resources}=  Split String  ${images}  ,
     FOR  ${resource}  IN  @{list_resources}
+        ${resource}=  Strip String  ${resource}
+        Continue For Loop If  '${resource}' == ''
+
         ${type}  ${name}  ${container_name}  ${image}=  Split String  ${resource}
         ${resource_image}=  Get Image From Resource  ${type}  ${name}  ${container_name}
 

@@ -124,6 +124,10 @@ func NewIntegrationTestsPod(cr *v1.PatroniServices, cluster *patroniv1.PatroniCl
 								},
 							},
 						},
+						{
+							Name:  "MONITORED_IMAGES",
+							Value: testsSpec.MonitoredImages,
+						},
 					},
 					VolumeMounts: []corev1.VolumeMount{},
 				},
