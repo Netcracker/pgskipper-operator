@@ -243,6 +243,30 @@ spec:
         {{- end }}
 {{ end }}
     pgNodeQty: {{ ( include "postgres.replicasCount" . ) }}
+    {{- if or .Values.environmentName .Values.atpReport.enabled .Values.atpReportViewUiUrl }}
+    {{- if .Values.environmentName }}
+    environmentName: {{ .Values.environmentName | quote }}
+    {{- end }}
+    atpReport:
+      enabled: {{ .Values.atpReport.enabled | default false }}
+    {{- if .Values.atpReport.enabled }}
+    atpStorage:
+      provider: {{ .Values.atpReport.atpStorage.provider | quote }}
+      region: {{ .Values.atpReport.atpStorage.region | quote }}
+      {{- if .Values.atpReport.atpStorage.serverUrl }}
+      serverUrl: {{ .Values.atpReport.atpStorage.serverUrl | quote }}
+      {{- end }}
+      {{- if .Values.atpReport.atpStorage.serverUiUrl }}
+      serverUiUrl: {{ .Values.atpReport.atpStorage.serverUiUrl | quote }}
+      {{- end }}
+      {{- if .Values.atpReport.atpStorage.bucket }}
+      bucket: {{ .Values.atpReport.atpStorage.bucket | quote }}
+      {{- end }}
+    {{- end }}
+    {{- if .Values.atpReportViewUiUrl }}
+    atpReportViewUiUrl: {{ .Values.atpReportViewUiUrl | quote }}
+    {{- end }}
+    {{- end }}
 {{ end }}
 {{ if .Values.runTestsOnly }}
 runTestsTime: {{ now | unixEpoch | quote }}

@@ -188,6 +188,22 @@ type IntegrationTests struct {
 	PgNodeQty        int                      `json:"pgNodeQty,omitempty"`
 	PodLabels        map[string]string        `json:"podLabels,omitempty"`
 	Affinity         v1.Affinity              `json:"affinity,omitempty"`
+	AtpStorage       *AtpStorage              `json:"atpStorage,omitempty"`
+	AtpReport        *AtpReport               `json:"atpReport,omitempty"`
+	AtpReportViewUiUrl string                 `json:"atpReportViewUiUrl,omitempty"`
+	EnvironmentName  string                   `json:"environmentName,omitempty"`
+}
+
+type AtpStorage struct {
+	Provider   string `json:"provider,omitempty"`
+	ServerUrl  string `json:"serverUrl,omitempty"`
+	ServerUiUrl string `json:"serverUiUrl,omitempty"`
+	Bucket     string `json:"bucket,omitempty"`
+	Region     string `json:"region,omitempty"`
+}
+
+type AtpReport struct {
+	Enabled bool `json:"enabled,omitempty"`
 }
 
 type Policies struct {
