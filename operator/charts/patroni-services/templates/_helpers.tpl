@@ -376,31 +376,6 @@ Return namespace for gateway
 {{- end -}}
 
 {{- define "supplementary-tests.monitoredImages" -}}
-  {{- printf "deployment postgres-operator patroni-services %s, " (include "find_image" (dict "deployName" "postgres_operator" "SERVICE_NAME" "patroni-services" "vals" .Values "default" .Values.operator.image)) -}}
-
-  {{- if (eq (include "monitoring.install" .) "true") -}}
-    {{- printf "deployment monitoring-collector monitoring-collector %s, " (include "find_image" (dict "deployName" "pg_patroni_metric_collector" "SERVICE_NAME" "pg_patroni_metric_collector" "vals" .Values "default" .Values.monitoring.dockerImage)) -}}
-  {{- end -}}
-
-  {{- if .Values.backupDaemon.install -}}
-    {{- printf "deployment postgres-backup-daemon postgres-backup-daemon %s, " (include "find_image" (dict "deployName" "postgres_backup_daemon" "SERVICE_NAME" "postgres_backup_daemon" "vals" .Values "default" .Values.backupDaemon.dockerImage)) -}}
-  {{- end -}}
-
-  {{- if .Values.dbaas.install -}}
-    {{- printf "deployment dbaas-postgres-adapter dbaas-postgres-adapter %s, " (include "find_image" (dict "deployName" "postgresql_dbaas_adapter" "SERVICE_NAME" "postgresql_dbaas_adapter" "vals" .Values "default" .Values.dbaas.dockerImage)) -}}
-  {{- end -}}
-
-  {{- if .Values.postgresExporter.install -}}
-    {{- printf "deployment postgres-exporter postgres-exporter %s, " (include "find_image" (dict "deployName" "postgres_exporter" "SERVICE_NAME" "postgres_exporter" "vals" .Values "default" .Values.postgresExporter.dockerImage)) -}}
-  {{- end -}}
-
-  {{- if .Values.powaUI.install -}}
-    {{- printf "deployment powa-ui powa-ui %s, " (include "find_image" (dict "deployName" "powa_ui_docker" "SERVICE_NAME" "powa_ui_docker" "vals" .Values "default" .Values.powaUI.dockerImage)) -}}
-  {{- end -}}
-
-  {{- if .Values.connectionPooler.install -}}
-    {{- printf "deployment connection-puller connection-puller %s, " (include "find_image" (dict "deployName" "pgbouncer" "SERVICE_NAME" "pgbouncer" "vals" .Values "default" .Values.connectionPooler.dockerImage)) -}}
-  {{- end -}}
 {{- end -}}
 
 {{/*
