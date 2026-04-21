@@ -291,6 +291,30 @@ tests:
 
 runTestsOnly: false
 
+# ATP report upload (S3 under atpReport.atpStorage). CR and Secret only when atpReport.enabled.
+atpReport:
+  enabled: false
+  atpStorage:
+    # S3 provider type: aws (AWS S3), minio, s3 (S3-compatible with custom endpoint)
+    provider: "aws"
+    # S3 API server URL (e.g., https://s3.amazonaws.com or https://minio.example.com)
+    serverUrl: "https://s3.amazonaws.com"
+    # Optional S3 UI URL for browsing results
+    serverUiUrl: ""
+    # S3 bucket name. If empty - S3 integration is disabled and results stay local
+    bucket: ""
+    # S3 region (required for AWS S3)
+    region: "us-east-1"
+    # S3 credentials (tests-atp-storage-secret when atpReport.enabled)
+    username: ""
+    password: ""
+
+# URL for viewing Allure reports (e.g., https://reports.example.com)
+atpReportViewUiUrl: ""
+
+# Environment name for organizing test results path in S3
+environmentName: "pgskipper-operator"
+
 
 INTERNAL_TLS_ENABLED: false
 GLOBAL_SECURITY_CONTEXT: true

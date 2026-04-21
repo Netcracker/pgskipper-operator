@@ -1017,6 +1017,28 @@ spec:
                             x-kubernetes-list-type: atomic
                         type: object
                     type: object
+                  atpReport:
+                    properties:
+                      enabled:
+                        type: boolean
+                    type: object
+                  atpReportViewUiUrl:
+                    type: string
+                  atpStorage:
+                    properties:
+                      bucket:
+                        type: string
+                      provider:
+                        type: string
+                      region:
+                        type: string
+                      serverUiUrl:
+                        type: string
+                      serverUrl:
+                        type: string
+                    type: object
+                  environmentName:
+                    type: string
                   image:
                     type: string
                   pgNodeQty:
@@ -2636,9 +2658,10 @@ spec:
                         operator:
                           description: |-
                             Operator represents a key's relationship to the value.
-                            Valid operators are Exists and Equal. Defaults to Equal.
+                            Valid operators are Exists, Equal, Lt, and Gt. Defaults to Equal.
                             Exists is equivalent to wildcard for value, so that a pod can
                             tolerate all taints of a particular category.
+                            Lt and Gt perform numeric comparisons (requires feature gate TaintTolerationComparisonOperators).
                           type: string
                         tolerationSeconds:
                           description: |-
