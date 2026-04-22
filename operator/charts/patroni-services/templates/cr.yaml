@@ -118,7 +118,7 @@ spec:
       bucket: {{ .Values.backupDaemon.s3Storage.bucket }}
       prefix: {{ default "postgres" .Values.backupDaemon.s3Storage.prefix }}
       untrustedCert: {{ default "true" .Values.backupDaemon.s3Storage.untrustedCert }}
-      region: {{ .Values.backupDaemon.s3Storage.region }}
+      region: {{ default "us-east-1" .Values.backupDaemon.s3Storage.region }}
   {{ end }}
   {{ if .Values.backupDaemon.externalPv }}
     externalPv: {{ toYaml .Values.backupDaemon.externalPv | nindent 6 }}
