@@ -212,6 +212,31 @@ func NewPatroniStatefulset(cr *patroniv1.PatroniCore, deploymentIdx int, cluster
 									},
 								},
 								{
+									Name: "POD_NAME",
+									ValueFrom: &corev1.EnvVarSource{
+										FieldRef: &corev1.ObjectFieldSelector{
+											APIVersion: "v1",
+											FieldPath:  "metadata.name",
+										},
+									},
+								},
+								{
+									Name:  "HEADLESS_SERVICE",
+									Value: fmt.Sprintf("patroni-%s-headless", clusterName),
+								},
+								{
+									Name:  "POD_DNS_NAME",
+									Value: "$(POD_NAME).$(HEADLESS_SERVICE).$(POD_NAMESPACE).svc",
+								},
+								{
+									Name: "PG_RESOURCES_LIMIT_MEM",
+									ValueFrom: &corev1.EnvVarSource{
+										ResourceFieldRef: &corev1.ResourceFieldSelector{
+											Resource: "limits.memory",
+										},
+									},
+								},
+								{
 									Name:  "PATRONI_CLUSTER_NAME",
 									Value: clusterName,
 								},
@@ -262,7 +287,7 @@ func NewPatroniStatefulset(cr *patroniv1.PatroniCore, deploymentIdx int, cluster
 					DNSPolicy:                     corev1.DNSClusterFirst,
 				},
 			},
-			ServiceName:                          "backrest-headless",
+			ServiceName:                          fmt.Sprintf("patroni-%s-headless", clusterName),
 			PodManagementPolicy:                  appsv1.OrderedReadyPodManagement,
 			UpdateStrategy:                       appsv1.StatefulSetUpdateStrategy{Type: appsv1.RollingUpdateStatefulSetStrategyType},
 			RevisionHistoryLimit:                 ptr.To[int32](10),
