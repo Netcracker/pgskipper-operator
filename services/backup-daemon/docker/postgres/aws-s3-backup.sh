@@ -143,54 +143,54 @@ function stream_backup_to_aws_s3() {
 
 function main() {
 
-  version="$(PGPASSWORD=$POSTGRES_PASSWORD psql -h "${POSTGRES_HOST}" -p "${POSTGRES_PORT}" -U "${POSTGRES_USER}" -d postgres -c "SHOW SERVER_VERSION;" -tA | egrep -o '[0-9]{1,}\.[0-9]{1,}')"
+  version="$(PGPASSWORD="${POSTGRES_PASSWORD}" psql -h "${POSTGRES_HOST}" -p "${POSTGRES_PORT}" -U "${POSTGRES_USER}" -d postgres -c "SHOW SERVER_VERSION;" -tA | egrep -o '^[0-9]+(\.[0-9]+)?' | head -n 1)"
   REPLICATION_USER="replicator"
 
-  log "version of pgsql server is: ${version}"
+  log_info "version of pgsql server is: ${version}"
 
   if python -c "import sys; sys.exit(0 if float("${version}") >= 18.0 else 1)"; then
-    log "Using pgsql 18 bins for pg_basebackup"
+    log_info "Using pgsql 18 bins for pg_basebackup"
     PG_BASEBACKUP="/usr/lib/postgresql/18/bin/pg_basebackup"
     BACKUP_NAME="pg_backup_$(basename ${BACKUP_ID}).tar.gz"
   elif python -c "import sys; sys.exit(0 if 17.0 <= float("${version}") < 18.0 else 1)"; then
-    log "Using pgsql 17 bins for pg_basebackup"
+    log_info "Using pgsql 17 bins for pg_basebackup"
     PG_BASEBACKUP="/usr/lib/postgresql/17/bin/pg_basebackup"
     BACKUP_NAME="pg_backup_$(basename ${BACKUP_ID}).tar.gz"
   elif python -c "import sys; sys.exit(0 if 16.0 <= float("${version}") < 17.0 else 1)"; then
-    log "Using pgsql 16 bins for pg_basebackup"
+    log_info "Using pgsql 16 bins for pg_basebackup"
     PG_BASEBACKUP="/usr/lib/postgresql/16/bin/pg_basebackup"
     BACKUP_NAME="pg_backup_$(basename ${BACKUP_ID}).tar.gz"
   elif python -c "import sys; sys.exit(0 if 15.0 <= float("${version}") < 16.0 else 1)"; then
-    log "Using pgsql 15 bins for pg_basebackup"
+    log_info "Using pgsql 15 bins for pg_basebackup"
     PG_BASEBACKUP="/usr/lib/postgresql/15/bin/pg_basebackup"
     BACKUP_NAME="pg_backup_$(basename ${BACKUP_ID}).tar.gz"
   elif python -c "import sys; sys.exit(0 if 14.0 <= float("${version}") < 15.0 else 1)"; then
-    log "Using pgsql 14 bins for pg_basebackup"
+    log_info "Using pgsql 14 bins for pg_basebackup"
     PG_BASEBACKUP="/usr/lib/postgresql/14/bin/pg_basebackup"
     BACKUP_NAME="pg_backup_$(basename ${BACKUP_ID}).tar.gz"
   elif python -c "import sys; sys.exit(0 if 13.0 <= float("${version}") < 14.0 else 1)"; then
-    log "Using pgsql 13 bins for pg_basebackup"
+    log_info "Using pgsql 13 bins for pg_basebackup"
     PG_BASEBACKUP="/usr/lib/postgresql/13/bin/pg_basebackup"
     BACKUP_NAME="pg_backup_$(basename ${BACKUP_ID}).tar.gz"
   elif python -c "import sys; sys.exit(0 if 12.0 <= float("${version}") < 13.0 else 1)"; then
-    log "Using pgsql 12 bins for pg_basebackup"
+    log_info "Using pgsql 12 bins for pg_basebackup"
     PG_BASEBACKUP="/usr/lib/postgresql/12/bin/pg_basebackup"
     BACKUP_NAME="pg_backup_$(basename ${BACKUP_ID}).tar.gz"
   elif python -c "import sys; sys.exit(0 if 11.0 <= float("${version}") < 12.0 else 1)"; then
-    log "Using pgsql 11 bins for pg_basebackup"
+    log_info "Using pgsql 11 bins for pg_basebackup"
     PG_BASEBACKUP="/usr/lib/postgresql/11/bin/pg_basebackup"
     BACKUP_NAME="pg_backup_$(basename ${BACKUP_ID}).tar.gz"
   elif python -c "import sys; sys.exit(0 if 10.0 <= float("${version}") < 11.0 else 1)"; then
-    log "Using pgsql 10 bins for pg_basebackup"
+    log_info "Using pgsql 10 bins for pg_basebackup"
     PG_BASEBACKUP="/usr/lib/postgresql/10/bin/pg_basebackup"
     BACKUP_NAME="pg_backup_$(basename ${BACKUP_ID}).tar.gz"
   else
     if [ "${PG_CLUSTER_NAME}" != "gpdb" ]
     then
-        log "Using pgsql 9.6 bins for  pg_basebackup"
+        log_info "Using pgsql 9.6 bins for  pg_basebackup"
         PG_BASEBACKUP="/usr/pgsql-9.6/bin/pg_basebackup"
     else
-        log "Using gpdb bins for greenplum pg_basebackup"
+        log_info "Using gpdb bins for greenplum pg_basebackup"
         TARGET_DB_ID="$(psql -h "${POSTGRES_HOST}" -p "${POSTGRES_PORT}" -U "${POSTGRES_USER}" -d postgres -c "select dbid from gp_segment_configuration where content = -1 and status = 'up' and role = 'p';" -tA )"
         PG_BASEBACKUP="/usr/local/greenplum-db/bin/pg_basebackup --target-gp-dbid="${TARGET_DB_ID}""
         REPLICATION_USER=${POSTGRES_USER}
