@@ -132,7 +132,7 @@ function remove_backup() {
 }
 
 function main() {
-  version="$(PGPASSWORD=$POSTGRES_PASSWORD psql -h "${POSTGRES_HOST}" -p "${POSTGRES_PORT}" -U "${POSTGRES_USER}" -d postgres -c "SHOW SERVER_VERSION;" -tA | egrep -o '[0-9]{1,}\.[0-9]{1,}' | awk 'END{print $1}')"
+  version="$(PGPASSWORD=$POSTGRES_PASSWORD psql -h "${POSTGRES_HOST}" -p "${POSTGRES_PORT}" -U "${POSTGRES_USER}" -d postgres -c "SHOW SERVER_VERSION;" -tA | egrep -o '[0-9]{1,}\.[0-9]{1,}' | awk 'NR==1 {print $1}')"
   REPLICATION_USER="replicator"
   log "version of pgsql server is: ${version}"
   if python -c "import sys; sys.exit(0 if float("${version}") >= 18.0 else 1)"; then
