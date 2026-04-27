@@ -34,24 +34,21 @@ var (
 
 func NewIntegrationTestsPod(cr *v1.PatroniServices, cluster *patroniv1.PatroniClusterSettings) *corev1.Pod {
 	testsSpec := cr.Spec.IntegrationTests
-	tastsTags := ""
+	var testsTags string
 	pgHost := cluster.PostgresServiceName
-	if strings.ToLower(testsSpec.RunTestScenarios) == "full" {
+	scenario := strings.ToLower(testsSpec.RunTestScenarios)
+	if scenario == "full" {
 		if cr.Spec.BackupDaemon != nil && cr.Spec.BackupDaemon.Resources != nil {
-			tastsTags = "backup*ORdbaas*"
+			testsTags = "backup*ORdbaas*"
 		}
-	} else {
-		if strings.ToLower(testsSpec.RunTestScenarios) == "basic" {
-			if cr.Spec.BackupDaemon != nil && cr.Spec.BackupDaemon.Resources != nil {
-				tastsTags = "backup_basic"
-			}
-		} else {
-			if testsSpec.TestList != nil {
-				tastsTags = strings.Join(testsSpec.TestList, "OR")
-				r := regexp.MustCompile(`\s+`)
-				tastsTags = r.ReplaceAllString(tastsTags, "_")
-			}
+	} else if scenario == "basic" {
+		if cr.Spec.BackupDaemon != nil && cr.Spec.BackupDaemon.Resources != nil {
+			testsTags = "backup_basic"
 		}
+	} else if scenario == "custom" && testsSpec.TestList != nil {
+		testsTags = strings.Join(testsSpec.TestList, "OR")
+		r := regexp.MustCompile(`\s+`)
+		testsTags = r.ReplaceAllString(testsTags, "_")
 	}
 	dockerImage := testsSpec.DockerImage
 	name := "integration-robot-tests"
@@ -75,7 +72,7 @@ func NewIntegrationTestsPod(cr *v1.PatroniServices, cluster *patroniv1.PatroniCl
 					Image:           dockerImage,
 					ImagePullPolicy: cr.Spec.ImagePullPolicy,
 					SecurityContext: util.GetDefaultSecurityContext(),
-					Args:            []string{"robot", "-i", tastsTags, "/test_runs/"},
+					Args:            []string{"robot", "-i", testsTags, "/test_runs/"},
 					Env: []corev1.EnvVar{
 						{
 							Name: "POSTGRES_USER",
@@ -105,7 +102,7 @@ func NewIntegrationTestsPod(cr *v1.PatroniServices, cluster *patroniv1.PatroniCl
 						},
 						{
 							Name:  "TESTS_TAGS",
-							Value: tastsTags,
+							Value: testsTags,
 						},
 						{
 							Name:  "PG_HOST",
@@ -126,6 +123,10 @@ func NewIntegrationTestsPod(cr *v1.PatroniServices, cluster *patroniv1.PatroniCl
 									FieldPath: "metadata.namespace",
 								},
 							},
+						},
+						{
+							Name:  "MONITORED_IMAGES",
+							Value: testsSpec.MonitoredImages,
 						},
 					},
 					VolumeMounts: []corev1.VolumeMount{},
@@ -149,25 +150,23 @@ func NewIntegrationTestsPod(cr *v1.PatroniServices, cluster *patroniv1.PatroniCl
 
 func NewCoreIntegrationTests(cr *patroniv1.PatroniCore, cluster *patroniv1.PatroniClusterSettings) *corev1.Pod {
 	testsSpec := cr.Spec.IntegrationTests
-	tastsTags := ""
+	var testsTags string
 	pgHost := cluster.PostgresServiceName
+	scenario := strings.ToLower(testsSpec.RunTestScenarios)
 	if cr.Spec.Patroni.StandbyCluster != nil {
 		pgHost = fmt.Sprintf("pg-%s-external", cluster.ClusterName)
 	}
 	if strings.ToLower(cr.Spec.Patroni.Dcs.Type) != "kubernetes" {
-		tastsTags = "patroni_simple"
+		testsTags = "patroni_simple"
 	} else {
-		if strings.ToLower(testsSpec.RunTestScenarios) == "full" {
-			tastsTags = "patroni*"
-		} else {
-			if strings.ToLower(testsSpec.RunTestScenarios) == "basic" {
-				tastsTags = "patroni_basic"
-			} else {
-				if testsSpec.TestList != nil {
-					r := regexp.MustCompile(`\s+`)
-					tastsTags = r.ReplaceAllString(tastsTags, "_")
-				}
-			}
+		if scenario == "full" {
+			testsTags = "patroni*"
+		} else if scenario == "basic" {
+			testsTags = "patroni_basic"
+		} else if scenario == "custom" && len(testsSpec.TestList) > 0 {
+			testsTags = strings.Join(testsSpec.TestList, "OR")
+			r := regexp.MustCompile(`\s+`)
+			testsTags = r.ReplaceAllString(testsTags, "_")
 		}
 	}
 	dockerImage := testsSpec.DockerImage
@@ -192,7 +191,7 @@ func NewCoreIntegrationTests(cr *patroniv1.PatroniCore, cluster *patroniv1.Patro
 					Image:           dockerImage,
 					ImagePullPolicy: cr.Spec.ImagePullPolicy,
 					SecurityContext: util.GetDefaultSecurityContext(),
-					Args:            []string{"robot", "-i", tastsTags, "/test_runs/"},
+					Args:            []string{"robot", "-i", testsTags, "/test_runs/"},
 					Env: []corev1.EnvVar{
 						{
 							Name: "POSTGRES_USER",
@@ -226,7 +225,7 @@ func NewCoreIntegrationTests(cr *patroniv1.PatroniCore, cluster *patroniv1.Patro
 						},
 						{
 							Name:  "TESTS_TAGS",
-							Value: tastsTags,
+							Value: testsTags,
 						},
 						{
 							Name:  "PG_HOST",
@@ -247,6 +246,10 @@ func NewCoreIntegrationTests(cr *patroniv1.PatroniCore, cluster *patroniv1.Patro
 									FieldPath: "metadata.namespace",
 								},
 							},
+						},
+						{
+							Name:  "MONITORED_IMAGES",
+							Value: testsSpec.MonitoredImages,
 						},
 					},
 					VolumeMounts: []corev1.VolumeMount{},

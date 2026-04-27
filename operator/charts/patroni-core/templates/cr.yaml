@@ -221,6 +221,7 @@ spec:
       {{ toYaml .Values.podLabels | nindent 6 }}
     {{- end }}
     image: {{ template "find_image" (dict "deployName" "postgres_operator_tests" "SERVICE_NAME" "postgres_operator_tests" "vals" .Values "default" .Values.tests.dockerImage) }}
+    monitoredImages: {{ include "patroni-tests.monitoredImages" . | quote }}
 {{ if .Values.tests.resources }}
     resources:
 {{ toYaml .Values.tests.resources | indent 6 }}
@@ -233,15 +234,24 @@ spec:
         cpu: 150m
         memory: 256Mi
 {{ end }}
-{{- $runTestScenarios := .Values.tests.runTestScenarios }}
-{{- if or (eq (lower $runTestScenarios) "full") (eq (lower $runTestScenarios) "basic") }}
-    runTestScenarios: {{.Values.tests.runTestScenarios}}
-{{- else if index .Values.tests.testScenarios (printf "%s" $runTestScenarios) }}
+{{- $runTestScenarios := lower .Values.tests.runTestScenarios }}
+{{- if or (eq $runTestScenarios "full") (eq $runTestScenarios "basic") }}
+    runTestScenarios: {{ $runTestScenarios }}
+{{- else if eq $runTestScenarios "custom" }}
+    runTestScenarios: custom
+    {{- if .Values.tests.testList }}
     testList:
-        {{- range (index .Values.tests.testScenarios (printf "%s" $runTestScenarios)) }}
+      {{- range .Values.tests.testList }}
       - {{ . }}
-        {{- end }}
-{{ end }}
+      {{- end }}
+    {{- end }}
+{{- else if hasKey .Values.tests.testScenarios .Values.tests.runTestScenarios }}
+    runTestScenarios: custom
+    testList:
+      {{- range (index .Values.tests.testScenarios .Values.tests.runTestScenarios) }}
+      - {{ . }}
+      {{- end }}
+{{- end }}
     pgNodeQty: {{ ( include "postgres.replicasCount" . ) }}
 {{ end }}
 {{ if .Values.runTestsOnly }}
