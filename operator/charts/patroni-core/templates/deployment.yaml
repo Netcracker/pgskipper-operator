@@ -121,6 +121,8 @@ spec:
               {{ end }}
             - name: INTERNAL_TLS_ENABLED
               value: {{ default "false" .Values.INTERNAL_TLS_ENABLED | quote }}
+            - name: KUBE_FEATURE_WatchListClient
+              value: {{ default "false" .Values.KUBE_FEATURE_WatchListClient | quote }}
           livenessProbe:
             httpGet:
               path: /healthz
