@@ -43,7 +43,6 @@ RUN apt-get --no-install-recommends install -y comerr-dev \
                        openssl curl \
                        vim \
                        locales
-RUN python3 -m pip install -U setuptools==82.0.1 wheel==0.46.2
 
 COPY docker/requirements.txt /root/requirements.txt
 RUN python3 -m pip install --no-cache-dir -r /root/requirements.txt \
@@ -51,7 +50,6 @@ RUN python3 -m pip install --no-cache-dir -r /root/requirements.txt \
       && python3 -m pip install grpcio \
       && python3 -m pip install opentelemetry-distro opentelemetry-exporter-otlp opentelemetry-api opentelemetry-sdk opentelemetry-instrumentation-flask \
       && opentelemetry-bootstrap -a install \
-      && python3 -m pip install "setuptools==82.0.1" "wheel==0.46.2" "jaraco.context==6.1.0" \
       && pip3 uninstall -y pip \
       && apt-get remove -y --purge gcc-12 \
       && apt-get remove -y --purge python3-dev \
