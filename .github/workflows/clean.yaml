@@ -36,7 +36,7 @@ jobs:
             context: ""
           - name: pgskipper-docker-pgbackrest-sidecar
             context: ""
-          - name: pgskipper-docker-query-exporter
+          - name: qubership-docker-query-exporter
             context: ""
           - name: pgskipper-docker-replication-controller
             context: ""
