@@ -33,6 +33,6 @@ Compare Images From Resources
 
 *** Test Cases ***
 Test Hardcoded Images
-    [Tags]  patroni basic  check_pg_images
+    [Tags]  patroni_basic  backup_basic  check_pg_images
     Skip If  '${MONITORED_IMAGES}' == '${None}' or '${MONITORED_IMAGES}' == ''  There are no monitored images
     Compare Images From Resources  ${MONITORED_IMAGES}
