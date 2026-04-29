@@ -1,26 +1,18 @@
-DOCKER_FILE := build/Dockerfile
+DOCKER_FILE := Dockerfile
 
 ifndef TAG_ENV
 override TAG_ENV = local
 endif
 
 ifndef DOCKER_NAMES
-override DOCKER_NAMES = "ghcr.io/netcracker/qubership-docker-query-exporter:${TAG_ENV}"
+override DOCKER_NAMES = ghcr.io/netcracker/pgskipper-docker-patroni:${TAG_ENV}
 endif
 
-sandbox-build: deps docker-build
+sandbox-build: docker-build
 
 all: sandbox-build docker-push
 
-local: deps docker-build docker-push
-
-deps:
-	go mod tidy
-	GO111MODULE=on
-
-fmt:
-	gofmt -l -s -w .
-
+local: docker-build docker-push
 
 docker-build:
 	$(foreach docker_tag,$(DOCKER_NAMES),docker build --file="${DOCKER_FILE}" --pull -t $(docker_tag) ./;)
@@ -30,6 +22,5 @@ docker-push:
 
 clean:
 	rm -rf build/_output
-
-test:
-	go test -v ./...
+	find . -type f -name "*.pyc" -delete 2>/dev/null || true
+	find . -type d -name "__pycache__" -exec rm -rf {} + 2>/dev/null || true

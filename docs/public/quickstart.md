@@ -24,13 +24,13 @@ Clone the repository and change to the directory
 git clone git@github.com:Netcracker/pgskipper-operator.git
 cd postgres-operator
 ```
-Note that in `charts` folder you can fide two separate `Helm Charts` named `patroni-core` and `patroni-services`  
+Note that in `operator/charts` folder you can fide two separate `Helm Charts` named `patroni-core` and `patroni-services`  
 So for each of `Helm Chart` you can find the sample.yaml  
 Information of the services separation you can find in [Architecture Guide](/docs/public/architecture.md#postgres-operator)
 
 
 ## Storage configuration
-Before install, configure `patroni.storage` in charts/patroni-core/patroni-core-quickstart-sample.yaml and `backupDaemon.storage` properties in charts/patroni-services/patroni-services-quickstart-sample.yaml
+Before install, configure `patroni.storage` in ./operator/charts/patroni-core/patroni-core-quickstart-sample.yaml and `backupDaemon.storage` properties in ./operator/charts/patroni-services/patroni-services-quickstart-sample.yaml
 according to your PV configuration.
 
 1. If you have a PV provisioner, set up your storage sections as follows:
@@ -64,16 +64,16 @@ When setup is complete, we can proceed to install the postgres operator.
 
 Manually install CRD for Patroni-Core:
 ```
-kubectl create -f ./charts/patroni-core/crds/netcracker.com_patronicores.yaml
+kubectl create -f ./operator/charts/patroni-core/crds/netcracker.com_patronicores.yaml
 ```
 Manually install CRD for Postgres-Services
 ```
-kubectl create -f ./charts/patroni-services/crds/netcracker.com_patroniservices.yaml
+kubectl create -f ./operator/charts/patroni-services/crds/netcracker.com_patroniservices.yaml
 ```
 
 Install Patroni-Core Operator via Helm by following command:
 ```
-helm install --namespace=postgres --create-namespace -f ./charts/patroni-core/patroni-core-quickstart-sample.yaml patroni-core ./charts/patroni-core
+helm install --namespace=postgres --create-namespace -f ./operator/charts/patroni-core/patroni-core-quickstart-sample.yaml patroni-core ./operator/charts/patroni-core
 ```
 This will create all necessary resources and run the Patroni-Core Operator Pod.
 
@@ -99,7 +99,7 @@ kubectl logs -n postgres "$(kubectl get pod -n postgres -l name=patroni-core-ope
 
 After leader has been promoted, you may install Patroni-Services Operator via Helm by following command:
 ```
-helm install --namespace=postgres -f ./charts/patroni-services/patroni-services-quickstart-sample.yaml patroni-services ./charts/patroni-services
+helm install --namespace=postgres -f ./operator/charts/patroni-services/patroni-services-quickstart-sample.yaml patroni-services ./operator/charts/patroni-services
 ```
 This will create all necessary resources and run the Postgres-Operator Pod.
 
