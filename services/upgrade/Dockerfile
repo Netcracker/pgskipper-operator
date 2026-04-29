@@ -23,7 +23,7 @@ RUN adduser -uid 26 -gid 26 postgres
 # Install like base image
 RUN apt-get --no-install-recommends install -y gcc-12 python3.11 python3-pip python3-dev wget
 
-RUN python3 -m pip install --no-cache-dir --upgrade wheel==0.38.0 setuptools==78.1.1
+RUN python3 -m pip install --no-cache-dir --upgrade wheel==0.47.0 setuptools==82.0.1
 
 # Explicitly install patched libaom3 version
 RUN apt-get --no-install-recommends install -y libaom3=3.3.0-1ubuntu0.1 || apt-get --no-install-recommends install -y libaom3

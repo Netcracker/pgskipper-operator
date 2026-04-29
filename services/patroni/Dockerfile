@@ -132,7 +132,7 @@ RUN apt-get update && apt-get install -y postgresql-$PG_VERSION-credcheck
 RUN apt-get install -y alien vmtouch openssh-server
 
 RUN cat /root/.pip/pip.conf
-RUN python3 -m pip install -U setuptools==78.1.1 wheel==0.38.0
+RUN python3 -m pip install -U setuptools==82.0.1 wheel==0.47.0
 RUN python3 -m pip install psutil patroni[kubernetes,etcd]==3.3.5 psycopg2==2.9.5 requests python-dateutil urllib3 six prettytable --no-cache
 # Explicitly install patched libaom3 version
 RUN apt-get --no-install-recommends install -y libaom3=3.3.0-1ubuntu0.1 || apt-get --no-install-recommends install -y libaom3
