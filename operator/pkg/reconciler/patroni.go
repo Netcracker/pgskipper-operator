@@ -370,7 +370,7 @@ func (r *PatroniReconciler) Reconcile() error {
 		return err
 	}
 
-	if patroniSpec.Powa.Install {
+	if patroniSpec.Powa.Install && !isStandbyClusterPresent {
 		if err := powa.SetUpPOWA(r.cluster.PgHost); err != nil {
 			return err
 		}

@@ -37,8 +37,6 @@ var (
 	pgSettings       = []string{"track_io_timing=on", "pg_wait_sampling.profile_queries=true"}
 	commonExt        = []string{"hypopg"}
 	secretName       = "powa-secret"
-
-	regFc = []string{"qualstats", "kcache", "wait_sampling", "track_settings"}
 )
 
 func UpdatePreloadLibraries(cr *v1.PatroniCore) {
@@ -57,39 +55,76 @@ func SetUpPOWA(pgHost string) error {
 		return err
 	}
 
-	if isPowaTableExist(pg) {
+	err = helper.WaitUntilRecoveryIsDone(pg)
+	if err != nil {
+		logger.Error("recovery check failed, during POWA setup", zap.Error(err))
+		return err
+	}
+
+	isPowaDBExist, err := isPowaDatabaseExist(pg)
+	if err != nil {
+		return err
+	}
+	isPowaUserExist, err := isPowaUserExist(pg)
+	if err != nil {
+		return err
+	}
+
+	if isPowaUserExist {
 		logger.Info("Powa is already configured")
 		if err := helper.AlterUserPassword(pg, powaUser, password); err != nil {
 			return err
 		}
-		return nil
+	} else {
+		if err := createPOWAUser(password, pg); err != nil {
+			return err
+		}
 	}
-	createPOWATableWithExtension(pg)
-	createPOWAExtensions(pg)
-	if err := createPOWAUser(password, pg); err != nil {
-		return err
+
+	if !isPowaDBExist {
+		createPOWATableWithExtension(pg)
+		createPOWAExtensions(pg)
 	}
-	registerAllExt(pg)
+
 	return nil
 }
 
-func isPowaTableExist(pg *pgClient.PostgresClient) bool {
+func isPowaDatabaseExist(pg *pgClient.PostgresClient) (bool, error) {
 	conn, err := pg.GetConnection()
 	if err != nil {
-		return true
+		return false, err
 	}
 	defer conn.Release()
 
 	rows, err := conn.Query(context.Background(), fmt.Sprintf("select * from pg_database where datname = '%s';", powaDBName))
 	if err != nil {
 		logger.Error("error during fetching info about Powa database")
-		return true
+		return false, err
 	}
 	if rows.Next() {
 		rows.Close()
-		return true
+		return true, nil
 	}
-	return false
+	return false, nil
+}
+
+func isPowaUserExist(pg *pgClient.PostgresClient) (bool, error) {
+	conn, err := pg.GetConnection()
+	if err != nil {
+		return false, err
+	}
+	defer conn.Release()
+
+	rows, err := conn.Query(context.Background(), fmt.Sprintf("select * from pg_roles where rolname='%s';", powaUser))
+	if err != nil {
+		logger.Error("error during fetching info about Powa user")
+		return false, err
+	}
+	if rows.Next() {
+		rows.Close()
+		return true, nil
+	}
+	return false, nil
 }
 
 func createPOWAUser(password string, pg *pgClient.PostgresClient) error {
@@ -120,16 +155,4 @@ func createPOWATableWithExtension(pg *pgClient.PostgresClient) {
 func createPOWAExtensions(pg *pgClient.PostgresClient) {
 	databases, _ := helper.GetAllDatabases(pg)
 	helper.CreateExtensionsForDBs(pg, databases, commonExt)
-}
-
-func registerAllExt(pg *pgClient.PostgresClient) {
-	for _, f := range regFc {
-		registerExt(pg, f)
-	}
-}
-
-func registerExt(pg *pgClient.PostgresClient, ext string) {
-	if err := pg.ExecuteForDB(powaDBName, fmt.Sprintf("SELECT powa_%s_register();", ext)); err != nil {
-		logger.Error(fmt.Sprintf("cannot register %s for Powa", ext), zap.Error(err))
-	}
 }
