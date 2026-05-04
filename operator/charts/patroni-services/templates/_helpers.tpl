@@ -378,9 +378,9 @@ Return namespace for gateway
 {{- define "supplementary-tests.monitoredImages" -}}
   {{- printf "deployment postgres-operator patroni-services %s, " (include "find_image" (dict "deployName" "postgres_operator" "SERVICE_NAME" "patroni-services" "vals" .Values "default" .Values.operator.image)) -}}
 
-{{- if (eq (include "monitoring.install" .) "true") -}}
-  {{- printf "deployment monitoring-collector monitoring-collector %s, " (include "find_image" (dict "deployName" "pg_patroni_metric_collector" "SERVICE_NAME" "pg_patroni_metric_collector" "vals" .Values "default" .Values.metricCollector.dockerImage)) -}}
-{{- end -}}
+  {{- if (eq (include "monitoring.install" .) "true") -}}
+    {{- printf "deployment monitoring-collector monitoring-collector %s, " (include "find_image" (dict "deployName" "pg_patroni_metric_collector" "SERVICE_NAME" "pg_patroni_metric_collector" "vals" .Values "default" .Values.metricCollector.dockerImage)) -}}
+  {{- end -}}
 
   {{- if .Values.backupDaemon.install -}}
     {{- printf "deployment postgres-backup-daemon postgres-backup-daemon %s, " (include "find_image" (dict "deployName" "postgres_backup_daemon" "SERVICE_NAME" "postgres_backup_daemon" "vals" .Values "default" .Values.backupDaemon.dockerImage)) -}}
