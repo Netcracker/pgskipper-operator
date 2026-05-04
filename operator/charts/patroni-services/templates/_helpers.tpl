@@ -379,7 +379,7 @@ Return namespace for gateway
   {{- printf "deployment postgres-operator patroni-services %s, " (include "find_image" (dict "deployName" "postgres_operator" "SERVICE_NAME" "patroni-services" "vals" .Values "default" .Values.operator.image)) -}}
 
   {{- if (eq (include "monitoring.install" .) "true") -}}
-    {{- printf "deployment monitoring-collector monitoring-collector %s, " (include "find_image" (dict "deployName" "pg_patroni_metric_collector" "SERVICE_NAME" "pg_patroni_metric_collector" "vals" .Values "default" .Values.monitoring.dockerImage)) -}}
+    {{- printf "deployment monitoring-collector monitoring-collector %s, " (include "find_image" (dict "deployName" "pg_patroni_metric_collector" "SERVICE_NAME" "pg_patroni_metric_collector" "vals" .Values "default" .Values.metricCollector.dockerImage)) -}}
   {{- end -}}
 
   {{- if .Values.backupDaemon.install -}}
