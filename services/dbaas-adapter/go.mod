@@ -4,7 +4,7 @@ go 1.26.2
 
 require (
 	github.com/Netcracker/qubership-dbaas-adapter-core v0.11.1
-	github.com/gofiber/fiber/v2 v2.52.12
+	github.com/gofiber/fiber/v2 v2.52.13
 	github.com/google/uuid v1.6.0
 	github.com/jackc/pgconn v1.14.3
 	github.com/jackc/pgx/v4 v4.18.3
