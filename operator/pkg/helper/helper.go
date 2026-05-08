@@ -90,6 +90,7 @@ func (h *Helper) AddNameAndUID(name string, uid types.UID, kind string) error {
 	h.kind = kind
 	return nil
 }
+
 func (h *Helper) SetCustomResource(cr *qubershipv1.PatroniServices) error {
 	if helper == nil {
 		message := "cannot set Custom Resource, helper has not been initialized yet"
