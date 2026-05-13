@@ -72,7 +72,6 @@ func NewIntegrationTestsPod(cr *v1.PatroniServices, cluster *patroniv1.PatroniCl
 					Image:           dockerImage,
 					ImagePullPolicy: cr.Spec.ImagePullPolicy,
 					SecurityContext: util.GetDefaultSecurityContext(),
-					Args:            []string{"robot", "-i", testsTags, "/test_runs/"},
 					Env: []corev1.EnvVar{
 						{
 							Name: "POSTGRES_USER",
@@ -144,6 +143,11 @@ func NewIntegrationTestsPod(cr *v1.PatroniServices, cluster *patroniv1.PatroniCl
 			pod.Spec.ImagePullSecrets = append(pod.Spec.ImagePullSecrets, corev1.LocalObjectReference{Name: name})
 		}
 	}
+	pod.Spec.Containers[0].Env = appendAtpEnvVarsServices(
+		pod.Spec.Containers[0].Env,
+		testsSpec,
+		fmt.Sprintf("%s-atp-storage-secret", cr.Name),
+	)
 
 	return pod
 }
@@ -191,7 +195,6 @@ func NewCoreIntegrationTests(cr *patroniv1.PatroniCore, cluster *patroniv1.Patro
 					Image:           dockerImage,
 					ImagePullPolicy: cr.Spec.ImagePullPolicy,
 					SecurityContext: util.GetDefaultSecurityContext(),
-					Args:            []string{"robot", "-i", testsTags, "/test_runs/"},
 					Env: []corev1.EnvVar{
 						{
 							Name: "POSTGRES_USER",
@@ -267,6 +270,135 @@ func NewCoreIntegrationTests(cr *patroniv1.PatroniCore, cluster *patroniv1.Patro
 			pod.Spec.ImagePullSecrets = append(pod.Spec.ImagePullSecrets, corev1.LocalObjectReference{Name: name})
 		}
 	}
+	pod.Spec.Containers[0].Env = appendAtpEnvVarsCore(
+		pod.Spec.Containers[0].Env,
+		testsSpec,
+		fmt.Sprintf("%s-atp-storage-secret", cr.Name),
+	)
 
 	return pod
+}
+
+func appendAtpEnvVarsServices(env []corev1.EnvVar, tests *v1.IntegrationTests, secretName string) []corev1.EnvVar {
+	if tests == nil {
+		return env
+	}
+
+	if tests.EnvironmentName != "" {
+		env = append(env, corev1.EnvVar{Name: "ENVIRONMENT_NAME", Value: tests.EnvironmentName})
+	}
+
+	if tests.AtpStorage != nil && tests.AtpStorage.Provider != "" {
+		env = append(env, corev1.EnvVar{Name: "ATP_STORAGE_PROVIDER", Value: tests.AtpStorage.Provider})
+
+		if tests.AtpStorage.Region != "" {
+			env = append(env, corev1.EnvVar{Name: "ATP_STORAGE_REGION", Value: tests.AtpStorage.Region})
+		}
+		if tests.AtpStorage.ServerUrl != "" {
+			env = append(env, corev1.EnvVar{Name: "ATP_STORAGE_SERVER_URL", Value: tests.AtpStorage.ServerUrl})
+		}
+		if tests.AtpStorage.ServerUiUrl != "" {
+			env = append(env, corev1.EnvVar{Name: "ATP_STORAGE_SERVER_UI_URL", Value: tests.AtpStorage.ServerUiUrl})
+		}
+		if tests.AtpStorage.Bucket != "" {
+			env = append(env, corev1.EnvVar{Name: "ATP_STORAGE_BUCKET", Value: tests.AtpStorage.Bucket})
+		}
+	}
+
+	atpReportEnabled := false
+	if tests.AtpReport != nil {
+		atpReportEnabled = tests.AtpReport.Enabled
+	}
+	env = append(env, corev1.EnvVar{Name: "ATP_REPORT_ENABLED", Value: strconv.FormatBool(atpReportEnabled)})
+
+	if atpReportEnabled {
+		env = append(env,
+			corev1.EnvVar{
+				Name: "ATP_STORAGE_USERNAME",
+				ValueFrom: &corev1.EnvVarSource{
+					SecretKeyRef: &corev1.SecretKeySelector{
+						LocalObjectReference: corev1.LocalObjectReference{Name: secretName},
+						Key:                  "atp-storage-username",
+					},
+				},
+			},
+			corev1.EnvVar{
+				Name: "ATP_STORAGE_PASSWORD",
+				ValueFrom: &corev1.EnvVarSource{
+					SecretKeyRef: &corev1.SecretKeySelector{
+						LocalObjectReference: corev1.LocalObjectReference{Name: secretName},
+						Key:                  "atp-storage-password",
+					},
+				},
+			},
+		)
+	}
+
+	if tests.AtpReportViewUiUrl != "" {
+		env = append(env, corev1.EnvVar{Name: "ATP_REPORT_VIEW_UI_URL", Value: tests.AtpReportViewUiUrl})
+	}
+
+	return env
+}
+
+func appendAtpEnvVarsCore(env []corev1.EnvVar, tests *patroniv1.IntegrationTests, secretName string) []corev1.EnvVar {
+	if tests == nil {
+		return env
+	}
+
+	if tests.EnvironmentName != "" {
+		env = append(env, corev1.EnvVar{Name: "ENVIRONMENT_NAME", Value: tests.EnvironmentName})
+	}
+
+	if tests.AtpStorage != nil && tests.AtpStorage.Provider != "" {
+		env = append(env, corev1.EnvVar{Name: "ATP_STORAGE_PROVIDER", Value: tests.AtpStorage.Provider})
+
+		if tests.AtpStorage.Region != "" {
+			env = append(env, corev1.EnvVar{Name: "ATP_STORAGE_REGION", Value: tests.AtpStorage.Region})
+		}
+		if tests.AtpStorage.ServerUrl != "" {
+			env = append(env, corev1.EnvVar{Name: "ATP_STORAGE_SERVER_URL", Value: tests.AtpStorage.ServerUrl})
+		}
+		if tests.AtpStorage.ServerUiUrl != "" {
+			env = append(env, corev1.EnvVar{Name: "ATP_STORAGE_SERVER_UI_URL", Value: tests.AtpStorage.ServerUiUrl})
+		}
+		if tests.AtpStorage.Bucket != "" {
+			env = append(env, corev1.EnvVar{Name: "ATP_STORAGE_BUCKET", Value: tests.AtpStorage.Bucket})
+		}
+	}
+
+	atpReportEnabled := false
+	if tests.AtpReport != nil {
+		atpReportEnabled = tests.AtpReport.Enabled
+	}
+	env = append(env, corev1.EnvVar{Name: "ATP_REPORT_ENABLED", Value: strconv.FormatBool(atpReportEnabled)})
+
+	if atpReportEnabled {
+		env = append(env,
+			corev1.EnvVar{
+				Name: "ATP_STORAGE_USERNAME",
+				ValueFrom: &corev1.EnvVarSource{
+					SecretKeyRef: &corev1.SecretKeySelector{
+						LocalObjectReference: corev1.LocalObjectReference{Name: secretName},
+						Key:                  "atp-storage-username",
+					},
+				},
+			},
+			corev1.EnvVar{
+				Name: "ATP_STORAGE_PASSWORD",
+				ValueFrom: &corev1.EnvVarSource{
+					SecretKeyRef: &corev1.SecretKeySelector{
+						LocalObjectReference: corev1.LocalObjectReference{Name: secretName},
+						Key:                  "atp-storage-password",
+					},
+				},
+			},
+		)
+	}
+
+	if tests.AtpReportViewUiUrl != "" {
+		env = append(env, corev1.EnvVar{Name: "ATP_REPORT_VIEW_UI_URL", Value: tests.AtpReportViewUiUrl})
+	}
+
+	return env
 }

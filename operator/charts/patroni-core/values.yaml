@@ -288,6 +288,18 @@ tests:
       - check_scale_down_master
       - check_delete_master
       - check_manual_switchover
+  atpReport:
+    enabled: false
+    atpStorage:
+      provider: "aws"
+      serverUrl: "https://s3.amazonaws.com"
+      serverUiUrl: ""
+      bucket: ""
+      region: "us-east-1"
+      username: ""
+      password: ""
+  atpReportViewUiUrl: ""
+  environmentName: "pgskipper-operator"
 
 runTestsOnly: false
 

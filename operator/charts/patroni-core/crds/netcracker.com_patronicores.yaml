@@ -1017,6 +1017,28 @@ spec:
                             x-kubernetes-list-type: atomic
                         type: object
                     type: object
+                  atpReport:
+                    properties:
+                      enabled:
+                        type: boolean
+                    type: object
+                  atpReportViewUiUrl:
+                    type: string
+                  atpStorage:
+                    properties:
+                      bucket:
+                        type: string
+                      provider:
+                        type: string
+                      region:
+                        type: string
+                      serverUiUrl:
+                        type: string
+                      serverUrl:
+                        type: string
+                    type: object
+                  environmentName:
+                    type: string
                   image:
                     type: string
                   monitoredImages:
