@@ -91,7 +91,7 @@ jobs:
           replace-symbol: ${{ github.event.inputs.replace-symbol || '_'}}
 
   build:
-    if: ${{ fromJson(needs.check.outputs.my_list)[0] != null }}
+    if: ${{ fromJson(needs.check.outputs.components)[0] != null }}
     name: ${{ matrix.component.name }} Image Build
     needs: [prepare]
     runs-on: ubuntu-22.04
