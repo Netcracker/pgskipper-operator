@@ -6,9 +6,33 @@ permissions:
   actions: read
 
 on:
+  push:
+    branches:
+      - "main"
+    paths-ignore:
+      - "docs/**"
+      - "CODE-OF-CONDUCT.md"
+      - "CONTRIBUTING.md"
+      - "LICENSE"
+      - "README.md"
+      - "SECURITY.md"
   pull_request:
-    types: [opened, synchronize, reopened]
-    branches: [main]
+    branches:
+      - "**"
+    paths-ignore:
+      - "docs/**"
+      - "CODE-OF-CONDUCT.md"
+      - "CONTRIBUTING.md"
+      - "LICENSE"
+      - "README.md"
+      - "SECURITY.md"
+  workflow_dispatch:
+    inputs:
+      publish_docker:
+        description: "Publish images to ghcr.io/netcracker"
+        type: boolean
+        default: false
+        required: false
 
 jobs:
   Wait-for-images:
