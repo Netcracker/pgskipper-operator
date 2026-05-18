@@ -81,9 +81,6 @@ jobs:
           echo "components=${components}"
           echo "components=${components}" >> "$GITHUB_OUTPUT"
           echo "platforms=$(jq -c '.platforms' .github/build-config.cfg)" >> "$GITHUB_OUTPUT"
-      - name: Debug
-        run: |
-          echo "Changed components: '${{ steps.load.outputs.components }}'"
 
       - name: Create tags for images
         uses: netcracker/qubership-workflow-hub/actions/metadata-action@8d542a426ce561c7dce745f6b9cee068d1d7e101 #2.0.10
@@ -94,7 +91,7 @@ jobs:
           replace-symbol: ${{ github.event.inputs.replace-symbol || '_'}}
 
   build:
-    if: ${{ needs.check.outputs.components != '[]' }}
+    if: ${{ needs.prepare.outputs.components != '[]' }}
     name: ${{ matrix.component.name }} Image Build
     needs: [prepare]
     runs-on: ubuntu-22.04
