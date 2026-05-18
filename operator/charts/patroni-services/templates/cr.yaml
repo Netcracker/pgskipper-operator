@@ -433,6 +433,32 @@ spec:
       {{- end }}
 {{- end }}
     pgNodeQty: {{ default "1" .Values.patroni.replicas }}
+{{- if or .Values.tests.environmentName .Values.tests.atpReport.enabled .Values.tests.atpReportViewUiUrl }}
+    {{- if .Values.tests.environmentName }}
+    environmentName: {{ .Values.tests.environmentName | quote }}
+    {{- end }}
+    atpReport:
+      enabled: {{ .Values.tests.atpReport.enabled | default false }}
+    {{- if .Values.tests.atpReport.enabled }}
+    atpStorage:
+      provider: {{ .Values.tests.atpReport.atpStorage.provider | quote }}
+      {{- if .Values.tests.atpReport.atpStorage.serverUrl }}
+      serverUrl: {{ .Values.tests.atpReport.atpStorage.serverUrl | quote }}
+      {{- end }}
+      {{- if .Values.tests.atpReport.atpStorage.serverUiUrl }}
+      serverUiUrl: {{ .Values.tests.atpReport.atpStorage.serverUiUrl | quote }}
+      {{- end }}
+      {{- if .Values.tests.atpReport.atpStorage.bucket }}
+      bucket: {{ .Values.tests.atpReport.atpStorage.bucket | quote }}
+      {{- end }}
+      {{- if .Values.tests.atpReport.atpStorage.region }}
+      region: {{ .Values.tests.atpReport.atpStorage.region | quote }}
+      {{- end }}
+    {{- end }}
+    {{- if .Values.tests.atpReportViewUiUrl }}
+    atpReportViewUiUrl: {{ .Values.tests.atpReportViewUiUrl | quote }}
+    {{- end }}
+{{- end }}
 {{ end }}
 {{ if .Values.runTestsOnly }}
 runTestsTime: {{ now | unixEpoch | quote }}

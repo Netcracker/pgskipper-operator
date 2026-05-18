@@ -455,6 +455,18 @@ tests:
       - check_evict_api
       - check_granular_api
       - check_wal_archiving
+  atpReport:
+    enabled: false
+    atpStorage:
+      provider: "aws"
+      serverUrl: "https://s3.amazonaws.com"
+      serverUiUrl: ""
+      bucket: ""
+      region: "us-east-1"
+      username: ""
+      password: ""
+  atpReportViewUiUrl: ""
+  environmentName: "pgskipper-operator"
 
 runTestsOnly: false
 
