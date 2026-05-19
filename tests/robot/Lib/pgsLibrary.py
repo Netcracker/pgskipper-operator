@@ -781,6 +781,65 @@ class pgsLibrary(object):
         last_backup_id = health_json["storage"]["lastSuccessful"]["id"]
         return last_backup_id
 
+    def pgbackrest_backup_exists(self, backup_id):
+        response = requests.get(f"{self._scheme}://postgres-backup-daemon:8081/list", verify=False, timeout=10)
+        response.raise_for_status()
+        backups = response.json()
+        logging.info("Backup daemon backup list: {}".format(backups))
+        return backup_id in backups
+
+    def restore_pgbackrest_backup(self, backup_id):
+        pod = self.get_pod(label='app:postgres-backup-daemon', status='Running')
+        command = "cd /maintenance/recovery && SET={} python3 pg_back_rest_recovery.py".format(backup_id)
+        logging.info("Start PgBackRest restore from backup daemon pod {} with backup id {}".format(
+            pod.metadata.name, backup_id))
+        output, errors = self.execute_in_pod(pod.metadata.name, command)
+        logging.info("PgBackRest restore output: {}".format(output))
+        if errors:
+            logging.info("PgBackRest restore stderr: {}".format(errors))
+        return output
+
+    def get_backup_daemon_restart_count(self):
+        pod = self.get_pod(label='app:postgres-backup-daemon', status='Running')
+        restart_count = 0
+        for container_status in pod.status.container_statuses or []:
+            restart_count += container_status.restart_count
+        logging.info("Backup daemon pod {} restart count: {}".format(pod.metadata.name, restart_count))
+        return restart_count
+
+    def get_pgbackrest_prerequisite_status(self):
+        status = {
+            "storage_type": None,
+            "backup_daemon_pod": None,
+            "pgbackrest_configmap_exists": False,
+            "pgbackrest_sidecar_pods": [],
+            "missing": []
+        }
+
+        backup_daemon = self.get_pod(label='app:postgres-backup-daemon', status='Running')
+        status["backup_daemon_pod"] = backup_daemon.metadata.name
+        status["storage_type"] = self.get_env_for_pod(backup_daemon, "STORAGE_TYPE")
+        if status["storage_type"] != "pgbackrest":
+            status["missing"].append("backup daemon STORAGE_TYPE is not pgbackrest")
+
+        try:
+            self.pl_lib.get_config_map("pgbackrest-conf", self._namespace)
+            status["pgbackrest_configmap_exists"] = True
+        except Exception:
+            status["missing"].append("pgbackrest-conf config map is absent")
+
+        pg_cluster_name = os.getenv("PG_CLUSTER_NAME", "patroni")
+        for pod in self.get_pods(label="pgcluster:{}".format(pg_cluster_name), status="Running"):
+            for container in pod.spec.containers:
+                if container.name == "pgbackrest-sidecar":
+                    status["pgbackrest_sidecar_pods"].append(pod.metadata.name)
+                    break
+        if not status["pgbackrest_sidecar_pods"]:
+            status["missing"].append("pgbackrest-sidecar container is absent in running patroni pods")
+
+        logging.info("PgBackRest prerequisite status: {}".format(status))
+        return status
+
     def schedule_evict(self, last_backup_id):
         health_json = requests.delete(f"{self._scheme}://postgres-backup-daemon:8081/evict?id={last_backup_id}", verify=False).json()
         return health_json
