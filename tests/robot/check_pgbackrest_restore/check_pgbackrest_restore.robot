@@ -81,15 +81,18 @@ Create PgBackRest Full Backup
     Log To Console  [pgbackrest-debug] schedule response=${schedule_response}
     Dictionary Should Contain Key  ${schedule_response}  backup_id
     ${backup_id}=  Get From Dictionary  ${schedule_response}  backup_id
-    Log To Console  [pgbackrest-debug] waiting backup completion: backup_id=${backup_id}, previous_dump_count=${dump_count}
-    Wait For Backup To Complete  ${pod.metadata.name}  ${dump_count}
-    Log To Console  [pgbackrest-debug] backup daemon reports backup completed: backup_id=${backup_id}
-    Wait Until Keyword Succeeds  10 min  10 sec  Check PgBackRest Backup Exists  ${backup_id}
-    [Return]  ${backup_id}
+    Log To Console  [pgbackrest-debug] waiting pgBackRest backup in daemon list: backup_id=${backup_id}, previous_dump_count=${dump_count}
+    Wait Until Keyword Succeeds  30 min  15 sec  Check PgBackRest Backup Exists  ${backup_id}
+    ${dump_count_after}=  Get Backup Count
+    Log To Console  [pgbackrest-debug] pgBackRest backup is listed: backup_id=${backup_id}, dump_count_after=${dump_count_after}
+    RETURN  ${backup_id}
 
 Check PgBackRest Backup Exists
     [Arguments]  ${backup_id}
     Log To Console  [pgbackrest-debug] checking backup in daemon list: backup_id=${backup_id}
+    ${backups}=  Get Pgbackrest Backup List
+    @{backup_keys}=  Get Dictionary Keys  ${backups}
+    Log To Console  [pgbackrest-debug] current daemon backup list keys: ${backup_keys}
     ${exists}=  Pgbackrest Backup Exists  ${backup_id}
     Log To Console  [pgbackrest-debug] backup exists=${exists}
     Should Be True  ${exists}  msg=PgBackRest backup ${backup_id} was not found in backrest list

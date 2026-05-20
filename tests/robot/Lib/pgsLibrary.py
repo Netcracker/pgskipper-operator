@@ -782,11 +782,15 @@ class pgsLibrary(object):
         return last_backup_id
 
     def pgbackrest_backup_exists(self, backup_id):
+        backups = self.get_pgbackrest_backup_list()
+        return backup_id in backups
+
+    def get_pgbackrest_backup_list(self):
         response = requests.get(f"{self._scheme}://postgres-backup-daemon:8081/list", verify=False, timeout=10)
         response.raise_for_status()
         backups = response.json()
         logging.info("Backup daemon backup list: {}".format(backups))
-        return backup_id in backups
+        return backups
 
     def restore_pgbackrest_backup(self, backup_id):
         pod = self.get_pod(label='app:postgres-backup-daemon', status='Running')
