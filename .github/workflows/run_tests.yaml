@@ -28,7 +28,7 @@ jobs:
   Pgskipper-Pipeline:
     if: ${{ github.actor != 'dependabot[bot]' && github.event.pull_request.user.login != 'dependabot[bot]' }}
     needs: Wait-for-images
-    uses: Netcracker/qubership-test-pipelines/.github/workflows/pgskipper.yaml@acf44dc8f22430d11eb93a679bf54e99b69ee6a2 #v1.5.0
+    uses: Netcracker/qubership-test-pipelines/.github/workflows/pgskipper.yaml@34e86efe815cb03fea20efa760989cd21ca0c776 #master
     with:
       repository_name: ${{ github.repository }}
       service_branch: '${{ github.head_ref || github.ref_name }}'
