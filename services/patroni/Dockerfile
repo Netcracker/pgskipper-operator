@@ -132,8 +132,17 @@ RUN apt-get update && apt-get install -y postgresql-$PG_VERSION-credcheck
 RUN apt-get install -y alien vmtouch openssh-server
 
 RUN cat /root/.pip/pip.conf
-RUN python3 -m pip install -U setuptools==82.0.1 wheel==0.47.0
-RUN python3 -m pip install psutil patroni[kubernetes,etcd]==3.3.5 psycopg2==2.9.5 requests python-dateutil urllib3 six prettytable --no-cache
+RUN python3 -m pip install -U setuptools==82.0.1 wheel==0.47.0 && \
+    python3 -m pip install psutil patroni[kubernetes,etcd]==3.3.5 psycopg2==2.9.5 requests python-dateutil urllib3 six prettytable --no-cache && \
+    python3 -m pip uninstall -y jaraco.context setuptools wheel && \
+    apt-get purge -y python3-setuptools python3-wheel && \
+    apt-get autoremove -y && \
+    rm -rf /usr/local/lib/python3.10/dist-packages/setuptools* \
+           /usr/local/lib/python3.10/dist-packages/wheel* \
+           /usr/local/lib/python3.10/dist-packages/jaraco* \
+           /usr/lib/python3/dist-packages/setuptools* \
+           /usr/lib/python3/dist-packages/wheel*
+
 # Explicitly install patched libaom3 version
 RUN apt-get --no-install-recommends install -y libaom3=3.3.0-1ubuntu0.1 || apt-get --no-install-recommends install -y libaom3
 RUN mv /var/lib/postgresql /var/lib/pgsql

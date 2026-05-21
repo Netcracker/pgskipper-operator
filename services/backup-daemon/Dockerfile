@@ -46,19 +46,27 @@ RUN apt-get --no-install-recommends install -y comerr-dev \
 RUN python3 -m pip install -U setuptools==82.0.1 wheel==0.47.0
 
 COPY docker/requirements.txt /root/requirements.txt
-RUN python3 -m pip install --no-cache-dir -r /root/requirements.txt \
-      && python3 -m pip install --upgrade pip \
-      && python3 -m pip install grpcio \
-      && python3 -m pip install opentelemetry-distro opentelemetry-exporter-otlp opentelemetry-api opentelemetry-sdk opentelemetry-instrumentation-flask \
-      && opentelemetry-bootstrap -a install \
-      && python3 -m pip install "setuptools==82.0.1" "wheel==0.47.0" "jaraco.context==6.1.0" \
-      && pip3 uninstall -y pip \
-      && apt-get remove -y --purge gcc-12 \
-      && apt-get remove -y --purge python3-dev \
-      && apt-get remove -y --purge libpq-dev \
-      && apt-get remove -y --purge cython3 \
-      && locale-gen en_US.UTF-8 \
-      && apt-get clean
+RUN python3 -m pip install -U setuptools==82.0.1 wheel==0.47.0 && \
+    python3 -m pip install --no-cache-dir -r /root/requirements.txt && \
+    python3 -m pip install --upgrade pip && \
+    python3 -m pip install grpcio && \
+    python3 -m pip install opentelemetry-distro opentelemetry-exporter-otlp opentelemetry-api opentelemetry-sdk opentelemetry-instrumentation-flask && \
+    opentelemetry-bootstrap -a install && \
+    python3 -m pip uninstall -y jaraco.context setuptools wheel && \
+    apt-get purge -y python3-setuptools python3-wheel || true && \
+    rm -rf /usr/local/lib/python3.*/dist-packages/setuptools* \
+           /usr/local/lib/python3.*/dist-packages/wheel* \
+           /usr/local/lib/python3.*/dist-packages/jaraco* \
+           /usr/lib/python3.*/dist-packages/setuptools* \
+           /usr/lib/python3.*/dist-packages/wheel* && \
+    pip3 uninstall -y pip && \
+    apt-get remove -y --purge gcc-12 && \
+    apt-get remove -y --purge python3-dev && \
+    apt-get remove -y --purge libpq-dev && \
+    apt-get remove -y --purge cython3 && \
+    apt-get autoremove -y && \
+    locale-gen en_US.UTF-8 \
+    && apt-get clean
 
 RUN ln -s /usr/bin/python3 /usr/bin/python
 
