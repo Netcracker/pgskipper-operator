@@ -75,6 +75,14 @@ func NewMonitoringDeployment(metricCollector *netcrackerv1.MetricCollector, pgcl
 								},
 							},
 						},
+						{
+							Name: "monitoring-user-credentials",
+							VolumeSource: corev1.VolumeSource{
+								Secret: &corev1.SecretVolumeSource{
+									SecretName: MetricCollectorUserCredentials},
+								},
+							},
+						},
 					},
 					InitContainers: []corev1.Container{},
 					Containers: []corev1.Container{
@@ -84,24 +92,24 @@ func NewMonitoringDeployment(metricCollector *netcrackerv1.MetricCollector, pgcl
 							Command: []string{},
 							Args:    []string{},
 							Env: append([]corev1.EnvVar{
-								{
-									Name: "MONITORING_USER",
-									ValueFrom: &corev1.EnvVarSource{
-										SecretKeyRef: &corev1.SecretKeySelector{
-											LocalObjectReference: corev1.LocalObjectReference{Name: MetricCollectorUserCredentials},
-											Key:                  "username",
-										},
-									},
-								},
-								{
-									Name: "MONITORING_PASSWORD",
-									ValueFrom: &corev1.EnvVarSource{
-										SecretKeyRef: &corev1.SecretKeySelector{
-											LocalObjectReference: corev1.LocalObjectReference{Name: MetricCollectorUserCredentials},
-											Key:                  "password",
-										},
-									},
-								},
+								//	{
+								//		Name: "MONITORING_USER",
+								//		ValueFrom: &corev1.EnvVarSource{
+								//			SecretKeyRef: &corev1.SecretKeySelector{
+								//				LocalObjectReference: corev1.LocalObjectReference{Name: MetricCollectorUserCredentials},
+								//				Key:                  "username",
+								//			},
+								//		},
+								//	},
+								//	{
+								//		Name: "MONITORING_PASSWORD",
+								//		ValueFrom: &corev1.EnvVarSource{
+								//			SecretKeyRef: &corev1.SecretKeySelector{
+								//				LocalObjectReference: corev1.LocalObjectReference{Name: MetricCollectorUserCredentials},
+								//				Key:                  "password",
+								//			},
+								//		},
+								//	},
 								{
 									Name: "PG_ROOT_USER",
 									ValueFrom: &corev1.EnvVarSource{
@@ -197,6 +205,11 @@ func NewMonitoringDeployment(metricCollector *netcrackerv1.MetricCollector, pgcl
 									SubPath:   "telegraf_temp.conf",
 									Name:      "telegraf-config-volume",
 								},
+								{
+									MountPath: "/etc/monitoring-user-credentials",
+									Name:      "monitoring-user-credentials",
+									ReadOnly: true,
+								},
 							},
 							Resources: *metricCollector.Resources,
 							LivenessProbe: &corev1.Probe{
@@ -232,6 +245,7 @@ func NewMonitoringDeployment(metricCollector *netcrackerv1.MetricCollector, pgcl
 			},
 		},
 	}
+	
 	if metricCollector.PriorityClassName != "" {
 		deployment.Spec.Template.Spec.PriorityClassName = metricCollector.PriorityClassName
 	}

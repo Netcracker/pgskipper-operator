@@ -36,8 +36,8 @@ func InitMetricCollector() {
 	logger.Info("Will run preparation scripts")
 
 	clusterName := util.GetEnv("PGCLUSTER", "patroni")
-	monitoringRole := util.GetEnv("MONITORING_USER", "monitoring-user")
-	monitoringPassword := util.GetEnv("MONITORING_PASSWORD", "monitoring_password")
+	monitoringRole := util.GetSecret("username")
+	monitoringPassword := util.GetSecret("password")
 	pgHost := util.GetEnv("POSTGRES_HOST", "pg-patroni")
 	pgPort := util.GetEnvInt("POSTGRES_PORT", 5432)
 

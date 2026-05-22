@@ -59,6 +59,7 @@ var (
 )
 
 const certificatesFolder = "/certs"
+const MetricCollectorCredentialsFolder = "/etc/monitoring-user-credentials"
 
 func GetLogger() *zap.Logger {
 	cfg := zap.NewProductionConfig()
@@ -90,6 +91,14 @@ func GetProtocol() (string, string) {
 	}
 	return "http://", "8529"
 
+}
+
+func GetSecret(filename string) string {
+	secretByte, err := os.ReadFile("/etc/monitoring-user-credentials/" + filename)
+	if err != nil {
+		log.Fatal("failed to read monitoring secret: ", err)
+	}
+	return strings.TrimSpace(string(secretByte[:]))
 }
 
 func GetToken() string {

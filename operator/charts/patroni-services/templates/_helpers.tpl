@@ -136,6 +136,7 @@ POSTGRES ADMIN env variables for DBaaS
 {{/*
 Aggregator Registration env variables for DBaaS
 */}}
+{{/*
 {{- define "postgres-dbaas.aggregatorEnvsReg" }}
             - name: DBAAS_AGGREGATOR_REGISTRATION_USERNAME
               valueFrom:
@@ -148,7 +149,7 @@ Aggregator Registration env variables for DBaaS
                   name: dbaas-aggregator-registration-credentials
                   key: password
 {{- end }}
-
+*/}}
 {{- define "find_image" -}}
   {{- $image := .default -}}
 
