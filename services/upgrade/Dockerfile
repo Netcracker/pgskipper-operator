@@ -25,8 +25,6 @@ RUN apt-get --no-install-recommends install -y gcc-12 python3.11 python3-pip pyt
 
 RUN python3 -m pip install --no-cache-dir --upgrade wheel==0.47.0 setuptools==82.0.1 && \
     python3 -m pip uninstall -y jaraco.context setuptools wheel && \
-    apt-get purge -y python3-setuptools python3-wheel || true && \
-    apt-get autoremove -y && \
     rm -rf /usr/local/lib/python3.*/dist-packages/setuptools* \
            /usr/local/lib/python3.*/dist-packages/wheel* \
            /usr/local/lib/python3.*/dist-packages/jaraco* \
