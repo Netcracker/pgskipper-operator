@@ -782,8 +782,25 @@ class pgsLibrary(object):
         return last_backup_id
 
     def pgbackrest_backup_exists(self, backup_id):
-        backups = self.get_pgbackrest_backup_list()
-        return backup_id in backups
+        try:
+            backups = self.get_pgbackrest_backup_list()
+            if backup_id in backups:
+                logging.info("PgBackRest backup %s found through backup daemon /list", backup_id)
+                return True
+        except Exception as e:
+            logging.info("Cannot check backup daemon list for PgBackRest backup %s: %s", backup_id, e)
+
+        status = self.get_pgbackrest_sidecar_backup_status(backup_id)
+        if self._pgbackrest_backup_matches(backup_id, status):
+            logging.info("PgBackRest backup %s found through backrest /status", backup_id)
+            return True
+
+        backups = self.get_pgbackrest_sidecar_backup_list()
+        if self._pgbackrest_backup_found_in_list(backup_id, backups):
+            logging.info("PgBackRest backup %s found through backrest /list", backup_id)
+            return True
+
+        return False
 
     def get_pgbackrest_backup_list(self):
         response = requests.get(f"{self._scheme}://postgres-backup-daemon:8081/list", verify=False, timeout=10)
@@ -791,6 +808,55 @@ class pgsLibrary(object):
         backups = response.json()
         logging.info("Backup daemon backup list: {}".format(backups))
         return backups
+
+    def get_pgbackrest_sidecar_backup_status(self, backup_id):
+        for service in ["backrest", "backrest-headless"]:
+            try:
+                response = requests.get(
+                    "http://{}:3000/status?timestamp={}".format(service, backup_id),
+                    timeout=10
+                )
+                response.raise_for_status()
+                status = response.json()
+                logging.info("PgBackRest status from %s for %s: %s", service, backup_id, status)
+                if self._pgbackrest_backup_matches(backup_id, status):
+                    return status
+            except Exception as e:
+                logging.info("Cannot get PgBackRest status from %s for %s: %s", service, backup_id, e)
+        return {}
+
+    def get_pgbackrest_sidecar_backup_list(self):
+        errors = {}
+        for service in ["backrest", "backrest-headless"]:
+            try:
+                response = requests.get("http://{}:3000/list".format(service), timeout=10)
+                response.raise_for_status()
+                backups = response.json()
+                logging.info("PgBackRest list from %s: %s", service, backups)
+                return backups
+            except Exception as e:
+                errors[service] = str(e)
+                logging.info("Cannot get PgBackRest list from %s: %s", service, e)
+        logging.info("Cannot get PgBackRest list from sidecar services: %s", errors)
+        return []
+
+    def _pgbackrest_backup_matches(self, backup_id, backup):
+        if not isinstance(backup, dict):
+            return False
+        annotation = backup.get("annotation") or {}
+        return annotation.get("timestamp") == backup_id and not backup.get("error", False)
+
+    def _pgbackrest_backup_found_in_list(self, backup_id, backups):
+        if isinstance(backups, dict):
+            if backup_id in backups:
+                return True
+            backups = backups.values()
+        if not isinstance(backups, list):
+            return False
+        for backup in backups:
+            if self._pgbackrest_backup_matches(backup_id, backup):
+                return True
+        return False
 
     def restore_pgbackrest_backup(self, backup_id):
         pod = self.get_pod(label='app:postgres-backup-daemon', status='Running')
