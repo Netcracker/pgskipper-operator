@@ -57,10 +57,12 @@ Get Statefulset Name From Pod Name
 
 Scale Statefulset
     [Arguments]  ${sts_name}  ${replicas}
-    ${result}=  Run Process  kubectl  -n  %{POD_NAMESPACE}  scale  statefulset  ${sts_name}  --replicas=${replicas}
+    ${result}=  Run Process  kubectl  -n  %{POD_NAMESPACE}  scale  statefulset  ${sts_name}  --replicas  ${replicas}  stdout=PIPE  stderr=PIPE
+    Log  ${result.stdout}
+    Log  ${result.stderr}
     Should Be Equal As Integers  ${result.rc}  0
 
 Pod Should Not Exist
     [Arguments]  ${pod_name}
-    ${result}=  Run Process  kubectl  -n  %{POD_NAMESPACE}  get  pod  ${pod_name}
+    ${result}=  Run Process  kubectl  -n  %{POD_NAMESPACE}  get  pod  ${pod_name}  stdout=PIPE  stderr=PIPE
     Should Not Be Equal As Integers  ${result.rc}  0
