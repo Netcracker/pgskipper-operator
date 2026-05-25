@@ -13,7 +13,11 @@ spec:
     port: 443
   hostnames: [{{ .Values.powaUI.ingress.host  | quote }}]
   rules:
-  - backendRefs:
+  - matches:
+    - path:
+        type: PathPrefix
+        value: /
+    backendRefs:
     - name: powa-ui
       port: 8080
 {{- end }}
