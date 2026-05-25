@@ -38,4 +38,4 @@ USER 1001
 WORKDIR /app
 
 ENTRYPOINT [ "/opt/uid_entrypoint" ]
-CMD ["/opt/robot-entrypoint.sh", "run-robot"]
+CMD ["/opt/robot-entrypoint.sh", "run-robot-without-ttyd"]
