@@ -32,3 +32,4 @@ Check Delete Master
     Run Keyword  Check Replica Count
     # check replication again, becouse it is simple! :)
     Run Keyword   Replication Works
+    
