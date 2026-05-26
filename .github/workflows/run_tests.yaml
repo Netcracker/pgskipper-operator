@@ -28,11 +28,11 @@ jobs:
   Pgskipper-Pipeline:
     if: ${{ github.actor != 'dependabot[bot]' && github.event.pull_request.user.login != 'dependabot[bot]' }}
     needs: Wait-for-images
-    uses: Netcracker/qubership-test-pipelines/.github/workflows/pgskipper.yaml@34e86efe815cb03fea20efa760989cd21ca0c776 #master
+    uses: Netcracker/qubership-test-pipelines/.github/workflows/pgskipper.yaml@2e30fa113d505bebf393620ad49e4440a234a0e1 #master
     with:
       repository_name: ${{ github.repository }}
       service_branch: '${{ github.head_ref || github.ref_name }}'
-      pipeline_branch: '34e86efe815cb03fea20efa760989cd21ca0c776' #this value must match the value after '@' in 'uses'
+      pipeline_branch: '2e30fa113d505bebf393620ad49e4440a234a0e1' #this value must match the value after '@' in 'uses'
     secrets:
       AWS_S3_ACCESS_KEY_ID: ${{secrets.AWS_S3_ACCESS_KEY_ID}}
       AWS_S3_ACCESS_KEY_SECRET: ${{secrets.AWS_S3_ACCESS_KEY_SECRET}}
