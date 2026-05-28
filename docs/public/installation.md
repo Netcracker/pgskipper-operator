@@ -545,6 +545,34 @@ ATP-related Helm values are `atpReport` (with nested `atpReport.atpStorage`), `a
 | `environmentName`                  | Optional logical name for paths or labels. |
 
 
+## Integration tests and image validation
+
+Integration test settings live under `tests` in the Helm values for both charts:
+
+* `operator/charts/patroni-core/values.yaml`
+* `operator/charts/patroni-services/values.yaml`
+
+The test image is based on [qubership-docker-integration-tests](https://github.com/Netcracker/qubership-docker-integration-tests).
+
+The integration test pod is created by the operator. Test selection is controlled by `tests.runTestScenarios`:
+
+| Value | Description |
+|-------|-------------|
+| `basic` | Runs the basic scenario tags. For `patroni-core`, the operator runs `patroni_basic`. For `patroni-services`, the operator runs `backup_basic` when Backup Daemon is installed. |
+| `full` | Runs the full scenario tags. For `patroni-core`, the operator runs `patroni*`. For `patroni-services`, the operator runs `backup*ORdbaas*` when Backup Daemon is installed. |
+| `custom` | Runs tags from `tests.testList`. For example, `check_pg_images` runs only image validation tests. |
+
+Example:
+
+```yaml
+tests:
+  install: true
+  runTestScenarios: custom
+  testList:
+    - check_pg_images
+    ...
+```
+
 ## consulRegistration
 
 Postgres Operator allows register of PostgreSQL connection properties in Consul. By default, registration disabled.
