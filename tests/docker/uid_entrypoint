@@ -10,7 +10,9 @@ fi
 
 if [[ "${STATEFULSET}" =~ ^[Tt]rue$ ]]; then
 	echo "Copying statefulset specific robot tests"
-	cp -R /test_runs/statefulset/* /test_runs/
+	if [[ -d "${ROBOT_HOME:-/opt/robot}/tests/statefulset" ]]; then
+		cp -R "${ROBOT_HOME:-/opt/robot}/tests/statefulset/." "${ROBOT_HOME:-/opt/robot}/tests/"
+	fi
 fi
 
 exec "$@"
