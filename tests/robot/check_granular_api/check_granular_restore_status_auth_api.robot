@@ -81,7 +81,7 @@ Check Disabled Auth Restore Endpoint
     Create Session    postgres_backup_daemon    ${scheme}://postgres-backup-daemon:9000
     ${resp}=  Get On Session  postgres_backup_daemon  url=/restore/status/${restore_id}
     Should Be Equal  ${resp.status_code}  ${200}
-    execute query   pg-${PG_CLUSTER_NAME}   drop database if exists ${db_name}
+    Delete Database  ${db_name}
 
     #delete backup after test
     ${resp}=  Get On Session  postgres_backup_daemon  url=/delete/${backup_id}
@@ -142,7 +142,7 @@ Check Enabled Auth restore endpoint
     Create Session    postgres_backup_daemon    ${scheme}://postgres-backup-daemon:9000  auth=${auth}
     ${resp}=  Get On Session  postgres_backup_daemon  url=/restore/status/${restore_id}
     Should Be Equal  ${resp.status_code}  ${200}
-    execute query   pg-${PG_CLUSTER_NAME}   drop database if exists ${db_name}
+    Delete Database  ${db_name}
 
     #delete backup after test
     ${resp}=  Get On Session  postgres_backup_daemon  url=/delete/${backup_id}

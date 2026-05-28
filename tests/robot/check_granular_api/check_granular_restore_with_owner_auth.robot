@@ -34,13 +34,13 @@ Prepare Database
     Set Global Variable   ${db_role}
     Create New Role  ${db_role}
     Create Database With Owner  ${db_name}  ${db_role}
-    Execute Query  pg-${PG_CLUSTER_NAME}  CREATE TABLE test_gb_table (ID BIGINT PRIMARY KEY NOT NULL, VALUE TEXT NOT NULL)   dbname=${db_name}
+    Execute Query  pg-${PG_CLUSTER_NAME}  CREATE TABLE IF NOT EXISTS test_gb_table (ID BIGINT PRIMARY KEY NOT NULL, VALUE TEXT NOT NULL)   dbname=${db_name}
     Execute Query  pg-${PG_CLUSTER_NAME}  ALTER TABLE test_gb_table OWNER TO smoketest_gb_role   dbname=${db_name}
-    Execute Query  pg-${PG_CLUSTER_NAME}  INSERT INTO test_gb_table VALUES (42, '42')   dbname=${db_name}
+    Execute Query  pg-${PG_CLUSTER_NAME}  INSERT INTO test_gb_table VALUES (42, '42') ON CONFLICT (ID) DO NOTHING   dbname=${db_name}
 
 Teardown Database
-    Execute Query  pg-${PG_CLUSTER_NAME}  DROP ROLE ${db_role}
-    Execute Query  pg-${PG_CLUSTER_NAME}  drop database if exists ${db_name}
+    Delete Database  ${db_name}
+    Execute Query  pg-${PG_CLUSTER_NAME}  DROP ROLE IF EXISTS ${db_role}
 
 Check That Role Exists
     ${output}=  Execute Query  pg-${PG_CLUSTER_NAME}  SELECT rolname FROM pg_roles where rolname = '${db_role}'

@@ -74,9 +74,9 @@ Check Disabled Auth With Db Name Change
     END
     ${output}=  Execute Query   pg-${PG_CLUSTER_NAME}  SELECT datname FROM pg_catalog.pg_database WHERE datname = 'TaRgEt_TeSt_Bd'
     Should Be True  """TaRgEt_TeSt_Bd""" in """${output}"""
-    Execute Query   pg-${PG_CLUSTER_NAME}  DROP IF EXISTS DATABASE DATABASE test_db
-    Execute Query   pg-${PG_CLUSTER_NAME}  DROP IF EXISTS DATABASE DATABASE TaRgEt_TeSt_Bd
-    Execute Query   pg-${PG_CLUSTER_NAME}  DROP IF EXISTS DATABASE DATABASE target_test_bd
+    Delete Database  test_db
+    Delete Database  TaRgEt_TeSt_Bd
+    Delete Database  target_test_bd
     ${resp}=  Get On Session  postgres_backup_daemon  url=/delete/${backup_id}?namespace=${name_space}
     Should Be Equal  ${resp.status_code}  ${200}
 
@@ -138,9 +138,9 @@ Check Enabled Auth With Db Name Change
     END
     ${output}=  Execute Query  pg-${PG_CLUSTER_NAME}  SELECT datname FROM pg_catalog.pg_database WHERE datname = 'TaRgEt_TeSt_Bd'
     Should Be True  """TaRgEt_TeSt_Bd""" in """${output}"""
-    Execute Query  pg-${PG_CLUSTER_NAME}  DROP IF EXISTS DATABASE DATABASE test_db
-    Execute Query  pg-${PG_CLUSTER_NAME}  DROP IF EXISTS DATABASE DATABASE TaRgEt_TeSt_Bd
-    Execute Query  pg-${PG_CLUSTER_NAME}  DROP IF EXISTS DATABASE DATABASE target_test_bd
+    Delete Database  test_db
+    Delete Database  TaRgEt_TeSt_Bd
+    Delete Database  target_test_bd
     #delete backup after test
     ${resp}=  Get On Session  postgres_backup_daemon  url=/delete/${backup_id}?namespace=${name_space}
     Should Be Equal  ${resp.status_code}  ${200}

@@ -51,4 +51,4 @@ Check Database Creating By Dbaas Adapter
 Delete User And Database
     [Arguments]  ${db_name}  ${user_name}
     Delete Test DB  ${db_name}
-    Execute Query  pg-${PG_CLUSTER_NAME}  DROP USER ${user_name}
+    Execute Query  pg-${PG_CLUSTER_NAME}  DROP USER IF EXISTS ${user_name}
