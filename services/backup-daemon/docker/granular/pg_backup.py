@@ -239,8 +239,9 @@ class PostgreSQLDumpWorker(Thread):
                 if self.encryption:
                     pg_dump_proc = subprocess.Popen(command, stdout=subprocess.PIPE, stderr=stderr)
                     openssl_proc = subprocess.Popen(
-                        "openssl enc -aes-256-cbc -nosalt -pass pass:%s" % self.key,
-                        stdin=pg_dump_proc.stdout, shell=True, stderr=stderr)
+                        ['openssl', 'enc', '-aes-256-cbc', '-nosalt', '-pass', 'pass:{}'.format(self.key)],
+                        stdin=pg_dump_proc.stdout, shell=False, stderr=stderr)
+                    pg_dump_proc.stdout.close()
                     self.pg_dump_proc = openssl_proc
                     exit_code = openssl_proc.wait()
                 else:
@@ -284,8 +285,9 @@ class PostgreSQLDumpWorker(Thread):
                 if self.encryption:
                     pg_dump_proc = subprocess.Popen(command, stdout=subprocess.PIPE, stderr=stderr)
                     openssl_proc = subprocess.Popen(
-                        "openssl enc -aes-256-cbc -nosalt -pass pass:%s" % self.key,
-                        stdin=pg_dump_proc.stdout, stdout=dump, shell=True, stderr=stderr)
+                        ['openssl', 'enc', '-aes-256-cbc', '-nosalt', '-pass', 'pass:{}'.format(self.key)],
+                        stdin=pg_dump_proc.stdout, stdout=dump, shell=False, stderr=stderr)
+                    pg_dump_proc.stdout.close()
                     self.pg_dump_proc = openssl_proc
                     exit_code = openssl_proc.wait()
                 else:
@@ -364,35 +366,44 @@ class PostgreSQLDumpWorker(Thread):
 
         self.log.debug("Will try to fetch users to %s" % roles_backup_path)
         with open(self.stderr_file(database), "w+") as stderr:
-            fetch_command = \
-                "| grep -P 'ALTER TABLE.*OWNER TO.*' | " \
-                "awk 'NF>1{print  substr($NF, 1, length($NF)-1)}' | uniq"
             if self.encryption:
-                encrypt = "openssl enc -aes-256-cbc -nosalt -d -pass " \
-                    "pass:'%s' < '%s' | %s/pg_restore " % \
-                          (self.key, database_backup_path, self.bin_path)
-                fetch_command = encrypt + fetch_command
+                openssl_cmd = ['openssl', 'enc', '-aes-256-cbc', '-nosalt', '-d',
+                               '-pass', 'pass:{}'.format(self.key)]
+                with open(database_backup_path, 'rb') as dump_file:
+                    openssl_proc = Popen(openssl_cmd, stdin=dump_file,
+                                        stdout=PIPE, stderr=stderr, shell=False)
+                pg_restore_proc = Popen(
+                    ['{}/pg_restore'.format(self.bin_path)],
+                    stdin=openssl_proc.stdout, stdout=PIPE, stderr=stderr, shell=False)
+                openssl_proc.stdout.close()
             else:
                 if int(self.parallel_jobs) > 1:
                     dump_version = self.get_pg_version_from_dump(path_for_parallel_flag_backup)
-                else:    
+                else:
                     dump_version = self.get_pg_version_from_dump(database_backup_path)
 
-                pg_restore_options = "-f - "
-                if dump_version[0] == 9 and dump_version[1] == 4:
-                    pg_restore_options = ""
-                
+                pg_restore_cmd = ['{}/pg_restore'.format(self.bin_path)]
+                if not (dump_version[0] == 9 and dump_version[1] == 4):
+                    pg_restore_cmd.append('-f')
+                    pg_restore_cmd.append('-')
                 if int(self.parallel_jobs) > 1:
-                    pg_restore_options += " -j {} ".format(self.parallel_jobs)
-                    fetch_command = ("%s/pg_restore '%s' %s" + fetch_command) % \
-                                    (self.bin_path, path_for_parallel_flag_backup, pg_restore_options)
+                    pg_restore_cmd.extend(['-j', str(self.parallel_jobs)])
+                    pg_restore_cmd.append(path_for_parallel_flag_backup)
                 else:
-                    fetch_command = ("%s/pg_restore '%s' %s" + fetch_command) % \
-                                    (self.bin_path, database_backup_path, pg_restore_options)
-            self.log.debug("Roles fetch command: %s." % fetch_command)
-            p = Popen(fetch_command, shell=True, stdout=PIPE, stderr=stderr)
-            output, err = p.communicate()
-            exit_code = p.returncode
+                    pg_restore_cmd.append(database_backup_path)
+                pg_restore_proc = Popen(pg_restore_cmd, stdout=PIPE, stderr=stderr, shell=False)
+
+            grep_proc = Popen(['grep', '-P', 'ALTER TABLE.*OWNER TO.*'],
+                              stdin=pg_restore_proc.stdout, stdout=PIPE, stderr=stderr, shell=False)
+            pg_restore_proc.stdout.close()
+            awk_proc = Popen(['awk', 'NF>1{print substr($NF, 1, length($NF)-1)}'],
+                             stdin=grep_proc.stdout, stdout=PIPE, stderr=stderr, shell=False)
+            grep_proc.stdout.close()
+            uniq_proc = Popen(['uniq'], stdin=awk_proc.stdout, stdout=PIPE, stderr=stderr, shell=False)
+            awk_proc.stdout.close()
+
+            output, _ = uniq_proc.communicate()
+            exit_code = uniq_proc.returncode
             self.log.info("Roles search result: {} type: {} . Exit code: {}".format(output, type(output), exit_code))
             if exit_code != 0:
                 raise backups.BackupFailedException(database, '\n'.join(
@@ -411,26 +422,36 @@ class PostgreSQLDumpWorker(Thread):
         with open(roles_backup_path, 'w+') as dump, \
                 open(self.stderr_file(database), "w+") as stderr:
             if roles:
-                cmd = "{}/pg_dumpall --roles-only -U {} --host {} --port {} {}" \
-                      "| grep -P '{}' ".format(self.bin_path,
-                                           configs.postgresql_user(),
-                                           configs.postgresql_host(),
-                                           configs.postgresql_port(),
-                                           configs.postgresql_no_role_password_flag(),
-                                           roles
-                                           )
-                                                           
+                pg_dumpall_cmd = ['{}/pg_dumpall'.format(self.bin_path),
+                                  '--roles-only',
+                                  '-U', configs.postgresql_user(),
+                                  '--host', configs.postgresql_host(),
+                                  '--port', configs.postgresql_port()]
+                no_role_pwd_flag = configs.postgresql_no_role_password_flag()
+                if no_role_pwd_flag:
+                    pg_dumpall_cmd.append(no_role_pwd_flag)
+
+                pg_dumpall_proc = Popen(pg_dumpall_cmd, stdout=PIPE, stderr=stderr, shell=False)
+                grep_proc = Popen(['grep', '-P', roles],
+                                  stdin=pg_dumpall_proc.stdout, stdout=PIPE, stderr=stderr, shell=False)
+                pg_dumpall_proc.stdout.close()
+
                 if self.encryption:
-                    encrypt_cmd = \
-                        "| openssl enc -aes-256-cbc -nosalt -pass" \
-                        " pass:'{}'".format(self.key)
-                    cmd = cmd + encrypt_cmd
-                p = Popen(cmd, shell=True, stdout=dump, stderr=stderr)
-                output, err = p.communicate()
-                self.log.debug("Fetch roles command: {}".format(cmd))
-                exit_code = p.returncode
+                    openssl_proc = Popen(
+                        ['openssl', 'enc', '-aes-256-cbc', '-nosalt',
+                         '-pass', 'pass:{}'.format(self.key)],
+                        stdin=grep_proc.stdout, stdout=dump, stderr=stderr, shell=False)
+                    grep_proc.stdout.close()
+                    openssl_proc.communicate()
+                    exit_code = openssl_proc.returncode
+                else:
+                    grep_output, _ = grep_proc.communicate()
+                    dump.write(grep_output.decode())
+                    exit_code = grep_proc.returncode
+
+                self.log.debug("Fetch roles: pg_dumpall | grep | {}".format(
+                    "openssl" if self.encryption else "dump"))
                 if exit_code != 0:
-                    # stderr.seek(0)
                     raise backups.BackupFailedException(
                         database, '\n'.join(stderr.readlines()))
             else:

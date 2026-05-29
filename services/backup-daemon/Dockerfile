@@ -14,7 +14,7 @@ RUN CGO_ENABLED=0 GOOS=$TARGETOS GOARCH=$TARGETARCH go build -o ./_output/bin/az
 
 FROM ubuntu:22.04
 
-ENV PGPASSWORD=password PG_CLUSTER_NAME=common STORAGE_ROOT=/backup-storage EXTERNAL_STORAGE_ROOT=/external \
+ENV PG_CLUSTER_NAME=common STORAGE_ROOT=/backup-storage EXTERNAL_STORAGE_ROOT=/external \
     LC_ALL=en_US.UTF-8 \
     LANG=en_US.UTF-8
 
@@ -41,7 +41,6 @@ RUN apt-get --no-install-recommends install -y comerr-dev \
                        postgresql-13 postgresql-14 postgresql-15 postgresql-16 postgresql-17 postgresql-18 \
                        jq \
                        openssl curl \
-                       vim \
                        locales
 RUN python3 -m pip install -U setuptools==82.0.1 wheel==0.47.0
 
