@@ -351,6 +351,12 @@ func (u *Upgrade) ProceedUpgrade(cr *v1.PatroniCore, cluster *v1.PatroniClusterS
 		return errors.New(errMsg)
 	}
 
+	patroniSpec := cr.Spec.Patroni
+	if err := u.CheckPVCSizeBeforeUpgrade(masterPodName, namespace, patroniSpec.Storage.Size); err != nil {
+		logger.Error("PVC space precheck failed, major upgrade will not be started", zap.Error(err))
+		return err
+	}
+
 	command = "pg_dumpall -v -U postgres -w --file=/tmp/test_db_dumpall.custom --schema-only"
 	_, _, err = u.helper.ExecCmdOnPatroniPod(masterPodName, namespace, command)
 	if err != nil {
@@ -377,15 +383,9 @@ func (u *Upgrade) ProceedUpgrade(cr *v1.PatroniCore, cluster *v1.PatroniClusterS
 		return err
 	}
 
-	patroniSpec := cr.Spec.Patroni
 	config, _ := u.helper.GetPatroniClusterConfig(cluster.PatroniUrl)
 	if !u.helper.IsPatroniClusterHealthy(config) {
 		return errors.New("patroni cluster is not healthy enough for upgrade procedure. Exiting")
-	}
-
-	if err := u.CheckPVCSizeBeforeUpgrade(masterPodName, namespace, patroniSpec.Storage.Size); err != nil {
-		logger.Error("PVC space precheck failed, major upgrade will not be started", zap.Error(err))
-		return err
 	}
 
 	//Scaling down powa deployment before upgrade
