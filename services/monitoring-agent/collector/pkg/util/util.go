@@ -94,7 +94,7 @@ func GetProtocol() (string, string) {
 }
 
 func GetSecret(filename string) string {
-	secretByte, err := os.ReadFile("/etc/monitoring-user-credentials/" + filename)
+	secretByte, err := os.ReadFile("/etc/secrets/monitoring-user-credentials/" + filename)
 	if err != nil {
 		log.Fatal("failed to read monitoring secret: ", err)
 	}
