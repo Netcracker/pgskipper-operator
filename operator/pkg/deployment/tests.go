@@ -143,6 +143,9 @@ func NewIntegrationTestsPod(cr *v1.PatroniServices, cluster *patroniv1.PatroniCl
 			pod.Spec.ImagePullSecrets = append(pod.Spec.ImagePullSecrets, corev1.LocalObjectReference{Name: name})
 		}
 	}
+	if testsSpec.AtpReport == nil || !testsSpec.AtpReport.Enabled {
+		setDirectRobotArgs(&pod.Spec.Containers[0], testsTags)
+	}
 	pod.Spec.Containers[0].Env = appendAtpEnvVarsServices(
 		pod.Spec.Containers[0].Env,
 		testsSpec,
@@ -270,6 +273,9 @@ func NewCoreIntegrationTests(cr *patroniv1.PatroniCore, cluster *patroniv1.Patro
 			pod.Spec.ImagePullSecrets = append(pod.Spec.ImagePullSecrets, corev1.LocalObjectReference{Name: name})
 		}
 	}
+	if testsSpec.AtpReport == nil || !testsSpec.AtpReport.Enabled {
+		setDirectRobotArgs(&pod.Spec.Containers[0], testsTags)
+	}
 	pod.Spec.Containers[0].Env = appendAtpEnvVarsCore(
 		pod.Spec.Containers[0].Env,
 		testsSpec,
@@ -277,6 +283,14 @@ func NewCoreIntegrationTests(cr *patroniv1.PatroniCore, cluster *patroniv1.Patro
 	)
 
 	return pod
+}
+
+func setDirectRobotArgs(container *corev1.Container, testsTags string) {
+	if testsTags == "" {
+		container.Args = []string{"robot", "-d", "/opt/robot/output", "/opt/robot/tests"}
+		return
+	}
+	container.Args = []string{"robot", "-i", testsTags, "-d", "/opt/robot/output", "/opt/robot/tests"}
 }
 
 func appendAtpEnvVarsServices(env []corev1.EnvVar, tests *v1.IntegrationTests, secretName string) []corev1.EnvVar {
