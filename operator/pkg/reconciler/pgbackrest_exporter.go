@@ -49,7 +49,9 @@ func (r *PgBackRestExporterReconciler) Reconcile() error {
 	}
 
 	//Adding SecurityContext
-	deployment.Spec.Template.Spec.Containers[0].SecurityContext = util.GetDefaultSecurityContext()
+	deployment.Spec.Template.Spec.Containers[0].SecurityContext = util.GetReadOnlyContainerSecurityContext()
+	deployment.Spec.Template.Spec.Volumes = append(deployment.Spec.Template.Spec.Volumes, util.GetTmpVolume())
+	deployment.Spec.Template.Spec.Containers[0].VolumeMounts = append(deployment.Spec.Template.Spec.Containers[0].VolumeMounts, util.GetTmpVolumeMount())
 
 	if err := r.helper.CreateOrUpdateDeploymentForce(deployment, false); err != nil {
 		logger.Error("error during creation of the PgBackRest Exporter deployment", zap.Error(err))

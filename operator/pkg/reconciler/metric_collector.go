@@ -113,7 +113,9 @@ func (r *MetricCollectorReconciler) Reconcile() error {
 	}
 
 	//Adding SecurityContext
-	monitoringDeployment.Spec.Template.Spec.Containers[0].SecurityContext = opUtil.GetDefaultSecurityContext()
+	monitoringDeployment.Spec.Template.Spec.Containers[0].SecurityContext = opUtil.GetReadOnlyContainerSecurityContext()
+	monitoringDeployment.Spec.Template.Spec.Volumes = append(monitoringDeployment.Spec.Template.Spec.Volumes, opUtil.GetTmpVolume())
+	monitoringDeployment.Spec.Template.Spec.Containers[0].VolumeMounts = append(monitoringDeployment.Spec.Template.Spec.Containers[0].VolumeMounts, opUtil.GetTmpVolumeMount())
 
 	if err := r.helper.CreateOrUpdateDeploymentForce(monitoringDeployment, true); err != nil {
 		logger.Error(fmt.Sprintf("Cannot create or update deployment %s", monitoringDeployment.Name), zap.Error(err))

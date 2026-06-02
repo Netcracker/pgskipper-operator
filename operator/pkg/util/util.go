@@ -39,6 +39,7 @@ import (
 	"golang.org/x/crypto/ssh"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/api/resource"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
 	utilruntime "k8s.io/apimachinery/pkg/util/runtime"
@@ -379,6 +380,44 @@ func GetDefaultSecurityContext() *corev1.SecurityContext {
 		}
 	}
 	return nil
+}
+
+func GetReadOnlyContainerSecurityContext() *corev1.SecurityContext {
+	falseValue := false
+	trueValue := true
+	if strings.ToLower(os.Getenv("GLOBAL_SECURITY_CONTEXT")) == "true" {
+		return &corev1.SecurityContext{
+			RunAsNonRoot: &trueValue,
+			SeccompProfile: &corev1.SeccompProfile{
+				Type: corev1.SeccompProfileTypeRuntimeDefault,
+			},
+			AllowPrivilegeEscalation: &falseValue,
+			ReadOnlyRootFilesystem:   &trueValue,
+			Capabilities: &corev1.Capabilities{
+				Drop: []corev1.Capability{"ALL"},
+			},
+		}
+	}
+	return nil
+}
+
+func GetTmpVolume() corev1.Volume {
+	limit := resource.MustParse("100Mi")
+	return corev1.Volume{
+		Name: "tmp",
+		VolumeSource: corev1.VolumeSource{
+			EmptyDir: &corev1.EmptyDirVolumeSource{
+				SizeLimit: &limit,
+			},
+		},
+	}
+}
+
+func GetTmpVolumeMount() corev1.VolumeMount {
+	return corev1.VolumeMount{
+		Name:      "tmp",
+		MountPath: "/tmp",
+	}
 }
 
 func FindCmInNamespaceByName(namespace string, name string) (*corev1.ConfigMap, error) {

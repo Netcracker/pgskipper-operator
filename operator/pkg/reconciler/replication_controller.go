@@ -66,7 +66,9 @@ func (r *RCReconciler) Reconcile() error {
 	}
 
 	//Adding SecurityContext
-	rcDeployment.Spec.Template.Spec.Containers[0].SecurityContext = opUtil.GetDefaultSecurityContext()
+	rcDeployment.Spec.Template.Spec.Containers[0].SecurityContext = opUtil.GetReadOnlyContainerSecurityContext()
+	rcDeployment.Spec.Template.Spec.Volumes = append(rcDeployment.Spec.Template.Spec.Volumes, opUtil.GetTmpVolume())
+	rcDeployment.Spec.Template.Spec.Containers[0].VolumeMounts = append(rcDeployment.Spec.Template.Spec.Containers[0].VolumeMounts, opUtil.GetTmpVolumeMount())
 
 	if cr.Spec.Tls != nil {
 		if cr.Spec.Tls.Enabled {

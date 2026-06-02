@@ -27,6 +27,7 @@ import (
 	"github.com/Netcracker/qubership-credential-manager/pkg/manager"
 	"go.uber.org/zap"
 	corev1 "k8s.io/api/core/v1"
+	"k8s.io/apimachinery/pkg/api/resource"
 )
 
 type PoolerReconciler struct {
@@ -103,7 +104,20 @@ func (r *PoolerReconciler) Reconcile() error {
 	}
 
 	//Adding SecurityContext
-	poolerDeployment.Spec.Template.Spec.Containers[0].SecurityContext = opUtil.GetDefaultSecurityContext()
+	poolerDeployment.Spec.Template.Spec.Containers[0].SecurityContext = opUtil.GetReadOnlyContainerSecurityContext()
+	pgbouncerLimit := resource.MustParse("10Mi")
+	pgbouncerVol := corev1.Volume{
+		Name: "pgbouncer-etc",
+		VolumeSource: corev1.VolumeSource{
+			EmptyDir: &corev1.EmptyDirVolumeSource{SizeLimit: &pgbouncerLimit},
+		},
+	}
+	poolerDeployment.Spec.Template.Spec.Volumes = append(poolerDeployment.Spec.Template.Spec.Volumes,
+		opUtil.GetTmpVolume(), pgbouncerVol)
+	poolerDeployment.Spec.Template.Spec.Containers[0].VolumeMounts = append(poolerDeployment.Spec.Template.Spec.Containers[0].VolumeMounts,
+		opUtil.GetTmpVolumeMount(),
+		corev1.VolumeMount{Name: "pgbouncer-etc", MountPath: "/etc/pgbouncer"},
+	)
 
 	if err = r.helper.CreateOrUpdateDeploymentForce(poolerDeployment, false); err != nil {
 		logger.Error("error during creation of the Pooler deployment", zap.Error(err))
