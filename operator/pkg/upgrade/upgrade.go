@@ -351,6 +351,12 @@ func (u *Upgrade) ProceedUpgrade(cr *v1.PatroniCore, cluster *v1.PatroniClusterS
 		return errors.New(errMsg)
 	}
 
+	patroniSpec := cr.Spec.Patroni
+	if err := u.CheckPVCSizeBeforeUpgrade(masterPodName, namespace, patroniSpec.Storage.Size); err != nil {
+		logger.Error("PVC space precheck failed, major upgrade will not be started", zap.Error(err))
+		return err
+	}
+
 	command = "pg_dumpall -v -U postgres -w --file=/tmp/test_db_dumpall.custom --schema-only"
 	_, _, err = u.helper.ExecCmdOnPatroniPod(masterPodName, namespace, command)
 	if err != nil {
@@ -377,7 +383,6 @@ func (u *Upgrade) ProceedUpgrade(cr *v1.PatroniCore, cluster *v1.PatroniClusterS
 		return err
 	}
 
-	patroniSpec := cr.Spec.Patroni
 	config, _ := u.helper.GetPatroniClusterConfig(cluster.PatroniUrl)
 	if !u.helper.IsPatroniClusterHealthy(config) {
 		return errors.New("patroni cluster is not healthy enough for upgrade procedure. Exiting")
@@ -714,4 +719,46 @@ func (u *Upgrade) CheckUpgrade(cr *v1.PatroniCore, cluster *v1.PatroniClusterSet
 	}
 
 	return currentVersion != targetVersion
+}
+
+func (u *Upgrade) CheckPVCSizeBeforeUpgrade(masterPodName string, namespace string, pvcSize string) error {
+	command := "du -sk /var/lib/pgsql/data/postgresql_${POD_IDENTITY} | awk '{print $1}'"
+
+	result, _, err := u.helper.ExecCmdOnPatroniPod(masterPodName, namespace, command)
+	if err != nil {
+		logger.Error("Can't check PostgreSQL data directory size before major upgrade", zap.Error(err))
+		return err
+	}
+
+	dbSizeKb, err := strconv.ParseInt(strings.TrimSpace(result), 10, 64)
+	if err != nil {
+		return fmt.Errorf("failed to parse DB size from du output %q: %w", result, err)
+	}
+
+	pvcQuantity, err := resource.ParseQuantity(pvcSize)
+	if err != nil {
+		return fmt.Errorf("failed to parse PVC size %q: %w", pvcSize, err)
+	}
+
+	dbSizeBytes := dbSizeKb * 1024
+	requiredBytes := dbSizeBytes * 2
+	pvcSizeBytes := pvcQuantity.Value()
+
+	if requiredBytes > pvcSizeBytes {
+		return fmt.Errorf(
+			"not enough PVC space for PostgreSQL major upgrade: DB size is %d bytes, PVC size is %d bytes, required at least %d bytes",
+			dbSizeBytes,
+			pvcSizeBytes,
+			requiredBytes,
+		)
+	}
+
+	logger.Info(fmt.Sprintf(
+		"PVC space precheck passed: DB size is %d bytes, PVC size is %d bytes, required at least %d bytes",
+		dbSizeBytes,
+		pvcSizeBytes,
+		requiredBytes,
+	))
+
+	return nil
 }
