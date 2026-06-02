@@ -148,27 +148,27 @@ Small means PostgreSQL `max_connections` equals to 250.
 
 Medium means PostgreSQL `max_connections` equals to 1000.
 
-| Module            | CPU      | RAM, Gi | Storage, Gb |
-|-------------------|----------|---------|-------------|
-| Patroni Cluster   | 2        | 4       | 100         |
-| Backup Daemon     | 1        | 1       | 50          |
-| DBaaS Adapter     | 0.2      | 0.06    | 0           |
-| Monitoring Agent  | 0.25     | 0.5     | 0           |
-| Postgres Exporter | 0.3      | 0.125   | 0           |
-| **Total**         | **6**    | **10**  | **250**     |
+| Module            | CPU     | RAM, Gi   | Storage, Gb |
+| ----------------- | ------- | --------- | ----------- |
+| Patroni Cluster   | 2       | 4         | 100         |
+| Backup Daemon     | 1       | 1         | 50          |
+| DBaaS Adapter     | 0.5     | 0.5       | 0           |
+| Monitoring Agent  | 0.25    | 0.5       | 0           |
+| Postgres Exporter | 0.3     | 0.125     | 0           |
+| **Total**         | **6.3** | **10.5**  | **250**     |
 
 ### Large
 
 Large means PostgreSQL `max_connections` equals to 2000.
 
-| Module            | CPU    | RAM, Gi  | Storage, Gb |
-|-------------------|--------|----------|-------------|
-| Patroni Cluster   | 4      | 8        | 200         |
-| Backup Daemon     | 3      | 3        | 50          |
-| DBaaS Adapter     | 0.2    | 0.06     | 0           |
-| Monitoring Agent  | 0.25   | 0.5      | 0           |
-| Postgres Exporter | 0.5    | 0.250    | 0           |
-| **Total**         | **12** | **20**   | **450**     |
+| Module            | CPU      | RAM, Gi   | Storage, Gb |
+| ----------------- | -------- | --------- | ----------- |
+| Patroni Cluster   | 4        | 8         | 200         |
+| Backup Daemon     | 3        | 3         | 50          |
+| DBaaS Adapter     | 0.5      | 0.5       | 0           |
+| Monitoring Agent  | 0.25     | 0.5       | 0           |
+| Postgres Exporter | 0.5      | 0.250     | 0           |
+| **Total**         | **12.3** | **20.5**  | **450**     |
 
 ### Storage Recommendations
 
