@@ -28,6 +28,10 @@ global:
 serviceAccount:
   create: true
   name: "patroni-sa"
+  automountToken: false
+
+debug:
+  allowPodExec: false
 
 operatorInit:
   image: ghcr.io/netcracker/qubership-credential-manager:main

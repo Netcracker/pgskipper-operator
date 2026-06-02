@@ -36,6 +36,7 @@ spec:
 {{ end }}
     spec:
       serviceAccountName: postgres-sa
+      automountServiceAccountToken: true
       {{ if .Values.operator.affinity }}
       affinity: {{ .Values.operator.affinity | toJson }}
       {{ else if .Values.affinity }}

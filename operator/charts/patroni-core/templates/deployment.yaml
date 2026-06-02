@@ -35,6 +35,7 @@ spec:
 {{ end }}
     spec:
       serviceAccountName: patroni-sa
+      automountServiceAccountToken: true
       {{ if .Values.operator.affinity }}
       affinity: {{ .Values.operator.affinity | toJson }}
       {{ else if .Values.affinity }}

@@ -5,7 +5,7 @@ override TAG_ENV = local
 endif
 
 ifndef DOCKER_NAMES
-override DOCKER_NAMES = ghcr.io/netcracker/pgskipper-docker-backup-daemon:${TAG_ENV}
+override DOCKER_NAMES = artifactorycn.netcracker.com:17009/netcracker/pgskipper-docker-backup-daemon:${TAG_ENV}
 endif
 
 sandbox-build: docker-build

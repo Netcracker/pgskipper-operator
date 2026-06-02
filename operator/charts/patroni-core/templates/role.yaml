@@ -15,7 +15,6 @@ rules:
   - services
   - persistentvolumeclaims
   - configmaps
-  - secrets
   - serviceaccounts
   verbs:
   - create
@@ -25,6 +24,17 @@ rules:
   - update
   - watch
   - delete
+- apiGroups:
+  - ""
+  resources:
+  - secrets
+  verbs:
+  - create
+  - get
+  - patch
+  - update
+  - delete
+{{ if .Values.debug.allowPodExec }}
 - apiGroups: [""]
   resources: ["pods/exec"]
   verbs:
@@ -35,6 +45,7 @@ rules:
   - watch
   - delete
   - create
+{{ end }}
 - apiGroups: [""]
   resources: ["pods", "pods/log"]
   verbs: ["get", "list"]
