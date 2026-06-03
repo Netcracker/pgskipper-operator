@@ -96,6 +96,4 @@ VOLUME /tmp
 
 EXPOSE 8080 8081 8082 9000
 
-USER 1001
-
 CMD ["bash", "/opt/backup/start_backup_daemon.sh"]
