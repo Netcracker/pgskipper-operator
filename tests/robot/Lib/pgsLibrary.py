@@ -783,12 +783,22 @@ class pgsLibrary(object):
 
     def pgbackrest_backup_exists(self, backup_id):
         try:
-            backups = self.get_pgbackrest_backup_list()
-            if backup_id in backups:
-                logging.info("PgBackRest backup %s found through backup daemon /list", backup_id)
+            response = requests.get(
+                f"{self._scheme}://postgres-backup-daemon:8080/backup/status/{backup_id}",
+                verify=False,
+                timeout=10
+            )
+            if response.status_code == 404:
+                logging.info("PgBackRest backup %s was not found through backup daemon /backup/status", backup_id)
+                return False
+            response.raise_for_status()
+            status = response.text.strip()
+            if status == "Backup Done":
+                logging.info("PgBackRest backup %s found through backup daemon /backup/status", backup_id)
                 return True
+            logging.info("PgBackRest backup %s is not ready yet. Backup daemon status: %s", backup_id, status)
         except Exception as e:
-            logging.info("Cannot check backup daemon list for PgBackRest backup %s: %s", backup_id, e)
+            logging.info("Cannot check backup daemon status for PgBackRest backup %s: %s", backup_id, e)
 
         status = self.get_pgbackrest_sidecar_backup_status(backup_id)
         if self._pgbackrest_backup_matches(backup_id, status):
