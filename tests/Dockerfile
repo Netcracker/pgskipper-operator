@@ -15,20 +15,23 @@ RUN set -x \
 
 RUN chmod -R g=u /etc/passwd && \
     mkdir /app && \
-    ln -s "${ROBOT_HOME}/tests" /test_runs
+    mkdir /test_runs
 
 COPY ./app/* /app/
+COPY robot /test_runs/
 COPY robot ${ROBOT_HOME}/tests
 COPY docker/uid_entrypoint /opt/uid_entrypoint
 COPY docker/robot-entrypoint.sh /opt/robot-entrypoint.sh
 
 RUN chgrp -R 0 /app && chmod g+w /app && \
+    chgrp -R 0 /test_runs && chmod -R g+w /test_runs && \
     chmod +x /opt/uid_entrypoint /opt/robot-entrypoint.sh && \
     chown -R 1000:0 "${ROBOT_HOME}" && chmod -R 775 "${ROBOT_HOME}"
 
 # Volumes are defined to support read-only root file system
 VOLUME /etc
 VOLUME /app
+VOLUME /test_runs
 VOLUME /tmp
 
 USER 1001
