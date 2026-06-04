@@ -28,5 +28,6 @@ Check Backup-daemon Installation Correctness
     When Check Daemon Replicas Count
     Then Backup-deamon Health Status Through Rest Is OK
 
-
-
+Test Container Hardening
+    [Tags]  basic
+    Check Container Hardening

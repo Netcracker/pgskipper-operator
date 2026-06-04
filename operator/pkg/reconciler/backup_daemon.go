@@ -99,6 +99,8 @@ func (r *BackupDaemonReconciler) Reconcile() error {
 
 	//Adding securityContexts
 	backupDaemonDeployment.Spec.Template.Spec.Containers[0].SecurityContext = util.GetDefaultSecurityContext()
+	backupDaemonDeployment.Spec.Template.Spec.Volumes = append(backupDaemonDeployment.Spec.Template.Spec.Volumes, util.GetTmpVolume())
+	backupDaemonDeployment.Spec.Template.Spec.Containers[0].VolumeMounts = append(backupDaemonDeployment.Spec.Template.Spec.Containers[0].VolumeMounts, util.GetTmpVolumeMount())
 
 	// External database Section
 	if cr.Spec.ExternalDataBase != nil {

@@ -151,6 +151,7 @@ func NewIntegrationTestsPod(cr *v1.PatroniServices, cluster *patroniv1.PatroniCl
 		testsSpec,
 		fmt.Sprintf("%s-atp-storage-secret", cr.Name),
 	)
+	addTestPodHardening(pod)
 
 	return pod
 }
@@ -281,6 +282,7 @@ func NewCoreIntegrationTests(cr *patroniv1.PatroniCore, cluster *patroniv1.Patro
 		testsSpec,
 		fmt.Sprintf("%s-atp-storage-secret", cr.Name),
 	)
+	addTestPodHardening(pod)
 
 	return pod
 }
@@ -291,6 +293,21 @@ func setDirectRobotArgs(container *corev1.Container, testsTags string) {
 		return
 	}
 	container.Args = []string{"robot", "-i", testsTags, "-d", "/opt/robot/output", "/opt/robot/tests"}
+}
+
+func addTestPodHardening(pod *corev1.Pod) {
+	pod.Spec.Containers[0].SecurityContext = util.GetReadOnlyContainerSecurityContext()
+	pod.Spec.Containers[0].Env = append(pod.Spec.Containers[0].Env,
+		corev1.EnvVar{Name: "PYTHONDONTWRITEBYTECODE", Value: "1"},
+	)
+	pod.Spec.Volumes = append(pod.Spec.Volumes,
+		util.GetTmpVolume(),
+		corev1.Volume{Name: "robot-output", VolumeSource: corev1.VolumeSource{EmptyDir: &corev1.EmptyDirVolumeSource{}}},
+	)
+	pod.Spec.Containers[0].VolumeMounts = append(pod.Spec.Containers[0].VolumeMounts,
+		util.GetTmpVolumeMount(),
+		corev1.VolumeMount{Name: "robot-output", MountPath: "/opt/robot/output"},
+	)
 }
 
 func appendAtpEnvVarsServices(env []corev1.EnvVar, tests *v1.IntegrationTests, secretName string) []corev1.EnvVar {
