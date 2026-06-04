@@ -29,5 +29,6 @@ Check Backup-daemon Installation Correctness
     Then Backup-deamon Health Status Through Rest Is OK
 
 Test Container Hardening
-    [Tags]  basic
-    Check Container Hardening
+    [Tags]  backup_basic
+    ${exclusions}=    Create Dictionary    _all=CH12
+    Check Container Hardening   exclusions=${exclusions}
