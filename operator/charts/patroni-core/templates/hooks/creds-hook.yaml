@@ -48,8 +48,15 @@ spec:
           {{ toYaml .Values.operatorInit.resources | nindent 10 }}
         securityContext:
           {{- include "restricted.globalContainerSecurityContext" . | nindent 10 }}
+        volumeMounts:
+          - name: tmp
+            mountPath: /tmp
       securityContext:
         {{- include "restricted.globalPodSecurityContext" . | nindent 8 }}
+      volumes:
+        - name: tmp
+          emptyDir:
+            sizeLimit: 100Mi
       {{- if .Values.privateRegistry.enabled }}
       imagePullSecrets:
       {{- range $i, $v := .Values.privateRegistry.secrets }}

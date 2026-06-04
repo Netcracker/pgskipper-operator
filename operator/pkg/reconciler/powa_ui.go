@@ -21,6 +21,8 @@ import (
 	"github.com/Netcracker/pgskipper-operator/pkg/powa"
 	"github.com/Netcracker/pgskipper-operator/pkg/util"
 	"go.uber.org/zap"
+	corev1 "k8s.io/api/core/v1"
+	"k8s.io/apimachinery/pkg/api/resource"
 )
 
 type PowaUIReconciler struct {
@@ -64,7 +66,17 @@ func (r *PowaUIReconciler) Reconcile() error {
 	}
 
 	//Adding SecurityContext
-	powaUIDeployment.Spec.Template.Spec.Containers[0].SecurityContext = util.GetDefaultSecurityContext()
+	powaUIDeployment.Spec.Template.Spec.Containers[0].SecurityContext = util.GetReadOnlyContainerSecurityContext()
+	powaUIDeployment.Spec.Template.Spec.Volumes = append(powaUIDeployment.Spec.Template.Spec.Volumes,
+		util.GetTmpVolume(),
+		getNginxCacheVolume(),
+		getNginxRunVolume(),
+	)
+	powaUIDeployment.Spec.Template.Spec.Containers[0].VolumeMounts = append(powaUIDeployment.Spec.Template.Spec.Containers[0].VolumeMounts,
+		util.GetTmpVolumeMount(),
+		getNginxCacheVolumeMount(),
+		getNginxRunVolumeMount(),
+	)
 
 	if err = r.helper.CreateOrUpdateDeploymentForce(powaUIDeployment, false); err != nil {
 		logger.Error("error during creation of the Powa deployment", zap.Error(err))
@@ -78,4 +90,32 @@ func (r *PowaUIReconciler) Reconcile() error {
 	}
 
 	return nil
+}
+
+func getNginxCacheVolume() corev1.Volume {
+	limit := resource.MustParse("10Mi")
+	return corev1.Volume{
+		Name: "nginx-cache",
+		VolumeSource: corev1.VolumeSource{
+			EmptyDir: &corev1.EmptyDirVolumeSource{SizeLimit: &limit},
+		},
+	}
+}
+
+func getNginxRunVolume() corev1.Volume {
+	limit := resource.MustParse("1Mi")
+	return corev1.Volume{
+		Name: "nginx-run",
+		VolumeSource: corev1.VolumeSource{
+			EmptyDir: &corev1.EmptyDirVolumeSource{SizeLimit: &limit},
+		},
+	}
+}
+
+func getNginxCacheVolumeMount() corev1.VolumeMount {
+	return corev1.VolumeMount{Name: "nginx-cache", MountPath: "/var/cache/nginx"}
+}
+
+func getNginxRunVolumeMount() corev1.VolumeMount {
+	return corev1.VolumeMount{Name: "nginx-run", MountPath: "/var/run"}
 }
