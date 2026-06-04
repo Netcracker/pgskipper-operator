@@ -6,7 +6,7 @@ permissions:
 
 on:
   schedule:
-    - cron: '0 1 * * *'
+    - cron: '0 21 * * *'
 
 jobs:
   Nightly-Pgskipper-Pipeline:
