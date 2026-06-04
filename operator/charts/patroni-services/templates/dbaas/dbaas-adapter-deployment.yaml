@@ -131,16 +131,6 @@ spec:
               value: {{ include "dbaas.pgHostRO" . }}
             - name: POSTGRES_PORT
               value: {{ default "5432" .Values.dbaas.pgPort | quote }}
-            # - name: DBAAS_ADAPTER_API_USER
-            #  valueFrom:
-            #    secretKeyRef:
-            #      name: dbaas-adapter-credentials
-            #      key: username
-            # - name: DBAAS_ADAPTER_API_PASSWORD
-            #  valueFrom:
-            #    secretKeyRef:
-            #      name: dbaas-adapter-credentials
-            #      key: password
             - name: DBAAS_AGGREGATOR_PHYSICAL_DATABASE_IDENTIFIER
               value: {{ .Values.dbaas.aggregator.physicalDatabaseIdentifier | default (printf "%s:%s" .Release.Namespace "postgres")}}
             - name: CLOUD_NAMESPACE

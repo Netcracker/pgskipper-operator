@@ -24,6 +24,7 @@ import (
 	"k8s.io/client-go/rest"
 	"os"
 	"strconv"
+	"strings"
 )
 
 const (
@@ -133,6 +134,14 @@ func GetEnvBool(key string, fallback bool) bool {
 		return bvalue
 	}
 	return fallback
+}
+
+func GetSecret(filename string) string {
+	secretByte, err := os.ReadFile("/etc/secrets/dbaas-adapter-credentials/" + filename)
+	if err != nil {
+		log.Fatal("failed to read dbaas-adapter secret: ", zap.Error(err))
+	}
+	return strings.TrimSpace(string(secretByte[:]))
 }
 
 func GetK8sClient() (*kubernetes.Clientset, error) {

@@ -38,6 +38,7 @@ const (
 	MetricCollectorUserCredentials = "monitoring-credentials"
 	influxDbAdminCredentials       = "influx-db-admin-credentials"
 	telegrafConfig                 = "telegraf-configmap"
+	PostgresUserCredentials        = "postgres-credentials"
 )
 
 func NewMonitoringDeployment(metricCollector *netcrackerv1.MetricCollector, pgcluster string, serviceAccountName string) *appsv1.Deployment {
@@ -94,6 +95,15 @@ func NewMonitoringDeployment(metricCollector *netcrackerv1.MetricCollector, pgcl
 								},
 							},
 						},
+						{
+							Name: "postgres-credentials",
+							VolumeSource: corev1.VolumeSource{
+								Secret: &corev1.SecretVolumeSource{
+									SecretName:  "postgres-credentials",
+									DefaultMode: ptr.To[int32](0400),
+								},
+							},
+						},
 					},
 					InitContainers: []corev1.Container{},
 					Containers: []corev1.Container{
@@ -113,21 +123,11 @@ func NewMonitoringDeployment(metricCollector *netcrackerv1.MetricCollector, pgcl
 								},
 								{
 									Name: "PG_ROOT_USER",
-									ValueFrom: &corev1.EnvVarSource{
-										SecretKeyRef: &corev1.SecretKeySelector{
-											LocalObjectReference: corev1.LocalObjectReference{Name: GetRootSecretName(pgcluster)},
-											Key:                  "username",
-										},
-									},
+									Value: "/etc/secrets/" + PostgresUserCredentials + "/pg-username",
 								},
 								{
 									Name: "PG_ROOT_PASSWORD",
-									ValueFrom: &corev1.EnvVarSource{
-										SecretKeyRef: &corev1.SecretKeySelector{
-											LocalObjectReference: corev1.LocalObjectReference{Name: GetRootSecretName(pgcluster)},
-											Key:                  "password",
-										},
-									},
+									Value: "/etc/secrets/" + PostgresUserCredentials + "/pg-password",
 								},
 								{
 									Name: "INFLUXDB_USER",
@@ -204,6 +204,11 @@ func NewMonitoringDeployment(metricCollector *netcrackerv1.MetricCollector, pgcl
 								{
 									MountPath: "/etc/secrets/influx-db-admin-credentials",
 									Name:      "influx-db-admin-credentials",
+									ReadOnly: true,
+								},
+								{
+									MountPath: "/etc/secrets/postgres-credentials",
+									Name:      "postgres-credentials",
 									ReadOnly: true,
 								},
 							},
