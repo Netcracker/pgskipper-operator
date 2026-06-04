@@ -30,13 +30,13 @@ Make Backup And Return ID
     Should Be Equal  ${resp.status_code}  ${202}
     Dictionary Should Contain Key    ${resp.json()}    backupId
     ${backup_id}=  Get From Dictionary    ${resp.json()}    backupId
-    [Return]  ${backup_id}
+    Return  ${backup_id}
 
 Check Existence Backup Files
     [Arguments]  ${last_backup_id}
     ${backup_pod}=  Get Pod Daemon
     ${files}=  Get Backup Files  ${backup_pod}  ${last_backup_id}
-    [Return]  ${files}
+    Return  ${files}
 
 *** Test Cases ***
 Check Scale Down Backup Daemon

@@ -79,7 +79,7 @@ Check Disabled Auth Regular Backup
     ${resp}=  Get On Session  postgres_backup_daemon  url=/restore/status/${restore_id}
     Should Be Equal  ${resp.status_code}  ${200}
     #delete backup and drop database after test
-    Execute Query  pg-${PG_CLUSTER_NAME}  DROP DATABASE IF EXISTS ${db_name}
+    Delete Test DB  ${db_name}
     ${resp}=  Get On Session  postgres_backup_daemon  url=/delete/${backup_id}?namespace=${name_space}
     Should Be Equal  ${resp.status_code}  ${200}
 

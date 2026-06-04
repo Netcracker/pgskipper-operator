@@ -11,7 +11,7 @@ Backup Database By Dbaas Adapter
     Should Be Equal As Strings  ${resp.status_code}  202
     Dictionary Should Contain Key  ${resp.json()}  trackId
     ${trackId}=  Get From Dictionary  ${resp.json()}  trackId
-    [Return]  ${trackId}
+    Return  ${trackId}
 
 Check Backup Status By Dbaas Adapter
     [Arguments]  ${trackId}
@@ -26,7 +26,7 @@ Restore Database By Dbaas Adapter
     Should Be Equal As Strings  ${resp.status_code}  202
     Dictionary Should Contain Key  ${resp.json()}  trackId
     ${trackId}=  Get From Dictionary  ${resp.json()}  trackId
-    [Return]  ${trackId}
+    Return  ${trackId}
 
 Check Restore Status By Dbaas Adapter
     [Arguments]  ${trackId}

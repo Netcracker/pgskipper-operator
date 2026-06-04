@@ -11,7 +11,7 @@ Check Master Reelection
     ${new_master}=   Get Master Pod Id
     Should Be True  '${new_master}' != '${None}'
     Should Be True  '${new_master}' != '${MASTER_POD_NAME}'
-    [Return]  ${new_master}
+    Return  ${new_master}
 
 
 *** Test Cases ***
