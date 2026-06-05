@@ -821,3 +821,7 @@ class pgsLibrary(object):
 
     def get_image_from_resource(self, type, name, container_name):
         return self.pl_lib.get_resource_image(type, name, self._namespace, container_name)
+
+    @keyword
+    def check_container_hardening(self, part_of=None, namespace=None, exclusions=None):
+        self.pl_lib.check_container_hardening(part_of=part_of, namespace=namespace or self._namespace, exclusions=exclusions)
