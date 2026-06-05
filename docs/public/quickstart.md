@@ -25,9 +25,6 @@ git clone git@github.com:Netcracker/pgskipper-operator.git
 cd postgres-operator
 ```
 Note that in `operator/charts` folder you can fide two separate `Helm Charts` named `patroni-core` and `patroni-services`  
-So for each of `Helm Chart` you can find the sample.yaml  
-Information of the services separation you can find in [Architecture Guide](architecture.md#postgres-operator)
-
 
 ## Storage configuration
 Before install, configure `patroni.storage` in ./operator/charts/patroni-core/patroni-core-quickstart-sample.yaml and `backupDaemon.storage` properties in ./operator/charts/patroni-services/patroni-services-quickstart-sample.yaml
