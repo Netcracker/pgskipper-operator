@@ -26,7 +26,7 @@ cd postgres-operator
 ```
 Note that in `operator/charts` folder you can fide two separate `Helm Charts` named `patroni-core` and `patroni-services`  
 So for each of `Helm Chart` you can find the sample.yaml  
-Information of the services separation you can find in [Architecture Guide](/docs/public/architecture.md#postgres-operator)
+Information of the services separation you can find in [Architecture Guide](architecture.md#postgres-operator)
 
 
 ## Storage configuration

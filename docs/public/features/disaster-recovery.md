@@ -4,9 +4,9 @@ This chapter describes how to deploy and use PostgreSQL in Disaster Recovery sch
 
 Postgres Service can be deployed in the Disaster Recovery (DR) scheme with clusters in `active` and `standby` modes using the configuration described in the section Active-Standby PostgreSQL Cluster Deployment Scheme in the _Postgres Operator Maintenance_ chapter. 
 
-For more information about the DR scheme, refer to the [PostgreSQL Service Installation Procedure](/docs/public/installation.md#active-standby-deployment-in-two-kubernetes-clusters-prerequisites).
+For more information about the DR scheme, refer to the [PostgreSQL Service Installation Procedure](../installation.md#active-standby-deployment-in-two-kubernetes-clusters-prerequisites).
 
-![Postgres Service DR Scheme](/docs/public/images/arch/pg-arch-on-prem-dr.png)
+![Postgres Service DR Scheme](../images/arch/pg-arch-on-prem-dr.png)
 
 In case of maintenance, switchover, or failover, promote the standby cluster to active by changing the configuration. 
 
@@ -21,7 +21,7 @@ Previously, this action was fully manual. Now there is a high level Site Manager
 # Prerequisites
 
 * In case of two separate Postgres services already installed on two Kubernetes or OpenShift clusters (also can be deployed on different namespaces of the one cloud)
-* Configuration below can be considered as additional part for [Installation Guide](/docs/public/installation.md)
+* Configuration below can be considered as additional part for [Installation Guide](../installation.md)
 * **Openshift 4.X** Postgres Operator limits should be set to `limits.cpu=100m`  and `limits.memory=100Mi`.
 * In case if `siteManager.httpAuth.enabled` is set to `true`, TokenReview rights should be granted to `postgres-sa` ServiceAccount in PostgreSQL Operator namespace.
 * `siteManager.httpAuth.smNamespace` should be specified if custom name for site-manager NS is used.
