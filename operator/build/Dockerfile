@@ -21,9 +21,7 @@ RUN --mount=type=cache,id=gomodcache,target=/go/pkg/mod \
 
 FROM alpine:3.23
 
-ENV OPERATOR=/usr/local/bin/postgres-operator \
-    USER_UID=1001 \
-    USER_NAME=postgres-operator
+ENV USER_UID=1001
 
 # Upgrade zlib to fix CVE-2026-22184 (CRITICAL) and CVE-2026-27171 (MEDIUM)
 # Temporal fix, will be removed when alpine will be fixed
@@ -36,6 +34,6 @@ COPY build/configs/ /opt/operator/
 
 RUN  /usr/local/bin/user_setup
 
-ENTRYPOINT ["/usr/local/bin/entrypoint"]
+ENTRYPOINT ["/usr/local/bin/postgres-operator"]
 
 USER ${USER_UID}
