@@ -110,7 +110,7 @@ func NewPatroniStatefulset(cr *patroniv1.PatroniCore, deploymentIdx int, cluster
 			},
 			Template: corev1.PodTemplateSpec{
 				ObjectMeta: metav1.ObjectMeta{
-					Labels: util.Merge(patroniLabels, patroniSpec.PodLabels),
+					Labels: util.Merge(patroniLabels, patroniSpec.PodLabels, map[string]string{"app.kubernetes.io/name": "pg-patroni-node"}),
 				},
 				Spec: corev1.PodSpec{
 					Volumes: []corev1.Volume{
