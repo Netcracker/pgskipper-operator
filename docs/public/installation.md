@@ -47,7 +47,7 @@ In case of Prometheus Monitoring stack deployment, deploy user should have the r
 ### Disaster Recovery
 
 For more information about prerequisites for PostgreSQL in Disaster Recovery Scheme, please, follow:
-[Disaster Recovery](/docs/public/features/disaster-recovery.md#prerequisites) section.
+[Disaster Recovery](features/disaster-recovery.md#prerequisites) section.
 
 ## Kubernetes
 
@@ -297,8 +297,8 @@ Patroni Core Operator allows configuration of TLS for PostgreSQL. By default, re
 | Parameter                                                      | Type     | Mandatory | Default value | Description                                                                                                                                                                                                                                                                                                                   |
 |----------------------------------------------------------------|----------|-----------|---------------|-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
 | tls.enabled                                                    | bool     | no        | false         | Indicates that TLS should be enabled or not.                                                                                                                                                                                                                                                                                  |
-| tls.certificateSecretName                                      | string   | no        | pg-cert       | Specifies the name of secret with certificate in PostgreSQL namespace. See [TLS Configuration](/docs/public/features/tls-configuration.md)                                                                                                                  |
-| tls.generateCerts.enabled                                      | bool     | yes       | false         | Specifies whether to generate SSL certificates by cert-manager or not. If `false` specified, follow [manual certificate configuration guid](/docs/public/features/tls-configuration.md#manual). |
+| tls.certificateSecretName                                      | string   | no        | pg-cert       | Specifies the name of secret with certificate in PostgreSQL namespace. See [TLS Configuration](features/tls-configuration.md)                                                                                                                  |
+| tls.generateCerts.enabled                                      | bool     | yes       | false         | Specifies whether to generate SSL certificates by cert-manager or not. If `false` specified, follow [manual certificate configuration guid](features/tls-configuration.md#manual). |
 | tls.generateCerts.duration                                     | int      | no        | 365           | Specifies SSL certificate validity duration in days. The default value is 365.                                                                                                                                                                                                                                                |
 | tls.generateCerts.subjectAlternativeName.additionalDnsNames    | []string | no        | n/a           | Specifies the list of additional DNS names to be added to the "Subject Alternative Name" field of SSL certificate. If access to Postgres Service for external clients is enabled, DNS names from externalHostNames parameter must be specified in here.                                                                       |
 | tls.generateCerts.subjectAlternativeName.additionalIpAddresses | []string | no        | n/a           | Specifies the list of additional IP addresses to be added to the "Subject Alternative Name" field of SSL certificate. If access to Postgres Service for external clients is enabled, IP addresses from externalHostNames parameter must be specified in here.                                                                 |
@@ -502,7 +502,7 @@ This sections describes all possible deploy parameters for PostgreSQL DBaaS Adap
 dbaas:
   pgHost: pg-patroni-external.<PG namespace>
 ```
-For more info, please visit the following article regarding disaster recovery - [Disaster Recovery](/docs/public/features/disaster-recovery.md)
+For more info, please visit the following article regarding disaster recovery - [Disaster Recovery](features/disaster-recovery.md)
 
 ## siteManager
 
@@ -535,7 +535,7 @@ This sections describes all possible deploy parameters to run Integration Tests 
 
 ## Integration tests and ATP storage
 
-Integration test settings live under `tests` in the Helm values for **patroni-core** and **patroni-services** (see [`operator/charts/patroni-core/values.yaml`](operator/charts/patroni-core/values.yaml) and [`operator/charts/patroni-services/values.yaml`](operator/charts/patroni-services/values.yaml)). The test image is based on [qubership-docker-integration-tests](https://github.com/Netcracker/qubership-docker-integration-tests).
+Integration test settings live under `tests` in the Helm values for **patroni-core** and **patroni-services** (see [`operator/charts/patroni-core/values.yaml`](../../operator/charts/patroni-core/values.yaml) and [`operator/charts/patroni-services/values.yaml`](../../operator/charts/patroni-services/values.yaml)). The test image is based on [qubership-docker-integration-tests](https://github.com/Netcracker/qubership-docker-integration-tests).
 
 ATP-related Helm values are `atpReport` (with nested `atpReport.atpStorage`), `atpReportViewUiUrl`, and `environmentName`. The chart maps them into the Custom Resource and the operator sets the usual `ATP_*` and `ENVIRONMENT_NAME` environment variables on the integration test pod.
 
@@ -656,7 +656,7 @@ This sections describes all possible deploy parameters for Query Exporter compon
 | queryExporter.pgPassword                                         | string                                                                          | no        | PaSsw0rDfoRExporT3r                                | Specifies password for postgres exporter user.                                                                                                                                                                  |
 | queryExporter.maxMasterConnections                                  | int                                                                          | no        | 10                                                 | Specifies the number of simultaneous connections for master database.                                                                                                                                                        |
 | queryExporter.maxLogicalConnections                                  | int                                                                          | no        | 1                                                 | Specifies the number of simultaneous connections for non-master databases.                                                                                                                                                        |
-| queryExporter.selfMonitorDisabled                                | bool                                                                          | no        | false                                              | Specifies if self monitor metrics is disabled.                                                                                                                                                   | queryExporter.customQueries.enabled                              | bool                                                                            | no        | false                                              | Specifies the Query Exporter custom queries feature. [Custom queries watcher](/docs/public/features/query-exporter.md#custom-queries).                                                                                 |
+| queryExporter.selfMonitorDisabled                                | bool                                                                          | no        | false                                              | Specifies if self monitor metrics is disabled.                                                                                                                                                   | queryExporter.customQueries.enabled                              | bool                                                                            | no        | false                                              | Specifies the Query Exporter custom queries feature. [Custom queries watcher](features/query-exporter.md#custom-queries).                                                                                 |
 | queryExporter.customQueries.namespacesList                       | []string                                                                        | no        | n/a                                                | Specifies the list of Namespaces for Query Exporter query watcher.                                                                                                                                           |
 | queryExporter.customQueries.labels                               | map[string]string                                                               | no        | n/a                                                | Specifies the map of labels for config maps for watching.                                                                                                                                    |
 | queryExporter.excludeQueries                                     | []string                                                                          | no        | n/a                                                | Specifies query list for exclusion from queries list.                                                                                                                                                             | queryExporter.collectionInterval                     | int                                                                               | no        | 60            | Specifies default interval in seconds to execute queries.                                                                                                                                 |
@@ -736,8 +736,8 @@ Postgres Operator allows configuration of TLS for supplementary and other compon
 | Parameter                                                      | Type     | Mandatory | Default value    | Description                                                                                                                                                                                                                                                                                                                   |
 |----------------------------------------------------------------|----------|-----------|------------------|-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
 | tls.enabled                                                    | bool     | no        | false            | Indicates that TLS should be enabled or not.                                                                                                                                                                                                                                                                                  |
-| tls.certificateSecretName                                      | string   | no        | pg-cert | Specifies the name of secret with certificate in PostgreSQL namespace. See [TLS Configuration](/docs/features/tls-configuration.md)                                                                                                                  |
-| tls.generateCerts.enabled                                      | bool     | yes       | false            | Specifies whether to generate SSL certificates by cert-manager or not. If `false` specified, follow [manual certificate configuration guid](/docs/features/tls-configuration.md#manual). |
+| tls.certificateSecretName                                      | string   | no        | pg-cert | Specifies the name of secret with certificate in PostgreSQL namespace. See [TLS Configuration](features/tls-configuration.md)                                                                                                                  |
+| tls.generateCerts.enabled                                      | bool     | yes       | false            | Specifies whether to generate SSL certificates by cert-manager or not. If `false` specified, follow [manual certificate configuration guid](features/tls-configuration.md#manual). |
 | tls.generateCerts.duration                                     | int      | no        | 365              | Specifies SSL certificate validity duration in days. The default value is 365.                                                                                                                                                                                                                                                |
 | tls.generateCerts.subjectAlternativeName.additionalDnsNames    | []string | no        | n/a              | Specifies the list of additional DNS names to be added to the "Subject Alternative Name" field of SSL certificate. If access to Postgres Service for external clients is enabled, DNS names from externalHostNames parameter must be specified in here.                                                                       |
 | tls.generateCerts.subjectAlternativeName.additionalIpAddresses | []string | no        | n/a              | Specifies the list of additional IP addresses to be added to the "Subject Alternative Name" field of SSL certificate. If access to Postgres Service for external clients is enabled, IP addresses from externalHostNames parameter must be specified in here.                                                                 |
@@ -773,7 +773,7 @@ Patroni Core Operator allows configuration of TLS for PostgreSQL. By default, re
 
 ### Helm
 
-For pure installation, please, follow [Quick Start Guide](/docs/public/quickstart.md).
+For pure installation, please, follow [Quick Start Guide](quickstart.md).
 
 ## On-prem
 
@@ -832,11 +832,11 @@ dbaas:
 
 ### DR scheme
 
-For more information about DR scheme, please, follow [Disaster Recovery](/docs/public/features/disaster-recovery.md) document.
+For more information about DR scheme, please, follow [Disaster Recovery](features/disaster-recovery.md) document.
 
-An example of parameters for [Active Cluster](/docs/public/features/disaster-recovery.md#active-postgres-service-on-cluster-1).
+An example of parameters for [Active Cluster](features/disaster-recovery.md#active-postgres-service-on-cluster-1).
 
-An example of parameters for [Standby Cluster](/docs/public/features/disaster-recovery.md#standby-postgres-service-on-cluster-2).
+An example of parameters for [Standby Cluster](features/disaster-recovery.md#standby-postgres-service-on-cluster-2).
 
 ### Non-HA scheme
 
@@ -848,7 +848,7 @@ Same as [HA Scheme](#ha-scheme), but `patroni.replicas` parameter should be set 
 
 ## Major Upgrade of PostgreSQL
 
-For more information on how to do the Major Upgrade of PostgreSQL, please, follow [Major Upgrade](/docs/public/features/major-upgrade.md) document.
+For more information on how to do the Major Upgrade of PostgreSQL, please, follow [Major Upgrade](features/major-upgrade.md) document.
 
 # Appendix
 
