@@ -52,11 +52,11 @@ jobs:
   Hardening-Tests:
     if: ${{ github.actor != 'dependabot[bot]' && github.event.pull_request.user.login != 'dependabot[bot]' }}
     needs: Wait-for-images
-    uses: Netcracker/qubership-test-pipelines/.github/workflows/pgskipper.yaml@feature/apps-hardening-scan
+    uses: Netcracker/qubership-test-pipelines/.github/workflows/pgskipper.yaml@3e4193378da5730d7b96d3a625d22a158d5e8372 # v1.12.0
     with:
       repository_name: ${{ github.repository }}
       service_branch: '${{ github.head_ref || github.ref_name }}'
-      pipeline_branch: 'feature/apps-hardening-scan' #this value must match the value after '@' in 'uses'
+      pipeline_branch: '3e4193378da5730d7b96d3a625d22a158d5e8372' #this value must match the value after '@' in 'uses'
       skip_tests: false
       scope: 'hardening'
     secrets:
