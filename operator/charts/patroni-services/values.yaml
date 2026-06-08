@@ -224,6 +224,7 @@ backupDaemon:
     #      - postgresql-backup-pv-1
     # The array of node-selectors that will be used for deployment.
     # storage.nodes can be used only if storage.type is set to PV
+    s3Aliases: []
 #    nodes:
 #      - db-backup-node1
 
