@@ -300,6 +300,7 @@ type BackupDaemon struct {
 	SecurityContext        v1.PodSecurityContext    `json:"securityContext,omitempty"`
 	PriorityClassName      string                   `json:"priorityClassName,omitempty"`
 	S3Storage              *S3Storage               `json:"s3Storage,omitempty"`
+	S3AliasesUsed          bool                     `json:"s3AliasesUsed,omitempty"`
 	PodLabels              map[string]string        `json:"podLabels,omitempty"`
 	ExternalPv             *ExternalPv              `json:"externalPv,omitempty"`
 	SslMode                string                   `json:"sslMode,omitempty"`

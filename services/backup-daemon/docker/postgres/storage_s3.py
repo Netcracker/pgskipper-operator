@@ -114,21 +114,21 @@ class AwsS3Storage(storage.Storage):
         self.__log.info("Start uploading: %s" % filename)
         # todo[anin] replace implementation
         # AwsS3Vault.get_s3_client().upload_fileobj(data, CONTAINER, filename)
-        AwsS3Vault.get_s3_client().upload_file(fs_filename, CONTAINER, filename)
+        AwsS3Vault.get_s3_client().upload_file(fs_filename, AwsS3Vault.get_s3_bucket_name(), filename)
         os.remove(fs_filename)
         return sha256.hexdigest()
 
     @retry(stop_max_attempt_number=RETRY_COUNT, wait_fixed=RETRY_WAIT)
     def prot_get_as_stream(self, filename):
         self.__log.info("Get stream request for file: %s" % self.aws_prefix + filename)
-        object_body = AwsS3Vault.get_s3_resource().Bucket(CONTAINER).Object(self.aws_prefix + filename).get()['Body']
+        object_body = AwsS3Vault.get_s3_resource().Bucket(AwsS3Vault.get_s3_bucket_name()).Object(self.aws_prefix + filename).get()['Body']
         return StreamWrapper(object_body)
 
     @retry(stop_max_attempt_number=RETRY_COUNT, wait_fixed=RETRY_WAIT)
     def prot_delete_bundle(self, filename):
-        objects_to_delete = AwsS3Vault.get_s3_client().list_objects(Bucket=CONTAINER, Prefix=self.aws_prefix + filename)
+        objects_to_delete = AwsS3Vault.get_s3_client().list_objects(Bucket=AwsS3Vault.get_s3_bucket_name(), Prefix=self.aws_prefix + filename)
         for obj in objects_to_delete.get('Contents', []):
-            AwsS3Vault.get_s3_client().delete_object(Bucket=CONTAINER, Key=obj['Key'])
+            AwsS3Vault.get_s3_client().delete_object(Bucket=AwsS3Vault.get_s3_bucket_name(), Key=obj['Key'])
 
     def prot_delete(self, filename):
         self.prot_delete_bundle(filename)
@@ -136,7 +136,7 @@ class AwsS3Storage(storage.Storage):
     def prot_is_file_exists(self, filename):
         exists = True
         try:
-            AwsS3Vault.get_s3_resource().Object(CONTAINER, self.aws_prefix + filename).get()
+            AwsS3Vault.get_s3_resource().Object(AwsS3Vault.get_s3_bucket_name(), self.aws_prefix + filename).get()
         except botocore.exceptions.ClientError as e:
             if e.response['Error']['Code'] == 'NoSuchKey':
                 exists = False
@@ -147,7 +147,7 @@ class AwsS3Storage(storage.Storage):
 
     def prot_get_file_size(self, filename):
         if self.prot_is_file_exists(filename):
-            return int(AwsS3Vault.get_s3_resource().Object(CONTAINER, filename).get()['Size'])
+            return int(AwsS3Vault.get_s3_resource().Object(AwsS3Vault.get_s3_bucket_name(), filename).get()['Size'])
         return 0
 
     def is_valid_backup_id(self, backup_id):
@@ -159,7 +159,7 @@ class AwsS3Storage(storage.Storage):
 
     @retry(stop_max_attempt_number=RETRY_COUNT, wait_fixed=RETRY_WAIT)
     def list(self):
-        bucket = AwsS3Vault.get_s3_client().list_objects(Bucket=CONTAINER)
+        bucket = AwsS3Vault.get_s3_client().list_objects(Bucket=AwsS3Vault.get_s3_bucket_name())
         aws_s3_vault_listing = []
         if 'Contents' in bucket:
             # Collect backups ids only
@@ -169,7 +169,7 @@ class AwsS3Storage(storage.Storage):
 
         vaults = [
             AwsS3Vault(backup_id
-                       , bucket=CONTAINER
+                       , bucket=AwsS3Vault.get_s3_bucket_name()
                        , cluster_name=PG_CLUSTER_NAME
                        , cache_enabled=True
                        , aws_s3_bucket_listing=(bucket['Contents'] if 'Contents' in bucket else None))
@@ -180,7 +180,7 @@ class AwsS3Storage(storage.Storage):
     def size(self):
         """ Returns whole storage size in bytes """
         total_size = 0
-        bucket = AwsS3Vault.get_s3_client().list_objects(Bucket=CONTAINER)
+        bucket = AwsS3Vault.get_s3_client().list_objects(Bucket=AwsS3Vault.get_s3_bucket_name())
 
         if 'Contents' not in bucket:
             return 0
@@ -192,7 +192,7 @@ class AwsS3Storage(storage.Storage):
     def archive_size(self):
         """ Returns whole storage size in bytes """
         total_size = 0
-        bucket = AwsS3Vault.get_s3_client().list_objects(Bucket=CONTAINER, Prefix="archive/")
+        bucket = AwsS3Vault.get_s3_client().list_objects(Bucket=AwsS3Vault.get_s3_bucket_name(), Prefix="archive/")
 
         if 'Contents' not in bucket:
             return 0
@@ -211,7 +211,7 @@ class AwsS3Storage(storage.Storage):
         :return:
         :rtype: (str, dict, StringIO)
         """
-        return AwsS3Vault("%s" % (datetime.now().strftime(VAULT_NAME_FORMAT)), CONTAINER, cluster_name=PG_CLUSTER_NAME)
+        return AwsS3Vault("%s" % (datetime.now().strftime(VAULT_NAME_FORMAT)), AwsS3Vault.get_s3_bucket_name(), cluster_name=PG_CLUSTER_NAME)
 
     def evict_vault(self, vault):
         self.__log.info("Evict vault: %s" % vault)
@@ -224,7 +224,7 @@ class AwsS3Storage(storage.Storage):
             return "Not Found"
 
     def prot_list_archive(self):
-        bucket = AwsS3Vault.get_s3_client().list_objects(Bucket=CONTAINER, Prefix="archive/", Delimiter="/")
+        bucket = AwsS3Vault.get_s3_client().list_objects(Bucket=AwsS3Vault.get_s3_bucket_name(), Prefix="archive/", Delimiter="/")
         aws_s3_archive_listing = []
         if 'Contents' in bucket:
             # Collect archive ids only
@@ -257,13 +257,37 @@ class AwsS3Vault(storage.Vault):
     __log = logging.getLogger("AwsS3Vault")
 
     @staticmethod
+    def get_s3_alias_config():
+        if os.getenv("S3_ALIASES_USED", "false").lower() != "true":
+            return None
+
+        with open("/aliases/s3_aliases.json", "r") as f:
+            aliases = json.load(f)
+
+        if not aliases:
+            raise Exception("S3 aliases are enabled, but /aliases/s3_aliases.json is empty")
+
+        alias_name = next(iter(aliases))
+        return aliases[alias_name]
+
+    @staticmethod
+    def get_s3_bucket_name():
+        alias = AwsS3Vault.get_s3_alias_config()
+        if alias:
+            return alias.get("bucketName")
+        return CONTAINER
+
+    @staticmethod
     def get_s3_resource():
-        return boto3.resource("s3",
-                              region_name=os.getenv("AWS_DEFAULT_REGION") if os.getenv("AWS_DEFAULT_REGION") else None,
-                              endpoint_url=os.getenv("AWS_S3_ENDPOINT_URL"),
-                              aws_access_key_id=os.getenv("AWS_ACCESS_KEY_ID"),
-                              aws_secret_access_key=os.getenv("AWS_SECRET_ACCESS_KEY"),
-                              verify=(False if os.getenv("AWS_S3_UNTRUSTED_CERT", "false").lower() == "true" else None))
+        alias = AwsS3Vault.get_s3_alias_config()
+        return boto3.resource(
+            "s3",
+            region_name=alias.get("region") if alias else (os.getenv("AWS_DEFAULT_REGION") if os.getenv("AWS_DEFAULT_REGION") else None),
+            endpoint_url=alias.get("s3Url") if alias else os.getenv("AWS_S3_ENDPOINT_URL"),
+            aws_access_key_id=alias.get("accessKeyId") if alias else os.getenv("AWS_ACCESS_KEY_ID"),
+            aws_secret_access_key=alias.get("accessKeySecret") if alias else os.getenv("AWS_SECRET_ACCESS_KEY"),
+            verify=(False if os.getenv("AWS_S3_UNTRUSTED_CERT", "false").lower() == "true" else None),
+        )
 
     @staticmethod
     def get_s3_client():

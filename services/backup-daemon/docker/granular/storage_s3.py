@@ -20,6 +20,7 @@ import urllib3
 import os
 import logging
 import configs
+import json
 from retrying import retry
 
 try:
@@ -38,10 +39,31 @@ urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
 class AwsS3Vault:
     __log = logging.getLogger("AwsS3Granular")
 
+    @staticmethod
+    def get_s3_alias_config():
+        if os.getenv("S3_ALIASES_USED", "false").lower() != "true":
+            return None
+
+        with open("/aliases/s3_aliases.json", "r") as f:
+            aliases = json.load(f)
+
+        if not aliases:
+            raise Exception("S3 aliases are enabled, but /aliases/s3_aliases.json is empty")
+
+        alias_name = next(iter(aliases))
+        return aliases[alias_name]
+
+    @staticmethod
+    def get_s3_bucket_name():
+        alias = AwsS3Vault.get_s3_alias_config()
+        if alias:
+            return alias.get("bucketName")
+        return os.getenv("CONTAINER") or os.getenv("AWS_S3_BUCKET") or os.getenv("S3_BUCKET")
+
     def __init__(self, cluster_name=None, cache_enabled=False,
                  aws_s3_bucket_listing=None, prefix=None):
 
-        self.bucket = bucket or os.getenv("CONTAINER") or os.getenv("AWS_S3_BUCKET") or os.getenv("S3_BUCKET")
+        self.bucket = AwsS3Vault.get_s3_bucket_name()
         self.console = None
         self.cluster_name = cluster_name
         self.cache_enabled = cache_enabled
@@ -56,12 +78,15 @@ class AwsS3Vault:
             raise ValueError("S3 bucket is not configured. Set one of CONTAINER, AWS_S3_BUCKET, or S3_BUCKET.")
 
     def get_s3_client(self):
-        return boto3.client("s3",
-                            region_name=os.getenv("AWS_DEFAULT_REGION") if os.getenv("AWS_DEFAULT_REGION") else None,
-                            endpoint_url=os.getenv("AWS_S3_ENDPOINT_URL"),
-                            aws_access_key_id=os.getenv("AWS_ACCESS_KEY_ID"),
-                            aws_secret_access_key=os.getenv("AWS_SECRET_ACCESS_KEY"),
-                            verify=(False if os.getenv("AWS_S3_UNTRUSTED_CERT", "false").lower() == "true" else None))
+        alias = AwsS3Vault.get_s3_alias_config()
+        return boto3.client(
+            "s3",
+            region_name=alias.get("region") if alias else (os.getenv("AWS_DEFAULT_REGION") if os.getenv("AWS_DEFAULT_REGION") else None),
+            endpoint_url=alias.get("s3Url") if alias else os.getenv("AWS_S3_ENDPOINT_URL"),
+            aws_access_key_id=alias.get("accessKeyId") if alias else os.getenv("AWS_ACCESS_KEY_ID"),
+            aws_secret_access_key=alias.get("accessKeySecret") if alias else os.getenv("AWS_SECRET_ACCESS_KEY"),
+            verify=(False if os.getenv("AWS_S3_UNTRUSTED_CERT", "false").lower() == "true" else None),
+        )
 
     @retry(stop_max_attempt_number=RETRY_COUNT, wait_fixed=RETRY_WAIT)
     def upload_file(self, file_path, blob_path=None, backup_id=None):
