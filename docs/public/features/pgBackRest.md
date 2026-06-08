@@ -13,7 +13,7 @@ About pgBackRest [Official docs](https://pgbackrest.org/).
 
 In our case pgBackRest included into `Sidecar` container with web server onboard and provides REST API.
 
-![pgbackrest](/docs/public/images/features/pgbackrest.png)
+![pgbackrest](../images/features/pgbackrest.png)
 
 # How to deploy
 

@@ -57,11 +57,7 @@ spec:
               cpu: {{ default "50m" .Values.operator.resources.requests.cpu }}
               memory: {{ default "50Mi" .Values.operator.resources.requests.memory  }}
           securityContext:
-            {{- if .Values.GLOBAL_SECURITY_CONTEXT }}
-            allowPrivilegeEscalation: false
-            capabilities:
-              drop: ["ALL"]
-            {{- end }}
+            {{- include "restricted.globalContainerSecurityContext" . | nindent 12 }}
           volumeMounts:
             - name: tmp
               mountPath: /tmp
