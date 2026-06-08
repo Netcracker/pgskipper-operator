@@ -427,15 +427,15 @@ func (u *Upgrade) ProceedUpgrade(cr *v1.PatroniCore, cluster *v1.PatroniClusterS
 
 	logger.Info(fmt.Sprintf("Leader name is %s", leaderName))
 	deploymentIdx, _ := strconv.Atoi(leaderName[len(leaderName)-1:])
-	patroniDeployment := deployment.NewPatroniStatefulset(cr, deploymentIdx, cluster.ClusterName,
+	patroniSfs := deployment.NewPatroniStatefulset(cr, deploymentIdx, cluster.ClusterName,
 		cluster.PatroniTemplate, cluster.PostgreSQLUserConf, cluster.PatroniLabels)
 	upgradePod := u.getUpgradePod(cr, leaderName, initDbArgs, cr.Upgrade.DockerUpgradeImage)
 
 	// copy nodeSelector, Volumes, SecurityContext from Deployment
-	upgradePod.Spec.NodeSelector = patroniDeployment.Spec.Template.Spec.NodeSelector
-	upgradePod.Spec.Volumes = patroniDeployment.Spec.Template.Spec.Volumes
-	upgradePod.Spec.Containers[0].VolumeMounts = patroniDeployment.Spec.Template.Spec.Containers[0].VolumeMounts
-	upgradePod.Spec.SecurityContext = patroniDeployment.Spec.Template.Spec.SecurityContext
+	upgradePod.Spec.NodeSelector = patroniSfs.Spec.Template.Spec.NodeSelector
+	upgradePod.Spec.Volumes = patroniSfs.Spec.Template.Spec.Volumes
+	upgradePod.Spec.Containers[0].VolumeMounts = patroniSfs.Spec.Template.Spec.Containers[0].VolumeMounts
+	upgradePod.Spec.SecurityContext = patroniSfs.Spec.Template.Spec.SecurityContext
 
 	// create pod and wait till completed
 	if err := u.helper.CreatePod(upgradePod); err != nil {
@@ -456,7 +456,7 @@ func (u *Upgrade) ProceedUpgrade(cr *v1.PatroniCore, cluster *v1.PatroniClusterS
 	}
 
 	// upgrade completed, apply patroni deployment
-	if err := u.helper.CreateOrUpdateStatefulset(patroniDeployment, true); err != nil {
+	if err := u.helper.CreateOrUpdateStatefulset(patroniSfs, true); err != nil {
 		logger.Error("Can't update Patroni deployment", zap.Error(err))
 		return err
 	}

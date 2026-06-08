@@ -429,7 +429,6 @@ func (rm *ResourceManager) CreateOrUpdateStatefulset(statefulSet *appsv1.Statefu
 	if err != nil && errors.IsNotFound(err) {
 		logger.Info(fmt.Sprintf("Creating %s k8s StatefulSet", statefulSet.Name))
 		statefulSet.Labels = rm.getLabels(statefulSet.ObjectMeta)
-		statefulSet.Spec.Template.Labels = util.Merge(statefulSet.Spec.Template.Labels, map[string]string{"app.kubernetes.io/name": "pg-patroni-node"})
 		statefulSet.OwnerReferences = rm.GetOwnerReferences()
 		err = rm.kubeClient.Create(context.TODO(), statefulSet)
 		if err != nil {
