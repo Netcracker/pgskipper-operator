@@ -722,22 +722,18 @@ class PostgreSQLRestoreWorker(Thread):
         if not self.s3:
             return
 
-        keep_files = {
-            "{}.json".format(self.tracking_id)
-        }
-
         for file_name in os.listdir(self.backup_dir):
-            if file_name in keep_files:
-                continue
+                if file_name.endswith(".json"):
+                    continue
 
-            file_path = os.path.join(self.backup_dir, file_name)
+                file_path = os.path.join(self.backup_dir, file_name)
 
-            try:
-                if os.path.isfile(file_path) or os.path.islink(file_path):
-                    os.remove(file_path)
-                elif os.path.isdir(file_path):
-                    shutil.rmtree(file_path)
-            except Exception as e:
-                self.log.warning(
-                    self.log_msg("Failed to remove temporary restore file {}: {}".format(file_path, e))
-                )
+                try:
+                    if os.path.isfile(file_path) or os.path.islink(file_path):
+                        os.remove(file_path)
+                    elif os.path.isdir(file_path):
+                        shutil.rmtree(file_path)
+                except Exception as e:
+                    self.log.warning(
+                        self.log_msg("Failed to remove temporary restore file {}: {}".format(file_path, e))
+                    )
