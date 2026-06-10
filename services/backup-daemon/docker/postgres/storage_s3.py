@@ -403,7 +403,7 @@ class AwsS3Vault(storage.Vault):
         return self.__is_file_exists(self.bucket, self.__failed_filepath())
 
     def is_done(self):
-        if not self.__is_file_exists(CONTAINER, self.__metrics_filepath()):
+        if not self.__is_file_exists(self.bucket, self.__metrics_filepath()):
             self.__log.info(self.__is_file_exists)
             return False
         j = self.__load_metrics_from_s3()

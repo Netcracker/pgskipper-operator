@@ -1064,7 +1064,7 @@ class NewBackup(flask_restful.Resource):
     def __init__(self):
         self.log = logging.getLogger("NewBackup")
         self.allowed_fields = ["storageName", "blobPath", "databases"]
-        self.s3 = storage_s3.AwsS3Vault(prefix="")
+        # self.s3 = storage_s3.AwsS3Vault(prefix="")
 
     @staticmethod
     def get_endpoints():
@@ -1072,14 +1072,16 @@ class NewBackup(flask_restful.Resource):
 
     @auth.login_required
     def post(self):
-        if not self.s3:
-            return "S3 is not configured for backup daemon", http.client.FORBIDDEN
-
         body = request.get_json(silent=True) or {}
         storage_name = body.get("storageName")
         blob_path = body.get("blobPath")
         databases = body.get("databases") or []
 
+        try:
+            self.s3 = storage_s3.AwsS3Vault(storage_name=storage_name, prefix="")
+        except Exception as e:
+            return {"message": str(e)}, http.client.BAD_REQUEST
+        
         if not blob_path:
             return {"message": "blobPath is required"}, http.client.BAD_REQUEST
         if databases and not isinstance(databases, (list, tuple)):
@@ -1142,7 +1144,7 @@ class NewBackupStatus(flask_restful.Resource):
 
     def __init__(self):
         self.log = logging.getLogger("NewBackupStatus")
-        self.s3 = storage_s3.AwsS3Vault(prefix="")
+        # self.s3 = storage_s3.AwsS3Vault(prefix="")
 
     @staticmethod
     def get_endpoints():
@@ -1150,8 +1152,12 @@ class NewBackupStatus(flask_restful.Resource):
 
     @auth.login_required
     def get(self, backup_id):
-        if not self.s3:
-            return "S3 is not configured for backup daemon", http.client.FORBIDDEN
+        storage_name = request.args.get("storageName") or os.environ.get("STORAGE_NAME")
+
+        try:
+            self.s3 = storage_s3.AwsS3Vault(storage_name=storage_name, prefix="")
+        except Exception as e:
+            return {"message": str(e)}, http.client.BAD_REQUEST
 
         if not backup_id:
             return "Backup ID is not specified.", http.client.BAD_REQUEST
@@ -1177,8 +1183,12 @@ class NewBackupStatus(flask_restful.Resource):
     @auth.login_required
     @superuser_authorization
     def delete(self, backup_id):
-        if not self.s3:
-            return "S3 is not configured for backup daemon", http.client.FORBIDDEN
+        storage_name = request.args.get("storageName") or os.environ.get("STORAGE_NAME")
+
+        try:
+            self.s3 = storage_s3.AwsS3Vault(storage_name=storage_name, prefix="")
+        except Exception as e:
+            return {"message": str(e)}, http.client.BAD_REQUEST
 
         if not backup_id:
             return {"backupId": backup_id, "message": "Backup ID is not specified", "status": "Failed"}, http.client.BAD_REQUEST
@@ -1273,7 +1283,7 @@ class NewRestore(flask_restful.Resource):
 
     def __init__(self):
         self.log = logging.getLogger("NewRestore")
-        self.s3 = storage_s3.AwsS3Vault(prefix="")
+        # self.s3 = storage_s3.AwsS3Vault(prefix="")
 
     @staticmethod
     def get_endpoints():
@@ -1282,12 +1292,15 @@ class NewRestore(flask_restful.Resource):
     @auth.login_required
     @superuser_authorization
     def post(self, backup_id):
-        if not self.s3:
-            return "S3 is not configured for backup daemon", http.client.FORBIDDEN
-
         body = request.get_json(silent=True) or {}
         blob_path = body.get("blobPath")
         pairs = body.get("databases") or []
+        storage_name = body.get("storageName")
+        
+        try:
+            self.s3 = storage_s3.AwsS3Vault(storage_name=storage_name, prefix="")
+        except Exception as e:
+            return {"message": str(e)}, http.client.BAD_REQUEST
         
         dry_run = body.get("dryRun")
         if dry_run:
@@ -1365,7 +1378,7 @@ class NewRestore(flask_restful.Resource):
         if not dry_run:
             worker = pg_restore.PostgreSQLRestoreWorker(
                 requested, force,
-                {"backupId": backup_id, "namespace": namespace, "trackingId": tracking_id},
+                {"backupId": backup_id, "namespace": namespace, "trackingId": tracking_id, "storageName": storage_name},
                 databases_mapping, owners_mapping, restore_roles, single_transaction, body.get("dbaasClone"), blob_path
             )
             worker.start()
@@ -1376,7 +1389,7 @@ class NewRestore(flask_restful.Resource):
         except Exception:
             created_iso = ""
 
-        storage_name = body.get("storageName") or ""
+        storage_name = request.args.get("storageName") or os.environ.get("STORAGE_NAME")
 
         dbs_out = []
         for prev in (requested or []):
@@ -1444,7 +1457,7 @@ class NewRestoreStatus(flask_restful.Resource):
 
     def __init__(self):
         self.log = logging.getLogger("NewRestoreStatus")
-        self.s3 = storage_s3.AwsS3Vault(prefix="")
+        # self.s3 = storage_s3.AwsS3Vault(prefix="")
 
     @staticmethod
     def get_endpoints():
@@ -1453,9 +1466,6 @@ class NewRestoreStatus(flask_restful.Resource):
     @auth.login_required
     @superuser_authorization
     def get(self, restore_id):
-        if not self.s3:
-            return "S3 is not configured for backup daemon", http.client.FORBIDDEN
-
         if not restore_id:
             return "Restore tracking ID is not specified.", http.client.BAD_REQUEST
 
@@ -1473,6 +1483,11 @@ class NewRestoreStatus(flask_restful.Resource):
         status_path = backups.build_restore_status_file_path(backup_id, restore_id, blob_path=blob_path)
 
         try:
+            self.s3 = storage_s3.AwsS3Vault(storage_name=storage_name, prefix="")
+        except Exception as e:
+            return {"message": str(e)}, http.client.BAD_REQUEST
+
+        try:
             raw = json.loads(self.s3.read_object(status_path))
         except Exception:
             return "Backup in bucket is not found.", http.client.NOT_FOUND
@@ -1487,8 +1502,12 @@ class NewRestoreStatus(flask_restful.Resource):
     @auth.login_required
     @superuser_authorization
     def delete(self, restore_id):
-        if not self.s3:
-            return "S3 is not configured for backup daemon", http.client.FORBIDDEN
+        storage_name = request.args.get("storageName") or os.environ.get("STORAGE_NAME")
+
+        try:
+            self.s3 = storage_s3.AwsS3Vault(storage_name=storage_name, prefix="")
+        except Exception as e:
+            return {"message": str(e)}, http.client.BAD_REQUEST
 
         if not restore_id:
             return {"restoreId": restore_id, "message": "Restore ID is not specified", "status": "Failed"}, http.client.BAD_REQUEST

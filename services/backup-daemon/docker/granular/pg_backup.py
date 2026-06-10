@@ -53,10 +53,12 @@ class PostgreSQLDumpWorker(Thread):
         self.blob_path = blob_path
         self.backup_dir = backups.build_backup_path(self.backup_id, self.namespace, self.external_backup_root)
         self.create_backup_dir()
+        self.storage_name = backup_request.get('storageName') or ""
+
         if blob_path:
-            self.s3 = storage_s3.AwsS3Vault(prefix="")
-        else:  
-            self.s3 = storage_s3.AwsS3Vault() if os.environ['STORAGE_TYPE'] == "s3" else None
+            self.s3 = storage_s3.AwsS3Vault(storage_name=self.storage_name, prefix="")
+        else:
+            self.s3 = storage_s3.AwsS3Vault(storage_name=self.storage_name) if os.environ['STORAGE_TYPE'] == "s3" else None
 
         self._cancel_event = Event()
         if configs.get_encryption():
@@ -67,7 +69,6 @@ class PostgreSQLDumpWorker(Thread):
         else:
             self.encryption = False
             
-        self.storage_name = backup_request.get('storageName') or ""
         self.status = {
             'backupId': self.backup_id,
             'namespace': self.namespace,

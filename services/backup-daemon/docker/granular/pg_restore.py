@@ -63,10 +63,11 @@ class PostgreSQLRestoreWorker(Thread):
         self.owners_mapping = owners_mapping
         self.bin_path = configs.get_pgsql_bin_path(self.postgres_version)
         self.parallel_jobs = configs.get_parallel_jobs()
+        self.storage_name = restore_request.get('storageName') or ""
         if blobPath:
-            self.s3 = storage_s3.AwsS3Vault(prefix="")
+            self.s3 = storage_s3.AwsS3Vault(storage_name=self.storage_name,prefix="")
         else:  
-            self.s3 = storage_s3.AwsS3Vault() if os.environ['STORAGE_TYPE'] == "s3" else None
+            self.s3 = storage_s3.AwsS3Vault(storage_name=self.storage_name) if os.environ['STORAGE_TYPE'] == "s3" else None
         self.blob_path = blobPath
         self.backup_dir = backups.build_backup_path(self.backup_id, self.namespace, self.external_backup_root)
         self.create_backup_dir(self.backup_dir)

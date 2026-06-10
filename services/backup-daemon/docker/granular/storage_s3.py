@@ -40,7 +40,7 @@ class AwsS3Vault:
     __log = logging.getLogger("AwsS3Granular")
 
     @staticmethod
-    def get_s3_alias_config():
+    def get_s3_alias_config(storage_name=None):
         if os.getenv("S3_ALIASES_USED", "false").lower() != "true":
             return None
 
@@ -50,20 +50,27 @@ class AwsS3Vault:
         if not aliases:
             raise Exception("S3 aliases are enabled, but /aliases/s3_aliases.json is empty")
 
-        alias_name = next(iter(aliases))
-        return aliases[alias_name]
+        if not storage_name:
+            raise Exception("storageName is required when S3 aliases are enabled")
+
+        alias = aliases.get(storage_name)
+        if not alias:
+            raise Exception(f"S3 alias '{storage_name}' is not found in /aliases/s3_aliases.json")
+
+        return alias
 
     @staticmethod
-    def get_s3_bucket_name():
-        alias = AwsS3Vault.get_s3_alias_config()
+    def get_s3_bucket_name(alias=None):
         if alias:
             return alias.get("bucketName")
         return os.getenv("CONTAINER") or os.getenv("AWS_S3_BUCKET") or os.getenv("S3_BUCKET")
 
-    def __init__(self, cluster_name=None, cache_enabled=False,
+    def __init__(self, storage_name=None, cluster_name=None, cache_enabled=False,
                  aws_s3_bucket_listing=None, prefix=None):
 
-        self.bucket = AwsS3Vault.get_s3_bucket_name()
+        self.storage_name = storage_name
+        self.alias = AwsS3Vault.get_s3_alias_config(storage_name)
+        self.bucket = AwsS3Vault.get_s3_bucket_name(self.alias)
         self.console = None
         self.cluster_name = cluster_name
         self.cache_enabled = cache_enabled
@@ -78,7 +85,7 @@ class AwsS3Vault:
             raise ValueError("S3 bucket is not configured. Set one of CONTAINER, AWS_S3_BUCKET, or S3_BUCKET.")
 
     def get_s3_client(self):
-        alias = AwsS3Vault.get_s3_alias_config()
+        alias = self.alias
         return boto3.client(
             "s3",
             region_name=alias.get("region") if alias else (os.getenv("AWS_DEFAULT_REGION") if os.getenv("AWS_DEFAULT_REGION") else None),
