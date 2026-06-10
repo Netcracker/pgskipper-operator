@@ -508,8 +508,7 @@ class PostgreSQLRestoreWorker(Thread):
                            flush=True)
             self.update_status('status', backups.BackupStatus.SUCCESSFUL, flush=True)
             self.log.info(self.log_msg("Backup has been successfully restored."))
-            if self.s3:
-                shutil.rmtree(self.backup_dir)
+            self.cleanup_restore_temp_files()
         except Exception as e:
             self.log.exception(self.log_msg("Restore request processing has failed."))
             self.update_status('details', str(e))
@@ -517,8 +516,7 @@ class PostgreSQLRestoreWorker(Thread):
                            datetime.datetime.utcnow().isoformat(),
                            flush=True)
             self.update_status('status', backups.BackupStatus.FAILED, flush=True)
-            if self.s3:
-                shutil.rmtree(self.backup_dir)
+            self.cleanup_restore_temp_files()
         finally:
             if self.is_cancelled():
                 self.on_cancel()
@@ -718,3 +716,28 @@ class PostgreSQLRestoreWorker(Thread):
         finally:
             if conn:
                 conn.close()
+    
+    @staticmethod
+    def cleanup_restore_temp_files(self):
+        if not self.s3:
+            return
+
+        keep_files = {
+            "{}.json".format(self.tracking_id)
+        }
+
+        for file_name in os.listdir(self.backup_dir):
+            if file_name in keep_files:
+                continue
+
+            file_path = os.path.join(self.backup_dir, file_name)
+
+            try:
+                if os.path.isfile(file_path) or os.path.islink(file_path):
+                    os.remove(file_path)
+                elif os.path.isdir(file_path):
+                    shutil.rmtree(file_path)
+            except Exception as e:
+                self.log.warning(
+                    self.log_msg("Failed to remove temporary restore file {}: {}".format(file_path, e))
+                )
