@@ -74,6 +74,7 @@ class PostgreSQLDumpWorker(Thread):
             'namespace': self.namespace,
             'status': backups.BackupStatus.PLANNED,
             'storageName': self.storage_name,
+            'blobPath': self.blob_path,
         }
         self.pg_dump_proc = None
 
