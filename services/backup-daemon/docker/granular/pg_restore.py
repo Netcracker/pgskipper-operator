@@ -717,7 +717,6 @@ class PostgreSQLRestoreWorker(Thread):
             if conn:
                 conn.close()
     
-    @staticmethod
     def cleanup_restore_temp_files(self):
         if not self.s3:
             return
