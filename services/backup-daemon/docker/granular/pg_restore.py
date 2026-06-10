@@ -81,9 +81,13 @@ class PostgreSQLRestoreWorker(Thread):
             self.databases = list(databases_mapping.keys())
         self.status = {
             'trackingId': self.tracking_id,
+            'restoreId': self.tracking_id,
             'namespace': self.namespace,
             'backupId': self.backup_id,
-            'status': backups.BackupStatus.PLANNED
+            'sourceBackupId': self.backup_id,
+            'status': backups.BackupStatus.PLANNED,
+            'storageName': self.storage_name,
+            'blobPath': self.blob_path,
         }
         self._cancel_event = Event()
         self.pg_restore_proc = None

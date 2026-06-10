@@ -1411,8 +1411,6 @@ class NewRestore(flask_restful.Resource):
         except Exception:
             created_iso = ""
 
-        storage_name = request.args.get("storageName") or os.environ.get("STORAGE_NAME")
-
         dbs_out = []
         for prev in (requested or []):
             prev_name = prev or ""
@@ -1491,8 +1489,18 @@ class NewRestoreStatus(flask_restful.Resource):
         if not restore_id:
             return "Restore tracking ID is not specified.", http.client.BAD_REQUEST
 
+        meta = load_restore_metadata_from_local_status(restore_id)
+        if not meta:
+            return {
+                "message": "Restore metadata is not found for restoreId %s" % restore_id
+            }, http.client.NOT_FOUND
+
+        backup_id = meta.get("sourceBackupId") or meta.get("backupId")
+        storage_name = meta.get("storageName")
+        blob_path = normalize_blobPath(meta.get("blobPath"))
+
         try:
-            backup_id, namespace = backups.extract_backup_id_from_tracking_id(restore_id)
+            _, namespace = backups.extract_backup_id_from_tracking_id(restore_id)
         except Exception as e:
             self.log.exception(e)
             return "Malformed restore tracking ID.", http.client.BAD_REQUEST
@@ -1500,54 +1508,70 @@ class NewRestoreStatus(flask_restful.Resource):
         if not backups.is_valid_namespace(namespace):
             return "Invalid namespace name: %s." % namespace.encode("utf-8"), http.client.BAD_REQUEST
 
-        blob_path = normalize_blobPath(request.args.get("blobPath"))
-        storage_name = request.args.get("storageName") or os.environ.get("STORAGE_NAME")
-        status_path = backups.build_restore_status_file_path(backup_id, restore_id, blob_path=blob_path)
-
         try:
             self.s3 = storage_s3.AwsS3Vault(storage_name=storage_name, prefix="")
         except Exception as e:
             return {"message": str(e)}, http.client.BAD_REQUEST
 
+        status_path = backups.build_restore_status_file_path(
+            backup_id,
+            restore_id,
+            blob_path=blob_path
+        )
+
         try:
             raw = json.loads(self.s3.read_object(status_path))
         except Exception:
-            return "Backup in bucket is not found.", http.client.NOT_FOUND
+            return "Restore status in bucket is not found.", http.client.NOT_FOUND
 
         if blob_path and not raw.get("blobPath"):
             raw["blobPath"] = blob_path
         if storage_name and not raw.get("storageName"):
             raw["storageName"] = storage_name
+        if backup_id and not raw.get("sourceBackupId"):
+            raw["sourceBackupId"] = backup_id
 
         return backups.transform_restore_status_v1(raw), http.client.OK
     
     @auth.login_required
     @superuser_authorization
     def delete(self, restore_id):
-        storage_name = request.args.get("storageName") or os.environ.get("STORAGE_NAME")
-
-        try:
-            self.s3 = storage_s3.AwsS3Vault(storage_name=storage_name, prefix="")
-        except Exception as e:
-            return {"message": str(e)}, http.client.BAD_REQUEST
-
         if not restore_id:
-            return {"restoreId": restore_id, "message": "Restore ID is not specified", "status": "Failed"}, http.client.BAD_REQUEST
+            return {
+                "restoreId": restore_id,
+                "message": "Restore ID is not specified",
+                "status": "Failed"
+            }, http.client.BAD_REQUEST
+
+        meta = load_restore_metadata_from_local_status(restore_id)
+        if not meta:
+            return {
+                "restoreId": restore_id,
+                "message": "Restore metadata is not found.",
+                "status": "Failed"
+            }, http.client.NOT_FOUND
+
+        backup_id = meta.get("sourceBackupId") or meta.get("backupId")
+        storage_name = meta.get("storageName")
+        blob_path = normalize_blobPath(meta.get("blobPath"))
 
         try:
-            backup_id, namespace = backups.extract_backup_id_from_tracking_id(restore_id)
+            _, namespace = backups.extract_backup_id_from_tracking_id(restore_id)
         except Exception as e:
             self.log.exception(e)
             resp = TerminateRestoreEndpoint().post(restore_id)
             term_code, term_body = None, None
+
             try:
                 if isinstance(resp, Response):
                     term_body = resp.get_data(as_text=True)
                     term_code = getattr(resp, "status_code", None)
                 elif isinstance(resp, tuple) and len(resp) >= 2:
                     term_body = resp[0]
-                    try: term_code = int(resp[1])
-                    except Exception: term_code = None
+                    try:
+                        term_code = int(resp[1])
+                    except Exception:
+                        term_code = None
                 elif isinstance(resp, dict):
                     term_body = json.dumps(resp)
                     term_code = http.client.OK
@@ -1565,19 +1589,28 @@ class NewRestoreStatus(flask_restful.Resource):
                 "termination": {"code": term_code, "body": term_body}
             }, http.client.OK
 
-        blob_path = request.args.get("blobPath")
-        if not blob_path:
+        if not backups.is_valid_namespace(namespace):
             return {
                 "restoreId": restore_id,
-                "message": "blobPath query parameter is required for cleanup (e.g. ?blobPath=tmp/a/b/c).",
+                "message": "Invalid namespace name: %s." % namespace,
                 "status": "Failed"
             }, http.client.BAD_REQUEST
-        blob_path = normalize_blobPath(blob_path)
 
-        status_path = backups.build_restore_status_file_path(backup_id, restore_id, blob_path=blob_path)
-        backup_base = backups.build_backup_path(backup_id, blob_path=blob_path)
+        try:
+            self.s3 = storage_s3.AwsS3Vault(storage_name=storage_name, prefix="")
+        except Exception as e:
+            return {"message": str(e)}, http.client.BAD_REQUEST
+
+        status_path = backups.build_restore_status_file_path(
+            backup_id,
+            restore_id,
+            blob_path=blob_path
+        )
+        backup_base = backups.build_backup_path(
+            backup_id,
+            blob_path=blob_path
+        )
         pattern_name = f"{restore_id}"
-        pattern_glob = os.path.join(backup_base, pattern_name + "*")
 
         def _exists_file(p: str) -> bool:
             try:
@@ -1602,10 +1635,15 @@ class NewRestoreStatus(flask_restful.Resource):
                 TerminateRestoreEndpoint().post(restore_id)
             except Exception:
                 pass
-            return {"restoreId": restore_id, "message": "Restore is not found.", "status": "Failed"}, http.client.NOT_FOUND
+            return {
+                "restoreId": restore_id,
+                "message": "Restore is not found.",
+                "status": "Failed"
+            }, http.client.NOT_FOUND
 
         resp = TerminateRestoreEndpoint().post(restore_id)
         term_body, term_code = None, None
+
         try:
             if isinstance(resp, Response):
                 term_body = resp.get_data(as_text=True)
@@ -1617,7 +1655,7 @@ class NewRestoreStatus(flask_restful.Resource):
                 except Exception:
                     term_code = None
             elif isinstance(resp, dict):
-                term_body = json.dumps(resp)   
+                term_body = json.dumps(resp)
                 term_code = http.client.OK
             elif isinstance(resp, (bytes, bytearray)):
                 term_body = resp.decode("utf-8", "replace")
@@ -1632,7 +1670,7 @@ class NewRestoreStatus(flask_restful.Resource):
 
         try:
             prefix = os.path.join(backup_base, pattern_name).rstrip("/")
-            self.s3.delete_objects(prefix if prefix.endswith("/") else prefix)
+            self.s3.delete_objects(prefix)
         except Exception as e:
             self.log.exception("Restore cleanup failed for %s: %s", restore_id, e)
             return {
@@ -1642,13 +1680,29 @@ class NewRestoreStatus(flask_restful.Resource):
                 "termination": {"code": term_code, "body": term_body}
             }, http.client.INTERNAL_SERVER_ERROR
 
+        # Optional: remove local restore metadata/status file
+        try:
+            local_status_path = backups.build_restore_status_file_path(
+                backup_id,
+                restore_id,
+                namespace
+            )
+            if os.path.isfile(local_status_path):
+                os.remove(local_status_path)
+        except Exception:
+            self.log.warning("Failed to remove local restore metadata for %s", restore_id)
+
         if term_code and 200 <= term_code < 300:
             msg = "Restore terminated successfully. Cleanup completed."
         else:
             msg = "Termination attempted. Cleanup completed."
 
-        return {"restoreId": restore_id, "message": msg, "status": "Successful",
-                "termination": {"code": term_code, "body": term_body}}, http.client.OK
+        return {
+            "restoreId": restore_id,
+            "message": msg,
+            "status": "Successful",
+            "termination": {"code": term_code, "body": term_body}
+        }, http.client.OK
 
 def normalize_blobPath(blob_path):
     # Normalize blob_path by removing a single leading and trailing slash
@@ -1668,6 +1722,26 @@ def load_backup_metadata_from_local_status(backup_id, namespace=None):
 
     local_status_path = backups.build_backup_status_file_path(
         backup_id,
+        namespace
+    )
+
+    if not os.path.isfile(local_status_path):
+        return None
+
+    try:
+        return utils.get_json_by_path(local_status_path)
+    except Exception:
+        return None
+
+def load_restore_metadata_from_local_status(restore_id):
+    try:
+        backup_id, namespace = backups.extract_backup_id_from_tracking_id(restore_id)
+    except Exception:
+        return None
+
+    local_status_path = backups.build_restore_status_file_path(
+        backup_id,
+        restore_id,
         namespace
     )
 
