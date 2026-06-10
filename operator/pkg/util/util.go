@@ -55,6 +55,9 @@ import (
 const (
 	TokenFilePath = "/var/run/secrets/kubernetes.io/serviceaccount/token"
 	ClusterName   = "patroni"
+	
+	secretBasePath = "/var/run/secrets/postgresql/"
+	PgUserCredsPath = secretBasePath + "postgres-credentials/"
 )
 
 var (
@@ -430,4 +433,20 @@ func HashJson(o interface{}) string {
 	hash := sha256.New()
 	hash.Write(cr)
 	return fmt.Sprintf("%x", hash.Sum(nil))
+}
+
+func ReadSecretFile(path string, defaultVal string) string {
+	data, err := os.ReadFile(path)
+	if err != nil {
+		uLog.Error(fmt.Sprintf("Failed to read secret file %s: %v", path, err))
+		return defaultVal
+	}
+
+	value := strings.TrimSpace(string(data))
+
+	if value == "" {
+		uLog.Info(fmt.Sprintf("Secret file %s is empty, using default value", path))
+		return defaultVal
+	}
+	return value
 }

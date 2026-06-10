@@ -37,13 +37,17 @@ const (
 	usersPath       = "/users"
 
 	httpsPort = 8443
+	
+	secretsBasePath = "/var/run/secrets/postgresql/"
+	
+	pgUserCredsPath    = secretsBasePath + "postgres-credentials/"
 )
 
 var (
 	pgHost = flag.String("pg_host", utils.GetEnv("POSTGRES_HOST", "127.0.0.1"), "Host of PostgreSQL cluster, env: POSTGRES_HOST")
 	pgPort = flag.Int("pg_port", utils.GetEnvInt("POSTGRES_PORT", 5432), "Port of PostgreSQL cluster, env: POSTGRES_PORT")
-	pgUser = flag.String("pg_user", utils.GetEnv("POSTGRES_ADMIN_USER", "postgres"), "Username of controller user in PostgreSQL, env: POSTGRES_ADMIN_USER")
-	pgPass = flag.String("pg_pass", utils.GetEnv("POSTGRES_ADMIN_PASSWORD", ""), "Password of controller user in PostgreSQL, env: POSTGRES_ADMIN_PASSWORD")
+	pgUser = flag.String("pg_user", utils.ReadSecretFile(pgUserCredsPath+"username", "postgres"), "Username of controller user in PostgreSQL, env: POSTGRES_ADMIN_USER")
+	pgPass = flag.String("pg_pass", utils.ReadSecretFile(pgUserCredsPath+"password", ""), "Password of controller user in PostgreSQL, env: POSTGRES_ADMIN_PASSWORD")
 	pgSsl  = flag.String("pg_ssl", utils.GetEnv("PG_SSL", "off"), "Enable ssl connection to postgreSQL, env: PG_SSL")
 
 	servePort = flag.Int("serve_port", 8080, "Port to serve requests incoming to controller")

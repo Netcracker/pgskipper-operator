@@ -136,12 +136,20 @@ func GetEnvBool(key string, fallback bool) bool {
 	return fallback
 }
 
-func GetSecret(filename string) string {
-	secretByte, err := os.ReadFile("/etc/secrets/dbaas-adapter-credentials/" + filename)
+func ReadSecretFile(path string, defaultVal string) string {
+	data, err := os.ReadFile(path)
 	if err != nil {
-		log.Fatal("failed to read dbaas-adapter secret: ", zap.Error(err))
+		log.Error(fmt.Sprintf("Failed to read secret file %s: %v", path, err))
+		return defaultVal
 	}
-	return strings.TrimSpace(string(secretByte[:]))
+
+	value := strings.TrimSpace(string(data))
+
+	if value == "" {
+		log.Info(fmt.Sprintf("Secret file %s is empty, using default value", path))
+		return defaultVal
+	}
+	return value
 }
 
 func GetK8sClient() (*kubernetes.Clientset, error) {

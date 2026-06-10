@@ -114,30 +114,6 @@ func NewMonitoringDeployment(metricCollector *netcrackerv1.MetricCollector, pgcl
 							Args:    []string{},
 							Env: append([]corev1.EnvVar{
 								{
-									Name: "MONITORING_USER_FILE",
-									Value: "/etc/secrets/" + MetricCollectorUserCredentials + "/username",
-								},
-								{
-									Name: "MONITORING_PASSWORD_FILE",
-									Value: "/etc/secrets/" + MetricCollectorUserCredentials + "/password",
-								},
-								{
-									Name: "PG_ROOT_USER",
-									Value: "/etc/secrets/" + PostgresUserCredentials + "/pg-username",
-								},
-								{
-									Name: "PG_ROOT_PASSWORD",
-									Value: "/etc/secrets/" + PostgresUserCredentials + "/pg-password",
-								},
-								{
-									Name: "INFLUXDB_USER",
-									Value: "/etc/secrets/" + influxDbAdminCredentials + "/username",
-								},
-								{
-									Name: "INFLUXDB_PASSWORD",
-									Value: "/etc/secrets/" + influxDbAdminCredentials + "/password",
-								},
-								{
 									Name: "NAMESPACE",
 									ValueFrom: &corev1.EnvVarSource{
 										FieldRef: &corev1.ObjectFieldSelector{
@@ -197,17 +173,17 @@ func NewMonitoringDeployment(metricCollector *netcrackerv1.MetricCollector, pgcl
 									Name:      "telegraf-config-volume",
 								},
 								{
-									MountPath: "/etc/secrets/monitoring-user-credentials",
+									MountPath: "/var/run/secrets/postgresql/monitoring-user-credentials",
 									Name:      "monitoring-user-credentials",
 									ReadOnly: true,
 								},
 								{
-									MountPath: "/etc/secrets/influx-db-admin-credentials",
+									MountPath: "/var/run/secrets/postgresql/influx-db-admin-credentials",
 									Name:      "influx-db-admin-credentials",
 									ReadOnly: true,
 								},
 								{
-									MountPath: "/etc/secrets/postgres-credentials",
+									MountPath: "/var/run/secrets/postgresql/postgres-credentials",
 									Name:      "postgres-credentials",
 									ReadOnly: true,
 								},

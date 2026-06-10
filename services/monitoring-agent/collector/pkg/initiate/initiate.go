@@ -26,6 +26,12 @@ import (
 	"k8s.io/apimachinery/pkg/types"
 )
 
+const (
+	secretsBasePath = "/var/run/secrets/postgresql/"
+	monitoringUserCredsPath = secretsBasePath + "monitoring-user-credentials/"
+	pgUserCredsPath    = secretsBasePath + "postgres-credentials/"
+)
+
 var (
 	logger = util.GetLogger()
 	ctx    = context.Background()
@@ -36,8 +42,8 @@ func InitMetricCollector() {
 	logger.Info("Will run preparation scripts")
 
 	clusterName := util.GetEnv("PGCLUSTER", "patroni")
-	monitoringRole := util.GetSecret("username")
-	monitoringPassword := util.GetSecret("password")
+	monitoringRole := util.ReadSecretFile(monitoringUserCredsPath+"username", "")
+	monitoringPassword := util.ReadSecretFile(monitoringUserCredsPath+"password", "")
 	pgHost := util.GetEnv("POSTGRES_HOST", "pg-patroni")
 	pgPort := util.GetEnvInt("POSTGRES_PORT", 5432)
 
@@ -80,8 +86,8 @@ func InitMetricCollector() {
 func getPGCredentials(clusterName string) (user, password string) {
 
 	namespace := util.GetEnv("NAMESPACE", "postgres-service")
-	user = util.GetEnv("PG_ROOT_USER", "")
-	password = util.GetEnv("PG_ROOT_PASSWORD", "")
+	user = util.ReadSecretFile(pgUserCredsPath+"username", "")
+	password = util.ReadSecretFile(pgUserCredsPath+"password", "")
 
 	if user != "" || password != "" {
 		return user, password

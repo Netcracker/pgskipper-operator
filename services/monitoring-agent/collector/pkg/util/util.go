@@ -58,8 +58,12 @@ var (
 	debugEnabled = GetEnv("DEBUG_ENABLED", "false")
 )
 
-const certificatesFolder = "/certs"
-const MetricCollectorCredentialsFolder = "/etc/monitoring-user-credentials"
+const (
+	secretsBasePath = "/var/run/secrets/postgresql/"
+
+	certificatesFolder            = "/certs"
+	metricCollectorCredentialsFolder = secretsBasePath + "monitoring-user-credentials/"
+)
 
 func GetLogger() *zap.Logger {
 	cfg := zap.NewProductionConfig()
@@ -93,12 +97,20 @@ func GetProtocol() (string, string) {
 
 }
 
-func GetSecret(filename string) string {
-	secretByte, err := os.ReadFile("/etc/secrets/monitoring-user-credentials/" + filename)
+func ReadSecretFile(path string, defaultVal string) string {
+	data, err := os.ReadFile(path)
 	if err != nil {
-		log.Fatal("failed to read monitoring secret: ", err)
+		Log.Error(fmt.Sprintf("Failed to read secret file %s: %v", path, err))
+		return defaultVal
 	}
-	return strings.TrimSpace(string(secretByte[:]))
+
+	value := strings.TrimSpace(string(data[:]))
+	
+	if value == "" {
+		Log.Info(fmt.Sprintf("Secret file %s is empty, using default value", path))
+		return defaultVal
+	}
+	return value
 }
 
 func GetToken() string {

@@ -52,18 +52,21 @@ spec:
           configMap:
             name: dbaas-postgres-adapter.extensions-config
             defaultMode: 420
-        {{- if not .Values.externalDataBase }}
-        {{- if and .Values.tls .Values.tls.enabled }}
-        - name: tls-cert
-          secret:
-            secretName: {{ include "postgres.certServicesSecret" . }}
-            defaultMode: 416
         - name: dbaas-adapter-credentials
           secret:
             secretName: dbaas-adapter-credentials
         - name: dbaas-adapter-registration-credentials
           secret:
             secretName: dbaas-adapter-registration-credentials
+        - name: postgres-credentials
+          secret:
+            secretName: postgres-credentials
+        {{- if not .Values.externalDataBase }}
+        {{- if and .Values.tls .Values.tls.enabled }}
+        - name: tls-cert
+          secret:
+            secretName: {{ include "postgres.certServicesSecret" . }}
+            defaultMode: 416
         {{- end }}
         {{- end }}
       initContainers:
@@ -117,10 +120,8 @@ spec:
           securityContext:
             {{- include "restricted.globalContainerSecurityContext" . | nindent 12 }}
           env:
-{{- template "postgres-dbaas.pgAdminEnvs" . }}
             - name: POSTGRES_DATABASE
               value: {{ default "postgres" .Values.dbaas.dbName }}
-{{- template "postgres-dbaas.aggregatorEnvsReg" . }}
             - name: DBAAS_ADAPTER_ADDRESS
               value: {{ default (printf "http://dbaas-postgres-adapter.%s:8080" .Release.Namespace) .Values.dbaas.adapter.address }}
             - name: DBAAS_AGGREGATOR_REGISTRATION_ADDRESS
@@ -174,10 +175,13 @@ spec:
               mountPath: /certs/
   {{- end }}
             - name: dbaas-adapter-credentials
-              mountPath: /secrets/credentials
+              mountPath: /var/run/secrets/postgresql/dbaas-adapter-credentials
               readOnly: true
             - name: dbaas-adapter-registration-credentials
-              mountPath: /secrets/credentials
+              mountPath: /var/run/secrets/postgresql/dbaas-adapter-registration-credentials
+              readOnly: true
+            - name: postgres-credentials
+              mountPath: /var/run/secrets/postgresql/postgres-credentials
               readOnly: true
   {{- end }}
           livenessProbe:

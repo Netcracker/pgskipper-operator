@@ -75,22 +75,12 @@ func NewRCDeployment(cr v1.PatroniServices, sa, clusterName string, pgPort int) 
 									Value: strconv.Itoa(pgPort),
 								},
 								{
-									Name: "POSTGRES_ADMIN_PASSWORD",
-									ValueFrom: &corev1.EnvVarSource{
-										SecretKeyRef: &corev1.SecretKeySelector{
-											LocalObjectReference: corev1.LocalObjectReference{Name: "postgres-credentials"},
-											Key:                  "username",
-										},
-									},
+									Name:  "POSTGRES_ADMIN_USER",
+									Value: util.ReadSecretFile(util.PgUserCredsPath+"username", "postgres"),
 								},
 								{
-									Name: "POSTGRES_ADMIN_PASSWORD",
-									ValueFrom: &corev1.EnvVarSource{
-										SecretKeyRef: &corev1.SecretKeySelector{
-											LocalObjectReference: corev1.LocalObjectReference{Name: "postgres-credentials"},
-											Key:                  "password",
-										},
-									},
+									Name:  "POSTGRES_ADMIN_PASSWORD",
+									Value: util.ReadSecretFile(util.PgUserCredsPath+"password", ""),
 								},
 								{
 									Name: "API_USER",
