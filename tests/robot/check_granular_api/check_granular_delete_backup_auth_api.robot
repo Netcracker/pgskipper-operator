@@ -6,6 +6,9 @@ Resource          ../Lib/lib.robot
 
 *** Keywords ***
 Backup Not Exist
+    ${PGSSLMODE}=  Get Environment Variable  PGSSLMODE
+    ${scheme}=  Set Variable If  '${PGSSLMODE}' == 'require'  https  http
+    Create Session  postgres_backup_daemon  ${scheme}://postgres-backup-daemon:8080
     ${resp}=  GET On Session  postgres_backup_daemon  url=/backup/status/${backup_id}?namespace=${name_space}
     Should Not Be Equal  ${resp.status_code}  ${200}
 
