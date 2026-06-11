@@ -52,3 +52,11 @@ Delete User And Database
     [Arguments]  ${db_name}  ${user_name}
     Delete Test DB  ${db_name}
     Execute Query  pg-${PG_CLUSTER_NAME}  DROP USER ${user_name}
+
+Teardown Delete User Test
+    [Arguments]  ${status_code}  ${db_name}  ${user_name}
+    IF  '${status_code}' != '200'
+        Delete User And Database  ${db_name}  ${user_name}
+    ELSE
+        Delete Test DB  ${db_name}
+    END

@@ -57,7 +57,7 @@ Check Disabled Auth Regular Backup
         Run Keyword If  '${status}' == 'In progress'  Sleep  1s
         Run Keyword If  '${status}' == 'Successful'  Exit For Loop
     END
-    Execute Query  pg-${PG_CLUSTER_NAME}  DROP DATABASE ${db_name}
+    Delete Test DB  ${db_name}
     ${databases}=  Execute Query  pg-${PG_CLUSTER_NAME}  SELECT datname FROM pg_database
     List Should Not Contain Value  ${databases}  ${db_name}  msg="failed to delete the test database before restore from backup"
     Set To Dictionary  ${data}  backupId  ${backup_id}
@@ -110,7 +110,7 @@ Check Enabled Auth Regular Backup
         Run Keyword If  '${status}' == 'In progress'  Sleep  1s
         Run Keyword If  '${status}' == 'Successful'  Exit For Loop
     END
-    Execute Query   pg-${PG_CLUSTER_NAME}  DROP DATABASE ${db_name}
+    Delete Test DB  ${db_name}
     ${databases}=  Execute Query  pg-${PG_CLUSTER_NAME}  SELECT datname FROM pg_database
     List Should Not Contain Value  ${databases}  ${db_name}  msg="failed to delete the test database before restore from backup"
     Set To Dictionary  ${data}  backupId  ${backup_id}
@@ -132,7 +132,7 @@ Check Enabled Auth Regular Backup
     ${res}=  Execute Query   pg-${PG_CLUSTER_NAME}  select * from test_insert_robot where id=${RID}   dbname=${db_name}
     Should Be True   """${EXPECTED}""" in """${res}"""   msg=[insert test record] Expected string ${EXPECTED} not found after restore database: ${db_name}. res: ${res}
     #delete backup and drop database after test
-    Execute Query   pg-${PG_CLUSTER_NAME}  DROP DATABASE ${db_name}
+    Delete Test DB  ${db_name}
     ${resp}=  Get On Session  postgres_backup_daemon  url=/delete/${backup_id}?namespace=${name_space}
     Should Be Equal  ${resp.status_code}  ${200}
 

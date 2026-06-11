@@ -43,7 +43,7 @@ var (
 	namespace     = opUtil.GetNameSpace()
 	logger        = opUtil.GetLogger()
 	MasterLabel   = map[string]string{"pgtype": "master"}
-	UpgradeLabels = map[string]string{"app": "pg-major-upgrade"}
+	UpgradeLabels = map[string]string{"app": "pg-major-upgrade", "app.kubernetes.io/name": "pg-major-upgrade"}
 	powaUILabels  = map[string]string{"name": "powa"}
 	//noConnectionDatabases = []string{"template0", "template1"}
 )
