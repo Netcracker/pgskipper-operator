@@ -5,8 +5,9 @@ permissions:
   contents: read
 
 on:
-  schedule:
-    - cron: '0 0 * * *'
+  push
+#  schedule:
+#    - cron: '0 0 * * *'
 
 jobs:
   Nightly-Pgskipper-Pipeline:
