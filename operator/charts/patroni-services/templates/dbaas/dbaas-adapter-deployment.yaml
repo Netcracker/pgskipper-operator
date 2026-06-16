@@ -44,6 +44,9 @@ spec:
       affinity: {{ .Values.affinity | toJson }}
       {{- end }}
       volumes:
+        - name: tmp
+          emptyDir:
+            sizeLimit: 100Mi
         - name: dbaas-physical-databases-labels-mount
           configMap:
             name: dbaas-physical-databases-labels
@@ -80,6 +83,8 @@ spec:
           securityContext:
             {{- include "restricted.globalContainerSecurityContext" . | nindent 12 }}
           volumeMounts:
+              - name: tmp
+                mountPath: /tmp
               - name: dbaas-default-extensions-mount
                 mountPath: /app/extensions
           resources:
@@ -167,6 +172,8 @@ spec:
           resources:
 {{ toYaml .Values.dbaas.resources | indent 12 }}
           volumeMounts:
+            - name: tmp
+              mountPath: /tmp
             - name: dbaas-physical-databases-labels-mount
               mountPath: /app/config
             - name: dbaas-default-extensions-mount

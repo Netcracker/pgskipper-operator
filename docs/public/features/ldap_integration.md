@@ -18,7 +18,7 @@ It is widely used in enterprise environments for authentication, authorization, 
 
 # Input Parameters
 
-The required parameters to integrate LDAP with postgres is described in the [LDAP Configuration section](/docs/public/installation.md#ldap).
+The required parameters to integrate LDAP with postgres is described in the [LDAP Configuration section](../installation.md#ldap).
 
 # AD/LDAP side configuration
 We have created below 2 user’s i.e.

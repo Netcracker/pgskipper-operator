@@ -47,7 +47,7 @@ Check Disabled Auth With Roles
         Run Keyword If  '${status}' == 'Successful'  Exit For Loop
         Run Keyword If  '${status}' == 'In progress'  Sleep  1s
     END
-    Execute Query  pg-${PG_CLUSTER_NAME}  DROP DATABASE ${db_name}
+    Delete Test DB  ${db_name}
     ${databases}=  Execute Query  pg-${PG_CLUSTER_NAME}  SELECT datname FROM pg_database
     List Should Not Contain Value  ${databases}   ${db_name}  msg="failed to delete the test database before restore from backup"
     Set To Dictionary  ${data}  backupId=${backup_id}
@@ -68,7 +68,7 @@ Check Disabled Auth With Roles
     ${res}=  Execute Query  pg-${PG_CLUSTER_NAME}  select * from test_insert_robot where id=${RID}   dbname=${db_name}
     Should Be True  """${EXPECTED}""" in """${res}"""   msg=[insert test record] Expected string ${EXPECTED} not found after restore database: ${db_name}. res: ${res}
     #delete backup and database after test
-    Execute Query  pg-${PG_CLUSTER_NAME}  drop database if exists ${db_name}
+    Delete Test DB  if exists ${db_name}
     Execute Query  pg-${PG_CLUSTER_NAME}  DROP ROLE ${db_role}
     ${resp}=  Get On Session  postgres_backup_daemon  url=/delete/${backup_id}?namespace=${name_space}
     Should Be Equal  ${resp.status_code}  ${200}
@@ -104,7 +104,7 @@ Check Enabled Auth With Roles
         Run Keyword If  '${status}' == 'In progress'  Sleep  1s
         Run Keyword If  '${status}' == 'Successful'  Exit For Loop
     END
-    Execute Query  pg-${PG_CLUSTER_NAME}  DROP DATABASE ${db_name}
+    Delete Test DB  ${db_name}
     ${databases}=  Execute Query  pg-${PG_CLUSTER_NAME}  SELECT datname FROM pg_database
     List Should Not Contain Value  ${databases}  ${db_name}  msg="failed to delete the test database before restore from backup"
     Set To Dictionary  ${data}  backupId=${backup_id}
@@ -125,6 +125,6 @@ Check Enabled Auth With Roles
     ${res}=   Execute Query  pg-${PG_CLUSTER_NAME}  select * from test_insert_robot where id=${RID}  dbname=${db_name}
     Should Be True  """${EXPECTED}""" in """${res}"""  msg=[insert test record] Expected string ${EXPECTED} not found after restore database: ${db_name}. res: ${res}
     #delete backup after test
-    Execute Query  pg-${PG_CLUSTER_NAME}  drop database if exists ${db_name}
+    Delete Test DB  if exists ${db_name}
     ${resp}=  GET On Session  postgres_backup_daemon  url=/delete/${backup_id}?namespace=${name_space}
     Should Be Equal  ${resp.status_code}  ${200}

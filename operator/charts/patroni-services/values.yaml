@@ -432,8 +432,10 @@ tests:
   install: true
   dockerImage: ghcr.io/netcracker/pgskipper-operator-tests:main
   podLabels: {}
-  # One of "full", "basic"or one from testScenarios
+  # One of "full", "basic", "custom" or one from testScenarios
   runTestScenarios: "basic"
+  testList:
+    - check_pg_images
   testScenarios:
     patroniSimple:
       - check_patroni_rest

@@ -68,7 +68,9 @@ func (r *QueryExporterReconciler) Reconcile() error {
 	}
 
 	//Adding SecurityContext
-	queryExporterDeployment.Spec.Template.Spec.Containers[0].SecurityContext = opUtil.GetDefaultSecurityContext()
+	queryExporterDeployment.Spec.Template.Spec.Containers[0].SecurityContext = opUtil.GetReadOnlyContainerSecurityContext()
+	queryExporterDeployment.Spec.Template.Spec.Volumes = append(queryExporterDeployment.Spec.Template.Spec.Volumes, opUtil.GetTmpVolume())
+	queryExporterDeployment.Spec.Template.Spec.Containers[0].VolumeMounts = append(queryExporterDeployment.Spec.Template.Spec.Containers[0].VolumeMounts, opUtil.GetTmpVolumeMount())
 	if cr.Spec.PrivateRegistry.Enabled {
 		for _, name := range cr.Spec.PrivateRegistry.Names {
 			queryExporterDeployment.Spec.Template.Spec.ImagePullSecrets = append(queryExporterDeployment.Spec.Template.Spec.ImagePullSecrets, corev1.LocalObjectReference{Name: name})

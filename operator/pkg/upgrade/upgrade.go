@@ -43,7 +43,7 @@ var (
 	namespace     = opUtil.GetNameSpace()
 	logger        = opUtil.GetLogger()
 	MasterLabel   = map[string]string{"pgtype": "master"}
-	UpgradeLabels = map[string]string{"app": "pg-major-upgrade"}
+	UpgradeLabels = map[string]string{"app": "pg-major-upgrade", "app.kubernetes.io/name": "pg-major-upgrade"}
 	powaUILabels  = map[string]string{"name": "powa"}
 	//noConnectionDatabases = []string{"template0", "template1"}
 )
@@ -351,6 +351,12 @@ func (u *Upgrade) ProceedUpgrade(cr *v1.PatroniCore, cluster *v1.PatroniClusterS
 		return errors.New(errMsg)
 	}
 
+	patroniSpec := cr.Spec.Patroni
+	if err := u.CheckPVCSizeBeforeUpgrade(masterPodName, namespace, patroniSpec.Storage.Size); err != nil {
+		logger.Error("PVC space precheck failed, major upgrade will not be started", zap.Error(err))
+		return err
+	}
+
 	command = "pg_dumpall -v -U postgres -w --file=/tmp/test_db_dumpall.custom --schema-only"
 	_, _, err = u.helper.ExecCmdOnPatroniPod(masterPodName, namespace, command)
 	if err != nil {
@@ -377,7 +383,6 @@ func (u *Upgrade) ProceedUpgrade(cr *v1.PatroniCore, cluster *v1.PatroniClusterS
 		return err
 	}
 
-	patroniSpec := cr.Spec.Patroni
 	config, _ := u.helper.GetPatroniClusterConfig(cluster.PatroniUrl)
 	if !u.helper.IsPatroniClusterHealthy(config) {
 		return errors.New("patroni cluster is not healthy enough for upgrade procedure. Exiting")
@@ -422,15 +427,15 @@ func (u *Upgrade) ProceedUpgrade(cr *v1.PatroniCore, cluster *v1.PatroniClusterS
 
 	logger.Info(fmt.Sprintf("Leader name is %s", leaderName))
 	deploymentIdx, _ := strconv.Atoi(leaderName[len(leaderName)-1:])
-	patroniDeployment := deployment.NewPatroniStatefulset(cr, deploymentIdx, cluster.ClusterName,
+	patroniSfs := deployment.NewPatroniStatefulset(cr, deploymentIdx, cluster.ClusterName,
 		cluster.PatroniTemplate, cluster.PostgreSQLUserConf, cluster.PatroniLabels)
 	upgradePod := u.getUpgradePod(cr, leaderName, initDbArgs, cr.Upgrade.DockerUpgradeImage)
 
 	// copy nodeSelector, Volumes, SecurityContext from Deployment
-	upgradePod.Spec.NodeSelector = patroniDeployment.Spec.Template.Spec.NodeSelector
-	upgradePod.Spec.Volumes = patroniDeployment.Spec.Template.Spec.Volumes
-	upgradePod.Spec.Containers[0].VolumeMounts = patroniDeployment.Spec.Template.Spec.Containers[0].VolumeMounts
-	upgradePod.Spec.SecurityContext = patroniDeployment.Spec.Template.Spec.SecurityContext
+	upgradePod.Spec.NodeSelector = patroniSfs.Spec.Template.Spec.NodeSelector
+	upgradePod.Spec.Volumes = patroniSfs.Spec.Template.Spec.Volumes
+	upgradePod.Spec.Containers[0].VolumeMounts = patroniSfs.Spec.Template.Spec.Containers[0].VolumeMounts
+	upgradePod.Spec.SecurityContext = patroniSfs.Spec.Template.Spec.SecurityContext
 
 	// create pod and wait till completed
 	if err := u.helper.CreatePod(upgradePod); err != nil {
@@ -451,7 +456,7 @@ func (u *Upgrade) ProceedUpgrade(cr *v1.PatroniCore, cluster *v1.PatroniClusterS
 	}
 
 	// upgrade completed, apply patroni deployment
-	if err := u.helper.CreateOrUpdateStatefulset(patroniDeployment, true); err != nil {
+	if err := u.helper.CreateOrUpdateStatefulset(patroniSfs, true); err != nil {
 		logger.Error("Can't update Patroni deployment", zap.Error(err))
 		return err
 	}
@@ -714,4 +719,46 @@ func (u *Upgrade) CheckUpgrade(cr *v1.PatroniCore, cluster *v1.PatroniClusterSet
 	}
 
 	return currentVersion != targetVersion
+}
+
+func (u *Upgrade) CheckPVCSizeBeforeUpgrade(masterPodName string, namespace string, pvcSize string) error {
+	command := "du -sk /var/lib/pgsql/data/postgresql_${POD_IDENTITY} | awk '{print $1}'"
+
+	result, _, err := u.helper.ExecCmdOnPatroniPod(masterPodName, namespace, command)
+	if err != nil {
+		logger.Error("Can't check PostgreSQL data directory size before major upgrade", zap.Error(err))
+		return err
+	}
+
+	dbSizeKb, err := strconv.ParseInt(strings.TrimSpace(result), 10, 64)
+	if err != nil {
+		return fmt.Errorf("failed to parse DB size from du output %q: %w", result, err)
+	}
+
+	pvcQuantity, err := resource.ParseQuantity(pvcSize)
+	if err != nil {
+		return fmt.Errorf("failed to parse PVC size %q: %w", pvcSize, err)
+	}
+
+	dbSizeBytes := dbSizeKb * 1024
+	requiredBytes := dbSizeBytes * 2
+	pvcSizeBytes := pvcQuantity.Value()
+
+	if requiredBytes > pvcSizeBytes {
+		return fmt.Errorf(
+			"not enough PVC space for PostgreSQL major upgrade: DB size is %d bytes, PVC size is %d bytes, required at least %d bytes",
+			dbSizeBytes,
+			pvcSizeBytes,
+			requiredBytes,
+		)
+	}
+
+	logger.Info(fmt.Sprintf(
+		"PVC space precheck passed: DB size is %d bytes, PVC size is %d bytes, required at least %d bytes",
+		dbSizeBytes,
+		pvcSizeBytes,
+		requiredBytes,
+	))
+
+	return nil
 }

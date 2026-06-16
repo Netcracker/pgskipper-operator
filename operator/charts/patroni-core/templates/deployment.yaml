@@ -57,9 +57,11 @@ spec:
               memory: {{ default "50Mi" .Values.operator.resources.requests.memory  }}
           securityContext:
             {{- include "restricted.globalContainerSecurityContext" . | nindent 12 }}
+          volumeMounts:
+            - name: tmp
+              mountPath: /tmp
           {{ if .Values.externalDataBase }}
           {{ if eq (lower .Values.externalDataBase.type) "cloudsql"}}
-          volumeMounts:
             - mountPath: /secrets/cloudsql
               name: cloudsql-instance-credentials
               readOnly: true
@@ -141,9 +143,12 @@ spec:
         - name: {{ $v.name }}
       {{- end }}
       {{- end }}
+      volumes:
+        - name: tmp
+          emptyDir:
+            sizeLimit: 100Mi
       {{ if .Values.externalDataBase }}
       {{ if eq (lower .Values.externalDataBase.type) "cloudsql"}}
-      volumes:
         - name: cloudsql-instance-credentials
           secret:
             defaultMode: 420
