@@ -8,7 +8,7 @@ read_secret() {
   fi
 }
 
-POSTGRES_USER="$(read_secret /var/run/secrets/postgres/postgres-credentials/username)"
-POSTGRES_PASSWORD="$(read_secret /var/run/secrets/postgres/postgres-credentials/password)"
+POSTGRES_USER="$(read_secret /var/run/secrets/postgresql/postgres-credentials/username)"
+POSTGRES_PASSWORD="$(read_secret /var/run/secrets/postgresql/postgres-credentials/password)"
 
 POSTGRES_USER="${POSTGRES_USER}" POSTGRES_PASSWORD="${POSTGRES_PASSWORD}" exec ${EXPORTER_FILE} $@

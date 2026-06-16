@@ -123,7 +123,7 @@ func NewIntegrationTestsPod(cr *v1.PatroniServices, cluster *patroniv1.PatroniCl
 					VolumeMounts: []corev1.VolumeMount{
 						{
 							Name:      "postgres-credentials",
-							MountPath: "/var/run/secrets/postgres/postgres-credentials",
+							MountPath: "/var/run/secrets/postgresql/postgres-credentials",
 							ReadOnly:  true,
 						},
 					},

@@ -26,8 +26,8 @@ readonly ENCRYPTION_KEY="$2"
 BACKUP_DESTINATION_DIRECTORY="$1"
 BACKUP_NAME="pg_${PG_CLUSTER_NAME}_backup_$(basename ${BACKUP_DESTINATION_DIRECTORY}).tar.gz"
 
-POSTGRES_USER=$(cat /var/run/secrets/postgres-credentials/username)
-POSTGRES_PASSWORD=$(cat /var/run/secrets/postgres-credentials/password)
+POSTGRES_USER=$(cat /var/run/secrets/postgresql/postgres-credentials/username)
+POSTGRES_PASSWORD=$(cat /var/run/secrets/postgresql/postgres-credentials/password)
 
 source utils.sh
 
