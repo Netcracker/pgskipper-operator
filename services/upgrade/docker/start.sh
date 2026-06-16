@@ -107,7 +107,7 @@ function handle_master_upgrade() {
       --old-bindir  "/usr/lib/postgresql/${PG_VERSION}/bin" \
       --new-bindir  "/usr/lib/postgresql/${PG_VERSION_TARGET}/bin" \
       --check \
-      > /var/lib/pgsql/data/check_result
+      > /var/lib/pgsql/data/check_result 2>&1
 
     CHECK_CODE=$?
 

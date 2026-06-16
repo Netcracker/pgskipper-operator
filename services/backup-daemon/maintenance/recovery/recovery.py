@@ -64,6 +64,20 @@ If dcs uninitialized put it into configmap 'patroni-{}.config.yaml' on path 'boo
 Value can be '' if wal_archive is disabled and 'curl -v -S -f --connect-timeout 3 postgres-backup-daemon:8082/archive/get?filename=%f -o %p' if enabled. 
 """
 
+_SECRET_FILE_PATH = "/var/run/secrets/postgresql/"
+_PG_CREDS_PATH = _SECRET_FILE_PATH + "postgres-credentials/"
+
+def read_secret_file(path: str, default_val: str) -> str:
+    try:
+        with open(path, 'r') as f:
+            value = f.read().strip()
+    except OSError as e:
+        logging.error(f"Failed to read secret file {path}: {e}")
+        return default_val
+    if not value:
+        logging.info(f"Secret file {path} is empty, using default value")
+        return default_val
+    return value
 
 class PoolLogger(object):
 
@@ -383,10 +397,10 @@ def statefulset_from_pod(pod_name: str) -> str:
 
 def download_archive(oc_client, recovery_pod_id, restore_version):
     if restore_version:
-        oc_client.oc_exec(recovery_pod_id, "sh -c 'cd {} ; curl -u postgres:\"$PG_ROOT_PASSWORD\" postgres-backup-daemon:8081/get?id={} | tar -xzf - '"
-                .format(pg_data_dir, restore_version))
+        oc_client.oc_exec(recovery_pod_id, "sh -c 'cd {} ; curl -u postgres:\"$(cat /var/run/secrets/postgresql/postgres-credentials/password)\" postgres-backup-daemon:8081/get?id={} | tar -xzf - '"
+                .format(pg_data_dir, restore_version)) #do not touch yet
     else:
-        oc_client.oc_exec(recovery_pod_id, "sh -c 'cd {} ; curl -u postgres:\"$PG_ROOT_PASSWORD\" postgres-backup-daemon:8081/get | tar -xzf - '"
+        oc_client.oc_exec(recovery_pod_id, "sh -c 'cd {} ; curl -u postgres:\"$(cat /var/run/secrets/postgresql/postgres-credentials/password)\" postgres-backup-daemon:8081/get | tar -xzf - '"
                 .format(pg_data_dir))
 
 
@@ -629,11 +643,11 @@ def perform_recovery(oc_openshift_url, oc_username, oc_password, oc_project,
         log.info("Try to validate backup {} against list of backups from {}".format(restore_version,
                                                                                     backup_daemon_pod_id))
 
-        backup_list = requests.get("http://localhost:8081/list", auth=('postgres', os.getenv('POSTGRES_PASSWORD')))
+        backup_list = requests.get("http://localhost:8081/list", auth=('postgres', read_secret_file(_PG_CREDS_PATH + 'password', "")))
         validate_restore_version(backup_list.json(), restore_version)
     elif recovery_target_time:
         log.info("Try to find backup id from specified recovery_target_time={}".format(recovery_target_time))
-        backup_list = requests.get("http://localhost:8081/list", auth=('postgres', os.getenv('POSTGRES_PASSWORD')))
+        backup_list = requests.get("http://localhost:8081/list", auth=('postgres', read_secret_file(_PG_CREDS_PATH + 'password', "")))
         cluster_tz_name = oc_client.oc_exec(backup_daemon_pod_id, 'date "+%Z"').strip()
         log.debug("Cluster time zone: {}" + cluster_tz_name)
 

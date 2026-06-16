@@ -25,6 +25,7 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/util/intstr"
+	"k8s.io/utils/ptr"
 )
 
 var (
@@ -72,6 +73,15 @@ func NewBackupDaemonDeployment(backupDaemon *netcrackerv1.BackupDaemon, pgCluste
 								},
 							},
 						},
+						{
+							Name: "postgres-credentials",
+							VolumeSource: corev1.VolumeSource{
+								Secret: &corev1.SecretVolumeSource{
+									SecretName: GetRootSecretName(pgClusterName),
+									DefaultMode: ptr.To[int32](0400),
+								},
+							},
+						},
 					},
 					ServiceAccountName: serviceAccountName,
 					Affinity:           &backupDaemon.Affinity,
@@ -83,24 +93,6 @@ func NewBackupDaemonDeployment(backupDaemon *netcrackerv1.BackupDaemon, pgCluste
 							Command: []string{},
 							Args:    []string{},
 							Env: []corev1.EnvVar{
-								{
-									Name: "POSTGRES_PASSWORD",
-									ValueFrom: &corev1.EnvVarSource{
-										SecretKeyRef: &corev1.SecretKeySelector{
-											LocalObjectReference: corev1.LocalObjectReference{Name: GetRootSecretName(pgClusterName)},
-											Key:                  "password",
-										},
-									},
-								},
-								{
-									Name: "POSTGRES_USER",
-									ValueFrom: &corev1.EnvVarSource{
-										SecretKeyRef: &corev1.SecretKeySelector{
-											LocalObjectReference: corev1.LocalObjectReference{Name: GetRootSecretName(pgClusterName)},
-											Key:                  "username",
-										},
-									},
-								},
 								{
 									Name: "PGPASSWORD",
 									ValueFrom: &corev1.EnvVarSource{
@@ -229,6 +221,10 @@ func NewBackupDaemonDeployment(backupDaemon *netcrackerv1.BackupDaemon, pgCluste
 								{
 									MountPath: "/backup-storage",
 									Name:      "backup-data",
+								},
+								{
+									MountPath: "/var/run/secrets/postgresql/",
+									Name:      "postgres-credentials",
 								},
 							},
 							LivenessProbe: &corev1.Probe{

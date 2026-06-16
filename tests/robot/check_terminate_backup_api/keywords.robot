@@ -34,7 +34,7 @@ Check Authorization
     Should Be Equal  ${resp.status_code}  ${401}
 
 Prepare Auth
-    ${POSTGRES_USER}=  Get Environment Variable  POSTGRES_USER  default=postgres
-    ${PG_ROOT_PASSWORD}=  Get Environment Variable  PG_ROOT_PASSWORD
+    ${POSTGRES_USER}=  Get Secret Or Env  POSTGRES_USER  ${PG_ROOT_USERNAME_PATH}
+    ${PG_ROOT_PASSWORD}=  Get Secret Or Env  PG_ROOT_PASSWORD  ${PG_ROOT_PASSWORD_PATH}
     ${auth}=  Create List  ${POSTGRES_USER}  ${PG_ROOT_PASSWORD}
     [Return]  ${auth}

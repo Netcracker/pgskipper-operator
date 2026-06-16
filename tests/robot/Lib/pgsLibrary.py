@@ -32,6 +32,8 @@ urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
 log = logging.getLogger()
 log.setLevel(logging.DEBUG)
 
+POSTGRES_CREDS_PATH = "/var/run/secrets/postgresql/postgres-credentials"
+
 class pgsLibrary(object):
     def __init__(self, namespace, ssl_mode, internal_tls):
         self._namespace = namespace
@@ -247,7 +249,7 @@ class pgsLibrary(object):
 
     @keyword('Execute Query')
     def execute_query(self, host, query, dbname='postgres'):
-        password = os.getenv("PG_ROOT_PASSWORD")
+        password = self.read_secret_file(POSTGRES_CREDS_PATH + "/password", "")
         connection_properties = {
             'host': host,
             'password': password,
@@ -415,8 +417,8 @@ class pgsLibrary(object):
 
     def connection_for_pg(self):
         conn = psycopg2.connect(dbname='postgres',
-                                user=os.getenv('POSTGRES_USER', "postgres"),
-                                password=os.getenv('PG_ROOT_PASSWORD'),
+                                user=self.read_secret_file(POSTGRES_CREDS_PATH + "/username", "postgres"),
+                                password=self.read_secret_file(POSTGRES_CREDS_PATH + "/password", ""),
                                 host="pg-" + os.getenv("PG_CLUSTER_NAME", "patroni"))
         return conn
 
@@ -821,3 +823,17 @@ class pgsLibrary(object):
 
     def get_image_from_resource(self, type, name, container_name):
         return self.pl_lib.get_resource_image(type, name, self._namespace, container_name)
+
+    def read_secret_file(self, path: str, default_val: str) -> str:
+            try:
+                with open(path, "r") as f:
+                    value = f.read().strip()
+            except OSError as e:
+                logging.error(f"Failed to read secret file {path}: {e}")
+                return default_val
+    
+            if not value:
+                logging.info(f"Secret file {path} is empty, using default value")
+                return default_val
+    
+            return value

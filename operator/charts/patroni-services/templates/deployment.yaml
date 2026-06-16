@@ -72,6 +72,12 @@ spec:
             - name: tls-cert
               mountPath: /certs/
           {{- end }}
+            - name: postgres-credentials
+              mountPath: /var/run/secrets/postgres-credentials
+              readOnly: true
+            - name: replicator-credentials
+              mountPath: /var/run/secrets/replicator-credentials
+              readOnly: true
           {{- end }}
           env:
             - name: WATCH_NAMESPACE
@@ -106,21 +112,6 @@ spec:
               valueFrom:
                 fieldRef:
                   fieldPath: status.hostIP
-            - name: PG_ADMIN_PASSWORD
-              valueFrom:
-                secretKeyRef:
-                  name: postgres-credentials
-                  key: password
-            - name: PG_ADMIN_USER
-              valueFrom:
-                secretKeyRef:
-                  name: postgres-credentials
-                  key: username
-            - name: PG_REPLICATOR_PASSWORD
-              valueFrom:
-                secretKeyRef:
-                  name: replicator-credentials
-                  key: password
             - name: GLOBAL_SECURITY_CONTEXT
               value: {{ .Values.GLOBAL_SECURITY_CONTEXT | quote | default ("true" | quote) }}
             - name: CLOUD_PUBLIC_HOST
@@ -178,6 +169,16 @@ spec:
             secretName: {{ .Values.tls.certificateSecretName }}
             defaultMode: 416
       {{- end }}
+      {{- if .Values.replicationController }}
+        - name: replicator-credentials
+          secret:
+            secretName: replicator-credentials
+            defaultMode: 420
+      {{- end }}
+        - name: postgres-credentials
+          secret:
+            secretName: postgres-credentials
+            defaultMode: 420      
       {{- end }}
       tolerations:
         {{- range $tKey, $t := .Values.policies.tolerations }}

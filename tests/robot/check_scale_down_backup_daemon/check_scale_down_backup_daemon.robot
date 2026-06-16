@@ -17,7 +17,7 @@ Setup
     Set Suite Variable  ${db_name}  test_ha_backup_${postfix}
 
 Make Backup And Return ID
-    ${PG_ROOT_PASSWORD}=   Get Environment Variable   PG_ROOT_PASSWORD
+    ${PG_ROOT_PASSWORD}=   Get Secret Or Env  PG_ROOT_PASSWORD  ${PG_ROOT_PASSWORD_PATH}
     ${auth}=  Create List    postgres  ${PG_ROOT_PASSWORD}
     ${databases}=  Create List  ${db_name}
     &{data}=  Create Dictionary  databases=${databases}

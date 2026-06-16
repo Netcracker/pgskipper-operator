@@ -42,7 +42,12 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
-var pHelper *PatroniHelper = nil
+var (
+	pHelper *PatroniHelper = nil
+	
+	secretFilePath         = "/var/run/secrets/postgresql/"
+	replicatorPasswordPath = secretFilePath + "replicator-credentials/"
+)
 
 type PatroniHelper struct {
 	ResourceManager
@@ -444,7 +449,7 @@ func (ph *PatroniHelper) RevokeGrantOnPublicSchema(pgHost string) error {
 }
 
 func (ph *PatroniHelper) SyncReplicatorPassword(pgHost string) error {
-	password := util.GetEnv("PG_REPLICATOR_PASSWORD", "replicator")
+	password := util.ReadSecretFile(replicatorPasswordPath+"password", "")
 	pgC := pgClient.GetPostgresClient(pgHost)
 	if pgC == nil {
 		return errors.New("Can't create Postgres Client")

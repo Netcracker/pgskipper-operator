@@ -94,7 +94,7 @@ Check Enabled Auth restore endpoint
     ${resp}=  Get On Session  postgres_backup_daemon  url=/restore/status/test  expected_status=401
     Should Be Equal  ${resp.status_code}  ${401}
 
-    ${PG_ROOT_PASSWORD}=   Get Environment Variable   PG_ROOT_PASSWORD
+    ${PG_ROOT_PASSWORD}=   Get Secret Or Env  PG_ROOT_PASSWORD  ${PG_ROOT_PASSWORD_PATH}
     ${auth}=  Create List    postgres  ${PG_ROOT_PASSWORD}
     ${PG_CLUSTER_NAME}=   Get Environment Variable   PG_CLUSTER_NAME   default=patroni
     ${POSTGRES_USER}=   Get Environment Variable   POSTGRES_USER   default=postgres
@@ -162,7 +162,7 @@ Check Enabled Auth not existing
     ${resp}=  Get On Session  postgres_backup_daemon  url=/restore/status/test  expected_status=401
     Should Be Equal  ${resp.status_code}  ${401}
 
-    ${PG_ROOT_PASSWORD}=   Get Environment Variable   PG_ROOT_PASSWORD
+    ${PG_ROOT_PASSWORD}=   Get Secret Or Env  PG_ROOT_PASSWORD  ${PG_ROOT_PASSWORD_PATH}
     ${auth}=  Create List    postgres  ${PG_ROOT_PASSWORD}
 
     Create Session    postgres_backup_daemon    ${scheme}://postgres-backup-daemon:9000  auth=${auth}

@@ -113,10 +113,10 @@ func getVolumes() []corev1.Volume {
 			},
 		},
 		{
-			Name: "postgresql-credentials",
+			Name: "postgres-credentials",
 			VolumeSource: corev1.VolumeSource{
 				Secret: &corev1.SecretVolumeSource{
-					SecretName: "postgresql-credentials",
+					SecretName: "postgres-credentials",
 				},
 			},
 		},
@@ -131,7 +131,7 @@ func getVolumeMounts() []corev1.VolumeMount {
 		},
 		{
 			MountPath: "/var/run/secrets/postgresql/",
-			Name:      "postgresql-credentials",
+			Name:      "postgres-credentials",
 		},
 	}
 }
@@ -169,15 +169,6 @@ func getEnvVariables(spec v1.QueryExporter) []corev1.EnvVar {
 		{
 			Name:  "QUERY_EXPORTER_DISABLE_SELF_MONITOR",
 			Value: strconv.FormatBool(spec.SelfMonitorDisabled),
-		},
-// todo: read credentials from secret
-		{
-			Name:  "POSTGRES_USER",
-			Value: util.ReadSecretFile(pgUserCredsPath+"username", "postgres"),
-		},
-		{
-			Name:  "POSTGRES_PASSWORD",
-			Value: util.ReadSecretFile(pgUserCredsPath+"password", ""),
 		},
 		{
 			Name:  "EXCLUDED_QUERIES",
