@@ -467,9 +467,12 @@ class pgsLibrary(object):
             conn.set_isolation_level(0)
             with conn.cursor() as cursor:
                 for base_name in base_names:
-                    cursor.execute("SELECT pg_terminate_backend(pid) FROM pg_stat_activity WHERE pid <> pg_backend_pid() AND datname = '{}';".format(base_name))
-                    cursor.execute('DROP DATABASE IF EXISTS {}'.format(base_name))
-d.metadata.labels \
+                    cursor.execute('DROP DATABASE IF EXISTS "{}" WITH (FORCE)'.format(base_name))
+
+    @keyword('Get Pod Daemon')
+    def get_pod_daemon(self):
+        for pod in self.pl_lib.get_pods(self._namespace):
+            if "app" in pod.metadata.labels \
                     and pod.metadata.labels['app'] == 'postgres-backup-daemon' \
                     and pod.status.phase == 'Running':
                 return pod
