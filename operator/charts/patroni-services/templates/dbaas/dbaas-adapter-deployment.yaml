@@ -90,7 +90,6 @@ spec:
           resources:
 {{ .Values.dbaas.resources | toYaml | indent 12 }}
           env:
-  {{- template "postgres-dbaas.pgAdminEnvs" . }}
             - name: POSTGRES_DATABASE
               value: {{ default "postgres" .Values.dbaas.dbName }}
             - name: POSTGRES_HOST
