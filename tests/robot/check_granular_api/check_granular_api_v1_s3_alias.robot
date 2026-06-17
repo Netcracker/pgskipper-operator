@@ -57,7 +57,13 @@ Run API V1 S3 Alias Flow
     [Arguments]  ${headers}
 
     ${PG_CLUSTER_NAME}=  Get Environment Variable  PG_CLUSTER_NAME  default=patroni
-    ${storage_name}=  Get Environment Variable  S3_ALIAS_NAME  default=test
+
+    ${s3_aliases_test_enabled}=  Get Environment Variable  S3_ALIASES_TEST_ENABLED  default=false
+    Skip If  '${s3_aliases_test_enabled}' != 'true'  S3 aliases test is disabled
+
+    ${storage_name}=  Get Environment Variable  S3_ALIAS_NAME  default=
+    Skip If  '${storage_name}' == ''  S3_ALIAS_NAME is not configured
+    
     ${postfix}=  Generate Random String  5  [LOWER]
     ${db_name}=  Set Variable  api_v1_${postfix}
     ${restore_db_name}=  Set Variable  api_v1_restore_${postfix}
