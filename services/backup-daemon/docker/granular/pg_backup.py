@@ -194,11 +194,12 @@ class PostgreSQLDumpWorker(Thread):
 
         pg_dump_backup_path = backups.build_backup_path(self.backup_id, self.namespace, self.external_backup_root)
 
-        # Some databases may contain special symbols like '=',
-        # '!' and others, so use this WA.
-        os.environ['PGDATABASE'] = database
-        if configs.postgres_password():
-         os.environ['PGPASSWORD'] = configs.postgres_password()
+        # Build a per-invocation environment so concurrent threads don't race on
+        # shared os.environ when setting PGPASSWORD.
+        proc_env = os.environ.copy()
+        pg_password = configs.postgres_password()
+        if pg_password is not None:
+            proc_env['PGPASSWORD'] = pg_password
 
         #fix to exclude pg_hint_plan for azure pg
         #for pg17 use --exclude-extension with pg_dump
@@ -217,6 +218,7 @@ class PostgreSQLDumpWorker(Thread):
                     '--user', configs.postgresql_user(),
                     '--host', configs.postgresql_host(),
                     '--port', configs.postgresql_port(),
+                    '--dbname', database,
                     # '--clean',
                     # '--create',
                     # '--if-exists',
@@ -237,14 +239,14 @@ class PostgreSQLDumpWorker(Thread):
             with open(self.stderr_file(database), "w+") as stderr:
                 start = time.time()
                 if self.encryption:
-                    pg_dump_proc = subprocess.Popen(command, stdout=subprocess.PIPE, stderr=stderr)
+                    pg_dump_proc = subprocess.Popen(command, stdout=subprocess.PIPE, stderr=stderr, env=proc_env)
                     openssl_proc = subprocess.Popen(
                         "openssl enc -aes-256-cbc -nosalt -pass pass:%s" % self.key,
                         stdin=pg_dump_proc.stdout, shell=True, stderr=stderr)
                     self.pg_dump_proc = openssl_proc
                     exit_code = openssl_proc.wait()
                 else:
-                    pg_dump_proc = subprocess.Popen(command, stderr=stderr)
+                    pg_dump_proc = subprocess.Popen(command, stderr=stderr, env=proc_env)
                     self.pg_dump_proc = pg_dump_proc
                     exit_code = pg_dump_proc.wait()
 
@@ -261,6 +263,7 @@ class PostgreSQLDumpWorker(Thread):
                 '--user', configs.postgresql_user(),
                 '--host', configs.postgresql_host(),
                 '--port', configs.postgresql_port(),
+                '--dbname', database,
                 # '--clean',
                 # '--create',
                 # '--if-exists',
@@ -282,14 +285,14 @@ class PostgreSQLDumpWorker(Thread):
                 start = time.time()
                 # in case of encryption lets redirect output of pg_dump to openssl
                 if self.encryption:
-                    pg_dump_proc = subprocess.Popen(command, stdout=subprocess.PIPE, stderr=stderr)
+                    pg_dump_proc = subprocess.Popen(command, stdout=subprocess.PIPE, stderr=stderr, env=proc_env)
                     openssl_proc = subprocess.Popen(
                         "openssl enc -aes-256-cbc -nosalt -pass pass:%s" % self.key,
                         stdin=pg_dump_proc.stdout, stdout=dump, shell=True, stderr=stderr)
                     self.pg_dump_proc = openssl_proc
                     exit_code = openssl_proc.wait()
                 else:
-                    pg_dump_proc = subprocess.Popen(command, stdout=dump, stderr=stderr)
+                    pg_dump_proc = subprocess.Popen(command, stdout=dump, stderr=stderr, env=proc_env)
                     self.pg_dump_proc = pg_dump_proc
                     exit_code = pg_dump_proc.wait()
 
