@@ -73,15 +73,15 @@ func NewBackupDaemonDeployment(backupDaemon *netcrackerv1.BackupDaemon, pgCluste
 								},
 							},
 						},
-						{
-							Name: "postgres-credentials",
-							VolumeSource: corev1.VolumeSource{
-								Secret: &corev1.SecretVolumeSource{
-									SecretName: GetRootSecretName(pgClusterName),
-									DefaultMode: ptr.To[int32](0400),
-								},
-							},
-						},
+//						{
+//							Name: "postgres-credentials",
+//							VolumeSource: corev1.VolumeSource{
+//								Secret: &corev1.SecretVolumeSource{
+//									SecretName: GetRootSecretName(pgClusterName),
+//									DefaultMode: ptr.To[int32](0400),
+//								},
+//							},
+//						},
 					},
 					ServiceAccountName: serviceAccountName,
 					Affinity:           &backupDaemon.Affinity,
@@ -292,6 +292,20 @@ func NewBackupDaemonDeployment(backupDaemon *netcrackerv1.BackupDaemon, pgCluste
 			},
 		}
 	}
+// Add postgres-credentials volume regardless of storage type
+	deployment.Spec.Template.Spec.Volumes = append(
+      deployment.Spec.Template.Spec.Volumes,
+      corev1.Volume{
+          Name: "postgres-credentials",
+          VolumeSource: corev1.VolumeSource{
+              Secret: &corev1.SecretVolumeSource{
+                  SecretName:  GetRootSecretName(pgClusterName),
+                  DefaultMode: ptr.To[int32](0400),
+              },
+          },
+      },
+  )
+	
 	if backupDaemon.ExternalPv != nil {
 		deployment.Spec.Template.Spec.Volumes =
 			append(deployment.Spec.Template.Spec.Volumes, getExternalBackupVolume())
