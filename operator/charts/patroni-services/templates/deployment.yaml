@@ -73,13 +73,13 @@ spec:
             - name: tls-cert
               mountPath: /certs/
           {{- end }}
+          {{- end }}
             - name: postgres-credentials
               mountPath: /var/run/secrets/postgres-credentials
               readOnly: true
             - name: replicator-credentials
               mountPath: /var/run/secrets/replicator-credentials
               readOnly: true
-          {{- end }}
           env:
             - name: WATCH_NAMESPACE
               valueFrom:
@@ -179,11 +179,11 @@ spec:
             secretName: replicator-credentials
             defaultMode: 420
       {{- end }}
+      {{- end }}
         - name: postgres-credentials
           secret:
             secretName: postgres-credentials
             defaultMode: 420      
-      {{- end }}
       tolerations:
         {{- range $tKey, $t := .Values.policies.tolerations }}
         - key: {{ $t.key }}
