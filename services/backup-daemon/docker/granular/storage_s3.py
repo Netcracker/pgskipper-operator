@@ -38,17 +38,30 @@ RETRY_WAIT = 1000
 urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
 class AwsS3Vault:
     __log = logging.getLogger("AwsS3Granular")
+    __s3_aliases_cache = None
 
-    @staticmethod
-    def get_s3_alias_config(storage_name=None):
+    @classmethod
+    def get_s3_aliases(cls):
         if os.getenv("S3_ALIASES_USED", "false").lower() != "true":
             return None
 
-        with open("/aliases/s3_aliases.json", "r") as f:
-            aliases = json.load(f)
+        if cls.__s3_aliases_cache is None:
+            with open("/aliases/s3_aliases.json", "r") as f:
+                aliases = json.load(f)
 
-        if not aliases:
-            raise Exception("S3 aliases are enabled, but /aliases/s3_aliases.json is empty")
+            if not aliases:
+                raise Exception("S3 aliases are enabled, but /aliases/s3_aliases.json is empty")
+
+            cls.__s3_aliases_cache = aliases
+
+        return cls.__s3_aliases_cache
+
+    @classmethod
+    def get_s3_alias_config(cls, storage_name=None):
+        aliases = cls.get_s3_aliases()
+
+        if aliases is None:
+            return None
 
         if not storage_name:
             raise Exception("storageName is required when S3 aliases are enabled")
@@ -71,18 +84,22 @@ class AwsS3Vault:
         self.storage_name = storage_name
         self.alias = AwsS3Vault.get_s3_alias_config(storage_name)
         self.bucket = AwsS3Vault.get_s3_bucket_name(self.alias)
+
+        if not self.bucket or not isinstance(self.bucket, str) or not self.bucket.strip():
+            if self.alias:
+                raise ValueError(f"S3 bucket is not configured for alias '{self.storage_name}'.")
+            raise ValueError("S3 bucket is not configured. Set one of CONTAINER, AWS_S3_BUCKET, or S3_BUCKET.")
+
         self.console = None
         self.cluster_name = cluster_name
         self.cache_enabled = cache_enabled
         self.cached_state = {}
         self.aws_s3_bucket_listing = aws_s3_bucket_listing
+
         if prefix is not None:
             self.aws_prefix = prefix
         else:
             self.aws_prefix = os.getenv("AWS_S3_PREFIX", "")
-
-        if not self.bucket or not isinstance(self.bucket, str) or not self.bucket.strip():
-            raise ValueError("S3 bucket is not configured. Set one of CONTAINER, AWS_S3_BUCKET, or S3_BUCKET.")
 
     def get_s3_client(self):
         alias = self.alias
