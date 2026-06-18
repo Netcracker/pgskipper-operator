@@ -59,9 +59,9 @@ spec:
           secret:
             secretName: dbaas-adapter-credentials
             defaultMode: 420
-        - name: dbaas-adapter-registration-credentials
+        - name: dbaas-aggregator-registration-credentials
           secret:
-            secretName: dbaas-adapter-registration-credentials
+            secretName: dbaas-aggregator-registration-credentials
             defaultMode: 420
         - name: postgres-credentials
           secret:
