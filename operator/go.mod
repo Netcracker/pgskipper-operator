@@ -14,7 +14,7 @@ require (
 	github.com/operator-framework/operator-lib v0.19.0
 	github.com/pkg/errors v0.9.1
 	go.uber.org/zap v1.28.0
-	golang.org/x/crypto v0.51.0
+	golang.org/x/crypto v0.52.0
 	google.golang.org/api v0.284.0
 	gopkg.in/yaml.v2 v2.4.0
 	k8s.io/api v0.35.3
