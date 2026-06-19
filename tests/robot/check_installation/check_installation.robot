@@ -28,5 +28,7 @@ Check Backup-daemon Installation Correctness
     When Check Daemon Replicas Count
     Then Backup-deamon Health Status Through Rest Is OK
 
-
-
+Test Container Hardening
+    [Tags]  backup_basic
+    ${exclusions}=    Create Dictionary  _all=CH12  pg-patroni-node=CH4  pg-major-upgrade=CH4
+    Check Container Hardening   exclusions=${exclusions}

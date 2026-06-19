@@ -1,5 +1,5 @@
 {{- if and (.Capabilities.APIVersions.Has "gateway.networking.k8s.io/v1") (eq .Values.PAAS_PLATFORM "KUBERNETES") -}}
-{{ if and .Values.powaUI.install .Values.tls.enabled }}
+{{ if and .Values.powaUI.install .Values.powaUI.ingress.enabled .Values.tls.enabled }}
 apiVersion: gateway.networking.k8s.io/v1
 kind: HTTPRoute
 metadata:
@@ -18,5 +18,9 @@ spec:
       requestRedirect:
         scheme: https
         statusCode: 301
+    matches:
+        - path:
+            type: PathPrefix
+            value: /
 {{- end }}
 {{- end }}

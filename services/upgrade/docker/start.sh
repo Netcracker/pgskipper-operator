@@ -21,11 +21,11 @@ SLEEP_BETWEEN_ITERATIONS=5
 
 function handle_master_upgrade() {
     cd /var/lib/pgsql/data/
-    echo "[$(date +%Y-%m-%dT%H:%M:%S)] cur path: `pwd`"
+    echo "[$(date +%Y-%m-%dT%H:%M:%S)] cur path: $(pwd)"
 
 
-    DB_SIZE_GB_FLOAT=$(du -sk /var/lib/pgsql/data/${DATA_DIR} | awk '{ print $1 / 1024 / 1024 }')
-    DB_SIZE_GB=`printf "%.0f\n" ${DB_SIZE_GB_FLOAT}`
+    DB_SIZE_GB_FLOAT=$(du -sk "/var/lib/pgsql/data/${DATA_DIR}" | awk '{ print $1 / 1024 / 1024 }')
+    DB_SIZE_GB=$(printf "%.0f\n" "${DB_SIZE_GB_FLOAT}")
     PV_SIZE_GB=$(echo "${PV_SIZE}" | tr -dc '0-9')
 
     echo
@@ -53,7 +53,7 @@ function handle_master_upgrade() {
         fi
     else
         echo "[$(date +%Y-%m-%dT%H:%M:%S)] Migration PV is NOT used, check if there is enough space for migration in master PV"
-        DOUBLE_DB_SIZE="$((${DB_SIZE_GB} * 2))"
+        DOUBLE_DB_SIZE="$((DB_SIZE_GB * 2))"
         if [[ ${DOUBLE_DB_SIZE} -gt ${PV_SIZE_GB} ]]; then
             echo "[$(date +%Y-%m-%dT%H:%M:%S)] DB size is more than PV size, exiting ..."
             exit 1
@@ -69,7 +69,7 @@ function handle_master_upgrade() {
 
     echo "[$(date +%Y-%m-%dT%H:%M:%S)] initialize complete, copying configs"
     mkdir "/tmp/configs/"
-    cp /var/lib/pgsql/data/${DATA_DIR}/*.conf "/tmp/configs/"
+    cp /var/lib/pgsql/data/"${DATA_DIR}"/*.conf "/tmp/configs/"
 
     echo "turning off wal archiving"
     sed -e '/archive_command/ s/^#*/#/' -i "$MIGRATION_PATH/tmp/pg/postgresql.conf"
@@ -87,18 +87,18 @@ function handle_master_upgrade() {
 
     echo "[$(date +%Y-%m-%dT%H:%M:%S)] making chmod 750 to datadir"
 
-    chmod 750 $MIGRATION_PATH/${DATA_DIR}
+    chmod 750 "${MIGRATION_PATH}/${DATA_DIR}"
 
-    SHARED_PRELOAD_LIBRARIES=$(grep "shared_preload_libraries" /var/lib/pgsql/data/${DATA_DIR}/postgresql.conf)
+    SHARED_PRELOAD_LIBRARIES=$(grep "shared_preload_libraries" "/var/lib/pgsql/data/${DATA_DIR}/postgresql.conf")
 
     if [[ -z ${SHARED_PRELOAD_LIBRARIES} ]]; then
         echo "shared_preload_libraries is not found in PostgreSQL config, please check PostgreSQL params, exiting..."
         exit 1
     fi
 
-    echo ${SHARED_PRELOAD_LIBRARIES} >> $MIGRATION_PATH/tmp/pg/postgresql.conf
+    echo "${SHARED_PRELOAD_LIBRARIES}" >> "${MIGRATION_PATH}/tmp/pg/postgresql.conf"
 
-    ls -la $MIGRATION_PATH
+    ls -la "${MIGRATION_PATH}"
 
     echo "[$(date +%Y-%m-%dT%H:%M:%S)] Check cluster before upgrade"
       /usr/lib/postgresql/"${PG_VERSION_TARGET}"/bin/pg_upgrade \
@@ -211,6 +211,8 @@ function check_user(){
             echo "UID added ..."
           fi
         fi
+
+        set +e
 
     fi
 }

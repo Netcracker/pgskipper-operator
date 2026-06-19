@@ -6,9 +6,5 @@ metadata:
   labels:
     app: patroni-tests
 data:
-  {{- if include "supplementary-tests.monitoredImages" . }}
-  dd_images: {{ include "supplementary-tests.monitoredImages" . }}
-  {{ else }}
-  dd_images: ""
-  {{ end }}
+   dd_images: {{ (.Values.tests.ddImages | default (include "supplementary-tests.monitoredImages" .) | default "") | quote }}
 {{- end }}

@@ -24,6 +24,7 @@ import (
 	"github.com/Netcracker/pgskipper-operator/pkg/util"
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
+	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/util/intstr"
 	"k8s.io/utils/ptr"
@@ -109,7 +110,7 @@ func NewPatroniStatefulset(cr *patroniv1.PatroniCore, deploymentIdx int, cluster
 			},
 			Template: corev1.PodTemplateSpec{
 				ObjectMeta: metav1.ObjectMeta{
-					Labels: util.Merge(patroniLabels, patroniSpec.PodLabels),
+					Labels: util.Merge(patroniLabels, patroniSpec.PodLabels, map[string]string{"app.kubernetes.io/name": "pg-patroni-node"}),
 				},
 				Spec: corev1.PodSpec{
 					Volumes: []corev1.Volume{
@@ -137,6 +138,15 @@ func NewPatroniStatefulset(cr *patroniv1.PatroniCore, deploymentIdx int, cluster
 								ConfigMap: &corev1.ConfigMapVolumeSource{
 									DefaultMode:          ptr.To[int32](420),
 									LocalObjectReference: corev1.LocalObjectReference{Name: postgreSQLUserConf},
+								},
+							},
+						},
+						util.GetTmpVolume(),
+						{
+							Name: "patroni-runtime",
+							VolumeSource: corev1.VolumeSource{
+								EmptyDir: &corev1.EmptyDirVolumeSource{
+									SizeLimit: func() *resource.Quantity { q := resource.MustParse("100Mi"); return &q }(),
 								},
 							},
 						},
@@ -250,6 +260,11 @@ func NewPatroniStatefulset(cr *patroniv1.PatroniCore, deploymentIdx int, cluster
 								{
 									MountPath: "/properties",
 									Name:      "postgresql-config",
+								},
+								util.GetTmpVolumeMount(),
+								{
+									Name:      "patroni-runtime",
+									MountPath: "/patroni",
 								},
 							},
 							Resources:       *patroniSpec.Resources,

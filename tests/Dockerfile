@@ -1,7 +1,9 @@
-FROM ghcr.io/netcracker/qubership-docker-integration-tests:0.4.1
+FROM ghcr.io/netcracker/qubership-docker-integration-tests:0.5.3
 
 ENV LC_ALL=en_US.UTF-8 \
     LANG=en_US.UTF-8
+
+USER root
 
 COPY docker/pip.conf /root/.pip/pip.conf
 COPY docker/requirements.txt /root/requirements.txt
@@ -17,11 +19,14 @@ RUN chmod -R g=u /etc/passwd && \
 
 COPY ./app/* /app/
 COPY robot /test_runs/
+COPY robot ${ROBOT_HOME}/tests
 COPY docker/uid_entrypoint /opt/uid_entrypoint
+COPY docker/robot-entrypoint.sh /opt/robot-entrypoint.sh
 
 RUN chgrp -R 0 /app && chmod g+w /app && \
     chgrp -R 0 /test_runs && chmod -R g+w /test_runs && \
-    chmod +x /opt/uid_entrypoint
+    chmod +x /opt/uid_entrypoint /opt/robot-entrypoint.sh && \
+    chown -R 1000:0 "${ROBOT_HOME}" && chmod -R 775 "${ROBOT_HOME}"
 
 # Volumes are defined to support read-only root file system
 VOLUME /etc
@@ -33,4 +38,4 @@ USER 1001
 WORKDIR /app
 
 ENTRYPOINT [ "/opt/uid_entrypoint" ]
-CMD ["robot -i ${TESTS_TAGS} /test_runs/"]
+CMD ["/opt/robot-entrypoint.sh", "run-robot-without-ttyd"]

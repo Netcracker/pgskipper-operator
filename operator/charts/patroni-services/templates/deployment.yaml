@@ -58,9 +58,11 @@ spec:
               memory: {{ default "50Mi" .Values.operator.resources.requests.memory  }}
           securityContext:
             {{- include "restricted.globalContainerSecurityContext" . | nindent 12 }}
+          volumeMounts:
+            - name: tmp
+              mountPath: /tmp
           {{ if .Values.externalDataBase }}
           {{ if eq (lower .Values.externalDataBase.type) "cloudsql"}}
-          volumeMounts:
             - mountPath: /secrets/cloudsql
               name: cloudsql-instance-credentials
               readOnly: true
@@ -68,7 +70,6 @@ spec:
           {{ end }}
           {{- if not .Values.externalDataBase }}
           {{- if and .Values.tls .Values.tls.enabled }}
-          volumeMounts:
             - name: tls-cert
               mountPath: /certs/
           {{- end }}
@@ -134,6 +135,8 @@ spec:
               {{- template "postgres-operator.smEnvs" . }}
             - name: INTERNAL_TLS_ENABLED
               value: {{ default "false" .Values.INTERNAL_TLS_ENABLED | quote }}
+            - name: KUBE_FEATURE_WatchListClient
+              value: {{ default "false" .Values.KUBE_FEATURE_WatchListClient | quote }}
           livenessProbe:
             httpGet:
               path: /healthz
@@ -161,6 +164,9 @@ spec:
       {{- end }}
       {{- end }}
       volumes:
+        - name: tmp
+          emptyDir:
+            sizeLimit: 100Mi
       {{ if .Values.externalDataBase }}
       {{ if eq (lower .Values.externalDataBase.type) "cloudsql"}}
         - name: cloudsql-instance-credentials

@@ -118,7 +118,7 @@ spec:
       bucket: {{ .Values.backupDaemon.s3Storage.bucket }}
       prefix: {{ default "postgres" .Values.backupDaemon.s3Storage.prefix }}
       untrustedCert: {{ default "true" .Values.backupDaemon.s3Storage.untrustedCert }}
-      region: {{ .Values.backupDaemon.s3Storage.region }}
+      region: {{ default "us-east-1" .Values.backupDaemon.s3Storage.region }}
   {{ end }}
   {{ if .Values.backupDaemon.externalPv }}
     externalPv: {{ toYaml .Values.backupDaemon.externalPv | nindent 6 }}
@@ -401,6 +401,7 @@ spec:
       {{ toYaml .Values.podLabels | nindent 6 }}
     {{- end }}
     image: {{ template "find_image" (dict "deployName" "postgres_operator_tests" "SERVICE_NAME" "postgres_operator_tests" "vals" .Values "default" .Values.tests.dockerImage) }}
+    monitoredImages: {{ include "supplementary-tests.monitoredImages" . | quote }}
 {{ if .Values.tests.resources }}
     resources:
 {{ toYaml .Values.tests.resources | indent 6 }}
@@ -413,16 +414,51 @@ spec:
         cpu: 150m
         memory: 256Mi
 {{ end }}
-{{- $runTestScenarios := .Values.tests.runTestScenarios }}
-{{- if or (eq (lower $runTestScenarios) "full") (eq (lower $runTestScenarios) "basic") }}
-    runTestScenarios: {{.Values.tests.runTestScenarios}}
-{{- else if index .Values.tests.testScenarios (printf "%s" $runTestScenarios) }}
+{{- $runTestScenarios := lower .Values.tests.runTestScenarios }}
+{{- if or (eq $runTestScenarios "full") (eq $runTestScenarios "basic") }}
+    runTestScenarios: {{ $runTestScenarios }}
+{{- else if eq $runTestScenarios "custom" }}
+    runTestScenarios: custom
+    {{- if .Values.tests.testList }}
     testList:
-        {{- range (index .Values.tests.testScenarios (printf "%s" $runTestScenarios)) }}
+      {{- range .Values.tests.testList }}
       - {{ . }}
-        {{- end }}
-{{ end }}
+      {{- end }}
+    {{- end }}
+{{- else if hasKey .Values.tests.testScenarios .Values.tests.runTestScenarios }}
+    runTestScenarios: custom
+    testList:
+      {{- range (index .Values.tests.testScenarios .Values.tests.runTestScenarios) }}
+      - {{ . }}
+      {{- end }}
+{{- end }}
     pgNodeQty: {{ default "1" .Values.patroni.replicas }}
+{{- if or .Values.tests.environmentName .Values.tests.atpReport.enabled .Values.tests.atpReportViewUiUrl }}
+    {{- if .Values.tests.environmentName }}
+    environmentName: {{ .Values.tests.environmentName | quote }}
+    {{- end }}
+    atpReport:
+      enabled: {{ .Values.tests.atpReport.enabled | default false }}
+    {{- if .Values.tests.atpReport.enabled }}
+    atpStorage:
+      provider: {{ .Values.tests.atpReport.atpStorage.provider | quote }}
+      {{- if .Values.tests.atpReport.atpStorage.serverUrl }}
+      serverUrl: {{ .Values.tests.atpReport.atpStorage.serverUrl | quote }}
+      {{- end }}
+      {{- if .Values.tests.atpReport.atpStorage.serverUiUrl }}
+      serverUiUrl: {{ .Values.tests.atpReport.atpStorage.serverUiUrl | quote }}
+      {{- end }}
+      {{- if .Values.tests.atpReport.atpStorage.bucket }}
+      bucket: {{ .Values.tests.atpReport.atpStorage.bucket | quote }}
+      {{- end }}
+      {{- if .Values.tests.atpReport.atpStorage.region }}
+      region: {{ .Values.tests.atpReport.atpStorage.region | quote }}
+      {{- end }}
+    {{- end }}
+    {{- if .Values.tests.atpReportViewUiUrl }}
+    atpReportViewUiUrl: {{ .Values.tests.atpReportViewUiUrl | quote }}
+    {{- end }}
+{{- end }}
 {{ end }}
 {{ if .Values.runTestsOnly }}
 runTestsTime: {{ now | unixEpoch | quote }}

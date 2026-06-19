@@ -5,7 +5,7 @@ override TAG_ENV = local
 endif
 
 ifndef DOCKER_NAMES
-override DOCKER_NAMES = "ghcr.io/netcracker/qubership-query-exporter:${TAG_ENV}"
+override DOCKER_NAMES = "ghcr.io/netcracker/qubership-docker-query-exporter:${TAG_ENV}"
 endif
 
 sandbox-build: deps docker-build

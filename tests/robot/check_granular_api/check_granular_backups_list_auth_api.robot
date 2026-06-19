@@ -39,7 +39,7 @@ Set Backups
     ${result}=  Get From Dictionary  ${resp.json()}  ${name_space}
     Set Test Variable  ${backups_in_namespace}  ${result}
     Log  ${result}
-    [Return]  ${result}
+    RETURN  ${result}
 
 *** Test Cases ***
 Check Backup Requests Status Endpoint

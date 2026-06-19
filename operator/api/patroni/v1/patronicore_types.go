@@ -180,14 +180,31 @@ type Dcs struct {
 }
 
 type IntegrationTests struct {
-	Resources        *v1.ResourceRequirements `json:"resources,omitempty"`
-	DockerImage      string                   `json:"image,omitempty"`
-	RunTestScenarios string                   `json:"runTestScenarios,omitempty"`
-	TestList         []string                 `json:"testList,omitempty"`
-	Replicas         int                      `json:"replicas,omitempty"`
-	PgNodeQty        int                      `json:"pgNodeQty,omitempty"`
-	PodLabels        map[string]string        `json:"podLabels,omitempty"`
-	Affinity         v1.Affinity              `json:"affinity,omitempty"`
+	Resources          *v1.ResourceRequirements `json:"resources,omitempty"`
+	DockerImage        string                   `json:"image,omitempty"`
+	RunTestScenarios   string                   `json:"runTestScenarios,omitempty"`
+	TestList           []string                 `json:"testList,omitempty"`
+	Replicas           int                      `json:"replicas,omitempty"`
+	PgNodeQty          int                      `json:"pgNodeQty,omitempty"`
+	PodLabels          map[string]string        `json:"podLabels,omitempty"`
+	Affinity           v1.Affinity              `json:"affinity,omitempty"`
+	MonitoredImages    string                   `json:"monitoredImages,omitempty"`
+	AtpStorage         *AtpStorage              `json:"atpStorage,omitempty"`
+	AtpReport          *AtpReport               `json:"atpReport,omitempty"`
+	AtpReportViewUiUrl string                   `json:"atpReportViewUiUrl,omitempty"`
+	EnvironmentName    string                   `json:"environmentName,omitempty"`
+}
+
+type AtpStorage struct {
+	Provider    string `json:"provider,omitempty"`
+	ServerUrl   string `json:"serverUrl,omitempty"`
+	ServerUiUrl string `json:"serverUiUrl,omitempty"`
+	Bucket      string `json:"bucket,omitempty"`
+	Region      string `json:"region,omitempty"`
+}
+
+type AtpReport struct {
+	Enabled bool `json:"enabled,omitempty"`
 }
 
 type Policies struct {

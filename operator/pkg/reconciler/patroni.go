@@ -370,7 +370,7 @@ func (r *PatroniReconciler) Reconcile() error {
 		return err
 	}
 
-	if patroniSpec.Powa.Install {
+	if patroniSpec.Powa.Install && !isStandbyClusterPresent {
 		if err := powa.SetUpPOWA(r.cluster.PgHost); err != nil {
 			return err
 		}
@@ -491,28 +491,28 @@ func (r *PatroniReconciler) processPatroniStatefulset(cr *v1.PatroniCore, deploy
 	}
 
 	// check deployments
-	patroniDeployment := deployment.NewPatroniStatefulset(cr, deploymentIdx, r.cluster.ClusterName, r.cluster.PatroniTemplate, r.cluster.PostgreSQLUserConf, r.cluster.PatroniLabels)
+	patroniSfs := deployment.NewPatroniStatefulset(cr, deploymentIdx, r.cluster.ClusterName, r.cluster.PatroniTemplate, r.cluster.PostgreSQLUserConf, r.cluster.PatroniLabels)
 
 	if cr.Spec.PrivateRegistry.Enabled {
 		for _, name := range cr.Spec.PrivateRegistry.Names {
-			patroniDeployment.Spec.Template.Spec.ImagePullSecrets = append(patroniDeployment.Spec.Template.Spec.ImagePullSecrets, corev1.LocalObjectReference{Name: name})
+			patroniSfs.Spec.Template.Spec.ImagePullSecrets = append(patroniSfs.Spec.Template.Spec.ImagePullSecrets, corev1.LocalObjectReference{Name: name})
 		}
 	}
 
 	if cr.Spec.Policies != nil {
 		logger.Info("Policies is not empty, setting them to Patroni Statefulset")
-		patroniDeployment.Spec.Template.Spec.Tolerations = cr.Spec.Policies.Tolerations
+		patroniSfs.Spec.Template.Spec.Tolerations = cr.Spec.Policies.Tolerations
 	}
 
 	// Add Secret Hash
-	err = manager.AddCredHashToPodTemplate(credentials.PostgresSecretNames, &patroniDeployment.Spec.Template)
+	err = manager.AddCredHashToPodTemplate(credentials.PostgresSecretNames, &patroniSfs.Spec.Template)
 	if err != nil {
-		logger.Error(fmt.Sprintf("can't add secret HASH to annotations for %s", patroniDeployment.Name), zap.Error(err))
+		logger.Error(fmt.Sprintf("can't add secret HASH to annotations for %s", patroniSfs.Name), zap.Error(err))
 		return err
 	}
 
-	if err := r.helper.CreateOrUpdateStatefulset(patroniDeployment, true); err != nil {
-		logger.Error(fmt.Sprintf("Cannot create or update deployment %s", patroniDeployment.Name), zap.Error(err))
+	if err := r.helper.CreateOrUpdateStatefulset(patroniSfs, true); err != nil {
+		logger.Error(fmt.Sprintf("Cannot create or update deployment %s", patroniSfs.Name), zap.Error(err))
 		return err
 	}
 	return nil
