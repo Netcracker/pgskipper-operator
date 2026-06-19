@@ -87,6 +87,15 @@ spec:
                 mountPath: /tmp
               - name: dbaas-default-extensions-mount
                 mountPath: /app/extensions
+              - name: dbaas-adapter-credentials
+                mountPath: /var/run/secrets/postgresql/dbaas-adapter-credentials
+                readOnly: true
+              - name: dbaas-aggregator-registration-credentials
+                mountPath: /var/run/secrets/postgresql/dbaas-aggregator-registration-credentials
+                readOnly: true
+              - name: postgres-credentials
+                mountPath: /var/run/secrets/postgresql/postgres-credentials
+                readOnly: true
           resources:
 {{ .Values.dbaas.resources | toYaml | indent 12 }}
           env:
