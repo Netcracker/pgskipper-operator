@@ -498,8 +498,7 @@ class PostgreSQLDumpWorker(Thread):
                     output, type(output), exit_code
                 )
             )
-            # grep exits 1 when no lines match, which is valid (no owner roles found)
-            if exit_code not in (0, 1):
+            if exit_code != 0:
                 stderr.seek(0)
                 raise backups.BackupFailedException(
                     database, "\n".join(stderr.readlines())
@@ -545,8 +544,8 @@ class PostgreSQLDumpWorker(Thread):
                 output, err = p.communicate()
                 self.log.debug("Fetch roles command: {}".format(cmd))
                 exit_code = p.returncode
-                # grep exits 1 when no lines match, which is valid (no roles to dump)
-                if exit_code not in (0, 1):
+
+                if exit_code != 0:
                     stderr.seek(0)
                     raise backups.BackupFailedException(
                         database, "\n".join(stderr.readlines())
