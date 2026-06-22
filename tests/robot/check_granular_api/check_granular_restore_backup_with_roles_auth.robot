@@ -23,7 +23,7 @@ Check Backup Restore Request Endpoint For Restore With Roles
 *** Keywords ***
 Check Disabled Auth With Roles
     ${PG_CLUSTER_NAME}=  Get Environment Variable  PG_CLUSTER_NAME  default=patroni
-    ${POSTGRES_USER}=  Get Environment Variable  POSTGRES_USER  default=postgres
+    ${POSTGRES_USER}=  Get Secret Or Env  POSTGRES_USER  ${PG_ROOT_USERNAME_PATH}
     ${db_name}  Set Variable  smoketest_gb_base
     ${db_role}  Set Variable  smoketest_gb_role
     Create New Role  ${db_role}
@@ -82,7 +82,7 @@ Check Enabled Auth With Roles
     ${PG_ROOT_PASSWORD}=  Get Secret Or Env  PG_ROOT_PASSWORD  ${PG_ROOT_PASSWORD_PATH}
     ${auth}=  Create List  postgres  ${PG_ROOT_PASSWORD}
     ${PG_CLUSTER_NAME}=  Get Environment Variable  PG_CLUSTER_NAME  default=patroni
-    ${POSTGRES_USER}=  Get Environment Variable  POSTGRES_USER  default=postgres
+    ${POSTGRES_USER}=  Get Secret Or Env  POSTGRES_USER  ${PG_ROOT_USERNAME_PATH}
     ${db_name}  Set Variable  smoketest_gb_base
     ${db_role}  Set Variable  smoketest_gb_role
     Create New Role  ${db_role}

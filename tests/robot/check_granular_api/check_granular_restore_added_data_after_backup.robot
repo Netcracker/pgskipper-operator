@@ -33,7 +33,7 @@ Check Existence DB
 
 Check Disabled Auth With Restore Added Data After Backup
     ${PG_CLUSTER_NAME}=  Get Environment Variable  PG_CLUSTER_NAME  default=patroni
-    ${POSTGRES_USER}=  Get Environment Variable  POSTGRES_USER  default=postgres
+    ${POSTGRES_USER}=  Get Secret Or Env  POSTGRES_USER  ${PG_ROOT_USERNAME_PATH}
     ${postfix}=  Generate Random String  5  [LOWER]
     ${db_name}  Set Variable  testdb_${postfix}
     Create Database  ${db_name}_0
@@ -100,7 +100,7 @@ Check Enabled Auth With Restore Added Data After Backup
     ${PG_ROOT_PASSWORD}=  Get Secret Or Env  PG_ROOT_PASSWORD  ${PG_ROOT_PASSWORD_PATH}
     ${auth}=  Create List  postgres  ${PG_ROOT_PASSWORD}
     ${PG_CLUSTER_NAME}=  Get Environment Variable  PG_CLUSTER_NAME  default=patroni
-    ${POSTGRES_USER}=  Get Environment Variable  POSTGRES_USER  default=postgres
+    ${POSTGRES_USER}=  Get Secret Or Env  POSTGRES_USER  ${PG_ROOT_USERNAME_PATH}
     ${postfix}=  Generate Random String  5  [LOWER]
     ${db_name}  Set Variable  testdb-${postfix}
     Create Database  ${db_name}_0
