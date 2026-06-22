@@ -625,16 +625,6 @@ def perform_recovery(oc_openshift_url, oc_username, oc_password, oc_project,
     if restore_command is None:
         raise RecoveryException(RECOVERY_EXCEPTION_NO_RESTORE_COMMAND.format(pg_cluster_name, pg_cluster_name))
 
-    ##Added backup status check here
-    if restore_version:
-        log.info("Try to validate if the backup status is successful")
-        backup_status = check_backup_status(restore_version)
-        if not backup_status:
-            raise RecoveryException(
-                "FAILURE: Backup with id {} has an unsuccessful status. Recovery cannot proceed."
-                .format(restore_version)
-            )
-
 
     if restore_version:
         log.info("Try to validate backup {} against list of backups from {}".format(restore_version,
@@ -668,6 +658,15 @@ def perform_recovery(oc_openshift_url, oc_username, oc_password, oc_project,
     else:
         raise RecoveryException("FAILURE: Cannot perform recovery without restore_version and recovery_target_time. "
                                 "Please specify at least one of them.")
+    
+    ##Added backup status check here
+    log.info("Try to validate if the backup status is successful")
+    backup_status = check_backup_status(restore_version)
+    if not backup_status:
+        raise RecoveryException(
+            "FAILURE: Backup with id {} has an unsuccessful status. Recovery cannot proceed."
+            .format(restore_version)
+        )
 
     patroni_cm = oc_client.get_entity_safe("configmap", "patroni-{}.config.yaml".format(pg_cluster_name))
     if not patroni_cm:
