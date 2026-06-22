@@ -63,10 +63,11 @@ class PostgreSQLRestoreWorker(Thread):
         self.owners_mapping = owners_mapping
         self.bin_path = configs.get_pgsql_bin_path(self.postgres_version)
         self.parallel_jobs = configs.get_parallel_jobs()
+        self.storage_name = restore_request.get('storageName') or ""
         if blobPath:
-            self.s3 = storage_s3.AwsS3Vault(prefix="")
+            self.s3 = storage_s3.AwsS3Vault(storage_name=self.storage_name,prefix="")
         else:  
-            self.s3 = storage_s3.AwsS3Vault() if os.environ['STORAGE_TYPE'] == "s3" else None
+            self.s3 = storage_s3.AwsS3Vault(storage_name=self.storage_name) if os.environ['STORAGE_TYPE'] == "s3" else None
         self.blob_path = blobPath
         self.backup_dir = backups.build_backup_path(self.backup_id, self.namespace, self.external_backup_root)
         self.create_backup_dir(self.backup_dir)
@@ -80,9 +81,13 @@ class PostgreSQLRestoreWorker(Thread):
             self.databases = list(databases_mapping.keys())
         self.status = {
             'trackingId': self.tracking_id,
+            'restoreId': self.tracking_id,
             'namespace': self.namespace,
             'backupId': self.backup_id,
-            'status': backups.BackupStatus.PLANNED
+            'sourceBackupId': self.backup_id,
+            'status': backups.BackupStatus.PLANNED,
+            'storageName': self.storage_name,
+            'blobPath': self.blob_path,
         }
         self._cancel_event = Event()
         self.pg_restore_proc = None
@@ -503,8 +508,7 @@ class PostgreSQLRestoreWorker(Thread):
                            flush=True)
             self.update_status('status', backups.BackupStatus.SUCCESSFUL, flush=True)
             self.log.info(self.log_msg("Backup has been successfully restored."))
-            if self.s3:
-                shutil.rmtree(self.backup_dir)
+            self.cleanup_restore_temp_files()
         except Exception as e:
             self.log.exception(self.log_msg("Restore request processing has failed."))
             self.update_status('details', str(e))
@@ -512,8 +516,7 @@ class PostgreSQLRestoreWorker(Thread):
                            datetime.datetime.utcnow().isoformat(),
                            flush=True)
             self.update_status('status', backups.BackupStatus.FAILED, flush=True)
-            if self.s3:
-                shutil.rmtree(self.backup_dir)
+            self.cleanup_restore_temp_files()
         finally:
             if self.is_cancelled():
                 self.on_cancel()
@@ -713,3 +716,23 @@ class PostgreSQLRestoreWorker(Thread):
         finally:
             if conn:
                 conn.close()
+    
+    def cleanup_restore_temp_files(self):
+        if not self.s3:
+            return
+
+        for file_name in os.listdir(self.backup_dir):
+                if file_name.endswith(".json"):
+                    continue
+
+                file_path = os.path.join(self.backup_dir, file_name)
+
+                try:
+                    if os.path.isfile(file_path) or os.path.islink(file_path):
+                        os.remove(file_path)
+                    elif os.path.isdir(file_path):
+                        shutil.rmtree(file_path)
+                except Exception as e:
+                    self.log.warning(
+                        self.log_msg("Failed to remove temporary restore file {}: {}".format(file_path, e))
+                    )

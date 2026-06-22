@@ -20,6 +20,7 @@ import urllib3
 import os
 import logging
 import configs
+import json
 from retrying import retry
 
 try:
@@ -37,31 +38,79 @@ RETRY_WAIT = 1000
 urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
 class AwsS3Vault:
     __log = logging.getLogger("AwsS3Granular")
+    __s3_aliases_cache = None
 
-    def __init__(self, cluster_name=None, cache_enabled=False,
+    @classmethod
+    def get_s3_aliases(cls):
+        if os.getenv("S3_ALIASES_USED", "false").lower() != "true":
+            return None
+
+        if cls.__s3_aliases_cache is None:
+            with open("/aliases/s3_aliases.json", "r") as f:
+                aliases = json.load(f)
+
+            if not aliases:
+                raise Exception("S3 aliases are enabled, but /aliases/s3_aliases.json is empty")
+
+            cls.__s3_aliases_cache = aliases
+
+        return cls.__s3_aliases_cache
+
+    @classmethod
+    def get_s3_alias_config(cls, storage_name=None):
+        aliases = cls.get_s3_aliases()
+
+        if aliases is None:
+            return None
+
+        if not storage_name:
+            raise Exception("storageName is required when S3 aliases are enabled")
+
+        alias = aliases.get(storage_name)
+        if not alias:
+            raise Exception(f"S3 alias '{storage_name}' is not found in /aliases/s3_aliases.json")
+
+        return alias
+
+    @staticmethod
+    def get_s3_bucket_name(alias=None):
+        if alias:
+            return alias.get("bucketName")
+        return os.getenv("CONTAINER") or os.getenv("AWS_S3_BUCKET") or os.getenv("S3_BUCKET")
+
+    def __init__(self, storage_name=None, cluster_name=None, cache_enabled=False,
                  aws_s3_bucket_listing=None, prefix=None):
 
-        self.bucket = bucket or os.getenv("CONTAINER") or os.getenv("AWS_S3_BUCKET") or os.getenv("S3_BUCKET")
+        self.storage_name = storage_name
+        self.alias = AwsS3Vault.get_s3_alias_config(storage_name)
+        self.bucket = AwsS3Vault.get_s3_bucket_name(self.alias)
+
+        if not self.bucket or not isinstance(self.bucket, str) or not self.bucket.strip():
+            if self.alias:
+                raise ValueError(f"S3 bucket is not configured for alias '{self.storage_name}'.")
+            raise ValueError("S3 bucket is not configured. Set one of CONTAINER, AWS_S3_BUCKET, or S3_BUCKET.")
+
         self.console = None
         self.cluster_name = cluster_name
         self.cache_enabled = cache_enabled
         self.cached_state = {}
         self.aws_s3_bucket_listing = aws_s3_bucket_listing
+
         if prefix is not None:
             self.aws_prefix = prefix
         else:
             self.aws_prefix = os.getenv("AWS_S3_PREFIX", "")
 
-        if not self.bucket or not isinstance(self.bucket, str) or not self.bucket.strip():
-            raise ValueError("S3 bucket is not configured. Set one of CONTAINER, AWS_S3_BUCKET, or S3_BUCKET.")
-
     def get_s3_client(self):
-        return boto3.client("s3",
-                            region_name=os.getenv("AWS_DEFAULT_REGION") if os.getenv("AWS_DEFAULT_REGION") else None,
-                            endpoint_url=os.getenv("AWS_S3_ENDPOINT_URL"),
-                            aws_access_key_id=os.getenv("AWS_ACCESS_KEY_ID"),
-                            aws_secret_access_key=os.getenv("AWS_SECRET_ACCESS_KEY"),
-                            verify=(False if os.getenv("AWS_S3_UNTRUSTED_CERT", "false").lower() == "true" else None))
+        alias = self.alias
+        return boto3.client(
+            "s3",
+            region_name=alias.get("region") if alias else (os.getenv("AWS_DEFAULT_REGION") if os.getenv("AWS_DEFAULT_REGION") else None),
+            endpoint_url=alias.get("s3Url") if alias else os.getenv("AWS_S3_ENDPOINT_URL"),
+            aws_access_key_id=alias.get("accessKeyId") if alias else os.getenv("AWS_ACCESS_KEY_ID"),
+            aws_secret_access_key=alias.get("accessKeySecret") if alias else os.getenv("AWS_SECRET_ACCESS_KEY"),
+            verify=(False if os.getenv("AWS_S3_UNTRUSTED_CERT", "false").lower() == "true" else None),
+        )
 
     @retry(stop_max_attempt_number=RETRY_COUNT, wait_fixed=RETRY_WAIT)
     def upload_file(self, file_path, blob_path=None, backup_id=None):
