@@ -130,7 +130,7 @@ func getVolumeMounts() []corev1.VolumeMount {
 			Name:      "config-volume",
 		},
 		{
-			MountPath: "/var/run/secrets/postgresql/",
+			MountPath: "/var/run/secrets/postgresql/postgres-credentials",
 			Name:      "postgres-credentials",
 		},
 	}

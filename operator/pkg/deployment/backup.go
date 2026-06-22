@@ -223,7 +223,7 @@ func NewBackupDaemonDeployment(backupDaemon *netcrackerv1.BackupDaemon, pgCluste
 									Name:      "backup-data",
 								},
 								{
-									MountPath: "/var/run/secrets/postgresql/",
+									MountPath: "/var/run/secrets/postgresql/postgres-credentials",
 									Name:      "postgres-credentials",
 								},
 							},
