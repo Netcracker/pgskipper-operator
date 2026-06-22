@@ -49,6 +49,10 @@ if [[ -z "${RESTORE_VERSION}" ]] ; then
             fi
         done
     done
+    if [[ -z "${RESTORE_VERSION}" && -z "${RECOVERY_TARGET_TIME}" ]] ; then
+        RESTORE_VERSION=$(echo "${backup_list}" | head -n 1)
+        log "RESTORE_VERSION is empty. Use last available backup ${RESTORE_VERSION}."
+    fi
 fi
 
 
