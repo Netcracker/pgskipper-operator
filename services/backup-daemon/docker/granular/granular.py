@@ -1064,7 +1064,6 @@ class NewBackup(flask_restful.Resource):
     def __init__(self):
         self.log = logging.getLogger("NewBackup")
         self.allowed_fields = ["storageName", "blobPath", "databases"]
-        # self.s3 = storage_s3.AwsS3Vault(prefix="")
 
     @staticmethod
     def get_endpoints():
@@ -1144,7 +1143,6 @@ class NewBackupStatus(flask_restful.Resource):
 
     def __init__(self):
         self.log = logging.getLogger("NewBackupStatus")
-        # self.s3 = storage_s3.AwsS3Vault(prefix="")
 
     @staticmethod
     def get_endpoints():
@@ -1305,7 +1303,6 @@ class NewRestore(flask_restful.Resource):
 
     def __init__(self):
         self.log = logging.getLogger("NewRestore")
-        # self.s3 = storage_s3.AwsS3Vault(prefix="")
 
     @staticmethod
     def get_endpoints():
@@ -1477,7 +1474,6 @@ class NewRestoreStatus(flask_restful.Resource):
 
     def __init__(self):
         self.log = logging.getLogger("NewRestoreStatus")
-        # self.s3 = storage_s3.AwsS3Vault(prefix="")
 
     @staticmethod
     def get_endpoints():
