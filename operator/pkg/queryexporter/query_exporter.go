@@ -33,10 +33,8 @@ import (
 
 const (
 	CMName = "query-exporter-config"
-
-	secretsBasePath   = "/var/run/secrets/postgresql/"
 	
-	pgUserCredsPath   = secretsBasePath + "postgres-credentials/"
+	pgUserCredsPath   = util.SecretBasePath + "postgres-credentials/"
 )
 
 var (
@@ -130,7 +128,7 @@ func getVolumeMounts() []corev1.VolumeMount {
 			Name:      "config-volume",
 		},
 		{
-			MountPath: "/var/run/secrets/postgresql/postgres-credentials",
+			MountPath: pgUserCredsPath,
 			Name:      "postgres-credentials",
 		},
 	}

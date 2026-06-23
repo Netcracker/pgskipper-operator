@@ -191,16 +191,16 @@ spec:
             - name: tls-cert
               mountPath: /certs/
   {{- end }}
+  {{- end }}
             - name: dbaas-adapter-credentials
-              mountPath: /var/run/secrets/postgresql/dbaas-adapter-credentials
+              mountPath: {{ util.SecretsBasePath }}dbaas-adapter-credentials
               readOnly: true
             - name: dbaas-aggregator-registration-credentials
-              mountPath: /var/run/secrets/postgresql/dbaas-aggregator-registration-credentials
+              mountPath: {{ util.SecretsBasePath }}dbaas-aggregator-registration-credentials
               readOnly: true
             - name: postgres-credentials
-              mountPath: /var/run/secrets/postgresql/postgres-credentials
+              mountPath: {{ util.SecretsBasePath }}postgres-credentials
               readOnly: true
-  {{- end }}
           livenessProbe:
             httpGet:
               path: /health

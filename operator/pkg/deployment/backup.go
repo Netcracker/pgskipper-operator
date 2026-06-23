@@ -19,6 +19,7 @@ import (
 
 	netcrackerv1 "github.com/Netcracker/pgskipper-operator/api/apps/v1"
 	"github.com/Netcracker/pgskipper-operator/pkg/storage"
+	"github.com/Netcracker/pgskipper-operator/pkg/util"
 	opUtils "github.com/Netcracker/pgskipper-operator/pkg/util"
 	"github.com/Netcracker/qubership-credential-manager/pkg/utils"
 	appsv1 "k8s.io/api/apps/v1"
@@ -73,15 +74,6 @@ func NewBackupDaemonDeployment(backupDaemon *netcrackerv1.BackupDaemon, pgCluste
 								},
 							},
 						},
-//						{
-//							Name: "postgres-credentials",
-//							VolumeSource: corev1.VolumeSource{
-//								Secret: &corev1.SecretVolumeSource{
-//									SecretName: GetRootSecretName(pgClusterName),
-//									DefaultMode: ptr.To[int32](0400),
-//								},
-//							},
-//						},
 					},
 					ServiceAccountName: serviceAccountName,
 					Affinity:           &backupDaemon.Affinity,
@@ -223,7 +215,7 @@ func NewBackupDaemonDeployment(backupDaemon *netcrackerv1.BackupDaemon, pgCluste
 									Name:      "backup-data",
 								},
 								{
-									MountPath: "/var/run/secrets/postgresql/postgres-credentials",
+									MountPath: util.SecretBasePath + "postgres-credentials",
 									Name:      "postgres-credentials",
 								},
 							},

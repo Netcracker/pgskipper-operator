@@ -34,16 +34,14 @@ import (
 )
 
 const (
-	secretsBasePath = "/var/run/secrets/postgresql/"
-
-	pgUserCredsPath    = secretsBasePath + "postgres-credentials/"
+	pgUserCredsPath    = util.SecretBasePath + "postgres-credentials/"
 )
 
 var (
 	instance *PostgresClient
 	logger   = util.GetLogger()
-	pgUser   = flag.String("pg_user", ReadSecretFile(pgUserCredsPath+"username", "postgres"), "Username of admin user in PostgreSQL")
-	pgPass   = flag.String("pg_pass", ReadSecretFile(pgUserCredsPath+"password", ""), "Password of admin user in PostgreSQL")
+	pgUser   = flag.String("pg_user", util.ReadSecretFile(pgUserCredsPath+"username", "postgres"), "Username of admin user in PostgreSQL")
+	pgPass   = flag.String("pg_pass", util.ReadSecretFile(pgUserCredsPath+"password", ""), "Password of admin user in PostgreSQL")
 	dbName   = "postgres"
 	ssl      = "off"
 )
@@ -249,18 +247,4 @@ func getEnv(key, fallback string) string {
 
 func EscapeString(str string) string {
 	return strings.ReplaceAll(str, "'", "''")
-}
-
-func ReadSecretFile(path, defaultVal string) string {
-	data, err := os.ReadFile(path)
-	if err != nil {
-		logger.Error(fmt.Sprintf("Failed to read secret file %s: %v", path, err))
-		return defaultVal
-	}
-	value := strings.TrimSpace(string(data))
-	if value == "" {
-		logger.Info(fmt.Sprintf("Secret file %s is empty, using default value", path))
-		return defaultVal
-	}
-	return value
 }

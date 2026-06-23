@@ -27,9 +27,7 @@ import (
 )
 
 const (
-	secretsBasePath = "/var/run/secrets/postgresql/"
-	
-	pgUserCredsPath = secretsBasePath + "postgres-credentials/"
+	pgUserCredsPath = util.SecretsBasePath + "postgres-credentials/"
 	
 )
 

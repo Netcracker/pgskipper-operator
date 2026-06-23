@@ -59,10 +59,10 @@ var (
 )
 
 const (
-	secretsBasePath = "/var/run/secrets/postgresql/"
+	SecretsBasePath = "/var/run/secrets/postgresql/"
 
 	certificatesFolder            = "/certs"
-	metricCollectorCredentialsFolder = secretsBasePath + "monitoring-user-credentials/"
+	metricCollectorCredentialsFolder = SecretsBasePath + "monitoring-user-credentials/"
 )
 
 func GetLogger() *zap.Logger {

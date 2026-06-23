@@ -173,17 +173,17 @@ func NewMonitoringDeployment(metricCollector *netcrackerv1.MetricCollector, pgcl
 									Name:      "telegraf-config-volume",
 								},
 								{
-									MountPath: "/var/run/secrets/postgresql/monitoring-user-credentials",
+									MountPath: util.SecretBasePath + "monitoring-user-credentials",
 									Name:      "monitoring-user-credentials",
 									ReadOnly: true,
 								},
 								{
-									MountPath: "/var/run/secrets/postgresql/influx-db-admin-credentials",
+									MountPath: util.SecretBasePath + "influx-db-admin-credentials",
 									Name:      "influx-db-admin-credentials",
 									ReadOnly: true,
 								},
 								{
-									MountPath: "/var/run/secrets/postgresql/postgres-credentials",
+									MountPath: util.SecretBasePath + "postgres-credentials",
 									Name:      "postgres-credentials",
 									ReadOnly: true,
 								},

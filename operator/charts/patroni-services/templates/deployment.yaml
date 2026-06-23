@@ -173,13 +173,11 @@ spec:
             secretName: {{ .Values.tls.certificateSecretName }}
             defaultMode: 416
       {{- end }}
-      {{- if .Values.replicationController }}
+      {{- end }}
         - name: replicator-credentials
           secret:
             secretName: replicator-credentials
             defaultMode: 420
-      {{- end }}
-      {{- end }}
         - name: postgres-credentials
           secret:
             secretName: postgres-credentials
