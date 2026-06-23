@@ -92,7 +92,12 @@ func (r *BackupDaemonReconciler) Reconcile() error {
 	}
 
 	// Add Secret Hash
-	err := manager.AddCredHashToPodTemplate(credentials.PostgresSecretNames, &backupDaemonDeployment.Spec.Template)
+	secretNames := append([]string{}, credentials.PostgresSecretNames...)
+
+	if bdSpec.S3AliasesUsed {
+		secretNames = append(secretNames, "s3-aliases")
+	}
+	err := manager.AddCredHashToPodTemplate(secretNames, &backupDaemonDeployment.Spec.Template)
 	if err != nil {
 		logger.Error(fmt.Sprintf("can't add secret HASH to annotations for %s", backupDaemonDeployment.Name), zap.Error(err))
 		return err

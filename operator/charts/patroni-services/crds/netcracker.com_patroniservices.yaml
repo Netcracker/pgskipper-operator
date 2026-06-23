@@ -1073,6 +1073,8 @@ spec:
                     type: object
                   retainArchiveSettings:
                     type: boolean
+                  s3AliasesUsed:
+                    type: boolean
                   s3Storage:
                     properties:
                       accessKeyId:
