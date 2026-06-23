@@ -1,6 +1,6 @@
 ---
 
-name: Helm Charts Release 1
+name: Helm Charts Release
 on:
   workflow_dispatch:
     inputs:
