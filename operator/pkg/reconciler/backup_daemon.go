@@ -16,6 +16,9 @@ package reconciler
 
 import (
 	"fmt"
+	"strconv"
+	"strings"
+
 	qubershipv1 "github.com/Netcracker/pgskipper-operator/api/apps/v1"
 	commonv1 "github.com/Netcracker/pgskipper-operator/api/common/v1"
 	patroniv1 "github.com/Netcracker/pgskipper-operator/api/patroni/v1"
@@ -30,8 +33,6 @@ import (
 	"go.uber.org/zap"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/util/intstr"
-	"strconv"
-	"strings"
 )
 
 const (
@@ -91,14 +92,21 @@ func (r *BackupDaemonReconciler) Reconcile() error {
 	}
 
 	// Add Secret Hash
-	err := manager.AddCredHashToPodTemplate(credentials.PostgresSecretNames, &backupDaemonDeployment.Spec.Template)
+	secretNames := append([]string{}, credentials.PostgresSecretNames...)
+
+	if bdSpec.S3AliasesUsed {
+		secretNames = append(secretNames, "s3-aliases")
+	}
+	err := manager.AddCredHashToPodTemplate(secretNames, &backupDaemonDeployment.Spec.Template)
 	if err != nil {
 		logger.Error(fmt.Sprintf("can't add secret HASH to annotations for %s", backupDaemonDeployment.Name), zap.Error(err))
 		return err
 	}
 
 	//Adding securityContexts
-	backupDaemonDeployment.Spec.Template.Spec.Containers[0].SecurityContext = util.GetDefaultSecurityContext()
+	backupDaemonDeployment.Spec.Template.Spec.Containers[0].SecurityContext = util.GetReadOnlyContainerSecurityContext()
+	backupDaemonDeployment.Spec.Template.Spec.Volumes = append(backupDaemonDeployment.Spec.Template.Spec.Volumes, util.GetTmpVolume())
+	backupDaemonDeployment.Spec.Template.Spec.Containers[0].VolumeMounts = append(backupDaemonDeployment.Spec.Template.Spec.Containers[0].VolumeMounts, util.GetTmpVolumeMount())
 
 	// External database Section
 	if cr.Spec.ExternalDataBase != nil {

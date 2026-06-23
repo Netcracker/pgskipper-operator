@@ -90,6 +90,7 @@ fsGroup: {{ .Values.INFRA_POSTGRES_FS_GROUP }}
 {{- end -}}
 
 {{- define "restricted.globalContainerSecurityContext" -}}
+readOnlyRootFilesystem: true
 {{- if .Values.GLOBAL_SECURITY_CONTEXT }}
 allowPrivilegeEscalation: false
 capabilities:

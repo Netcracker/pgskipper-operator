@@ -49,7 +49,7 @@ class BackRestStorage(storage.Storage):
         for backup in response:
             annotation = backup.get('annotation') or {}
             if annotation.get('timestamp'):
-                vault.append(BackRestVault(annotation['timestamp']))
+                vault.append(BackRestVault(annotation['timestamp'], backup.get('error')))
             else:
                 self.__log.warning("Found backup without timestamp in annotation: %s", backup)
         return vault
@@ -128,14 +128,15 @@ class BackRestStorage(storage.Storage):
 class BackRestVault(storage.Vault):
     __log = logging.getLogger("BackRestVault")
 
-    def __init__(self, timestamp=""):
+    def __init__(self, timestamp="", is_failed=False):
         super(BackRestVault, self).__init__()
 
         self.folder = timestamp
         self.metrics_filepath = self.folder + "/.metrics"
         self.console = StringIO()
+        self._failed = bool(is_failed)
 
-        print(f'INIT VAULT {self.folder, self.metrics_filepath, self.console}')
+        print(f'INIT VAULT {self.folder, self.metrics_filepath, self.console, self._failed}')
 
     def get_id(self):
         return os.path.basename(self.folder)
@@ -171,18 +172,17 @@ class BackRestVault(storage.Vault):
     #     return self.__is_file_exists("{}/{}".format(CONTAINER, self.__lock_filepath()))
     #
     def is_failed(self):
-
-        return {}
+        return self._failed
     #
     def is_done(self):
-        return {}
+        return not self._failed
     #
     def is_back_up_archive_exists(self):
         return True
 
     def is_locked(self):
-        #TODO: work with root object from pgbackrest
-        pass
+        # TODO: work with root object from pgbackrest
+        return False
 
     def load_metrics(self):
         return {}

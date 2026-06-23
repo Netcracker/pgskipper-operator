@@ -296,6 +296,36 @@ func NewBackupDaemonDeployment(backupDaemon *netcrackerv1.BackupDaemon, pgCluste
 			},
 		}
 	}
+	if backupDaemon.S3AliasesUsed {
+		deployment.Spec.Template.Spec.Containers[0].Env = append(
+			deployment.Spec.Template.Spec.Containers[0].Env,
+			corev1.EnvVar{
+				Name:  "S3_ALIASES_USED",
+				Value: "true",
+			},
+		)
+
+		deployment.Spec.Template.Spec.Volumes = append(
+			deployment.Spec.Template.Spec.Volumes,
+			corev1.Volume{
+				Name: "s3-aliases",
+				VolumeSource: corev1.VolumeSource{
+					Secret: &corev1.SecretVolumeSource{
+						SecretName: "s3-aliases",
+					},
+				},
+			},
+		)
+
+		deployment.Spec.Template.Spec.Containers[0].VolumeMounts = append(
+			deployment.Spec.Template.Spec.Containers[0].VolumeMounts,
+			corev1.VolumeMount{
+				Name:      "s3-aliases",
+				MountPath: "/aliases/",
+				ReadOnly:  true,
+			},
+		)
+	}
 	if backupDaemon.ExternalPv != nil {
 		deployment.Spec.Template.Spec.Volumes =
 			append(deployment.Spec.Template.Spec.Volumes, getExternalBackupVolume())

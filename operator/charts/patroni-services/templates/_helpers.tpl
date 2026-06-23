@@ -46,6 +46,7 @@ fsGroup: {{ .Values.INFRA_POSTGRES_FS_GROUP }}
 {{- define "restricted.globalContainerSecurityContext" -}}
 {{- if .Values.GLOBAL_SECURITY_CONTEXT }}
 allowPrivilegeEscalation: false
+readOnlyRootFilesystem: true
 capabilities:
   drop: ["ALL"]
 {{- end }}
@@ -262,6 +263,22 @@ pg-{{ default "patroni" .Values.patroni.clusterName }}-direct
 {{- else }}
 {{- default (printf "%s.%s" "pg-patroni" .Release.Namespace) .Values.backupDaemon.pgHost }}
 {{- end }}
+{{- end -}}
+
+{{/*
+Effective backup daemon S3 aliases wrapped in a map: { items: [...] }.
+When CLOUD_BACKUP_STORAGE_LOCATION is set and global.cloudIntegrationEnabled is true,
+use cloud payload; otherwise use backupDaemon.s3Aliases from values.
+Usage: (fromYaml (include "backupDaemon.s3Aliases" .)).items
+*/}}
+{{- define "backupDaemon.s3Aliases" -}}
+{{- if and .Values.CLOUD_BACKUP_STORAGE_LOCATION .Values.global.cloudIntegrationEnabled -}}
+items: {{ toYaml .Values.CLOUD_BACKUP_STORAGE_LOCATION | nindent 2 }}
+{{- else if .Values.backupDaemon.s3Aliases -}}
+items: {{ toYaml .Values.backupDaemon.s3Aliases | nindent 2 }}
+{{- else -}}
+items: []
+{{- end -}}
 {{- end -}}
 
 {{/*

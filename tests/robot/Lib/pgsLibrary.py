@@ -465,8 +465,7 @@ class pgsLibrary(object):
             conn.set_isolation_level(0)
             with conn.cursor() as cursor:
                 for base_name in base_names:
-                    cursor.execute("SELECT pg_terminate_backend(pid) FROM pg_stat_activity WHERE pid <> pg_backend_pid() AND datname = '{}';".format(base_name))
-                    cursor.execute('DROP DATABASE IF EXISTS {}'.format(base_name))
+                    cursor.execute('DROP DATABASE IF EXISTS "{}" WITH (FORCE)'.format(base_name))
 
     @keyword('Get Pod Daemon')
     def get_pod_daemon(self):
@@ -821,3 +820,7 @@ class pgsLibrary(object):
 
     def get_image_from_resource(self, type, name, container_name):
         return self.pl_lib.get_resource_image(type, name, self._namespace, container_name)
+
+    @keyword
+    def check_container_hardening(self, part_of=None, namespace=None, exclusions=None):
+        self.pl_lib.check_container_hardening(part_of=part_of, namespace=namespace or self._namespace, exclusions=exclusions)

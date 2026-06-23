@@ -88,6 +88,7 @@ Check Updating User By Dbaas Adapter
 
 Check Deleting User By Dbaas Adapter
     [Tags]  full  dbaas
+    ${status_code}=  Set Variable
     Check Database Creating By Dbaas Adapter  ${db_name}
     ${data}=  Set Variable  {"dbName":"${db_name}","password":"qwerty123","role":"admin" }
     ${resp}=  PUT On Session  dbaassession  /api/${api_version}/dbaas/adapter/postgresql/users  data=${data}
@@ -98,5 +99,6 @@ Check Deleting User By Dbaas Adapter
     Should Be True   """${resp_username}""" in """${res}"""   msg=[creating user] Expected user ${resp_username} is not created in pg-${PG_CLUSTER_NAME}: res: ${res}
     ${data}=  Set Variable  [{"kind":"user","name":"${resp_username}"}]
     ${resp}=  POST On Session  dbaassession  /api/${api_version}/dbaas/adapter/postgresql/resources/bulk-drop  data=${data}
-    Should Be Equal As Strings  ${resp.status_code}  200
-    [Teardown]  Delete User And Database  ${db_name}  ${resp_username}
+    ${status_code}=  Set Variable  ${resp.status_code}
+    Should Be Equal As Strings  ${status_code}  200
+    [Teardown]  Teardown Delete User Test  ${status_code}  ${db_name}  ${resp_username}

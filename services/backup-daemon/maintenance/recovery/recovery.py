@@ -51,7 +51,15 @@ formatter = logging\
 ch.setFormatter(formatter)
 log.addHandler(ch)
 
-ch = logging.FileHandler("recovery.debug.{}.log".format(int(time.time())), mode='w', encoding=None, delay=False)
+recovery_log_dir = os.getenv("RECOVERY_LOG_DIR", "/backup-storage/recovery-logs")
+os.makedirs(recovery_log_dir, exist_ok=True)
+
+ch = logging.FileHandler(
+    os.path.join(recovery_log_dir, "recovery.debug.{}.log".format(int(time.time()))),
+    mode='w',
+    encoding=None,
+    delay=False
+)
 ch.setLevel(logging.DEBUG)
 formatter = logging \
     .Formatter('%(asctime)s - %(thread)d - %(name)s:%(funcName)s#%(lineno)d - %(levelname)s - %(message)s')
@@ -617,13 +625,6 @@ def perform_recovery(oc_openshift_url, oc_username, oc_password, oc_project,
     if restore_command is None:
         raise RecoveryException(RECOVERY_EXCEPTION_NO_RESTORE_COMMAND.format(pg_cluster_name, pg_cluster_name))
 
-    ##Added backup status check here
-    log.info("Try to validate if the backup status is successful")
-    backup_status = check_backup_status(restore_version)
-    if not backup_status:
-        raise RecoveryException("FAILURE: Backup with id {} has an unsuccessful status. "
-                                     "Recovery cannot proceed.".format(restore_version))
-
 
     if restore_version:
         log.info("Try to validate backup {} against list of backups from {}".format(restore_version,
@@ -657,6 +658,15 @@ def perform_recovery(oc_openshift_url, oc_username, oc_password, oc_project,
     else:
         raise RecoveryException("FAILURE: Cannot perform recovery without restore_version and recovery_target_time. "
                                 "Please specify at least one of them.")
+    
+    ##Added backup status check here
+    log.info("Try to validate if the backup status is successful")
+    backup_status = check_backup_status(restore_version)
+    if not backup_status:
+        raise RecoveryException(
+            "FAILURE: Backup with id {} has an unsuccessful status. Recovery cannot proceed."
+            .format(restore_version)
+        )
 
     patroni_cm = oc_client.get_entity_safe("configmap", "patroni-{}.config.yaml".format(pg_cluster_name))
     if not patroni_cm:

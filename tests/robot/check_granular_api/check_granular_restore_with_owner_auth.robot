@@ -40,7 +40,7 @@ Prepare Database
 
 Teardown Database
     Execute Query  pg-${PG_CLUSTER_NAME}  DROP ROLE ${db_role}
-    Execute Query  pg-${PG_CLUSTER_NAME}  drop database if exists ${db_name}
+    Delete Test DB  ${db_name}
 
 Check That Role Exists
     ${output}=  Execute Query  pg-${PG_CLUSTER_NAME}  SELECT rolname FROM pg_roles where rolname = '${db_role}'
