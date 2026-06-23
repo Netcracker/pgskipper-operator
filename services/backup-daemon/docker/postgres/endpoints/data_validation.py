@@ -69,6 +69,12 @@ _SELECT_SQL = "SELECT marker FROM backup_restore_markers WHERE sentinel = 'curre
 
 class MarkerResource(Resource):
 
+    __endpoints = ['/api/v1/data-validation/marker']
+
+    @staticmethod
+    def get_endpoints():
+        return MarkerResource.__endpoints
+
     @auth.login_required
     def post(self):
         body = request.get_json(silent=True)

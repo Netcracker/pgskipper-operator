@@ -82,7 +82,7 @@ api.add_resource(
 )
 api.add_resource(
     endpoints.data_validation.MarkerResource,
-    '/api/v1/data-validation/marker',
+    *endpoints.data_validation.MarkerResource.get_endpoints(),
 )
 
 if __name__ == "__main__":
