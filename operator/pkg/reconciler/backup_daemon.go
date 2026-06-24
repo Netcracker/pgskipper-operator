@@ -240,7 +240,11 @@ func (r *BackupDaemonReconciler) Reconcile() error {
 		return err
 	}
 
-	backupDaemonService := reconcileService(deployment.BackupDaemon, deployment.BackupDaemonLabels,
+	backupDaemonServiceLabels := util.Merge(
+		deployment.BackupDaemonLabels,
+		map[string]string{"cloud-backuper.netcracker.com/data-validation-enabled": "true"},
+	)
+	backupDaemonService := reconcileService(deployment.BackupDaemon, backupDaemonServiceLabels,
 		deployment.BackupDaemonLabels, deployment.GetPortsForBackupService(), false)
 	// TLS section
 	if cr.Spec.Tls != nil && cr.Spec.Tls.Enabled {

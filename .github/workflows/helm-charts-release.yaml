@@ -177,6 +177,9 @@ jobs:
           ref: release-${{ inputs.release }}
           persist-credentials: true
 
+      - name: Wait a second for chart-releaser to finish
+        run: sleep 10
+
       - name: "Release-drafter"
         uses: netcracker/release-drafter@v1.0.1
         with:
