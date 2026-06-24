@@ -42,6 +42,7 @@ import (
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/apimachinery/pkg/util/wait"
 	"k8s.io/client-go/kubernetes"
+	"k8s.io/client-go/util/retry"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
@@ -695,12 +696,16 @@ func (rm *ResourceManager) UpdatePGService() error {
 func (rm *ResourceManager) UpdatePatroniConfigMaps() error {
 	var configMaps = []string{"patroni-leader", "patroni-config"}
 	for _, configMap := range configMaps {
-		cmap, err := rm.GetConfigMap(configMap)
-		if err != nil {
+		err := retry.RetryOnConflict(retry.DefaultRetry, func() error {
+			cmap, err := rm.GetConfigMap(configMap)
+			if err != nil {
+				return err
+			}
+			cmap.ObjectMeta.OwnerReferences = rm.GetOwnerReferences()
+			_, err = rm.CreateOrUpdateConfigMap(cmap)
 			return err
-		}
-		cmap.OwnerReferences = rm.GetOwnerReferences()
-		if _, err := rm.CreateOrUpdateConfigMap(cmap); err != nil {
+		})
+		if err != nil {
 			logger.Error("error during update of patroni configMap in resource_management.go", zap.Error(err))
 			return err
 		}

@@ -276,16 +276,8 @@ func (pr *PatroniCoreReconciler) Reconcile(ctx context.Context, request ctrl.Req
 
 	if err := pr.helper.UpdatePatroniConfigMaps(); err != nil {
 		pr.logger.Error("error during update of patroni config maps", zap.Error(err))
-		// will not return err because there is a slight chance, that
-		// update could happen at the same time when patroni will update leader/config info
-		//return reconcile.Result{RequeueAfter: time.Minute}, err
+		return reconcile.Result{RequeueAfter: time.Minute}, err
 	}
-
-	//if err := pr.helper.RevokeGrantOnPublicSchema(pgHost); err != nil {
-	//	pr.logger.Error("Error during revoking grants from public schema", zap.Error(err))
-	//} else {
-	//	pr.logger.Info("REVOKE statement executed successfully from template1")
-	//}
 
 	reconcFunc := func() {
 		cr, _ := helper.GetPatroniHelper().GetPatroniCoreCR()
