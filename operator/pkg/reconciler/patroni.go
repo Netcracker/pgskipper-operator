@@ -666,7 +666,7 @@ func fixBrokenIndexes(pgClient *pgClient.PostgresClient, db string, brokenIndNam
 			indexesFixed = false
 		}
 		if strings.Contains(BrokenIndName, "_ccnew") {
-			indexNameOld := strings.Split(BrokenIndName, "_ccnew")[0]
+			indexNameOld := fmt.Sprintf("%s\"", strings.Split(BrokenIndName, "_ccnew")[0])
 			err = pgClient.ExecuteForDB(db, fmt.Sprintf("REINDEX INDEX CONCURRENTLY %s", indexNameOld))
 			if err != nil {
 				logger.Error(fmt.Sprintf("Cannot reindex index %s for db: %s", indexNameOld, db), zap.Error(err))
