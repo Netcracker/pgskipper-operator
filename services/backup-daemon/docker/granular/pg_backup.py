@@ -540,7 +540,9 @@ class PostgreSQLDumpWorker(Thread):
                         )
                     )
                     cmd = cmd + encrypt_cmd
-                p = Popen(cmd, shell=True, stdout=dump, stderr=stderr)
+                proc_env = os.environ.copy()
+                proc_env["PGPASSWORD"] = configs.postgres_password() or ""
+                p = Popen(cmd, shell=True, stdout=dump, stderr=stderr, env=proc_env)
                 output, err = p.communicate()
                 self.log.debug("Fetch roles command: {}".format(cmd))
                 exit_code = p.returncode
