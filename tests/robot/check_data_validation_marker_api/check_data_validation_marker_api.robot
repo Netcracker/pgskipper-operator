@@ -1,5 +1,4 @@
 *** Settings ***
-Documentation     Check data-validation marker REST API
 Library           RequestsLibrary
 Library           Collections
 Library           OperatingSystem
@@ -40,10 +39,6 @@ Get Marker
 *** Test Cases ***
 Write And Read Marker
     [Tags]  backup basic  marker
-    [Documentation]
-    ...  Write a marker value via POST /api/v1/data-validation/marker and
-    ...  verify it can be retrieved via GET /api/v1/data-validation/marker.
-    ...
     ${scheme}=  Get Scheme
     Create Marker Session  ${scheme}
     ${write_resp}=  Post Marker  test-marker-value
@@ -56,9 +51,6 @@ Write And Read Marker
 
 Overwrite Marker
     [Tags]  backup basic  marker
-    [Documentation]
-    ...  Verify that posting a second marker overwrites the first one.
-    ...
     ${scheme}=  Get Scheme
     Create Marker Session  ${scheme}
     ${first_resp}=  Post Marker  first-marker
@@ -72,9 +64,6 @@ Overwrite Marker
 
 Post Marker With Missing Field Returns 400
     [Tags]  backup basic  marker
-    [Documentation]
-    ...  Verify that a POST body without the "marker" field returns HTTP 400.
-    ...
     ${scheme}=  Get Scheme
     Create Marker Session  ${scheme}
     &{body}=  Create Dictionary  other_field=value
@@ -86,9 +75,6 @@ Post Marker With Missing Field Returns 400
 
 Post Marker With Empty Marker Value Returns 400
     [Tags]  backup basic  marker
-    [Documentation]
-    ...  Verify that a POST body with an empty "marker" string returns HTTP 400.
-    ...
     ${scheme}=  Get Scheme
     Create Marker Session  ${scheme}
     &{body}=  Create Dictionary  marker=${EMPTY}
@@ -100,10 +86,6 @@ Post Marker With Empty Marker Value Returns 400
 
 Marker Endpoint Requires Authentication
     [Tags]  backup basic  marker
-    [Documentation]
-    ...  Verify that GET and POST on /api/v1/data-validation/marker return
-    ...  HTTP 401 when no credentials are supplied.
-    ...
     ${res}=  Get Auth
     Run Keyword If  '${res}' == "true"  Check Marker Auth Required
 
