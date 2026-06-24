@@ -57,8 +57,8 @@ const (
 	TokenFilePath = "/var/run/secrets/kubernetes.io/serviceaccount/token"
 	ClusterName   = "patroni"
 	
-	SecretBasePath = "/var/run/secrets/postgresql/"
-	PgUserCredsPath = SecretBasePath + "postgres-credentials/"
+	SecretsBasePath = "/var/run/secrets/postgresql/"
+	PgUserCredsPath = SecretsBasePath + "postgres-credentials/"
 )
 
 var (
