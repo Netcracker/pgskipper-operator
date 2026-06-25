@@ -138,7 +138,7 @@ func (r *PostgresServiceReconciler) Reconcile(ctx context.Context, request ctrl.
 	}
 
 	// Fill Name and UID for the Helper
-	if err := r.helper.AddNameAndUID(cr.Name, cr.UID, cr.Kind); err != nil {
+	if err := r.helper.AddNameAndUID(cr.Name, cr.UID, "PatroniServices"); err != nil {
 		return reconcile.Result{}, err
 	}
 	if err := r.helper.SetCustomResource(cr); err != nil {
