@@ -1072,7 +1072,7 @@ class NewBackup(flask_restful.Resource):
     @auth.login_required
     def post(self):
         body = request.get_json(silent=True) or {}
-        storage_name = body.get("storageName")
+        storage_name = normalize_storage_name(body.get("storageName"), self.log)
         blob_path = body.get("blobPath")
         databases = body.get("databases") or []
 
@@ -1130,7 +1130,7 @@ class NewBackup(flask_restful.Resource):
             "status": "notStarted",
             "backupId": body.get("backupId") if isinstance(body, dict) else None,
             "creationTime": created_iso,
-            "storageName": storage_name or "",
+            "storageName": storage_name,
             "blobPath": blob_path or "",
             "databases": dbs_out
         }
@@ -1161,7 +1161,7 @@ class NewBackupStatus(flask_restful.Resource):
                 "message": "Backup metadata is not found for backupId %s" % backup_id
             }, http.client.NOT_FOUND
 
-        storage_name = meta.get("storageName")
+        storage_name = normalize_storage_name(meta.get("storageName"), self.log)
         blob_path = normalize_blobPath(meta.get("blobPath"))
 
         try:
@@ -1206,7 +1206,7 @@ class NewBackupStatus(flask_restful.Resource):
                 "status": "Failed"
             }, http.client.NOT_FOUND
 
-        storage_name = meta.get("storageName")
+        storage_name = normalize_storage_name(meta.get("storageName"), self.log)
         blob_path = normalize_blobPath(meta.get("blobPath"))
 
         try:
@@ -1314,7 +1314,7 @@ class NewRestore(flask_restful.Resource):
         body = request.get_json(silent=True) or {}
         blob_path = body.get("blobPath")
         pairs = body.get("databases") or []
-        storage_name = body.get("storageName")
+        storage_name = normalize_storage_name(body.get("storageName"), self.log)
         
         try:
             self.s3 = storage_s3.AwsS3Vault(storage_name=storage_name, prefix="")
@@ -1492,7 +1492,7 @@ class NewRestoreStatus(flask_restful.Resource):
             }, http.client.NOT_FOUND
 
         backup_id = meta.get("sourceBackupId") or meta.get("backupId")
-        storage_name = meta.get("storageName")
+        storage_name = normalize_storage_name(meta.get("storageName"), self.log)
         blob_path = normalize_blobPath(meta.get("blobPath"))
 
         try:
@@ -1548,7 +1548,7 @@ class NewRestoreStatus(flask_restful.Resource):
             }, http.client.NOT_FOUND
 
         backup_id = meta.get("sourceBackupId") or meta.get("backupId")
-        storage_name = meta.get("storageName")
+        storage_name = normalize_storage_name(meta.get("storageName"), self.log)
         blob_path = normalize_blobPath(meta.get("blobPath"))
 
         try:
@@ -1712,6 +1712,14 @@ def normalize_blobPath(blob_path):
         if blob_path.endswith("/"):
             blob_path = blob_path[:-1]
     return blob_path
+
+def normalize_storage_name(storage_name, log=None):
+    storage_name = (storage_name or "").strip()
+    if not storage_name:
+        storage_name = "default"
+        if log:
+            log.info('storageName is empty, using default storageName "%s"', storage_name)
+    return storage_name
 
 def load_backup_metadata_from_local_status(backup_id, namespace=None):
     namespace = namespace or configs.default_namespace()
