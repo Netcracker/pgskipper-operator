@@ -19,8 +19,7 @@ f="${2}"
 
 set +x
 
-#export `cat /proc/1/environ  | tr '\0' '\n' | grep PG_ROOT_PASSWORD`
-PG_ROOT_PASSWORD=`cat /var/run/secrets/postgresql/postgres-credentials/password | tr '\0' '\n' | grep PG_ROOT_PASSWORD | cut -d "=" -f2`
+export `cat /proc/1/environ  | tr '\0' '\n' | grep PG_ROOT_PASSWORD`
 
 sha256sum -b "$p" | cut -d " " -f1 | xargs -I {} echo sha256={} | \
 python3 -c "import sys; print(chr(38) + sys.stdin.read().strip())" | \
