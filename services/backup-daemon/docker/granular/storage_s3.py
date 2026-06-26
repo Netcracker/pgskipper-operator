@@ -52,6 +52,9 @@ class AwsS3Vault:
             if not aliases:
                 raise Exception("S3 aliases are enabled, but /aliases/s3_aliases.json is empty")
 
+            if "default" not in aliases:
+                raise Exception("Default S3 alias is not configured in /aliases/s3_aliases.json")
+
             cls.__s3_aliases_cache = aliases
 
         return cls.__s3_aliases_cache
@@ -63,27 +66,13 @@ class AwsS3Vault:
         if aliases is None:
             return None
 
-        storage_name = storage_name.strip() if storage_name else ""
+        storage_name = storage_name.strip()
 
-        if storage_name:
-            alias = aliases.get(storage_name)
-            if not alias:
-                raise Exception(f"S3 alias '{storage_name}' is not found in /aliases/s3_aliases.json")
-            return alias
+        alias = aliases.get(storage_name)
+        if not alias:
+            raise Exception(f"S3 alias '{storage_name}' is not found in /aliases/s3_aliases.json")
 
-        default_aliases = [
-            alias
-            for alias in aliases.values()
-            if str(alias.get("default", "false")).lower() == "true"
-        ]
-
-        if len(default_aliases) == 1:
-            return default_aliases[0]
-
-        if len(default_aliases) > 1:
-            raise Exception("More than one default S3 alias is configured")
-
-        raise Exception("storageName is required because no default S3 alias is configured")
+        return alias
 
     @staticmethod
     def get_s3_bucket_name(alias=None):
