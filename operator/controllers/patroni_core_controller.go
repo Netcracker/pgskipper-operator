@@ -142,7 +142,7 @@ func (pr *PatroniCoreReconciler) Reconcile(ctx context.Context, request ctrl.Req
 	}
 	pr.logger.Info(fmt.Sprintf("PatroniCr: %v", appsCr))
 	// Fill Name and UID for the Helper
-	if err := pr.helper.AddNameAndUID(cr.Name, cr.UID, cr.Kind); err != nil {
+	if err := pr.helper.AddNameAndUID(cr.Name, cr.UID, "PatroniCore"); err != nil {
 		return reconcile.Result{}, err
 	}
 	if err := pr.helper.SetCustomResource(cr); err != nil {

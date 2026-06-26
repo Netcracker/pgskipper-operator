@@ -208,7 +208,7 @@ class pgsLibrary(object):
                 pods = list([x for x in pods if x.status.phase == value])
             if (key == 'label'):
                 (k, v) = value.split(":")
-                pods = list([x for x in pods if k in x.metadata.labels and x.metadata.labels[k] == v])
+                pods = list([x for x in pods if x.metadata.labels and k in x.metadata.labels and x.metadata.labels[k] == v])
         return pods
 
     def get_pod(self, **kwargs):

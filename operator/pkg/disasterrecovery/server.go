@@ -57,7 +57,7 @@ func InitDRManager() {
 	if err != nil {
 		log.Error("Can not init Site Manager", zap.Error(err))
 	}
-	err = helper.AddNameAndUID(cr.Name, cr.UID, cr.Kind)
+	err = helper.AddNameAndUID(cr.Name, cr.UID, "PatroniServices")
 	if err != nil {
 		log.Error("Can not init Site Manager", zap.Error(err))
 		panic(err)
@@ -80,7 +80,7 @@ func InitDRManager() {
 			log.Info("PatroniCore not found; skipping DR init")
 			return
 		}
-		err = patroniHelper.AddNameAndUID(coreCR.Name, coreCR.UID, coreCR.Kind)
+		err = patroniHelper.AddNameAndUID(coreCR.Name, coreCR.UID, "PatroniCore")
 		if err != nil {
 			log.Error("Can not init Site Manager", zap.Error(err))
 		}
