@@ -379,7 +379,14 @@ func (ph *PatroniHelper) ExecCmdOnPatroniPod(podName string, namespace string, c
 	if strings.Contains(podName, "pg-major-upgrade-check") {
 		container = "pg-upgrade-check"
 	} else {
-		container = util.GetContainerNameForPatroniPod(podName)
+		clusterName := "patroni"
+		cr := ph.GetCustomResource()
+		if cr.Spec != nil {
+			clusterName = cr.Spec.Patroni.ClusterName
+		} else {
+			logger.Warn("Custom Resource is not set for patroniHelper, using default cluster name 'patroni'")
+		}
+		container = util.GetContainerNameForPatroniPod(podName, clusterName)
 	}
 	return ph.ExecCmdOnPod(podName, namespace, container, command)
 }
