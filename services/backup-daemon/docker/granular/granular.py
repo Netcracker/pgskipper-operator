@@ -1064,6 +1064,13 @@ class NewBackup(flask_restful.Resource):
     def __init__(self):
         self.log = logging.getLogger("NewBackup")
         self.allowed_fields = ["storageName", "blobPath", "databases"]
+    
+    def _normalize_storage_name(self, storage_name):
+        storage_name = (storage_name or "").strip()
+        if not storage_name:
+            storage_name = "default"
+            self.log.info('storageName is empty, using default storageName "%s"', storage_name)
+        return storage_name
 
     @staticmethod
     def get_endpoints():
@@ -1072,7 +1079,7 @@ class NewBackup(flask_restful.Resource):
     @auth.login_required
     def post(self):
         body = request.get_json(silent=True) or {}
-        storage_name = body.get("storageName")
+        storage_name = self._normalize_storage_name(body.get("storageName"))
         blob_path = body.get("blobPath")
         databases = body.get("databases") or []
 
@@ -1130,7 +1137,7 @@ class NewBackup(flask_restful.Resource):
             "status": "notStarted",
             "backupId": body.get("backupId") if isinstance(body, dict) else None,
             "creationTime": created_iso,
-            "storageName": storage_name or "",
+            "storageName": storage_name,
             "blobPath": blob_path or "",
             "databases": dbs_out
         }
@@ -1303,6 +1310,13 @@ class NewRestore(flask_restful.Resource):
 
     def __init__(self):
         self.log = logging.getLogger("NewRestore")
+    
+    def _normalize_storage_name(self, storage_name):
+        storage_name = (storage_name or "").strip()
+        if not storage_name:
+            storage_name = "default"
+            self.log.info('storageName is empty, using default storageName "%s"', storage_name)
+        return storage_name
 
     @staticmethod
     def get_endpoints():
@@ -1314,7 +1328,7 @@ class NewRestore(flask_restful.Resource):
         body = request.get_json(silent=True) or {}
         blob_path = body.get("blobPath")
         pairs = body.get("databases") or []
-        storage_name = body.get("storageName")
+        storage_name = self._normalize_storage_name(body.get("storageName"))
         
         try:
             self.s3 = storage_s3.AwsS3Vault(storage_name=storage_name, prefix="")
@@ -1712,6 +1726,7 @@ def normalize_blobPath(blob_path):
         if blob_path.endswith("/"):
             blob_path = blob_path[:-1]
     return blob_path
+
 
 def load_backup_metadata_from_local_status(backup_id, namespace=None):
     namespace = namespace or configs.default_namespace()
