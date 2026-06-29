@@ -66,6 +66,9 @@ class AwsS3Vault:
         if aliases is None:
             return None
 
+        if not storage_name or not storage_name.strip():
+            raise Exception("storageName is required when S3 aliases are enabled")
+
         storage_name = storage_name.strip()
 
         alias = aliases.get(storage_name)
