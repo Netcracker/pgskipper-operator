@@ -74,6 +74,15 @@ func NewBackupDaemonDeployment(backupDaemon *netcrackerv1.BackupDaemon, pgCluste
 								},
 							},
 						},
+						{
+							Name: "postgres-credentials",
+							VolumeSource: corev1.VolumeSource{
+								Secret: &corev1.SecretVolumeSource{
+									SecretName: "postgres-credentials",
+									DefaultMode: ptr.To[int32](0400),
+								},
+							},
+						},
 					},
 					ServiceAccountName: serviceAccountName,
 					Affinity:           &backupDaemon.Affinity,
@@ -85,15 +94,15 @@ func NewBackupDaemonDeployment(backupDaemon *netcrackerv1.BackupDaemon, pgCluste
 							Command: []string{},
 							Args:    []string{},
 							Env: []corev1.EnvVar{
-								{
-									Name: "PGPASSWORD",
-									ValueFrom: &corev1.EnvVarSource{
-										SecretKeyRef: &corev1.SecretKeySelector{
-											LocalObjectReference: corev1.LocalObjectReference{Name: GetReplSecretName(pgClusterName)},
-											Key:                  "password",
-										},
-									},
-								},
+								// {
+								// 	Name: "PGPASSWORD",
+								// 	ValueFrom: &corev1.EnvVarSource{
+								// 		SecretKeyRef: &corev1.SecretKeySelector{
+								// 			LocalObjectReference: corev1.LocalObjectReference{Name: GetReplSecretName(pgClusterName)},
+								// 			Key:                  "password",
+								// 		},
+								// 	},
+								// },
 								{
 									Name:  "PG_CLUSTER_NAME",
 									Value: pgClusterName,
