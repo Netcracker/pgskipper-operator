@@ -426,12 +426,12 @@ func FindCmInNamespaceByName(namespace string, name string) (*corev1.ConfigMap, 
 	return foundConfigMap, err
 }
 
-func GetContainerNameForPatroniPod(podName string) string {
+func GetContainerNameForPatroniPod(podName string, clusterName string) string {
 	re := regexp.MustCompile(`node(\d+)`)
 	if texts := re.FindStringSubmatch(podName); len(texts) > 1 {
-		return "pg-patroni-node" + texts[1]
+		return fmt.Sprintf("pg-%s-node%s", clusterName, texts[1])
 	}
-	return "pg-patroni-node1"
+	return fmt.Sprintf("pg-%s-node1", clusterName)
 }
 
 func SliceContains[T comparable](slice []T, value T) bool {
