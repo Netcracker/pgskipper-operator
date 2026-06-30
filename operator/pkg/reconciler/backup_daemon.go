@@ -33,10 +33,15 @@ import (
 	"go.uber.org/zap"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/util/intstr"
+	"k8s.io/utils/ptr"
 )
 
 const (
 	extCMName = "postgres-external"
+	awsCredentialsSecretName = "aws-credentials"
+	awsCredentialsMountPath = "/var/run/secrets/postgresql/aws-credentials"
+	s3StorageCredentialsSecretName = "s3-storage-credentials"
+	s3StorageCredentialsMountPath = "/var/run/secrets/postgresql/s3-storage-credentials"
 )
 
 type BackupDaemonReconciler struct {
@@ -162,6 +167,23 @@ func (r *BackupDaemonReconciler) Reconcile() error {
 		}
 		if strings.ToLower(cr.Spec.ExternalDataBase.Type) == constants.RDS {
 			logger.Info("Process AWS Envs")
+
+			backupDaemonDeployment.Spec.Template.Spec.Volumes =
+				append(backupDaemonDeployment.Spec.Template.Spec.Volumes, corev1.Volume{
+					Name: "aws-credentials",
+					VolumeSource: corev1.VolumeSource{
+						Secret: &corev1.SecretVolumeSource{
+							SecretName: awsCredentialsSecretName,
+							DefaultMode: ptr.To[int32](0400),
+						},
+					},
+				})
+			backupDaemonDeployment.Spec.Template.Spec.Containers[0].VolumeMounts =
+				append(backupDaemonDeployment.Spec.Template.Spec.Containers[0].VolumeMounts, corev1.VolumeMount{
+					Name:      "aws-credentials",
+					MountPath: awsCredentialsMountPath,
+					ReadOnly: true,
+				})
 			backupDaemonDeployment.Spec.Template.Spec.Containers[0].Env =
 				append(backupDaemonDeployment.Spec.Template.Spec.Containers[0].Env, r.getAWSEnv(cr.Spec.ExternalDataBase)...)
 		}
@@ -169,6 +191,24 @@ func (r *BackupDaemonReconciler) Reconcile() error {
 
 	// S3 Storage Section
 	if bdSpec.S3Storage != nil {
+		logger.Info("Process S3 Storage Envs")
+
+		backupDaemonDeployment.Spec.Template.Spec.Containers[0].VolumeMounts =
+			append(backupDaemonDeployment.Spec.Template.Spec.Containers[0].VolumeMounts, corev1.VolumeMount{
+				Name:      "s3-credentials",
+				MountPath: s3StorageCredentialsMountPath,
+				ReadOnly: true,
+			})
+		backupDaemonDeployment.Spec.Template.Spec.Volumes =
+			append(backupDaemonDeployment.Spec.Template.Spec.Volumes, corev1.Volume{
+				Name: "s3-credentials",
+				VolumeSource: corev1.VolumeSource{
+					Secret: &corev1.SecretVolumeSource{
+						SecretName: s3StorageCredentialsSecretName,
+						DefaultMode: ptr.To[int32](0400),
+					},
+				},
+			})
 		backupDaemonDeployment.Spec.Template.Spec.Containers[0].Env = append(backupDaemonDeployment.Spec.Template.Spec.Containers[0].Env, r.getS3StorageEnv(bdSpec)...)
 	}
 	// TLS Section
@@ -273,24 +313,24 @@ func (r *BackupDaemonReconciler) getS3StorageEnv(backupDaemon *qubershipv1.Backu
 			Name:  "AWS_S3_ENDPOINT_URL",
 			Value: backupDaemon.S3Storage.Url,
 		},
-		{
-			Name: "AWS_ACCESS_KEY_ID",
-			ValueFrom: &corev1.EnvVarSource{
-				SecretKeyRef: &corev1.SecretKeySelector{
-					LocalObjectReference: corev1.LocalObjectReference{Name: "s3-storage-credentials"},
-					Key:                  "key_id",
-				},
-			},
-		},
-		{
-			Name: "AWS_SECRET_ACCESS_KEY",
-			ValueFrom: &corev1.EnvVarSource{
-				SecretKeyRef: &corev1.SecretKeySelector{
-					LocalObjectReference: corev1.LocalObjectReference{Name: "s3-storage-credentials"},
-					Key:                  "access_key",
-				},
-			},
-		},
+		// {
+		// 	Name: "AWS_ACCESS_KEY_ID",
+		// 	ValueFrom: &corev1.EnvVarSource{
+		// 		SecretKeyRef: &corev1.SecretKeySelector{
+		// 			LocalObjectReference: corev1.LocalObjectReference{Name: "s3-storage-credentials"},
+		// 			Key:                  "key_id",
+		// 		},
+		// 	},
+		// },
+		// {
+		// 	Name: "AWS_SECRET_ACCESS_KEY",
+		// 	ValueFrom: &corev1.EnvVarSource{
+		// 		SecretKeyRef: &corev1.SecretKeySelector{
+		// 			LocalObjectReference: corev1.LocalObjectReference{Name: "s3-storage-credentials"},
+		// 			Key:                  "access_key",
+		// 		},
+		// 	},
+		// },
 		{
 			Name:  "CONTAINER",
 			Value: backupDaemon.S3Storage.Bucket,
@@ -313,24 +353,24 @@ func (r *BackupDaemonReconciler) getS3StorageEnv(backupDaemon *qubershipv1.Backu
 
 func (r *BackupDaemonReconciler) getAWSEnv(externalDatabase *qubershipv1.ExternalDataBase) []corev1.EnvVar {
 	envValue := []corev1.EnvVar{
-		{
-			Name: "AWS_ACCESS_KEY_ID",
-			ValueFrom: &corev1.EnvVarSource{
-				SecretKeyRef: &corev1.SecretKeySelector{
-					LocalObjectReference: corev1.LocalObjectReference{Name: "aws-credentials"},
-					Key:                  "key_id",
-				},
-			},
-		},
-		{
-			Name: "AWS_SECRET_ACCESS_KEY",
-			ValueFrom: &corev1.EnvVarSource{
-				SecretKeyRef: &corev1.SecretKeySelector{
-					LocalObjectReference: corev1.LocalObjectReference{Name: "aws-credentials"},
-					Key:                  "access_key",
-				},
-			},
-		},
+		// {
+		// 	Name: "AWS_ACCESS_KEY_ID",
+		// 	ValueFrom: &corev1.EnvVarSource{
+		// 		SecretKeyRef: &corev1.SecretKeySelector{
+		// 			LocalObjectReference: corev1.LocalObjectReference{Name: "aws-credentials"},
+		// 			Key:                  "key_id",
+		// 		},
+		// 	},
+		// },
+		// {
+		// 	Name: "AWS_SECRET_ACCESS_KEY",
+		// 	ValueFrom: &corev1.EnvVarSource{
+		// 		SecretKeyRef: &corev1.SecretKeySelector{
+		// 			LocalObjectReference: corev1.LocalObjectReference{Name: "aws-credentials"},
+		// 			Key:                  "access_key",
+		// 		},
+		// 	},
+		// },
 		{
 			Name:  "AWS_DEFAULT_REGION",
 			Value: externalDatabase.Region,

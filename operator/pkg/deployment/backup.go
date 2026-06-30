@@ -94,15 +94,6 @@ func NewBackupDaemonDeployment(backupDaemon *netcrackerv1.BackupDaemon, pgCluste
 							Command: []string{},
 							Args:    []string{},
 							Env: []corev1.EnvVar{
-								// {
-								// 	Name: "PGPASSWORD",
-								// 	ValueFrom: &corev1.EnvVarSource{
-								// 		SecretKeyRef: &corev1.SecretKeySelector{
-								// 			LocalObjectReference: corev1.LocalObjectReference{Name: GetReplSecretName(pgClusterName)},
-								// 			Key:                  "password",
-								// 		},
-								// 	},
-								// },
 								{
 									Name:  "PG_CLUSTER_NAME",
 									Value: pgClusterName,
