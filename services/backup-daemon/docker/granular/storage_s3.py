@@ -83,7 +83,7 @@ class AwsS3Vault:
             return alias.get("bucketName")
         return os.getenv("CONTAINER") or os.getenv("AWS_S3_BUCKET") or os.getenv("S3_BUCKET")
 
-    def __init__(self, storage_name=None, cluster_name=None, cache_enabled=False,
+    def __init__(self, storage_name="default", cluster_name=None, cache_enabled=False,
                  aws_s3_bucket_listing=None, prefix=None):
 
         self.storage_name = storage_name
