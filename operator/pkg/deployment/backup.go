@@ -83,6 +83,15 @@ func NewBackupDaemonDeployment(backupDaemon *netcrackerv1.BackupDaemon, pgCluste
 								},
 							},
 						},
+						{
+							Name: "replicator-credentials",
+							VolumeSource: corev1.VolumeSource{
+								Secret: &corev1.SecretVolumeSource{
+									SecretName: "replicator-credentials",
+									DefaultMode: ptr.To[int32](0400),
+								},
+							},
+						},
 					},
 					ServiceAccountName: serviceAccountName,
 					Affinity:           &backupDaemon.Affinity,
@@ -218,6 +227,10 @@ func NewBackupDaemonDeployment(backupDaemon *netcrackerv1.BackupDaemon, pgCluste
 									MountPath: util.SecretsBasePath + "postgres-credentials",
 									Name:      "postgres-credentials",
 								},
+								{
+									MountPath: util.SecretsBasePath + "replicator-credentials",
+									Name:      "replicator-credentials",
+								},
 							},
 							LivenessProbe: &corev1.Probe{
 								ProbeHandler: corev1.ProbeHandler{
@@ -296,8 +309,17 @@ func NewBackupDaemonDeployment(backupDaemon *netcrackerv1.BackupDaemon, pgCluste
               },
           },
       },
+      corev1.Volume{
+          Name: "replicator-credentials",
+          VolumeSource: corev1.VolumeSource{
+              Secret: &corev1.SecretVolumeSource{
+                  SecretName:  "replicator-credentials",
+                  DefaultMode: ptr.To[int32](0400),
+              },
+          },
+      },
   )
-	
+
 	if backupDaemon.S3AliasesUsed {
 		deployment.Spec.Template.Spec.Containers[0].Env = append(
 			deployment.Spec.Template.Spec.Containers[0].Env,
