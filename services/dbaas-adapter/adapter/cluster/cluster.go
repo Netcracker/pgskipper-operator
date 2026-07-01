@@ -20,12 +20,12 @@ import (
 	"net/url"
 	"time"
 
-	"github.com/jackc/pgx/v4"
-	"github.com/jackc/pgx/v4/pgxpool"
+	"github.com/jackc/pgx/v5"
+	"github.com/jackc/pgx/v5/pgconn"
+	"github.com/jackc/pgx/v5/pgxpool"
 	"go.uber.org/zap"
 
 	"github.com/Netcracker/pgskipper-dbaas-adapter/postgresql-dbaas-adapter/adapter/util"
-	"github.com/jackc/pgconn"
 )
 
 const (
@@ -137,7 +137,7 @@ func (ca ClusterAdapterImpl) GetConnectionToDbWithUser(ctx context.Context, data
 }
 
 func (ca ClusterAdapterImpl) getConnectionToDbWithUser(ctx context.Context, database string, username string, password string) (Conn, error) {
-	conn, err := pgxpool.Connect(ctx, ca.getConnectionUrl(username, password, database))
+	conn, err := pgxpool.New(ctx, ca.getConnectionUrl(username, password, database))
 	if err != nil {
 		log.Error("Error occurred during connect to DB", zap.Error(err))
 		return nil, err
