@@ -91,6 +91,7 @@ jobs:
           replace-symbol: ${{ github.event.inputs.replace-symbol || '_'}}
 
   build:
+    if: ${{ needs.prepare.outputs.components != '[]' || (github.event_name == 'workflow_dispatch' || github.event_name == 'release') }}
     name: ${{ matrix.component.name }} Image Build
     needs: [prepare]
     runs-on: ubuntu-22.04
