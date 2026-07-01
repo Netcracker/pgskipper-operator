@@ -380,7 +380,7 @@ func (r *PatroniReconciler) Reconcile() error {
 		}
 	}
 
-	for _, name := range []string{"patroni-config", "patroni-leader"} {
+	for _, name := range []string{fmt.Sprintf("%s-config", r.cluster.ClusterName), fmt.Sprintf("%s-leader", r.cluster.ClusterName)} {
 		cm, err := r.helper.GetConfigMap(name)
 		if err != nil {
 			if errors.IsNotFound(err) {
@@ -398,7 +398,7 @@ func (r *PatroniReconciler) Reconcile() error {
 				cm.Annotations[k] = v
 			}
 		}
-		if _, err := r.helper.CreateOrUpdateConfigMap(cm); err != nil {
+		if _, err := r.helper.CreateOrUpdateManagedConfigMap(cm); err != nil {
 			logger.Error("failed to annotate Patroni ConfigMap", zap.Error(err))
 			return err
 		}

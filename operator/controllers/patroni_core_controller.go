@@ -274,7 +274,7 @@ func (pr *PatroniCoreReconciler) Reconcile(ctx context.Context, request ctrl.Req
 		return reconcile.Result{RequeueAfter: time.Minute}, err
 	}
 
-	if err := pr.helper.UpdatePatroniConfigMaps(); err != nil {
+	if err := pr.helper.UpdatePatroniConfigMaps(cr.Spec.Patroni.ClusterName); err != nil {
 		pr.logger.Error("error during update of patroni config maps", zap.Error(err))
 		return reconcile.Result{RequeueAfter: time.Minute}, err
 	}

@@ -103,7 +103,7 @@ class PgBackRestRecovery():
             log.info("Delete leader cm")
             body = client.V1DeleteOptions()
             core_api = client.CoreV1Api(self._api_client)
-            core_api.delete_namespaced_config_map("patroni-leader", self.project, body=body,)
+            core_api.delete_namespaced_config_map(f"{pg_cluster_name}-leader", self.project, body=body,)
         except kubernetes.client.rest.ApiException as e:
             if e.reason == "Not Found":
                 return
@@ -114,7 +114,7 @@ class PgBackRestRecovery():
         log.info("Delete initialize key")
         cmaps = client.CoreV1Api(self._api_client).list_namespaced_config_map(self.project).items
         for cm in cmaps:
-            if cm.metadata.name == 'patroni-config':
+            if cm.metadata.name == f'{pg_cluster_name}-config':
                 if "initialize" in cm.metadata.annotations:
                     del cm.metadata.annotations["initialize"]
                     self.patch_configmap(cm.metadata.name, cm)
