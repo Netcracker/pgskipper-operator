@@ -23,6 +23,7 @@ from kubernetes.stream import stream
 from kubernetes.stream.ws_client import ERROR_CHANNEL, STDOUT_CHANNEL, STDERR_CHANNEL
 import kubernetes
 from utils_common import retry
+from datetime import datetime, timezone
 
 import time
 import requests
@@ -184,6 +185,80 @@ class PgBackRestRecovery():
 
         return r.status_code
 
+    def parse_pgbackrest_target_time(self, target):
+        try:
+            normalized_target = target.replace(" ", "T")
+            dt = datetime.fromisoformat(normalized_target)
+            if dt.tzinfo is None:
+                dt = dt.replace(tzinfo=timezone.utc)
+            return int(dt.timestamp())
+        except ValueError as e:
+            raise Exception(
+                f"Invalid PITR target time format: {target}. "
+                "Expected format example: '2024-10-23 14:11:04+00'"
+            ) from e
+
+
+    def get_pgbackrest_backups(self):
+        try:
+            response = requests.get("http://backrest-headless:3000/list")
+            response.raise_for_status()
+            return response.json()
+        except Exception as e:
+            raise Exception("Failed to get pgBackRest backups list before restore") from e
+
+
+    def validate_pitr_request(self, restore_type, target, target_timeline='current'):
+        if not restore_type:
+            raise Exception("TYPE must be provided when TARGET is set")
+
+        allowed_types = ["time", "lsn", "name", "xid"]
+        if restore_type not in allowed_types:
+            raise Exception(
+                f"Unsupported restore TYPE={restore_type}. "
+                f"Allowed values: {allowed_types}"
+            )
+
+        if target_timeline not in ['current', 'latest']:
+            try:
+                timeline_num = int(target_timeline)
+                if timeline_num < 1:
+                    raise ValueError("Timeline must be a positive integer")
+            except ValueError:
+                raise Exception(
+                    f"Invalid TARGET_TIMELINE={target_timeline}. "
+                    "Must be 'current', 'latest', or a positive integer (e.g., '1', '2')"
+                )
+
+        if restore_type != "time":
+            log.info(f"Skip deep validation for PITR type {restore_type}")
+            return
+
+        target_ts = self.parse_pgbackrest_target_time(target)
+        backups = self.get_pgbackrest_backups()
+
+        if not backups:
+            raise Exception("No pgBackRest backups found. Restore rejected.")
+
+        suitable_backups = []
+        for backup in backups:
+            timestamp = backup.get("timestamp") or {}
+            stop_ts = timestamp.get("stop") or timestamp.get("start")
+
+            if stop_ts and int(stop_ts) < target_ts:
+                suitable_backups.append(backup)
+
+        if not suitable_backups:
+            raise Exception(
+                f"No pgBackRest backup found before PITR target {target}. "
+                "Restore rejected before Patroni state changes."
+            )
+
+        log.info(
+            f"PITR target {target} is valid. "
+            f"Found {len(suitable_backups)} suitable backup(s)."
+        )
+
     def perform_restore(self):
         backup_id = '' if not os.getenv("SET") else os.getenv("SET")
         restore_type = '' if not os.getenv("TYPE") else os.getenv("TYPE")
@@ -191,6 +266,9 @@ class PgBackRestRecovery():
         target_timeline = 'current' if not os.getenv("TARGET_TIMELINE") else os.getenv("TARGET_TIMELINE")
         replicas_only_env = False if not os.getenv("REPLICAS_ONLY") else os.getenv("REPLICAS_ONLY")
         replicas_only = replicas_only_env and replicas_only_env.lower() in ['true', '1', 'yes']
+
+        if target:
+            self.validate_pitr_request(restore_type, target, target_timeline)
 
         http_codes = {}
         stateful_sets =  self.get_patroni_statefulsets()
