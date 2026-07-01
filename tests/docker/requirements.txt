@@ -1,7 +1,7 @@
 allure-robotframework==2.15.0
 aniso8601==10.0.1
 cachetools==4.2.4
-certifi==2026.4.22
+certifi==2026.6.17
 charset-normalizer==3.4.7
 click==8.1.2
 Flask==2.2.5
