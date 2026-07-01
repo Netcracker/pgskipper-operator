@@ -313,24 +313,6 @@ func (r *BackupDaemonReconciler) getS3StorageEnv(backupDaemon *qubershipv1.Backu
 			Name:  "AWS_S3_ENDPOINT_URL",
 			Value: backupDaemon.S3Storage.Url,
 		},
-		// {
-		// 	Name: "AWS_ACCESS_KEY_ID",
-		// 	ValueFrom: &corev1.EnvVarSource{
-		// 		SecretKeyRef: &corev1.SecretKeySelector{
-		// 			LocalObjectReference: corev1.LocalObjectReference{Name: "s3-storage-credentials"},
-		// 			Key:                  "key_id",
-		// 		},
-		// 	},
-		// },
-		// {
-		// 	Name: "AWS_SECRET_ACCESS_KEY",
-		// 	ValueFrom: &corev1.EnvVarSource{
-		// 		SecretKeyRef: &corev1.SecretKeySelector{
-		// 			LocalObjectReference: corev1.LocalObjectReference{Name: "s3-storage-credentials"},
-		// 			Key:                  "access_key",
-		// 		},
-		// 	},
-		// },
 		{
 			Name:  "CONTAINER",
 			Value: backupDaemon.S3Storage.Bucket,
@@ -353,24 +335,6 @@ func (r *BackupDaemonReconciler) getS3StorageEnv(backupDaemon *qubershipv1.Backu
 
 func (r *BackupDaemonReconciler) getAWSEnv(externalDatabase *qubershipv1.ExternalDataBase) []corev1.EnvVar {
 	envValue := []corev1.EnvVar{
-		// {
-		// 	Name: "AWS_ACCESS_KEY_ID",
-		// 	ValueFrom: &corev1.EnvVarSource{
-		// 		SecretKeyRef: &corev1.SecretKeySelector{
-		// 			LocalObjectReference: corev1.LocalObjectReference{Name: "aws-credentials"},
-		// 			Key:                  "key_id",
-		// 		},
-		// 	},
-		// },
-		// {
-		// 	Name: "AWS_SECRET_ACCESS_KEY",
-		// 	ValueFrom: &corev1.EnvVarSource{
-		// 		SecretKeyRef: &corev1.SecretKeySelector{
-		// 			LocalObjectReference: corev1.LocalObjectReference{Name: "aws-credentials"},
-		// 			Key:                  "access_key",
-		// 		},
-		// 	},
-		// },
 		{
 			Name:  "AWS_DEFAULT_REGION",
 			Value: externalDatabase.Region,
