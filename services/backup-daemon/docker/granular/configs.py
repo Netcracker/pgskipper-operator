@@ -17,6 +17,8 @@ import utils
 import logging
 from utils import get_postgres_version_by_path
 
+_SECRET_BASE_PATH = "/var/run/secrets/postgresql/"
+_PG_USER_CREDS_PATH = _SECRET_BASE_PATH + "postgres-credentials/"
 
 _PROTECTED_DATABASES = ['template0', 'template1', 'postgres',
                         'rdsadmin',  # aws rds
@@ -63,6 +65,17 @@ def backups_storage(version=None):
         storage_path = '/backup-storage/pg18/granular'
     return storage_path
 
+def read_secret_file(path: str, default_val: str):
+    try:
+        with open(path, 'r') as f:
+            value = f.read().strip()
+    except OSError as e:
+        logging.error(f"Failed to read secret file {path}: {e}")
+        return default_val
+    if not value:
+        logging.info(f"Secret file {path} is empty, using default value")
+        return default_val
+    return value
 
 def default_namespace():
     return 'default'
@@ -77,7 +90,7 @@ def default_backup_expiration_period():
 
 
 def postgresql_user():
-    return os.getenv('POSTGRES_USER') or 'postgres'
+    return read_secret_file(_PG_USER_CREDS_PATH + "username", 'postgres')
 
 
 def postgresql_host():
@@ -89,7 +102,7 @@ def postgresql_port():
 
 
 def postgres_password():
-    return os.getenv('POSTGRES_PASSWORD')
+    return read_secret_file(_PG_USER_CREDS_PATH + "password", '')
 
 
 def postgresql_no_role_password_flag():

@@ -24,6 +24,7 @@ import (
 	"k8s.io/client-go/rest"
 	"os"
 	"strconv"
+	"strings"
 )
 
 const (
@@ -133,6 +134,22 @@ func GetEnvBool(key string, fallback bool) bool {
 		return bvalue
 	}
 	return fallback
+}
+
+func ReadSecretFile(path string, defaultVal string) string {
+	data, err := os.ReadFile(path)
+	if err != nil {
+		log.Error(fmt.Sprintf("Failed to read secret file %s: %v", path, err))
+		return defaultVal
+	}
+
+	value := strings.TrimSpace(string(data))
+
+	if value == "" {
+		log.Info(fmt.Sprintf("Secret file %s is empty, using default value", path))
+		return defaultVal
+	}
+	return value
 }
 
 func GetK8sClient() (*kubernetes.Clientset, error) {

@@ -19,12 +19,14 @@ import (
 
 	netcrackerv1 "github.com/Netcracker/pgskipper-operator/api/apps/v1"
 	"github.com/Netcracker/pgskipper-operator/pkg/storage"
+	"github.com/Netcracker/pgskipper-operator/pkg/util"
 	opUtils "github.com/Netcracker/pgskipper-operator/pkg/util"
 	"github.com/Netcracker/qubership-credential-manager/pkg/utils"
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/util/intstr"
+	"k8s.io/utils/ptr"
 )
 
 var (
@@ -72,6 +74,24 @@ func NewBackupDaemonDeployment(backupDaemon *netcrackerv1.BackupDaemon, pgCluste
 								},
 							},
 						},
+						{
+							Name: "postgres-credentials",
+							VolumeSource: corev1.VolumeSource{
+								Secret: &corev1.SecretVolumeSource{
+									SecretName: "postgres-credentials",
+									DefaultMode: ptr.To[int32](0400),
+								},
+							},
+						},
+						{
+							Name: "replicator-credentials",
+							VolumeSource: corev1.VolumeSource{
+								Secret: &corev1.SecretVolumeSource{
+									SecretName: "replicator-credentials",
+									DefaultMode: ptr.To[int32](0400),
+								},
+							},
+						},
 					},
 					ServiceAccountName: serviceAccountName,
 					Affinity:           &backupDaemon.Affinity,
@@ -83,33 +103,6 @@ func NewBackupDaemonDeployment(backupDaemon *netcrackerv1.BackupDaemon, pgCluste
 							Command: []string{},
 							Args:    []string{},
 							Env: []corev1.EnvVar{
-								{
-									Name: "POSTGRES_PASSWORD",
-									ValueFrom: &corev1.EnvVarSource{
-										SecretKeyRef: &corev1.SecretKeySelector{
-											LocalObjectReference: corev1.LocalObjectReference{Name: GetRootSecretName(pgClusterName)},
-											Key:                  "password",
-										},
-									},
-								},
-								{
-									Name: "POSTGRES_USER",
-									ValueFrom: &corev1.EnvVarSource{
-										SecretKeyRef: &corev1.SecretKeySelector{
-											LocalObjectReference: corev1.LocalObjectReference{Name: GetRootSecretName(pgClusterName)},
-											Key:                  "username",
-										},
-									},
-								},
-								{
-									Name: "PGPASSWORD",
-									ValueFrom: &corev1.EnvVarSource{
-										SecretKeyRef: &corev1.SecretKeySelector{
-											LocalObjectReference: corev1.LocalObjectReference{Name: GetReplSecretName(pgClusterName)},
-											Key:                  "password",
-										},
-									},
-								},
 								{
 									Name:  "PG_CLUSTER_NAME",
 									Value: pgClusterName,
@@ -230,6 +223,14 @@ func NewBackupDaemonDeployment(backupDaemon *netcrackerv1.BackupDaemon, pgCluste
 									MountPath: "/backup-storage",
 									Name:      "backup-data",
 								},
+								{
+									MountPath: util.SecretsBasePath + "postgres-credentials",
+									Name:      "postgres-credentials",
+								},
+								{
+									MountPath: util.SecretsBasePath + "replicator-credentials",
+									Name:      "replicator-credentials",
+								},
 							},
 							LivenessProbe: &corev1.Probe{
 								ProbeHandler: corev1.ProbeHandler{
@@ -296,6 +297,29 @@ func NewBackupDaemonDeployment(backupDaemon *netcrackerv1.BackupDaemon, pgCluste
 			},
 		}
 	}
+// Add postgres-credentials volume regardless of storage type
+	deployment.Spec.Template.Spec.Volumes = append(
+      deployment.Spec.Template.Spec.Volumes,
+      corev1.Volume{
+          Name: "postgres-credentials",
+          VolumeSource: corev1.VolumeSource{
+              Secret: &corev1.SecretVolumeSource{
+                  SecretName:  GetRootSecretName(pgClusterName),
+                  DefaultMode: ptr.To[int32](0400),
+              },
+          },
+      },
+      corev1.Volume{
+          Name: "replicator-credentials",
+          VolumeSource: corev1.VolumeSource{
+              Secret: &corev1.SecretVolumeSource{
+                  SecretName:  "replicator-credentials",
+                  DefaultMode: ptr.To[int32](0400),
+              },
+          },
+      },
+  )
+
 	if backupDaemon.S3AliasesUsed {
 		deployment.Spec.Template.Spec.Containers[0].Env = append(
 			deployment.Spec.Template.Spec.Containers[0].Env,

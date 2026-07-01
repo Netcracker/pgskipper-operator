@@ -42,8 +42,8 @@ def _connection_props():
     return {
         'host': os.getenv('POSTGRES_HOST', 'localhost'),
         'port': os.getenv('POSTGRES_PORT', '5432'),
-        'user': os.getenv('POSTGRES_USER', 'postgres'),
-        'password': os.getenv('POSTGRES_PASSWORD'),
+        'user': utils.read_secret_file(f'{utils.POSTGRES_CREDS_PATH}/username', 'postgres'),
+        'password': utils.read_secret_file(f'{utils.POSTGRES_CREDS_PATH}/password', ''),
         'database': 'postgres',
         'connect_timeout': int(os.getenv('CONNECT_TIMEOUT', '5')),
     }

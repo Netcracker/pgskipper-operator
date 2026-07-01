@@ -26,13 +26,18 @@ import (
 	"go.uber.org/zap"
 )
 
+const (
+	pgUserCredsPath = util.SecretsBasePath + "postgres-credentials/"
+	
+)
+
 var logger = util.GetLogger()
 
 var (
 	PgHost     = util.GetEnv("POSTGRES_HOST", "pg-patroni")
 	PgPort     = util.GetEnvInt("POSTGRES_PORT", 5432)
-	PgUser     = util.GetEnv("MONITORING_USER", "monitoring-user")
-	PgPass     = util.GetEnv("MONITORING_PASSWORD", "monitoring_password")
+	PgUser     = util.ReadSecretFile(pgUserCredsPath+"username", "")
+	PgPass     = util.ReadSecretFile(pgUserCredsPath+"password", "")
 	PgDatabase = util.GetEnv("POSTGRES_DATABASE", "postgres")
 	PgSsl      = util.GetEnv("PGSSLMODE", "prefer")
 )

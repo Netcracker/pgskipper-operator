@@ -19,6 +19,20 @@ from utils_common import RecoveryException
 
 log = logging.getLogger()
 
+_SECRET_FILE_PATH = "/var/run/secrets/postgresql/"
+_PG_CREDS_PATH = _SECRET_FILE_PATH + "postgres-credentials/"
+
+def read_secret_file(path: str, default_val: str) -> str:
+    try:
+        with open(path, 'r') as f:
+            value = f.read().strip()
+    except OSError as e:
+        logging.error(f"Failed to read secret file {path}: {e}")
+        return default_val
+    if not value:
+        logging.info(f"Secret file {path} is empty, using default value")
+        return default_val
+    return value
 
 class PostgresqlClient:
 
@@ -32,7 +46,7 @@ class PostgresqlClient:
         import os
         try:
             connection = psycopg2.connect(user="postgres",
-                                          password=os.getenv('POSTGRES_PASSWORD'),
+                                          password=read_secret_file(_PG_CREDS_PATH + 'password', ""), #
                                           host=os.getenv('POSTGRES_HOST'),
                                           port="5432",
                                           database="postgres")
