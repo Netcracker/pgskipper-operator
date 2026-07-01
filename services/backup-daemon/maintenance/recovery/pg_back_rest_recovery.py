@@ -245,7 +245,7 @@ class PgBackRestRecovery():
             timestamp = backup.get("timestamp") or {}
             stop_ts = timestamp.get("stop") or timestamp.get("start")
 
-            if stop_ts and int(stop_ts) <= target_ts:
+            if stop_ts and int(stop_ts) < target_ts:
                 suitable_backups.append(backup)
 
         if not suitable_backups:
