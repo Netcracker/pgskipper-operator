@@ -52,8 +52,6 @@ class AwsS3Vault:
             if not aliases:
                 raise Exception("S3 aliases are enabled, but /aliases/s3_aliases.json is empty")
 
-            if "default" not in aliases:
-                raise Exception("Default S3 alias is not configured in /aliases/s3_aliases.json")
 
             cls.__s3_aliases_cache = aliases
 
@@ -67,7 +65,14 @@ class AwsS3Vault:
             return None
 
         if not storage_name or not storage_name.strip():
-            raise Exception("storageName is required when S3 aliases are enabled")
+            fallback_bucket = cls.get_s3_bucket_name(alias=None)
+            if fallback_bucket:
+                cls.__log.info(
+                    "storageName not provided, falling back to s3Storage configuration (bucket: %s)",
+                    fallback_bucket
+                )
+                return None
+            raise Exception("storageName is required when S3 aliases are enabled and no s3Storage fallback is configured")
 
         storage_name = storage_name.strip()
 
@@ -83,7 +88,7 @@ class AwsS3Vault:
             return alias.get("bucketName")
         return os.getenv("CONTAINER") or os.getenv("AWS_S3_BUCKET") or os.getenv("S3_BUCKET")
 
-    def __init__(self, storage_name="default", cluster_name=None, cache_enabled=False,
+    def __init__(self, storage_name=None, cluster_name=None, cache_enabled=False,
                  aws_s3_bucket_listing=None, prefix=None):
 
         self.storage_name = storage_name
