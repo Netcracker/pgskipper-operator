@@ -270,8 +270,15 @@ func (rm *ResourceManager) UpdateDaemonSet(ds *appsv1.DaemonSet) (err error) {
 	return nil
 }
 
-// Returns true if configMap was updated
 func (rm *ResourceManager) CreateOrUpdateConfigMap(cm *corev1.ConfigMap) (bool, error) {
+	return rm.createOrUpdateConfigMap(cm, false)
+}
+
+func (rm *ResourceManager) CreateOrUpdateManagedConfigMap(cm *corev1.ConfigMap) (bool, error) {
+	return rm.createOrUpdateConfigMap(cm, true)
+}
+
+func (rm *ResourceManager) createOrUpdateConfigMap(cm *corev1.ConfigMap, preserveLabels bool) (bool, error) {
 	foundCm := &corev1.ConfigMap{}
 	logger.Info(fmt.Sprintf("Start to check if %s cm exists", cm.Name))
 	err := rm.kubeClient.Get(context.TODO(), types.NamespacedName{
@@ -290,7 +297,7 @@ func (rm *ResourceManager) CreateOrUpdateConfigMap(cm *corev1.ConfigMap) (bool, 
 		if !reflect.DeepEqual(foundCm, cm) || !reflect.DeepEqual(foundCm.Data, cm.Data) {
 			logger.Info(fmt.Sprintf("Updating %s k8s cm", cm.Name))
 			cm.OwnerReferences = rm.GetOwnerReferences()
-			if cm.Name != "patroni-leader" && cm.Name != "patroni-config" {
+			if !preserveLabels {
 				cm.Labels = rm.getLabels(cm.ObjectMeta)
 			}
 			err = rm.kubeClient.Update(context.TODO(), cm)
@@ -693,8 +700,8 @@ func (rm *ResourceManager) UpdatePGService() error {
 	return nil
 }
 
-func (rm *ResourceManager) UpdatePatroniConfigMaps() error {
-	var configMaps = []string{"patroni-leader", "patroni-config"}
+func (rm *ResourceManager) UpdatePatroniConfigMaps(clusterName string) error {
+	var configMaps = []string{fmt.Sprintf("%s-leader", clusterName), fmt.Sprintf("%s-config", clusterName)}
 	for _, configMap := range configMaps {
 		err := retry.RetryOnConflict(retry.DefaultRetry, func() error {
 			cmap, err := rm.GetConfigMap(configMap)
@@ -702,7 +709,7 @@ func (rm *ResourceManager) UpdatePatroniConfigMaps() error {
 				return err
 			}
 			cmap.ObjectMeta.OwnerReferences = rm.GetOwnerReferences()
-			_, err = rm.CreateOrUpdateConfigMap(cmap)
+			_, err = rm.CreateOrUpdateManagedConfigMap(cmap)
 			return err
 		})
 		if err != nil {
