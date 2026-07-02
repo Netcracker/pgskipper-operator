@@ -1,0 +1,867 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "patroni-core values",
+  "type": "object",
+  "additionalProperties": true,
+  "properties": {
+    "postgresUser": {
+      "type": "string",
+      "default": "postgres",
+      "description": "The name of database superuser"
+    },
+    "postgresPassword": {
+      "type": "string",
+      "default": "p@ssWOrD1",
+      "description": "The password for the database superuser"
+    },
+    "replicatorPassword": {
+      "type": "string",
+      "default": "replicator",
+      "description": "Password for replicator user"
+    },
+    "podLabels": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "string"
+      },
+      "default": {}
+    },
+    "imagePullPolicy": {
+      "type": "string",
+      "default": "IfNotPresent",
+      "description": "Image pull policy for containers"
+    },
+    "privateRegistry": {
+      "$ref": "#/$defs/privateRegistry"
+    },
+    "global": {
+      "$ref": "#/$defs/global"
+    },
+    "serviceAccount": {
+      "$ref": "#/$defs/serviceAccount"
+    },
+    "operatorInit": {
+      "$ref": "#/$defs/operatorInit"
+    },
+    "operator": {
+      "$ref": "#/$defs/operator"
+    },
+    "policies": {
+      "$ref": "#/$defs/policies"
+    },
+    "tls": {
+      "$ref": "#/$defs/tls"
+    },
+    "ldap": {
+      "$ref": "#/$defs/ldap"
+    },
+    "patroni": {
+      "$ref": "#/$defs/patroni"
+    },
+    "pgBackRest": {
+      "$ref": "#/$defs/pgBackRest"
+    },
+    "tests": {
+      "$ref": "#/$defs/tests"
+    },
+    "runTestsOnly": {
+      "type": "boolean",
+      "default": false
+    },
+    "INTERNAL_TLS_ENABLED": {
+      "type": "boolean",
+      "default": false
+    },
+    "GLOBAL_SECURITY_CONTEXT": {
+      "type": "boolean",
+      "default": true
+    },
+    "CLOUD_PUBLIC_HOST": {
+      "type": "string",
+      "default": "k8s.default"
+    },
+    "majorUpgrade": {
+      "$ref": "#/$defs/majorUpgrade"
+    }
+  },
+  "$defs": {
+    "privateRegistry": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "enabled": {
+          "type": "boolean",
+          "default": false
+        },
+        "secrets": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "properties": {
+              "name": {
+                "type": ["string", "null"]
+              },
+              "create": {
+                "type": "boolean",
+                "default": false
+              },
+              "registry": {
+                "type": ["string", "null"]
+              },
+              "username": {
+                "type": ["string", "null"]
+              },
+              "password": {
+                "type": ["string", "null"]
+              },
+              "email": {
+                "type": ["string", "null"]
+              }
+            }
+          }
+        }
+      }
+    },
+    "global": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "cloudIntegrationEnabled": {
+          "type": "boolean",
+          "default": true
+        }
+      }
+    },
+    "serviceAccount": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "create": {
+          "type": "boolean",
+          "default": true
+        },
+        "name": {
+          "type": "string",
+          "default": "patroni-sa"
+        }
+      }
+    },
+    "operatorInit": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "image": {
+          "type": "string",
+          "default": "ghcr.io/netcracker/qubership-credential-manager:main"
+        },
+        "resources": {
+          "$ref": "#/$defs/resourceRequirements"
+        }
+      }
+    },
+    "operator": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "image": {
+          "type": "string",
+          "default": "ghcr.io/netcracker/pgskipper-operator:main"
+        },
+        "podLabels": {
+          "type": "object",
+          "additionalProperties": {
+            "type": "string"
+          },
+          "default": {}
+        },
+        "securityContext": {
+          "type": "object",
+          "additionalProperties": true,
+          "default": {}
+        },
+        "waitTimeout": {
+          "type": "integer",
+          "default": 10
+        },
+        "resources": {
+          "$ref": "#/$defs/resourceRequirements"
+        },
+        "priorityClassName": {
+          "type": ["string", "null"]
+        },
+        "affinity": {
+          "$ref": "#/$defs/affinity"
+        },
+        "reconcileRetries": {
+          "type": ["integer", "null"]
+        }
+      }
+    },
+    "policies": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "tolerations": {
+          "$ref": "#/$defs/tolerations"
+        }
+      }
+    },
+    "tls": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "enabled": {
+          "type": "boolean",
+          "default": false
+        },
+        "certificateSecretName": {
+          "type": "string",
+          "default": "pg-cert"
+        },
+        "generateCerts": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "clusterIssuerName": {
+              "type": "string",
+              "default": ""
+            },
+            "enabled": {
+              "type": "boolean",
+              "default": false
+            },
+            "duration": {
+              "type": "integer",
+              "default": 365
+            },
+            "subjectAlternativeName": {
+              "type": "object",
+              "additionalProperties": false,
+              "properties": {
+                "additionalDnsNames": {
+                  "type": "array",
+                  "items": {
+                    "type": "string"
+                  },
+                  "default": []
+                },
+                "additionalIpAddresses": {
+                  "type": "array",
+                  "items": {
+                    "type": "string"
+                  },
+                  "default": []
+                }
+              }
+            }
+          }
+        },
+        "certificates": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "tls_key": {
+              "type": ["string", "null"]
+            },
+            "tls_crt": {
+              "type": ["string", "null"]
+            },
+            "ca_crt": {
+              "type": ["string", "null"]
+            }
+          }
+        }
+      }
+    },
+    "ldap": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "enabled": {
+          "type": "boolean",
+          "default": false
+        },
+        "server": {
+          "type": "string",
+          "default": "ldap.example.com"
+        },
+        "port": {
+          "type": "integer",
+          "default": 389
+        },
+        "basedn": {
+          "type": "string",
+          "default": "dc=example,dc=com"
+        },
+        "binddn": {
+          "type": "string",
+          "default": "cn=admin,dc=example,dc=com"
+        },
+        "bindpasswd": {
+          "type": "string",
+          "default": "adminpassword"
+        },
+        "ldapsearchattribute": {
+          "type": "string",
+          "default": "sAMAccountName"
+        }
+      }
+    },
+    "patroni": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "install": {
+          "type": "boolean",
+          "default": true
+        },
+        "clusterName": {
+          "type": "string",
+          "default": "patroni"
+        },
+        "replicas": {
+          "type": "integer",
+          "default": 2
+        },
+        "dockerImage": {
+          "type": "string",
+          "default": "ghcr.io/netcracker/pgskipper-docker-patroni-16:main"
+        },
+        "podLabels": {
+          "type": "object",
+          "additionalProperties": {
+            "type": "string"
+          },
+          "default": {}
+        },
+        "podAnnotations": {
+          "type": "object",
+          "additionalProperties": {
+            "type": "string"
+          },
+          "default": {}
+        },
+        "configMapAnnotations": {
+          "type": "object",
+          "additionalProperties": {
+            "type": "string"
+          },
+          "default": {}
+        },
+        "fsGroup": {
+          "type": ["integer", "null"]
+        },
+        "affinity": {
+          "$ref": "#/$defs/affinity"
+        },
+        "synchronousMode": {
+          "type": ["boolean", "null"]
+        },
+        "createEndpoint": {
+          "type": ["boolean", "null"]
+        },
+        "scope": {
+          "type": ["string", "null"]
+        },
+        "dcs": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "type": {
+              "type": "string",
+              "default": "kubernetes"
+            },
+            "hosts": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            }
+          }
+        },
+        "tags": {
+          "type": "object",
+          "additionalProperties": {
+            "type": "string"
+          }
+        },
+        "resources": {
+          "$ref": "#/$defs/resourceRequirements"
+        },
+        "postgreSQLParams": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "default": [
+            "password_encryption: md5",
+            "max_connections: 200",
+            "shared_preload_libraries: pg_stat_statements, pg_hint_plan, pg_cron",
+            "tcp_keepalives_idle: 300",
+            "tcp_keepalives_interval: 10",
+            "tcp_keepalives_count: 5",
+            "wal_level: logical"
+          ]
+        },
+        "patroniParams": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "default": [
+            "failsafe_mode: true",
+            "primary_start_timeout: 30",
+            "retry_timeout: 10"
+          ]
+        },
+        "storage": {
+          "$ref": "#/$defs/storage"
+        },
+        "enableShmVolume": {
+          "type": "boolean",
+          "default": true
+        },
+        "priorityClassName": {
+          "type": ["string", "null"]
+        },
+        "applyPodDisruptionBudget": {
+          "type": "boolean",
+          "default": false
+        },
+        "forceCollationVersionUpgrade": {
+          "type": "boolean",
+          "default": false
+        },
+        "powa": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "install": {
+              "type": "boolean",
+              "default": false
+            },
+            "password": {
+              "type": ["string", "null"]
+            }
+          }
+        },
+        "majorUpgrade": {
+          "$ref": "#/$defs/majorUpgrade"
+        },
+        "securityContext": {
+          "type": "object",
+          "additionalProperties": true,
+          "default": {}
+        },
+        "pgWalStorageAutoManage": {
+          "type": ["boolean", "null"]
+        },
+        "pgWalStorage": {
+          "$ref": "#/$defs/storage"
+        },
+        "external": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "pvc": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "additionalProperties": false,
+                "properties": {
+                  "name": {
+                    "type": "string"
+                  },
+                  "mountPath": {
+                    "type": "string"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "standbyCluster": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "host": {
+              "type": "string"
+            },
+            "port": {
+              "type": "integer"
+            }
+          }
+        },
+        "pgHba": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "unlimited": {
+          "type": ["boolean", "null"]
+        },
+        "ignoreSlots": {
+          "type": ["boolean", "null"]
+        },
+        "ignoreSlotsPrefix": {
+          "type": ["string", "null"]
+        },
+        "patroniResourcesLimitMemory": {
+          "type": ["string", "null"]
+        }
+      }
+    },
+    "pgBackRest": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "dockerImage": {
+          "type": "string"
+        },
+        "repoType": {
+          "type": "string"
+        },
+        "repoPath": {
+          "type": "string"
+        },
+        "diffSchedule": {
+          "type": "string"
+        },
+        "incrSchedule": {
+          "type": "string"
+        },
+        "s3": {
+          "$ref": "#/$defs/s3"
+        },
+        "drS3": {
+          "$ref": "#/$defs/s3"
+        },
+        "rwx": {
+          "$ref": "#/$defs/storage"
+        },
+        "resources": {
+          "$ref": "#/$defs/resourceRequirements"
+        },
+        "fullRetention": {
+          "type": ["integer", "null"]
+        },
+        "diffRetention": {
+          "type": ["integer", "null"]
+        },
+        "backupFromStandby": {
+          "type": ["boolean", "null"]
+        },
+        "configParams": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        }
+      }
+    },
+    "tests": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "install": {
+          "type": "boolean",
+          "default": true
+        },
+        "dockerImage": {
+          "type": "string",
+          "default": "ghcr.io/netcracker/pgskipper-operator-tests:main"
+        },
+        "podLabels": {
+          "type": "object",
+          "additionalProperties": {
+            "type": "string"
+          },
+          "default": {}
+        },
+        "runTestScenarios": {
+          "type": "string",
+          "default": "basic"
+        },
+        "testList": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "default": ["check_pg_images"]
+        },
+        "testScenarios": {
+          "type": "object",
+          "additionalProperties": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
+        },
+        "atpReport": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "enabled": {
+              "type": "boolean",
+              "default": false
+            },
+            "atpStorage": {
+              "type": "object",
+              "additionalProperties": false,
+              "properties": {
+                "provider": {
+                  "type": "string",
+                  "default": "aws"
+                },
+                "serverUrl": {
+                  "type": "string",
+                  "default": "https://s3.amazonaws.com"
+                },
+                "serverUiUrl": {
+                  "type": "string",
+                  "default": ""
+                },
+                "bucket": {
+                  "type": "string",
+                  "default": ""
+                },
+                "region": {
+                  "type": "string",
+                  "default": "us-east-1"
+                },
+                "username": {
+                  "type": "string",
+                  "default": ""
+                },
+                "password": {
+                  "type": "string",
+                  "default": ""
+                }
+              }
+            }
+          }
+        },
+        "atpReportViewUiUrl": {
+          "type": "string",
+          "default": ""
+        },
+        "environmentName": {
+          "type": "string",
+          "default": "pgskipper-operator"
+        },
+        "resources": {
+          "$ref": "#/$defs/resourceRequirements"
+        },
+        "affinity": {
+          "$ref": "#/$defs/affinity"
+        }
+      }
+    },
+    "majorUpgrade": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "enabled": {
+          "type": "boolean",
+          "default": false
+        },
+        "initDbParams": {
+          "type": ["string", "null"]
+        },
+        "dockerUpgradeImage": {
+          "type": "string",
+          "default": "ghcr.io/netcracker/pgskipper-docker-upgrade:main"
+        }
+      }
+    },
+    "storage": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "type": {
+          "type": "string"
+        },
+        "size": {
+          "type": "string"
+        },
+        "storageClass": {
+          "type": ["string", "null"]
+        },
+        "volumes": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "nodes": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "selectors": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "accessModes": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        }
+      }
+    },
+    "s3": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "bucket": {
+          "type": "string"
+        },
+        "endpoint": {
+          "type": "string"
+        },
+        "key": {
+          "type": "string"
+        },
+        "secret": {
+          "type": "string"
+        },
+        "region": {
+          "type": "string"
+        },
+        "verifySsl": {
+          "type": "boolean"
+        }
+      }
+    },
+    "resourceRequirements": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "requests": {
+          "type": "object",
+          "additionalProperties": {
+            "type": "string"
+          }
+        },
+        "limits": {
+          "type": "object",
+          "additionalProperties": {
+            "type": "string"
+          }
+        },
+        "claims": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["name"],
+            "properties": {
+              "name": {
+                "type": "string"
+              },
+              "request": {
+                "type": "string"
+              }
+            }
+          }
+        }
+      }
+    },
+    "affinity": {
+      "type": ["object", "null"],
+      "additionalProperties": false,
+      "properties": {
+        "nodeAffinity": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "preferredDuringSchedulingIgnoredDuringExecution": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "additionalProperties": true
+              }
+            },
+            "requiredDuringSchedulingIgnoredDuringExecution": {
+              "type": "object",
+              "additionalProperties": true
+            }
+          }
+        },
+        "podAffinity": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "preferredDuringSchedulingIgnoredDuringExecution": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "additionalProperties": true
+              }
+            },
+            "requiredDuringSchedulingIgnoredDuringExecution": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "additionalProperties": true
+              }
+            }
+          }
+        },
+        "podAntiAffinity": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "preferredDuringSchedulingIgnoredDuringExecution": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "additionalProperties": true
+              }
+            },
+            "requiredDuringSchedulingIgnoredDuringExecution": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "additionalProperties": true
+              }
+            }
+          }
+        }
+      }
+    },
+    "tolerations": {
+      "type": ["array", "null"],
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "key": {
+            "type": "string"
+          },
+          "operator": {
+            "type": "string",
+            "enum": ["Equal", "Exists"]
+          },
+          "value": {
+            "type": "string"
+          },
+          "effect": {
+            "type": "string",
+            "enum": ["NoSchedule", "PreferNoSchedule", "NoExecute"]
+          },
+          "tolerationSeconds": {
+            "type": "integer"
+          }
+        }
+      }
+    }
+  }
+}
