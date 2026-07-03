@@ -262,7 +262,7 @@ spec:
 {{ toYaml .Values.podLabels | nindent 6 }}
 {{- include "kubernetes.labels" . | nindent 6 }}
     {{- end }}
-    pgHost: {{ default (printf "%s.%s" "pg-patroni" .Release.Namespace) .Values.queryExporter.pgHost }}
+    pgHost: {{ default (printf "%s.%s" (include "patroni.serviceName" .) .Release.Namespace) .Values.queryExporter.pgHost }}
     pgPort: {{ default 5432 .Values.queryExporter.pgPort }}
     queryTimeout: {{ default 30 .Values.queryExporter.queryTimeout}}
     selfMonitorDisabled: {{ default false .Values.queryExporter.selfMonitorDisabled}}

@@ -249,19 +249,26 @@ Get TLS secret name for services
 {{- end -}}
 
 {{/*
+Base Postgres service name derived from the Patroni cluster name (defaults to "pg-patroni")
+*/}}
+{{- define "patroni.serviceName" -}}
+pg-{{ default "patroni" .Values.patroni.clusterName }}
+{{- end -}}
+
+{{/*
 Postgres host for backup daemon
 */}}
 {{- define "backupDaemon.pgHost" -}}
 {{- if .Values.connectionPooler.install  -}}
-pg-{{ default "patroni" .Values.patroni.clusterName }}-direct
+{{ include "patroni.serviceName" . }}-direct
 {{- else if .Values.externalDataBase }}
 {{- if or (eq (lower .Values.externalDataBase.type) "azure")  (eq (lower .Values.externalDataBase.type) "rds") }}
 {{- printf "%s.%s" "pg-patroni" .Release.Namespace }}
 {{- else }}
-{{- default (printf "%s.%s" "pg-patroni" .Release.Namespace) .Values.backupDaemon.pgHost }}
+{{- default (printf "%s.%s" (include "patroni.serviceName" .) .Release.Namespace) .Values.backupDaemon.pgHost }}
 {{- end }}
 {{- else }}
-{{- default (printf "%s.%s" "pg-patroni" .Release.Namespace) .Values.backupDaemon.pgHost }}
+{{- default (printf "%s.%s" (include "patroni.serviceName" .) .Release.Namespace) .Values.backupDaemon.pgHost }}
 {{- end }}
 {{- end -}}
 
@@ -289,10 +296,10 @@ Postgres host for DBaaS adapter
 {{- if or (eq (lower .Values.externalDataBase.type) "azure")  (eq (lower .Values.externalDataBase.type) "rds") }}
 {{- printf "%s.%s" "pg-patroni" .Release.Namespace }}
 {{- else }}
-{{- default (printf "%s.%s" "pg-patroni" .Release.Namespace) .Values.dbaas.pgHost }}
+{{- default (printf "%s.%s" (include "patroni.serviceName" .) .Release.Namespace) .Values.dbaas.pgHost }}
 {{- end }}
 {{- else }}
-{{- default (printf "%s.%s" "pg-patroni" .Release.Namespace) .Values.dbaas.pgHost }}
+{{- default (printf "%s.%s" (include "patroni.serviceName" .) .Release.Namespace) .Values.dbaas.pgHost }}
 {{- end }}
 {{- end -}}
 
@@ -304,10 +311,10 @@ ReadOnly Postgres host for DBaaS adapter
 {{- if or (eq (lower .Values.externalDataBase.type) "azure")  (eq (lower .Values.externalDataBase.type) "rds") }}
 {{- printf "%s.%s" "pg-patroni" .Release.Namespace }}
 {{- else }}
-{{- default (printf "%s.%s" "pg-patroni-ro" .Release.Namespace) .Values.dbaas.readOnlyHost }}
+{{- default (printf "%s.%s" (printf "%s-ro" (include "patroni.serviceName" .)) .Release.Namespace) .Values.dbaas.readOnlyHost }}
 {{- end }}
 {{- else }}
-{{- default (printf "%s.%s" "pg-patroni-ro" .Release.Namespace) .Values.dbaas.readOnlyHost }}
+{{- default (printf "%s.%s" (printf "%s-ro" (include "patroni.serviceName" .)) .Release.Namespace) .Values.dbaas.readOnlyHost }}
 {{- end }}
 {{- end -}}
 
