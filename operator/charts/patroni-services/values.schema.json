@@ -1,0 +1,1342 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "patroni-services values",
+  "type": "object",
+  "additionalProperties": true,
+  "properties": {
+    "postgresUser": {
+      "type": "string",
+      "default": "postgres",
+      "description": "The name of database superuser"
+    },
+    "postgresPassword": {
+      "type": "string",
+      "default": "p@ssWOrD1",
+      "description": "The password for the database superuser"
+    },
+    "replicatorPassword": {
+      "type": "string",
+      "default": "replicator"
+    },
+    "podLabels": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "string"
+      },
+      "default": {}
+    },
+    "imagePullPolicy": {
+      "type": "string",
+      "default": "IfNotPresent"
+    },
+    "privateRegistry": {
+      "$ref": "#/$defs/privateRegistry"
+    },
+    "global": {
+      "$ref": "#/$defs/global"
+    },
+    "serviceAccount": {
+      "$ref": "#/$defs/serviceAccount"
+    },
+    "operatorInit": {
+      "$ref": "#/$defs/operatorInit"
+    },
+    "operator": {
+      "$ref": "#/$defs/operator"
+    },
+    "policies": {
+      "$ref": "#/$defs/policies"
+    },
+    "tls": {
+      "$ref": "#/$defs/tls"
+    },
+    "patroni": {
+      "$ref": "#/$defs/patroni"
+    },
+    "metricCollector": {
+      "$ref": "#/$defs/metricCollector"
+    },
+    "backupDaemon": {
+      "$ref": "#/$defs/backupDaemon"
+    },
+    "pgBackRest": {
+      "$ref": "#/$defs/pgBackRest"
+    },
+    "pgBackRestExporter": {
+      "$ref": "#/$defs/pgBackRestExporter"
+    },
+    "externalDataBase": {
+      "$ref": "#/$defs/externalDataBase"
+    },
+    "dbaas": {
+      "$ref": "#/$defs/dbaas"
+    },
+    "siteManager": {
+      "$ref": "#/$defs/siteManager"
+    },
+    "queryExporter": {
+      "$ref": "#/$defs/queryExporter"
+    },
+    "powaUI": {
+      "$ref": "#/$defs/powaUI"
+    },
+    "replicationController": {
+      "$ref": "#/$defs/replicationController"
+    },
+    "connectionPooler": {
+      "$ref": "#/$defs/connectionPooler"
+    },
+    "tracing": {
+      "$ref": "#/$defs/tracing"
+    },
+    "tests": {
+      "$ref": "#/$defs/tests"
+    },
+    "runTestsOnly": {
+      "type": "boolean",
+      "default": false
+    },
+    "INTERNAL_TLS_ENABLED": {
+      "type": "boolean",
+      "default": false
+    },
+    "GLOBAL_SECURITY_CONTEXT": {
+      "type": "boolean",
+      "default": true
+    },
+    "CLOUD_PUBLIC_HOST": {
+      "type": "string",
+      "default": "k8s.default"
+    }
+  },
+  "$defs": {
+    "privateRegistry": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "enabled": {
+          "type": "boolean",
+          "default": false
+        },
+        "secrets": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "properties": {
+              "name": {
+                "type": ["string", "null"]
+              },
+              "create": {
+                "type": "boolean",
+                "default": false
+              },
+              "registry": {
+                "type": ["string", "null"]
+              },
+              "username": {
+                "type": ["string", "null"]
+              },
+              "password": {
+                "type": ["string", "null"]
+              },
+              "email": {
+                "type": ["string", "null"]
+              }
+            }
+          }
+        }
+      }
+    },
+    "global": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "cloudIntegrationEnabled": {
+          "type": "boolean",
+          "default": true
+        }
+      }
+    },
+    "serviceAccount": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "create": {
+          "type": "boolean",
+          "default": true
+        },
+        "name": {
+          "type": "string",
+          "default": "postgres-sa"
+        }
+      }
+    },
+    "operatorInit": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "image": {
+          "type": "string",
+          "default": "ghcr.io/netcracker/qubership-credential-manager:main"
+        }
+      }
+    },
+    "operator": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "image": {
+          "type": "string",
+          "default": "ghcr.io/netcracker/pgskipper-operator:main"
+        },
+        "podLabels": {
+          "type": "object",
+          "additionalProperties": {
+            "type": "string"
+          },
+          "default": {}
+        },
+        "securityContext": {
+          "type": "object",
+          "additionalProperties": true,
+          "default": {}
+        },
+        "waitTimeout": {
+          "type": "integer",
+          "default": 10
+        },
+        "resources": {
+          "$ref": "#/$defs/resourceRequirements"
+        },
+        "priorityClassName": {
+          "type": ["string", "null"]
+        },
+        "cloudSql": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "project": {
+              "type": "string"
+            },
+            "instance": {
+              "type": "string"
+            },
+            "authSecretName": {
+              "type": "string"
+            }
+          }
+        },
+        "consulRegistration": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "checkInterval": {
+              "type": "string"
+            },
+            "checkTimeout": {
+              "type": "string"
+            },
+            "deregisterAfter": {
+              "type": "string"
+            },
+            "host": {
+              "type": "string"
+            },
+            "serviceName": {
+              "type": "string"
+            },
+            "meta": {
+              "type": "object",
+              "additionalProperties": {
+                "type": "string"
+              }
+            },
+            "tags": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            },
+            "leaderMeta": {
+              "type": "object",
+              "additionalProperties": {
+                "type": "string"
+              }
+            },
+            "leaderTags": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            }
+          }
+        }
+      }
+    },
+    "policies": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "tolerations": {
+          "$ref": "#/$defs/tolerations"
+        }
+      }
+    },
+    "tls": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "enabled": {
+          "type": "boolean",
+          "default": false
+        },
+        "certificateSecretName": {
+          "type": "string",
+          "default": "pg-cert"
+        },
+        "generateCerts": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "clusterIssuerName": {
+              "type": "string",
+              "default": ""
+            },
+            "enabled": {
+              "type": "boolean",
+              "default": false
+            },
+            "duration": {
+              "type": "integer",
+              "default": 365
+            },
+            "subjectAlternativeName": {
+              "type": "object",
+              "additionalProperties": false,
+              "properties": {
+                "additionalDnsNames": {
+                  "type": "array",
+                  "items": {
+                    "type": "string"
+                  },
+                  "default": []
+                },
+                "additionalIpAddresses": {
+                  "type": "array",
+                  "items": {
+                    "type": "string"
+                  },
+                  "default": []
+                }
+              }
+            }
+          }
+        },
+        "certificates": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "tls_key": {
+              "type": ["string", "null"]
+            },
+            "tls_crt": {
+              "type": ["string", "null"]
+            },
+            "ca_crt": {
+              "type": ["string", "null"]
+            }
+          }
+        }
+      }
+    },
+    "patroni": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "clusterName": {
+          "type": "string",
+          "default": "patroni"
+        }
+      }
+    },
+    "metricCollector": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "install": {
+          "type": "boolean",
+          "default": true
+        },
+        "dockerImage": {
+          "type": "string",
+          "default": "ghcr.io/netcracker/pgskipper-docker-monitoring-agent:main"
+        },
+        "podLabels": {
+          "type": "object",
+          "additionalProperties": {
+            "type": "string"
+          },
+          "default": {}
+        },
+        "databaseConnectionLimits": {
+          "type": "integer",
+          "default": 250
+        },
+        "securityContext": {
+          "type": "object",
+          "additionalProperties": true,
+          "default": {}
+        },
+        "resources": {
+          "$ref": "#/$defs/resourceRequirements"
+        },
+        "userPassword": {
+          "type": "string",
+          "default": "p@ssWOrD1"
+        },
+        "influxDb": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "user": {
+              "type": "string"
+            },
+            "password": {
+              "type": "string"
+            },
+            "host": {
+              "type": "string"
+            },
+            "database": {
+              "type": "string"
+            }
+          }
+        },
+        "prometheusRules": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "backupAlertThreshold": {
+              "type": "integer",
+              "default": 5
+            },
+            "backupWarningThreshold": {
+              "type": "integer",
+              "default": 20
+            },
+            "alertDelay": {
+              "type": "string",
+              "default": "3m"
+            },
+            "maxLastBackupAge": {
+              "type": "integer",
+              "default": 86400
+            },
+            "locksThreshold": {
+              "type": "integer",
+              "default": 500
+            },
+            "queryMaxTimeThreshold": {
+              "type": "integer",
+              "default": 3600
+            },
+            "replicationLagValue": {
+              "type": "integer",
+              "default": 33554432
+            },
+            "largeObjectSizeThreshold": {
+              "type": "integer",
+              "default": 104857600
+            },
+            "maxConnectionExceedPercentageThreshold": {
+              "type": "integer",
+              "default": 90
+            },
+            "maxConnectionReachedPercentageThreshold": {
+              "type": "integer",
+              "default": 80
+            },
+            "warnWaitEventTreshold": {
+              "type": "integer",
+              "default": 5
+            },
+            "critWaitEventTreshold": {
+              "type": "integer",
+              "default": 20
+            },
+            "warnpctUsedThreshold": {
+              "type": "integer",
+              "default": 50
+            }
+          }
+        },
+        "collectionInterval": {
+          "type": "integer",
+          "default": 60
+        },
+        "scrapeTimeout": {
+          "type": "integer",
+          "default": 20
+        },
+        "telegrafPluginTimeout": {
+          "type": "integer",
+          "default": 60
+        },
+        "ocExecTimeout": {
+          "type": "integer",
+          "default": 10
+        },
+        "metricsProfile": {
+          "type": "string",
+          "default": "prod"
+        },
+        "prometheusMonitoring": {
+          "type": "boolean",
+          "default": false
+        },
+        "applyGrafanaDashboard": {
+          "type": "boolean",
+          "default": false
+        },
+        "priorityClassName": {
+          "type": ["string", "null"]
+        }
+      }
+    },
+    "backupDaemon": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "install": {
+          "type": "boolean",
+          "default": true
+        },
+        "dockerImage": {
+          "type": "string",
+          "default": "ghcr.io/netcracker/pgskipper-docker-backup-daemon:main"
+        },
+        "podLabels": {
+          "type": "object",
+          "additionalProperties": {
+            "type": "string"
+          },
+          "default": {}
+        },
+        "compressionLevel": {
+          "type": "integer",
+          "default": 5
+        },
+        "walArchiving": {
+          "type": "boolean",
+          "default": false
+        },
+        "backupSchedule": {
+          "type": "string",
+          "default": "0 0/7 * * *"
+        },
+        "pgHost": {
+          "type": ["string", "null"]
+        },
+        "evictionPolicy": {
+          "type": "string",
+          "default": "7d/delete"
+        },
+        "backupTimeout": {
+          "type": "integer",
+          "default": 300
+        },
+        "granularEviction": {
+          "type": "string",
+          "default": "3600"
+        },
+        "encryption": {
+          "type": "boolean",
+          "default": false
+        },
+        "retainArchiveSettings": {
+          "type": "boolean",
+          "default": false
+        },
+        "jobFlag": {
+          "type": ["string", "null"]
+        },
+        "connectTimeout": {
+          "type": ["string", "null"]
+        },
+        "allowPrefix": {
+          "type": "boolean",
+          "default": false
+        },
+        "excludedExtensions": {
+          "type": ["string", "null"]
+        },
+        "useEvictionPolicyFirst": {
+          "type": "boolean",
+          "default": false
+        },
+        "evictionBinaryPolicy": {
+          "type": "string",
+          "default": "7d/delete"
+        },
+        "archiveEvictionPolicy": {
+          "type": "string",
+          "default": "7d"
+        },
+        "securityContext": {
+          "type": "object",
+          "additionalProperties": true,
+          "default": {}
+        },
+        "priorityClassName": {
+          "type": ["string", "null"]
+        },
+        "resources": {
+          "$ref": "#/$defs/resourceRequirements"
+        },
+        "externalPv": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "name": {
+              "type": "string"
+            },
+            "storageClass": {
+              "type": "string"
+            },
+            "capacity": {
+              "type": "string"
+            }
+          }
+        },
+        "storage": {
+          "$ref": "#/$defs/storage"
+        },
+        "s3Storage": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "url": {
+              "type": "string"
+            },
+            "accessKeyId": {
+              "type": "string"
+            },
+            "secretAccessKey": {
+              "type": "string"
+            },
+            "bucket": {
+              "type": "string"
+            },
+            "prefix": {
+              "type": "string"
+            },
+            "untrustedCert": {
+              "type": "boolean"
+            },
+            "region": {
+              "type": "string"
+            }
+          }
+        },
+        "s3Aliases": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "default": []
+        },
+        "granularBackupSchedule": {
+          "type": ["string", "null"]
+        },
+        "databasesToSchedule": {
+          "type": ["string", "null"]
+        },
+        "affinity": {
+          "$ref": "#/$defs/affinity"
+        }
+      }
+    },
+    "pgBackRest": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "diffSchedule": {
+          "type": "string"
+        },
+        "incrSchedule": {
+          "type": "string"
+        },
+        "backupFromStandby": {
+          "type": "boolean"
+        }
+      }
+    },
+    "pgBackRestExporter": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "install": {
+          "type": "boolean",
+          "default": false
+        },
+        "image": {
+          "type": "string",
+          "default": "ghcr.io/woblerr/pgbackrest_exporter:v0.21.0-alpine"
+        },
+        "resources": {
+          "$ref": "#/$defs/resourceRequirements"
+        },
+        "securityContext": {
+          "type": "object",
+          "additionalProperties": true
+        },
+        "affinity": {
+          "$ref": "#/$defs/affinity"
+        },
+        "podLabels": {
+          "type": "object",
+          "additionalProperties": {
+            "type": "string"
+          },
+          "default": {}
+        },
+        "env": {
+          "type": "object",
+          "additionalProperties": {
+            "type": "string"
+          }
+        }
+      }
+    },
+    "externalDataBase": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "type": {
+          "type": "string"
+        },
+        "project": {
+          "type": "string"
+        },
+        "instance": {
+          "type": "string"
+        },
+        "port": {
+          "type": "integer"
+        },
+        "region": {
+          "type": "string"
+        },
+        "authSecretName": {
+          "type": "string"
+        },
+        "accessKeyId": {
+          "type": "string"
+        },
+        "secretAccessKey": {
+          "type": "string"
+        },
+        "restoreConfig": {
+          "type": "object",
+          "additionalProperties": {
+            "type": "object",
+            "additionalProperties": {
+              "type": "string"
+            }
+          }
+        }
+      }
+    },
+    "dbaas": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "install": {
+          "type": "boolean",
+          "default": false
+        },
+        "multiUsers": {
+          "type": "boolean",
+          "default": true
+        },
+        "dockerImage": {
+          "type": "string",
+          "default": "ghcr.io/netcracker/pgskipper-docker-dbaas-adapter:main"
+        },
+        "podLabels": {
+          "type": "object",
+          "additionalProperties": {
+            "type": "string"
+          },
+          "default": {}
+        },
+        "securityContext": {
+          "type": "object",
+          "additionalProperties": true,
+          "default": {}
+        },
+        "pgHost": {
+          "type": ["string", "null"]
+        },
+        "dbName": {
+          "type": "string",
+          "default": "postgres"
+        },
+        "readOnlyHost": {
+          "type": ["string", "null"]
+        },
+        "aggregator": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "registrationAddress": {
+              "type": "string",
+              "default": "http://dbaas:8080"
+            },
+            "registrationUsername": {
+              "type": "string",
+              "default": "user"
+            },
+            "registrationPassword": {
+              "type": "string",
+              "default": "p@ssWOrD"
+            },
+            "physicalDatabaseIdentifier": {
+              "type": ["string", "null"]
+            }
+          }
+        },
+        "labels": {
+          "type": "object",
+          "additionalProperties": {
+            "type": "string"
+          }
+        },
+        "adapter": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "username": {
+              "type": "string",
+              "default": "dbaas-aggregator"
+            },
+            "password": {
+              "type": "string",
+              "default": "dbaas-aggregator"
+            }
+          }
+        },
+        "extensions": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "updateExtensions": {
+          "type": "boolean"
+        },
+        "resources": {
+          "$ref": "#/$defs/resourceRequirements"
+        },
+        "priorityClassName": {
+          "type": ["string", "null"]
+        }
+      }
+    },
+    "siteManager": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "install": {
+          "type": "boolean",
+          "default": false
+        },
+        "installSiteManagerCR": {
+          "type": "boolean",
+          "default": true
+        },
+        "httpAuth": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "enabled": {
+              "type": "boolean",
+              "default": true
+            },
+            "smNamespace": {
+              "type": "string",
+              "default": "site-manager"
+            },
+            "smServiceAccountName": {
+              "type": ["string", "null"]
+            },
+            "tokenSessionTimeout": {
+              "type": "integer",
+              "default": 5
+            },
+            "smSecureAuth": {
+              "type": "boolean",
+              "default": false
+            },
+            "customAudience": {
+              "type": "string",
+              "default": "sm-services"
+            }
+          }
+        },
+        "activeClusterHost": {
+          "type": "string",
+          "default": "pg-patroni.postgres-sm-auth.svc.cluster-1.local"
+        },
+        "activeClusterPort": {
+          "type": "integer",
+          "default": 5432
+        },
+        "standbyClusterHealthCheck": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "retriesLimit": {
+              "type": "integer",
+              "default": 3
+            },
+            "failureRetriesLimit": {
+              "type": "integer",
+              "default": 5
+            },
+            "retriesWaitTimeout": {
+              "type": "integer",
+              "default": 30
+            }
+          }
+        }
+      }
+    },
+    "queryExporter": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "install": {
+          "type": "boolean",
+          "default": false
+        },
+        "dockerImage": {
+          "type": "string",
+          "default": "ghcr.io/netcracker/qubership-docker-query-exporter:main"
+        },
+        "resources": {
+          "$ref": "#/$defs/resourceRequirements"
+        },
+        "queryTimeout": {
+          "type": "integer",
+          "default": 30
+        },
+        "maxMasterConnections": {
+          "type": "integer",
+          "default": 10
+        },
+        "maxLogicalConnections": {
+          "type": "integer",
+          "default": 1
+        },
+        "selfMonitorDisabled": {
+          "type": "boolean",
+          "default": false
+        },
+        "customQueries": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "enabled": {
+              "type": "boolean",
+              "default": false
+            },
+            "namespacesList": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              },
+              "default": ["postgres"]
+            },
+            "labels": {
+              "type": "object",
+              "additionalProperties": {
+                "type": "string"
+              }
+            }
+          }
+        }
+      }
+    },
+    "powaUI": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "install": {
+          "type": "boolean",
+          "default": false
+        },
+        "dockerImage": {
+          "type": "string",
+          "default": "docker.io/powateam/powa-web:5.0.2"
+        },
+        "podLabels": {
+          "type": "object",
+          "additionalProperties": {
+            "type": "string"
+          }
+        },
+        "ingress": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "enabled": {
+              "type": "boolean",
+              "default": true
+            },
+            "host": {
+              "type": "string"
+            }
+          }
+        },
+        "resources": {
+          "$ref": "#/$defs/resourceRequirements"
+        },
+        "securityContext": {
+          "type": "object",
+          "additionalProperties": true
+        }
+      }
+    },
+    "replicationController": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "install": {
+          "type": "boolean",
+          "default": false
+        },
+        "dockerImage": {
+          "type": "string",
+          "default": "ghcr.io/netcracker/pgskipper-docker-replication-controller:main"
+        },
+        "resources": {
+          "$ref": "#/$defs/resourceRequirements"
+        },
+        "securityContext": {
+          "type": "object",
+          "additionalProperties": true
+        },
+        "apiUser": {
+          "type": "string",
+          "default": "replicator"
+        },
+        "apiPassword": {
+          "type": "string",
+          "default": "paSsW0rdForReplicat!oN"
+        }
+      }
+    },
+    "connectionPooler": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "install": {
+          "type": "boolean",
+          "default": false
+        },
+        "dockerImage": {
+          "type": "string",
+          "default": "docker.io/edoburu/pgbouncer:v1.25.1-p0"
+        },
+        "replicas": {
+          "type": "integer",
+          "default": 1
+        },
+        "config": {
+          "type": "object",
+          "additionalProperties": {
+            "type": "object",
+            "additionalProperties": {
+              "type": "string"
+            }
+          }
+        },
+        "securityContext": {
+          "type": "object",
+          "additionalProperties": true
+        }
+      }
+    },
+    "tracing": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "enabled": {
+          "type": "boolean",
+          "default": false
+        },
+        "host": {
+          "type": "string",
+          "default": "jaeger-collector.tracing.svc:4317"
+        }
+      }
+    },
+    "tests": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "install": {
+          "type": "boolean",
+          "default": true
+        },
+        "dockerImage": {
+          "type": "string",
+          "default": "ghcr.io/netcracker/pgskipper-operator-tests:main"
+        },
+        "podLabels": {
+          "type": "object",
+          "additionalProperties": {
+            "type": "string"
+          },
+          "default": {}
+        },
+        "runTestScenarios": {
+          "type": "string",
+          "default": "basic"
+        },
+        "testList": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "default": ["check_pg_images"]
+        },
+        "testScenarios": {
+          "type": "object",
+          "additionalProperties": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
+        },
+        "atpReport": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "enabled": {
+              "type": "boolean",
+              "default": false
+            },
+            "atpStorage": {
+              "type": "object",
+              "additionalProperties": false,
+              "properties": {
+                "provider": {
+                  "type": "string",
+                  "default": "aws"
+                },
+                "serverUrl": {
+                  "type": "string",
+                  "default": "https://s3.amazonaws.com"
+                },
+                "serverUiUrl": {
+                  "type": "string",
+                  "default": ""
+                },
+                "bucket": {
+                  "type": "string",
+                  "default": ""
+                },
+                "region": {
+                  "type": "string",
+                  "default": "us-east-1"
+                },
+                "username": {
+                  "type": "string",
+                  "default": ""
+                },
+                "password": {
+                  "type": "string",
+                  "default": ""
+                }
+              }
+            }
+          }
+        },
+        "atpReportViewUiUrl": {
+          "type": "string",
+          "default": ""
+        },
+        "environmentName": {
+          "type": "string",
+          "default": "pgskipper-operator"
+        }
+      }
+    },
+    "storage": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "type": {
+          "type": "string"
+        },
+        "size": {
+          "type": "string"
+        },
+        "storageClass": {
+          "type": ["string", "null"]
+        },
+        "volumes": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "nodes": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "selectors": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "accessModes": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        }
+      }
+    },
+    "resourceRequirements": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "requests": {
+          "type": "object",
+          "additionalProperties": {
+            "type": "string"
+          }
+        },
+        "limits": {
+          "type": "object",
+          "additionalProperties": {
+            "type": "string"
+          }
+        },
+        "claims": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["name"],
+            "properties": {
+              "name": {
+                "type": "string"
+              },
+              "request": {
+                "type": "string"
+              }
+            }
+          }
+        }
+      }
+    },
+    "affinity": {
+      "type": ["object", "null"],
+      "additionalProperties": false,
+      "properties": {
+        "nodeAffinity": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "preferredDuringSchedulingIgnoredDuringExecution": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "additionalProperties": true
+              }
+            },
+            "requiredDuringSchedulingIgnoredDuringExecution": {
+              "type": "object",
+              "additionalProperties": true
+            }
+          }
+        },
+        "podAffinity": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "preferredDuringSchedulingIgnoredDuringExecution": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "additionalProperties": true
+              }
+            },
+            "requiredDuringSchedulingIgnoredDuringExecution": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "additionalProperties": true
+              }
+            }
+          }
+        },
+        "podAntiAffinity": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "preferredDuringSchedulingIgnoredDuringExecution": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "additionalProperties": true
+              }
+            },
+            "requiredDuringSchedulingIgnoredDuringExecution": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "additionalProperties": true
+              }
+            }
+          }
+        }
+      }
+    },
+    "tolerations": {
+      "type": ["array", "null"],
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "key": {
+            "type": "string"
+          },
+          "operator": {
+            "type": "string",
+            "enum": ["Equal", "Exists"]
+          },
+          "value": {
+            "type": "string"
+          },
+          "effect": {
+            "type": "string",
+            "enum": ["NoSchedule", "PreferNoSchedule", "NoExecute"]
+          },
+          "tolerationSeconds": {
+            "type": "integer"
+          }
+        }
+      }
+    }
+  }
+}
