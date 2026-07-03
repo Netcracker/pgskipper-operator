@@ -55,6 +55,17 @@ spec:
           configMap:
             name: dbaas-postgres-adapter.extensions-config
             defaultMode: 420
+        - name: dbaas-adapter-credentials
+          secret:
+            secretName: dbaas-adapter-credentials
+            defaultMode: 420
+        - name: dbaas-aggregator-registration-credentials
+          secret:
+            secretName: dbaas-aggregator-registration-credentials
+            defaultMode: 420
+        - name: postgres-credentials
+          secret:
+            secretName: postgres-credentials
         {{- if not .Values.externalDataBase }}
         {{- if and .Values.tls .Values.tls.enabled }}
         - name: tls-cert
@@ -76,10 +87,18 @@ spec:
                 mountPath: /tmp
               - name: dbaas-default-extensions-mount
                 mountPath: /app/extensions
+              - name: dbaas-adapter-credentials
+                mountPath: /var/run/secrets/postgresql/dbaas-adapter-credentials
+                readOnly: true
+              - name: dbaas-aggregator-registration-credentials
+                mountPath: /var/run/secrets/postgresql/dbaas-aggregator-registration-credentials
+                readOnly: true
+              - name: postgres-credentials
+                mountPath: /var/run/secrets/postgresql/postgres-credentials
+                readOnly: true
           resources:
 {{ .Values.dbaas.resources | toYaml | indent 12 }}
           env:
-  {{- template "postgres-dbaas.pgAdminEnvs" . }}
             - name: POSTGRES_DATABASE
               value: {{ default "postgres" .Values.dbaas.dbName }}
             - name: POSTGRES_HOST
@@ -116,10 +135,8 @@ spec:
           securityContext:
             {{- include "restricted.globalContainerSecurityContext" . | nindent 12 }}
           env:
-{{- template "postgres-dbaas.pgAdminEnvs" . }}
             - name: POSTGRES_DATABASE
               value: {{ default "postgres" .Values.dbaas.dbName }}
-{{- template "postgres-dbaas.aggregatorEnvsReg" . }}
             - name: DBAAS_ADAPTER_ADDRESS
               value: {{ default (printf "http://dbaas-postgres-adapter.%s:8080" .Release.Namespace) .Values.dbaas.adapter.address }}
             - name: DBAAS_AGGREGATOR_REGISTRATION_ADDRESS
@@ -130,16 +147,6 @@ spec:
               value: {{ include "dbaas.pgHostRO" . }}
             - name: POSTGRES_PORT
               value: {{ default "5432" .Values.dbaas.pgPort | quote }}
-            - name: DBAAS_ADAPTER_API_USER
-              valueFrom:
-                secretKeyRef:
-                  name: dbaas-adapter-credentials
-                  key: username
-            - name: DBAAS_ADAPTER_API_PASSWORD
-              valueFrom:
-                secretKeyRef:
-                  name: dbaas-adapter-credentials
-                  key: password
             - name: DBAAS_AGGREGATOR_PHYSICAL_DATABASE_IDENTIFIER
               value: {{ .Values.dbaas.aggregator.physicalDatabaseIdentifier | default (printf "%s:%s" .Release.Namespace "postgres")}}
             - name: CLOUD_NAMESPACE
@@ -185,6 +192,15 @@ spec:
               mountPath: /certs/
   {{- end }}
   {{- end }}
+            - name: dbaas-adapter-credentials
+              mountPath: /var/run/secrets/postgresql/dbaas-adapter-credentials
+              readOnly: true
+            - name: dbaas-aggregator-registration-credentials
+              mountPath: /var/run/secrets/postgresql/dbaas-aggregator-registration-credentials
+              readOnly: true
+            - name: postgres-credentials
+              mountPath: /var/run/secrets/postgresql/postgres-credentials
+              readOnly: true
           livenessProbe:
             httpGet:
               path: /health

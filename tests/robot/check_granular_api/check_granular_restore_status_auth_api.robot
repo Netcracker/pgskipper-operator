@@ -35,7 +35,7 @@ Check status restore request endpoint for not existing backup
 *** Keywords ***
 Check Disabled Auth Restore Endpoint
     ${PG_CLUSTER_NAME}=  Get Environment Variable  PG_CLUSTER_NAME  default=patroni
-    ${POSTGRES_USER}=  Get Environment Variable  POSTGRES_USER
+    ${POSTGRES_USER}=  Get Secret Or Env  POSTGRES_USER  ${PG_ROOT_USERNAME_PATH}
     ${db_name}  Set Variable  test_restore_status_db
     Create Database  ${db_name}
     ${databases}=  Create List  ${db_name}
@@ -94,10 +94,10 @@ Check Enabled Auth restore endpoint
     ${resp}=  Get On Session  postgres_backup_daemon  url=/restore/status/test  expected_status=401
     Should Be Equal  ${resp.status_code}  ${401}
 
-    ${PG_ROOT_PASSWORD}=   Get Environment Variable   PG_ROOT_PASSWORD
+    ${PG_ROOT_PASSWORD}=   Get Secret Or Env  PG_ROOT_PASSWORD  ${PG_ROOT_PASSWORD_PATH}
     ${auth}=  Create List    postgres  ${PG_ROOT_PASSWORD}
     ${PG_CLUSTER_NAME}=   Get Environment Variable   PG_CLUSTER_NAME   default=patroni
-    ${POSTGRES_USER}=   Get Environment Variable   POSTGRES_USER   default=postgres
+    ${POSTGRES_USER}=   Get Secret Or Env  POSTGRES_USER  ${PG_ROOT_USERNAME_PATH}
     ${db_name}   set variable   test_restore_status_db
 
     Create database  ${db_name}
@@ -162,7 +162,7 @@ Check Enabled Auth not existing
     ${resp}=  Get On Session  postgres_backup_daemon  url=/restore/status/test  expected_status=401
     Should Be Equal  ${resp.status_code}  ${401}
 
-    ${PG_ROOT_PASSWORD}=   Get Environment Variable   PG_ROOT_PASSWORD
+    ${PG_ROOT_PASSWORD}=   Get Secret Or Env  PG_ROOT_PASSWORD  ${PG_ROOT_PASSWORD_PATH}
     ${auth}=  Create List    postgres  ${PG_ROOT_PASSWORD}
 
     Create Session    postgres_backup_daemon    ${scheme}://postgres-backup-daemon:9000  auth=${auth}

@@ -20,6 +20,7 @@ import (
 	"fmt"
 	"os"
 	"strconv"
+	"strings"
 
 	"github.com/gofiber/fiber/v2"
 	"github.com/google/uuid"
@@ -85,6 +86,22 @@ func GetEnvBool(key string, fallback bool) bool {
 		return bvalue
 	}
 	return fallback
+}
+
+func ReadSecretFile(path, defaultVal string) string {
+	data, err := os.ReadFile(path)
+	if err != nil {
+		log.Error(fmt.Sprintf("Failed to read secret file %s: %v", path, err))
+		return defaultVal
+	}
+
+	value := strings.TrimSpace(string(data))
+
+	if value == "" {
+		log.Info(fmt.Sprintf("Secret file %s is empty, using default value", path))
+		return defaultVal
+	}
+	return value
 }
 
 func ContextLogger(ctx context.Context) *zap.Logger {

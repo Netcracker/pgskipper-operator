@@ -40,6 +40,12 @@ import (
 const (
 	appName = "postgresql"
 	appPath = "/" + appName
+
+	secretsBasePath = "/var/run/secrets/postgresql/"
+
+	pgUserCredsPath    = secretsBasePath + "postgres-credentials/"
+	adapterCredsPath      = secretsBasePath + "dbaas-adapter-credentials/"
+	registrationCredsPath = secretsBasePath + "dbaas-aggregator-registration-credentials/"
 )
 
 var (
@@ -49,8 +55,8 @@ var (
 
 	pgHost     = flag.String("pg_host", util.GetEnv("POSTGRES_HOST", "127.0.0.1"), "Host of PostgreSQL cluster, env: POSTGRES_HOST")
 	pgPort     = flag.Int("pg_port", util.GetEnvInt("POSTGRES_PORT", 5432), "Port of PostgreSQL cluster, env: POSTGRES_PORT")
-	pgUser     = flag.String("pg_user", util.GetEnv("POSTGRES_ADMIN_USER", "postgres"), "Username of dbaas user in PostgreSQL, env: POSTGRES_ADMIN_USER")
-	pgPass     = flag.String("pg_pass", util.GetEnv("POSTGRES_ADMIN_PASSWORD", ""), "Password of dbaas user in PostgreSQL, env: POSTGRES_ADMIN_PASSWORD")
+	pgUser     = flag.String("pg_user", util.ReadSecretFile(pgUserCredsPath+"username", "postgres"), "Username of dbaas user in PostgreSQL")
+	pgPass     = flag.String("pg_pass", util.ReadSecretFile(pgUserCredsPath+"password", ""), "Password of dbaas user in PostgreSQL")
 	pgDatabase = flag.String("pg_database", util.GetEnv("POSTGRES_DATABASE", "postgres"), "PostgreSQL database, env: POSTGRES_DATABASE")
 	pgSsl      = flag.String("pg_ssl", util.GetEnv("PG_SSL", "off"), "Enable ssl connection to postgreSQL, env: PG_SSL")
 
@@ -71,13 +77,13 @@ var (
 	servePort = flag.Int("serve_port", 8080, "Port to serve requests incoming to adapter")
 	serveUser = flag.String(
 		"serve_user",
-		util.GetEnv("DBAAS_ADAPTER_API_USER", "dbaas-aggregator"),
-		"Username to authorize incoming requests, env: DBAAS_ADAPTER_API_USER",
+		util.ReadSecretFile(adapterCredsPath+"username", "dbaas-aggregator"),
+		"Username to authorize incoming requests",
 	)
 	servePass = flag.String(
 		"serve_pass",
-		util.GetEnv("DBAAS_ADAPTER_API_PASSWORD", "dbaas-aggregator"),
-		"Password to authorize incoming requests, env: DBAAS_ADAPTER_API_PASSWORD",
+		util.ReadSecretFile(adapterCredsPath+"password", "dbaas-aggregator"),
+		"Password to authorize incoming requests",
 	)
 
 	phydbid = flag.String(
@@ -100,14 +106,14 @@ var (
 
 	dbaasAggregatorRegistrationUsername = flag.String(
 		"registration_username",
-		util.GetEnv("DBAAS_AGGREGATOR_REGISTRATION_USERNAME", "cluster-dba"),
-		"Username of basic auth to reach aggregator for registration, env DBAAS_AGGREGATOR_REGISTRATION_USERNAME ",
+		util.ReadSecretFile(registrationCredsPath+"username", "cluster-dba"),
+		"Username of basic auth to reach aggregator for registration",
 	)
 
 	dbaasAggregatorRegistrationPassword = flag.String(
 		"registration_password",
-		util.GetEnv("DBAAS_AGGREGATOR_REGISTRATION_PASSWORD", ""),
-		"Username of basic auth to reach aggregator for registration, env DBAAS_AGGREGATOR_REGISTRATION_PASSWORD ",
+		util.ReadSecretFile(registrationCredsPath+"password", ""),
+		"Password of basic auth to reach aggregator for registration",
 	)
 
 	labelsFileName = flag.String(

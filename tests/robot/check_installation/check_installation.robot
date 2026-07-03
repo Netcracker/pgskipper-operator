@@ -30,5 +30,5 @@ Check Backup-daemon Installation Correctness
 
 Test Container Hardening
     [Tags]  backup_basic
-    ${exclusions}=    Create Dictionary  _all=CH12  pg-patroni-node=CH4  pg-major-upgrade=CH4
+    ${exclusions}=    Create Dictionary  pg-patroni-node=CH12,CH4  pg-major-upgrade=CH12,CH4
     Check Container Hardening   exclusions=${exclusions}

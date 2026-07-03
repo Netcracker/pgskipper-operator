@@ -25,6 +25,7 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/util/intstr"
+	"k8s.io/utils/ptr"
 )
 
 var (
@@ -37,6 +38,7 @@ const (
 	MetricCollectorUserCredentials = "monitoring-credentials"
 	influxDbAdminCredentials       = "influx-db-admin-credentials"
 	telegrafConfig                 = "telegraf-configmap"
+	PostgresUserCredentials        = "postgres-credentials"
 )
 
 func NewMonitoringDeployment(metricCollector *netcrackerv1.MetricCollector, pgcluster string, serviceAccountName string) *appsv1.Deployment {
@@ -75,6 +77,33 @@ func NewMonitoringDeployment(metricCollector *netcrackerv1.MetricCollector, pgcl
 								},
 							},
 						},
+						{
+							Name: "monitoring-user-credentials",
+							VolumeSource: corev1.VolumeSource{
+								Secret: &corev1.SecretVolumeSource{
+									SecretName:  MetricCollectorUserCredentials,
+									DefaultMode: ptr.To[int32](0400),
+								},
+							},
+						},
+						{
+							Name: "influx-db-admin-credentials",
+							VolumeSource: corev1.VolumeSource{
+								Secret: &corev1.SecretVolumeSource{
+									SecretName:  influxDbAdminCredentials,
+									DefaultMode: ptr.To[int32](0400),
+								},
+							},
+						},
+						{
+							Name: "postgres-credentials",
+							VolumeSource: corev1.VolumeSource{
+								Secret: &corev1.SecretVolumeSource{
+									SecretName:  "postgres-credentials",
+									DefaultMode: ptr.To[int32](0400),
+								},
+							},
+						},
 					},
 					InitContainers: []corev1.Container{},
 					Containers: []corev1.Container{
@@ -84,60 +113,6 @@ func NewMonitoringDeployment(metricCollector *netcrackerv1.MetricCollector, pgcl
 							Command: []string{},
 							Args:    []string{},
 							Env: append([]corev1.EnvVar{
-								{
-									Name: "MONITORING_USER",
-									ValueFrom: &corev1.EnvVarSource{
-										SecretKeyRef: &corev1.SecretKeySelector{
-											LocalObjectReference: corev1.LocalObjectReference{Name: MetricCollectorUserCredentials},
-											Key:                  "username",
-										},
-									},
-								},
-								{
-									Name: "MONITORING_PASSWORD",
-									ValueFrom: &corev1.EnvVarSource{
-										SecretKeyRef: &corev1.SecretKeySelector{
-											LocalObjectReference: corev1.LocalObjectReference{Name: MetricCollectorUserCredentials},
-											Key:                  "password",
-										},
-									},
-								},
-								{
-									Name: "PG_ROOT_USER",
-									ValueFrom: &corev1.EnvVarSource{
-										SecretKeyRef: &corev1.SecretKeySelector{
-											LocalObjectReference: corev1.LocalObjectReference{Name: GetRootSecretName(pgcluster)},
-											Key:                  "username",
-										},
-									},
-								},
-								{
-									Name: "PG_ROOT_PASSWORD",
-									ValueFrom: &corev1.EnvVarSource{
-										SecretKeyRef: &corev1.SecretKeySelector{
-											LocalObjectReference: corev1.LocalObjectReference{Name: GetRootSecretName(pgcluster)},
-											Key:                  "password",
-										},
-									},
-								},
-								{
-									Name: "INFLUXDB_USER",
-									ValueFrom: &corev1.EnvVarSource{
-										SecretKeyRef: &corev1.SecretKeySelector{
-											LocalObjectReference: corev1.LocalObjectReference{Name: influxDbAdminCredentials},
-											Key:                  "username",
-										},
-									},
-								},
-								{
-									Name: "INFLUXDB_PASSWORD",
-									ValueFrom: &corev1.EnvVarSource{
-										SecretKeyRef: &corev1.SecretKeySelector{
-											LocalObjectReference: corev1.LocalObjectReference{Name: influxDbAdminCredentials},
-											Key:                  "password",
-										},
-									},
-								},
 								{
 									Name: "NAMESPACE",
 									ValueFrom: &corev1.EnvVarSource{
@@ -197,6 +172,21 @@ func NewMonitoringDeployment(metricCollector *netcrackerv1.MetricCollector, pgcl
 									SubPath:   "telegraf_temp.conf",
 									Name:      "telegraf-config-volume",
 								},
+								{
+									MountPath: util.SecretsBasePath + "monitoring-user-credentials",
+									Name:      "monitoring-user-credentials",
+									ReadOnly: true,
+								},
+								{
+									MountPath: util.SecretsBasePath + "influx-db-admin-credentials",
+									Name:      "influx-db-admin-credentials",
+									ReadOnly: true,
+								},
+								{
+									MountPath: util.SecretsBasePath + "postgres-credentials",
+									Name:      "postgres-credentials",
+									ReadOnly: true,
+								},
 							},
 							Resources: *metricCollector.Resources,
 							LivenessProbe: &corev1.Probe{
@@ -232,6 +222,7 @@ func NewMonitoringDeployment(metricCollector *netcrackerv1.MetricCollector, pgcl
 			},
 		},
 	}
+	
 	if metricCollector.PriorityClassName != "" {
 		deployment.Spec.Template.Spec.PriorityClassName = metricCollector.PriorityClassName
 	}

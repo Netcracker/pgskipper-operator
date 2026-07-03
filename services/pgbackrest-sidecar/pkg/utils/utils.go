@@ -20,6 +20,8 @@ import (
 	"fmt"
 	"os"
 	"os/exec"
+	"strings"
+	
 
 	"go.uber.org/zap"
 	"go.uber.org/zap/zapcore"
@@ -87,4 +89,20 @@ func GetLogger() *zap.Logger {
 	))
 	defer func() { _ = logger.Sync() }()
 	return logger
+}
+
+func ReadSecretFile(path, defaultVal string) string {
+	data, err := os.ReadFile(path)
+	if err != nil {
+		logger.Error(fmt.Sprintf("Failed to read secret file %s: %v", path, err))
+		return defaultVal
+	}
+
+	value := strings.TrimSpace(string(data[:]))
+	
+	if value == "" {
+		logger.Info(fmt.Sprintf("Secret file %s is empty, using default value", path))
+		return defaultVal
+	}
+	return value
 }
