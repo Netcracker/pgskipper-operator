@@ -21,7 +21,7 @@ import (
 
 	"github.com/Netcracker/pgskipper-replication-controller/pkg/postgres"
 	"github.com/Netcracker/pgskipper-replication-controller/pkg/utils"
-	"github.com/jackc/pgx/v4"
+	"github.com/jackc/pgx/v5"
 	"go.uber.org/zap"
 )
 

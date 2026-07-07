@@ -22,10 +22,9 @@ import (
 	"time"
 
 	"github.com/Netcracker/pgskipper-replication-controller/pkg/utils"
-	"github.com/jackc/pgx/v4"
+	"github.com/jackc/pgx/v5"
+	"github.com/jackc/pgx/v5/pgconn"
 	"go.uber.org/zap"
-
-	"github.com/jackc/pgconn"
 )
 
 const (
