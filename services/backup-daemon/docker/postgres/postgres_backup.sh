@@ -26,6 +26,10 @@ readonly ENCRYPTION_KEY="$2"
 BACKUP_DESTINATION_DIRECTORY="$1"
 BACKUP_NAME="pg_${PG_CLUSTER_NAME}_backup_$(basename ${BACKUP_DESTINATION_DIRECTORY}).tar.gz"
 
+POSTGRES_USER=$(cat /var/run/secrets/postgresql/postgres-credentials/username)
+POSTGRES_PASSWORD=$(cat /var/run/secrets/postgresql/postgres-credentials/password)
+PGPASSWORD=$(cat /var/run/secrets/postgresql/replicator-credentials/password)
+
 source utils.sh
 
 function test_swift() {

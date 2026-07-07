@@ -1,3 +1,14 @@
 #!/bin/sh -e
 
-exec ${EXPORTER_FILE} $@
+read_secret() {
+  local path="$1"
+
+  if [ -f "$path" ]; then
+    cat "$path"
+  fi
+}
+
+POSTGRES_USER="$(read_secret /var/run/secrets/postgresql/postgres-credentials/username)"
+POSTGRES_PASSWORD="$(read_secret /var/run/secrets/postgresql/postgres-credentials/password)"
+
+POSTGRES_USER="${POSTGRES_USER}" POSTGRES_PASSWORD="${POSTGRES_PASSWORD}" exec ${EXPORTER_FILE} $@

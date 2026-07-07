@@ -12,7 +12,7 @@ Create Backup And Wait
     Create Backup And Wait Till Complete  ${name_space}
 
 Check Backup List
-    ${PG_ROOT_PASSWORD}=  Get Environment Variable  PG_ROOT_PASSWORD
+    ${PG_ROOT_PASSWORD}=  Get Secret Or Env  PG_ROOT_PASSWORD  ${PG_ROOT_PASSWORD_PATH}
     ${auth}=  Create List  postgres  ${PG_ROOT_PASSWORD}
     # wait while daemon will start backup
     ${backups_in_namespace}=  Create Dictionary

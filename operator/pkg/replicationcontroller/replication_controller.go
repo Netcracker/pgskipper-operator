@@ -24,6 +24,7 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/util/intstr"
+	"k8s.io/utils/ptr"
 )
 
 const (
@@ -57,6 +58,26 @@ func NewRCDeployment(cr v1.PatroniServices, sa, clusterName string, pgPort int) 
 				Spec: corev1.PodSpec{
 					ServiceAccountName: sa,
 					Affinity:           &spec.Affinity,
+					Volumes: []corev1.Volume{					
+						{
+							Name: "postgres-credentials",
+							VolumeSource: corev1.VolumeSource{
+								Secret: &corev1.SecretVolumeSource{
+									SecretName:  "postgres-credentials",
+									DefaultMode: ptr.To[int32](0400),
+								},
+							},
+						},
+						{
+							Name: "replicator-api-creds",
+							VolumeSource: corev1.VolumeSource{
+								Secret: &corev1.SecretVolumeSource{
+									SecretName:  "logical-replication-controller-creds",
+									DefaultMode: ptr.To[int32](0400),
+								},
+							},
+						},
+					},
 					InitContainers:     []corev1.Container{},
 					Containers: []corev1.Container{
 						{
@@ -73,24 +94,6 @@ func NewRCDeployment(cr v1.PatroniServices, sa, clusterName string, pgPort int) 
 								{
 									Name:  "POSTGRES_PORT",
 									Value: strconv.Itoa(pgPort),
-								},
-								{
-									Name: "POSTGRES_ADMIN_PASSWORD",
-									ValueFrom: &corev1.EnvVarSource{
-										SecretKeyRef: &corev1.SecretKeySelector{
-											LocalObjectReference: corev1.LocalObjectReference{Name: "postgres-credentials"},
-											Key:                  "username",
-										},
-									},
-								},
-								{
-									Name: "POSTGRES_ADMIN_PASSWORD",
-									ValueFrom: &corev1.EnvVarSource{
-										SecretKeyRef: &corev1.SecretKeySelector{
-											LocalObjectReference: corev1.LocalObjectReference{Name: "postgres-credentials"},
-											Key:                  "password",
-										},
-									},
 								},
 								{
 									Name: "API_USER",
@@ -113,6 +116,18 @@ func NewRCDeployment(cr v1.PatroniServices, sa, clusterName string, pgPort int) 
 								{
 									Name:  "PG_SSL",
 									Value: spec.SslMode,
+								},
+							},
+							VolumeMounts: []corev1.VolumeMount{
+								{
+									MountPath: "/var/run/secrets/postgresql/replicator-api-creds",
+									Name:      "replicator-api-creds",
+									ReadOnly: true,
+								},
+								{
+									MountPath: "/var/run/secrets/postgresql/postgres-credentials",
+									Name:      "postgres-credentials",
+									ReadOnly: true,
 								},
 							},
 							Ports: []corev1.ContainerPort{

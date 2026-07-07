@@ -67,6 +67,13 @@ spec:
               readOnly: true
           {{ end }}
           {{ end }}
+          volumeMounts:
+            - mountPath: /var/run/secrets/postgresql/postgres-credentials
+              name: postgres-credentials
+              readOnly: true
+            - mountPath: /var/run/secrets/postgresql/replicator-credentials
+              name: replicator-credentials
+              readOnly: true
           env:
             - name: WATCH_NAMESPACE
               valueFrom:
@@ -96,21 +103,6 @@ spec:
               valueFrom:
                 fieldRef:
                   fieldPath: status.hostIP
-            - name: PG_ADMIN_PASSWORD
-              valueFrom:
-                secretKeyRef:
-                  name: postgres-credentials
-                  key: password
-            - name: PG_ADMIN_USER
-              valueFrom:
-                secretKeyRef:
-                  name: postgres-credentials
-                  key: username
-            - name: PG_REPLICATOR_PASSWORD
-              valueFrom:
-                secretKeyRef:
-                  name: replicator-credentials
-                  key: password
             - name: GLOBAL_SECURITY_CONTEXT
               value: {{ .Values.GLOBAL_SECURITY_CONTEXT | quote | default ("true" | quote) }}
             - name: CLOUD_PUBLIC_HOST
@@ -163,6 +155,15 @@ spec:
             secretName: {{ default "cloudsql-instance-credentials" .Values.externalDataBase.authSecretName }}
       {{ end }}
       {{ end }}
+      volumes:
+        - name: postgres-credentials
+          secret:
+            defaultMode: 420
+            secretName: postgres-credentials
+        - name: replicator-credentials
+          secret:
+            defaultMode: 420
+            secretName: replicator-credentials
       tolerations:
         {{- range $tKey, $t := .Values.policies.tolerations }}
         - key: {{ $t.key }}

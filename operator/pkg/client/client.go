@@ -33,11 +33,15 @@ import (
 	"github.com/Netcracker/pgskipper-operator/pkg/util"
 )
 
+const (
+	pgUserCredsPath    = util.SecretsBasePath + "postgres-credentials/"
+)
+
 var (
 	instance *PostgresClient
 	logger   = util.GetLogger()
-	pgUser   = flag.String("pg_user", getEnv("PG_ADMIN_USER", "postgres"), "Username of admin user in PostgreSQL, env: PG_ADMIN_USER")
-	pgPass   = flag.String("pg_pass", getEnv("PG_ADMIN_PASSWORD", ""), "Password of admin user in PostgreSQL, env: PG_ADMIN_PASSWORD")
+	pgUser   = flag.String("pg_user", util.ReadSecretFile(pgUserCredsPath+"username", "postgres"), "Username of admin user in PostgreSQL")
+	pgPass   = flag.String("pg_pass", util.ReadSecretFile(pgUserCredsPath+"password", ""), "Password of admin user in PostgreSQL")
 	dbName   = "postgres"
 	ssl      = "off"
 )

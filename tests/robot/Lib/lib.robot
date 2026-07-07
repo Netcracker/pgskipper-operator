@@ -11,6 +11,8 @@ Library           ../Lib/pgsLibrary.py  namespace=${NAMESPACE}  ssl_mode=${PGSSL
 ${NAMESPACE}        %{POD_NAMESPACE}
 ${PGSSLMODE}        %{PGSSLMODE}
 ${INTERNAL_TLS_ENABLED}    %{INTERNAL_TLS_ENABLED}
+${PG_ROOT_PASSWORD_PATH}        /var/run/secrets/postgresql/postgres-credentials/password
+${PG_ROOT_USERNAME_PATH}        /var/run/secrets/postgresql/postgres-credentials/username
 
 *** Keywords ***
 Checks Before Tests
@@ -335,7 +337,7 @@ Check /backups Endpoint For Granular Backups
     ...  response code should be `200` and response should contain `storage` key
     ...  and `status` key with `UP` value
     ...
-    ${PG_ROOT_PASSWORD}=   Get Environment Variable   PG_ROOT_PASSWORD
+    ${PG_ROOT_PASSWORD}=   Get Secret Or Env   PG_ROOT_PASSWORD  ${PG_ROOT_PASSWORD_PATH}
     ${auth}=  Create List    postgres  ${PG_ROOT_PASSWORD}
     ${PGSSLMODE}=  Get Environment Variable  PGSSLMODE
     ${scheme}=  Set Variable If  '${PGSSLMODE}' == 'require'  https  http
@@ -372,7 +374,7 @@ Check Enabled Auth
     ${resp}=  GET On Session  postgres_backup_daemon  /delete/test?namespace=test
     Should Be Equal  ${resp.status_code}  ${401}
     #set auth credentials
-    ${PG_ROOT_PASSWORD}=   Get Environment Variable   PG_ROOT_PASSWORD
+    ${PG_ROOT_PASSWORD}=   Get Secret Or Env   PG_ROOT_PASSWORD  ${PG_ROOT_PASSWORD_PATH}
     ${auth}=  Create List    postgres  ${PG_ROOT_PASSWORD}
     Create Granular Backup  ${name_space}  ${auth}  ${databases}
     #wait backup complete
@@ -445,3 +447,12 @@ Check Backup Api With Broken Metric File
 Wait Replica Pods In Up State
     ${replicas_status}=  Wait Replica Pods Scale up
     Should Be Equal  ${replicas_status}  ${True}
+
+Get Secret Or Env
+    [Arguments]    ${env_name}    ${file_path}
+    ${value}=    Get Environment Variable    ${env_name}    default=${EMPTY}
+    IF    not $value
+        ${value}=    Get File    ${file_path}
+        ${value}=    Strip String    ${value}
+    END
+    RETURN    ${value}

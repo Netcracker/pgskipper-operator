@@ -35,7 +35,7 @@ Check Backup Restore Request Endpoint For Failed Backup
 *** Keywords ***
 Check Disabled Auth Regular Backup
     ${PG_CLUSTER_NAME}=  Get Environment Variable  PG_CLUSTER_NAME  default=patroni
-    ${POSTGRES_USER}=  Get Environment Variable  POSTGRES_USER  default=postgres
+    ${POSTGRES_USER}=  Get Secret Or Env  POSTGRES_USER  ${PG_ROOT_USERNAME_PATH}
     ${db_name}  Set Variable  test_db
     Create Database  ${db_name}
     ${PGSSLMODE}=  Get Environment Variable  PGSSLMODE
@@ -89,10 +89,10 @@ Check Enabled Auth Regular Backup
     Create Session  postgres_backup_daemon  ${scheme}://postgres-backup-daemon:9000
     ${resp}=  POST On Session  postgres_backup_daemon  /restore/request  expected_status=401
     Should Be Equal  ${resp.status_code}  ${401}
-    ${PG_ROOT_PASSWORD}=  Get Environment Variable  PG_ROOT_PASSWORD
+    ${PG_ROOT_PASSWORD}=  Get Secret Or Env  PG_ROOT_PASSWORD  ${PG_ROOT_PASSWORD_PATH}
     ${auth}=  Create List  postgres  ${PG_ROOT_PASSWORD}
     ${PG_CLUSTER_NAME}=  Get Environment Variable  PG_CLUSTER_NAME  default=patroni
-    ${POSTGRES_USER}=  Get Environment Variable  POSTGRES_USER  default=postgres
+    ${POSTGRES_USER}=  Get Secret Or Env  POSTGRES_USER  ${PG_ROOT_USERNAME_PATH}
     Create Database  ${db_name}
     Create Session  postgres_backup_daemon  ${scheme}://postgres-backup-daemon:9000  auth=${auth}
     ${name_space}=  Get Current Date  result_format=%Y%m%d%H%M
@@ -154,7 +154,7 @@ Check Enabled Auth Failed Backup
     Create Session  postgres_backup_daemon  ${scheme}://postgres-backup-daemon:9000
     ${resp}=  POST On Session  postgres_backup_daemon  /restore/request  expected_status=401
     Should Be Equal  ${resp.status_code}  ${401}
-    ${PG_ROOT_PASSWORD}=  Get Environment Variable  PG_ROOT_PASSWORDF
+    ${PG_ROOT_PASSWORD}=  Get Secret Or Env  PG_ROOT_PASSWORD  ${PG_ROOT_PASSWORD_PATH}
     ${auth}=  Create List  postgres  ${PG_ROOT_PASSWORD}
     Create Session  postgres_backup_daemon  ${scheme}://postgres-backup-daemon:9000  auth=${auth}
     ${name_space}=   Get Current Date  result_format=%Y%m%d%H%M

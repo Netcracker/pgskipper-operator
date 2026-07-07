@@ -30,7 +30,7 @@ Check Enabled Auth
     Create Session  postgres_backup_daemon  ${scheme}://postgres-backup-daemon:8081
     ${resp}=  GET On Session  postgres_backup_daemon  /backups/list  expected_status=401
     Should Be Equal  ${resp.status_code}  ${401}
-    ${PG_ROOT_PASSWORD}=  Get Environment Variable  PG_ROOT_PASSWORD
+    ${PG_ROOT_PASSWORD}=  Get Secret Or Env   PG_ROOT_PASSWORD  ${PG_ROOT_PASSWORD_PATH}
     ${auth}=  Create List  postgres  ${PG_ROOT_PASSWORD}
     Create Session  postgres_backup_daemon  ${scheme}://postgres-backup-daemon:8081  auth=${auth}
     ${resp}=  GET On Session  postgres_backup_daemon  /backups/list
