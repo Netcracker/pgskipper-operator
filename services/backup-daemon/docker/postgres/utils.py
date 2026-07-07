@@ -18,6 +18,7 @@ import logging
 
 log = logging.getLogger("utils")
 
+POSTGRES_CREDS_PATH = '/var/run/secrets/postgresql/postgres-credentials'
 
 def execute_query(conn_properties, query):
     conn = None
@@ -35,8 +36,8 @@ def get_version_of_pgsql_server():
     conn_properties = {
         'host': os.getenv('POSTGRES_HOST'),
         'port': os.getenv('POSTGRES_PORT'),
-        'user': os.getenv('POSTGRES_USER') or 'postgres',
-        'password': os.getenv('POSTGRES_PASSWORD'),
+        'user': read_secret_file(f'{POSTGRES_CREDS_PATH}/username', 'postgres'),
+        'password': read_secret_file(f'{POSTGRES_CREDS_PATH}/password', ''),
         'database': 'postgres',
         'connect_timeout': int(os.getenv("CONNECT_TIMEOUT", "5")),
     }
@@ -81,11 +82,24 @@ def get_encryption():
     encrypt_backups = os.getenv("KEY_SOURCE", 'false').lower()
     return encrypt_backups != 'false'
 
+def read_secret_file(path: str, default_val: str) -> str:
+      try:
+          with open(path, 'r') as f:
+              value = f.read().strip()
+      except OSError as e:
+          logging.error(f"Failed to read secret file {path}: {e}")
+          return default_val
 
-def validate_user(username, password):
+      if not value:
+          logging.info(f"Secret file {path} is empty, using default value")
+          return default_val
+
+      return value
+
+def validate_user(username: str, password: str) -> bool:
     if not os.getenv("AUTH", "false").lower() == "false":
-        return username == os.getenv("POSTGRES_USER") and \
-               password == os.getenv("POSTGRES_PASSWORD")
+        return username == read_secret_file(f'{POSTGRES_CREDS_PATH}/username', "postgres") and \
+               password == read_secret_file(f'{POSTGRES_CREDS_PATH}/password', "")
     else:
         return True
 

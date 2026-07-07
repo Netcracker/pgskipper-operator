@@ -125,7 +125,7 @@
     },
     "global": {
       "type": "object",
-      "additionalProperties": false,
+      "additionalProperties": true,
       "properties": {
         "cloudIntegrationEnabled": {
           "type": "boolean",

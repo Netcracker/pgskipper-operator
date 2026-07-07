@@ -17,7 +17,7 @@ export ST_USER="${SWIFT_USER}"
 export ST_KEY="${SWIFT_PASSWORD}"
 export ST_TENANT="${TENANT_NAME}"
 
-export PGPASSWORD="$(echo ${PGPASSWORD} | tr -d '\n' | tr -d '[[:space:]]')"
+export PGPASSWORD="$(cat /var/run/secrets/postgresql/replicator-credentials/password | tr -d '\n' | tr -d '[[:space:]]')"
 
 function log() {
   log_module "" "backup_uploader" "$1"

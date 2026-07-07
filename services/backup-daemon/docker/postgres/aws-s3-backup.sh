@@ -27,6 +27,30 @@ readonly BUCKET="$1" # Go to AWS S3 terminology
 readonly BACKUP_ID="$2"
 BACKUP_NAME="pg_${PG_CLUSTER_NAME}_backup_${BACKUP_ID}.tar.gz"
 
+SECRET_BASE_PATH="/var/run/secrets/postgresql/"
+PG_USER_CREDS_PATH="${SECRET_BASE_PATH}postgres-credentials/"
+
+function read_secret_file() {
+  local path="$1"
+  local default_val="$2"
+  if [ ! -f "$path" ]; then
+      echo "Failed to read secret file ${path}" >&2
+      echo "$default_val"
+      return
+  fi
+  local value
+  value=$(tr -d '[:space:]' < "$path")
+  if [ -z "$value" ]; then
+      echo "Secret file ${path} is empty, using default value" >&2
+      echo "$default_val"
+      return
+  fi
+  echo "$value"
+}
+
+POSTGRES_USER=$(read_secret_file "${PG_USER_CREDS_PATH}username" "postgres")
+POSTGRES_PASSWORD=$(read_secret_file "${PG_USER_CREDS_PATH}password" "")
+
 
 function log() {
   log_module "$1" "aws-s3-backup" "$2"

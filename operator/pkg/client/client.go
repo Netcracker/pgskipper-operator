@@ -26,18 +26,22 @@ import (
 
 	"k8s.io/apimachinery/pkg/util/wait"
 
-	pgx "github.com/jackc/pgx/v4"
-	"github.com/jackc/pgx/v4/pgxpool"
+	pgx "github.com/jackc/pgx/v5"
+	"github.com/jackc/pgx/v5/pgxpool"
 	"go.uber.org/zap"
 
 	"github.com/Netcracker/pgskipper-operator/pkg/util"
 )
 
+const (
+	pgUserCredsPath    = util.SecretsBasePath + "postgres-credentials/"
+)
+
 var (
 	instance *PostgresClient
 	logger   = util.GetLogger()
-	pgUser   = flag.String("pg_user", getEnv("PG_ADMIN_USER", "postgres"), "Username of admin user in PostgreSQL, env: PG_ADMIN_USER")
-	pgPass   = flag.String("pg_pass", getEnv("PG_ADMIN_PASSWORD", ""), "Password of admin user in PostgreSQL, env: PG_ADMIN_PASSWORD")
+	pgUser   = flag.String("pg_user", util.ReadSecretFile(pgUserCredsPath+"username", "postgres"), "Username of admin user in PostgreSQL")
+	pgPass   = flag.String("pg_pass", util.ReadSecretFile(pgUserCredsPath+"password", ""), "Password of admin user in PostgreSQL")
 	dbName   = "postgres"
 	ssl      = "off"
 )
@@ -138,7 +142,7 @@ func newAdapter(host string, port int, username string, password string, databas
 			KeepAlive: 30 * time.Second,
 			Timeout:   10 * time.Second,
 		}).DialContext
-		pool, err = pgxpool.ConnectConfig(context.Background(), conf)
+		pool, err = pgxpool.NewWithConfig(context.Background(), conf)
 		if err != nil {
 			logger.Error("Error during creation of cluster adapter, retrying", zap.Error(err))
 			return false, nil

@@ -65,6 +65,16 @@ func NewIntegrationTestsPod(cr *v1.PatroniServices, cluster *patroniv1.PatroniCl
 		Spec: corev1.PodSpec{
 			ServiceAccountName: cr.Spec.ServiceAccountName,
 			Affinity:           &testsSpec.Affinity,
+			Volumes: []corev1.Volume{
+				{
+					Name: "postgres-credentials",
+					VolumeSource: corev1.VolumeSource{
+						Secret: &corev1.SecretVolumeSource{
+							SecretName: "postgres-credentials",
+						},
+					},
+				},
+			},
 			InitContainers:     []corev1.Container{},
 			Containers: []corev1.Container{
 				{
@@ -73,24 +83,6 @@ func NewIntegrationTestsPod(cr *v1.PatroniServices, cluster *patroniv1.PatroniCl
 					ImagePullPolicy: cr.Spec.ImagePullPolicy,
 					SecurityContext: util.GetDefaultSecurityContext(),
 					Env: []corev1.EnvVar{
-						{
-							Name: "POSTGRES_USER",
-							ValueFrom: &corev1.EnvVarSource{
-								SecretKeyRef: &corev1.SecretKeySelector{
-									LocalObjectReference: corev1.LocalObjectReference{Name: "postgres-credentials"},
-									Key:                  "username",
-								},
-							},
-						},
-						{
-							Name: "PG_ROOT_PASSWORD",
-							ValueFrom: &corev1.EnvVarSource{
-								SecretKeyRef: &corev1.SecretKeySelector{
-									LocalObjectReference: corev1.LocalObjectReference{Name: "postgres-credentials"},
-									Key:                  "password",
-								},
-							},
-						},
 						{
 							Name:  "PG_CLUSTER_NAME",
 							Value: cluster.ClusterName,
@@ -128,7 +120,13 @@ func NewIntegrationTestsPod(cr *v1.PatroniServices, cluster *patroniv1.PatroniCl
 							Value: testsSpec.MonitoredImages,
 						},
 					},
-					VolumeMounts: []corev1.VolumeMount{},
+					VolumeMounts: []corev1.VolumeMount{
+						{
+							Name:      "postgres-credentials",
+							MountPath: util.SecretsBasePath + "postgres-credentials",
+							ReadOnly:  true,
+						},
+					},
 				},
 			},
 			RestartPolicy: corev1.RestartPolicyNever,
@@ -192,6 +190,16 @@ func NewCoreIntegrationTests(cr *patroniv1.PatroniCore, cluster *patroniv1.Patro
 		Spec: corev1.PodSpec{
 			ServiceAccountName: cr.Spec.ServiceAccountName,
 			Affinity:           &testsSpec.Affinity,
+			Volumes:            []corev1.Volume{
+				{
+					Name: "postgres-credentials",
+					VolumeSource: corev1.VolumeSource{
+						Secret: &corev1.SecretVolumeSource{
+							SecretName: "postgres-credentials",
+						},
+					},
+				},
+			},
 			InitContainers:     []corev1.Container{},
 			Containers: []corev1.Container{
 				{
@@ -200,24 +208,6 @@ func NewCoreIntegrationTests(cr *patroniv1.PatroniCore, cluster *patroniv1.Patro
 					ImagePullPolicy: cr.Spec.ImagePullPolicy,
 					SecurityContext: util.GetDefaultSecurityContext(),
 					Env: []corev1.EnvVar{
-						{
-							Name: "POSTGRES_USER",
-							ValueFrom: &corev1.EnvVarSource{
-								SecretKeyRef: &corev1.SecretKeySelector{
-									LocalObjectReference: corev1.LocalObjectReference{Name: "postgres-credentials"},
-									Key:                  "username",
-								},
-							},
-						},
-						{
-							Name: "PG_ROOT_PASSWORD",
-							ValueFrom: &corev1.EnvVarSource{
-								SecretKeyRef: &corev1.SecretKeySelector{
-									LocalObjectReference: corev1.LocalObjectReference{Name: "postgres-credentials"},
-									Key:                  "password",
-								},
-							},
-						},
 						{
 							Name:  "PG_CLUSTER_NAME",
 							Value: cluster.ClusterName,
@@ -259,7 +249,13 @@ func NewCoreIntegrationTests(cr *patroniv1.PatroniCore, cluster *patroniv1.Patro
 							Value: testsSpec.MonitoredImages,
 						},
 					},
-					VolumeMounts: []corev1.VolumeMount{},
+					VolumeMounts: []corev1.VolumeMount{
+						{
+							Name:      "postgres-credentials",
+							MountPath: "/var/run/secrets/postgresql/postgres-credentials",
+							ReadOnly:  true,
+						},
+					},
 				},
 			},
 			RestartPolicy: corev1.RestartPolicyNever,
