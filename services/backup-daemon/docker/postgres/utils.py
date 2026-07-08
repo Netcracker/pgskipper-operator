@@ -18,7 +18,9 @@ import logging
 
 log = logging.getLogger("utils")
 
+_SECRET_BASE_PATH = "/var/run/secrets/postgresql/"
 POSTGRES_CREDS_PATH = '/var/run/secrets/postgresql/postgres-credentials'
+AWS_CREDS_PATH = _SECRET_BASE_PATH + "s3-storage-credentials"
 
 def execute_query(conn_properties, query):
     conn = None
