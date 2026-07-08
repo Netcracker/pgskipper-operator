@@ -174,7 +174,7 @@
     },
     "operatorInit": {
       "type": "object",
-      "additionalProperties": false,
+      "additionalProperties": true,
       "properties": {
         "image": {
           "type": "string",
@@ -352,7 +352,7 @@
     },
     "patroni": {
       "type": "object",
-      "additionalProperties": false,
+      "additionalProperties": true,
       "properties": {
         "clusterName": {
           "type": "string",
@@ -659,7 +659,7 @@
     },
     "pgBackRest": {
       "type": "object",
-      "additionalProperties": false,
+      "additionalProperties": true,
       "properties": {
         "diffSchedule": {
           "type": "string"
