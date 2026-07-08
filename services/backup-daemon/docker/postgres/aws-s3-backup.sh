@@ -29,6 +29,7 @@ BACKUP_NAME="pg_${PG_CLUSTER_NAME}_backup_${BACKUP_ID}.tar.gz"
 
 SECRET_BASE_PATH="/var/run/secrets/postgresql/"
 PG_USER_CREDS_PATH="${SECRET_BASE_PATH}postgres-credentials/"
+AWS_CREDS_PATH="${SECRET_BASE_PATH}s3-storage-credentials/"
 
 function read_secret_file() {
   local path="$1"
@@ -50,7 +51,8 @@ function read_secret_file() {
 
 POSTGRES_USER=$(read_secret_file "${PG_USER_CREDS_PATH}username" "postgres")
 POSTGRES_PASSWORD=$(read_secret_file "${PG_USER_CREDS_PATH}password" "")
-
+AWS_ACCESS_KEY_ID=$(read_secret_file "${AWS_CREDS_PATH}key_id" "")
+AWS_SECRET_ACCESS_KEY=$(read_secret_file "${AWS_CREDS_PATH}access_key" "")
 
 function log() {
   log_module "$1" "aws-s3-backup" "$2"

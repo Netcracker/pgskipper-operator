@@ -19,6 +19,7 @@ from utils import get_postgres_version_by_path
 
 _SECRET_BASE_PATH = "/var/run/secrets/postgresql/"
 _PG_USER_CREDS_PATH = _SECRET_BASE_PATH + "postgres-credentials/"
+_AWS_CREDS_PATH = _SECRET_BASE_PATH + "s3-storage-credentials/"
 
 _PROTECTED_DATABASES = ['template0', 'template1', 'postgres',
                         'rdsadmin',  # aws rds
@@ -103,6 +104,14 @@ def postgresql_port():
 
 def postgres_password():
     return read_secret_file(_PG_USER_CREDS_PATH + "password", '')
+
+
+def aws_access_key_id():
+    return read_secret_file(_AWS_CREDS_PATH + "key_id", "")
+
+
+def aws_secret_access_key():
+    return read_secret_file(_AWS_CREDS_PATH + "access_key", "")
 
 
 def postgresql_no_role_password_flag():
