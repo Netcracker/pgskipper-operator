@@ -267,7 +267,7 @@ func (r *PatroniReconciler) Reconcile() error {
 				return err
 			}
 			if localeVersion != newLocaleVersion || cr.Spec.Patroni.ForceCollationVersionUpgrade {
-				logger.Warn(fmt.Sprintf("New os locale version is %s, but previous was %s. A collation version mismatch occured in databases. Run locale fix script", newLocaleVersion, localeVersion))
+				logger.Warn(fmt.Sprintf("New os locale version is %s, but previous was %s. A collation version mismatch occurred in databases. Run locale fix script", newLocaleVersion, localeVersion))
 				err = r.runLocaleFixScript(pgVersion, newLocaleVersion, cr.Spec.Patroni.ForceCollationVersionUpgrade)
 				if err != nil {
 					return err
@@ -685,7 +685,7 @@ func fixBrokenIndexes(pgClient *pgClient.PostgresClient, db string, brokenIndNam
 
 		if len(remainingIndexes) > 0 {
 			logger.Error(fmt.Sprintf("Broken indexes %v still present in db: %s", remainingIndexes, db))
-			return fmt.Errorf("Broken indexes still present in db: %s", db)
+			return fmt.Errorf("broken indexes still present in db: %s", db)
 		}
 
 		logger.Info(fmt.Sprintf("Broken indexes fixed for db: %s", db))
