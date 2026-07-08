@@ -100,23 +100,23 @@
             "additionalProperties": false,
             "properties": {
               "name": {
-                "type": ["string", "null"]
+                "type": "string"
               },
               "create": {
                 "type": "boolean",
                 "default": false
               },
               "registry": {
-                "type": ["string", "null"]
+                "type": "string"
               },
               "username": {
-                "type": ["string", "null"]
+                "type": "string"
               },
               "password": {
-                "type": ["string", "null"]
+                "type": "string"
               },
               "email": {
-                "type": ["string", "null"]
+                "type": "string"
               }
             }
           }
@@ -188,13 +188,13 @@
           "$ref": "#/$defs/resourceRequirements"
         },
         "priorityClassName": {
-          "type": ["string", "null"]
+          "type": "string"
         },
         "affinity": {
           "$ref": "#/$defs/affinity"
         },
         "reconcileRetries": {
-          "type": ["integer", "null"]
+          "type": "integer"
         }
       }
     },
@@ -262,13 +262,13 @@
           "additionalProperties": false,
           "properties": {
             "tls_key": {
-              "type": ["string", "null"]
+              "type": "string"
             },
             "tls_crt": {
-              "type": ["string", "null"]
+              "type": "string"
             },
             "ca_crt": {
-              "type": ["string", "null"]
+              "type": "string"
             }
           }
         }
@@ -350,19 +350,19 @@
           "default": {}
         },
         "fsGroup": {
-          "type": ["integer", "null"]
+          "type": "integer"
         },
         "affinity": {
           "$ref": "#/$defs/affinity"
         },
         "synchronousMode": {
-          "type": ["boolean", "null"]
+          "type": "boolean"
         },
         "createEndpoint": {
-          "type": ["boolean", "null"]
+          "type": "boolean"
         },
         "scope": {
-          "type": ["string", "null"]
+          "type": "string"
         },
         "dcs": {
           "type": "object",
@@ -423,7 +423,7 @@
           "default": true
         },
         "priorityClassName": {
-          "type": ["string", "null"]
+          "type": "string"
         },
         "applyPodDisruptionBudget": {
           "type": "boolean",
@@ -442,7 +442,7 @@
               "default": false
             },
             "password": {
-              "type": ["string", "null"]
+              "type": "string"
             }
           }
         },
@@ -455,7 +455,7 @@
           "default": {}
         },
         "pgWalStorageAutoManage": {
-          "type": ["boolean", "null"]
+          "type": "boolean"
         },
         "pgWalStorage": {
           "$ref": "#/$defs/storage"
@@ -500,16 +500,16 @@
           }
         },
         "unlimited": {
-          "type": ["boolean", "null"]
+          "type": "boolean"
         },
         "ignoreSlots": {
-          "type": ["boolean", "null"]
+          "type": "boolean"
         },
         "ignoreSlotsPrefix": {
-          "type": ["string", "null"]
+          "type": "string"
         },
         "patroniResourcesLimitMemory": {
-          "type": ["string", "null"]
+          "type": "string"
         }
       }
     },
@@ -545,13 +545,13 @@
           "$ref": "#/$defs/resourceRequirements"
         },
         "fullRetention": {
-          "type": ["integer", "null"]
+          "type": "integer"
         },
         "diffRetention": {
-          "type": ["integer", "null"]
+          "type": "integer"
         },
         "backupFromStandby": {
-          "type": ["boolean", "null"]
+          "type": "boolean"
         },
         "configParams": {
           "type": "array",
@@ -669,7 +669,7 @@
           "default": false
         },
         "initDbParams": {
-          "type": ["string", "null"]
+          "type": "string"
         },
         "dockerUpgradeImage": {
           "type": "string",
@@ -688,7 +688,7 @@
           "type": "string"
         },
         "storageClass": {
-          "type": ["string", "null"]
+          "type": "string"
         },
         "volumes": {
           "type": "array",
@@ -775,7 +775,7 @@
       }
     },
     "affinity": {
-      "type": ["object", "null"],
+      "type": "object",
       "additionalProperties": false,
       "properties": {
         "nodeAffinity": {
@@ -838,7 +838,7 @@
       }
     },
     "tolerations": {
-      "type": ["array", "null"],
+      "type": "array",
       "items": {
         "type": "object",
         "additionalProperties": false,
