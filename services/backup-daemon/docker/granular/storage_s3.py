@@ -60,25 +60,18 @@ class AwsS3Vault:
     @classmethod
     def get_s3_alias_config(cls, storage_name=None):
         aliases = cls.get_s3_aliases()
-
         if aliases is None:
-            return None
+            raise Exception("storageName was provided but S3 aliases are not enabled")
 
-        if not storage_name or not storage_name.strip():
-            fallback_bucket = cls.get_s3_bucket_name(alias=None)
-            if fallback_bucket:
-                cls.__log.info(
-                    "storageName not provided, falling back to s3Storage configuration (bucket: %s)",
-                    fallback_bucket
-                )
-                return None
-            raise Exception("storageName is required when S3 aliases are enabled and no s3Storage fallback is configured")
-
-        storage_name = storage_name.strip()
+        storage_name = storage_name.strip() if storage_name else ""
+        if not storage_name:
+            storage_name = "default"
+            cls.__log.info('storageName is empty, using default storageName "default"')
 
         alias = aliases.get(storage_name)
         if not alias:
-            raise Exception(f"S3 alias '{storage_name}' is not found in /aliases/s3_aliases.json")
+            available = ', '.join(aliases.keys())
+            raise Exception(f"S3 alias '{storage_name}' not found. Available: {available}")
 
         return alias
 
@@ -89,10 +82,13 @@ class AwsS3Vault:
         return os.getenv("CONTAINER") or os.getenv("AWS_S3_BUCKET") or os.getenv("S3_BUCKET")
 
     def __init__(self, storage_name=None, cluster_name=None, cache_enabled=False,
-                 aws_s3_bucket_listing=None, prefix=None):
+                 aws_s3_bucket_listing=None, prefix=None, use_s3_alias=False):
 
         self.storage_name = storage_name
-        self.alias = AwsS3Vault.get_s3_alias_config(storage_name)
+        self.alias = None
+
+        if use_s3_alias:
+            self.alias = AwsS3Vault.get_s3_alias_config(storage_name)
         self.bucket = AwsS3Vault.get_s3_bucket_name(self.alias)
 
         if not self.bucket or not isinstance(self.bucket, str) or not self.bucket.strip():
