@@ -112,8 +112,8 @@ class AwsS3Vault:
             "s3",
             region_name=alias.get("region") if alias else (os.getenv("AWS_DEFAULT_REGION") if os.getenv("AWS_DEFAULT_REGION") else None),
             endpoint_url=alias.get("s3Url") if alias else os.getenv("AWS_S3_ENDPOINT_URL"),
-            aws_access_key_id=alias.get("accessKeyId") if alias else os.getenv("AWS_ACCESS_KEY_ID"),
-            aws_secret_access_key=alias.get("accessKeySecret") if alias else os.getenv("AWS_SECRET_ACCESS_KEY"),
+            aws_access_key_id=alias.get("accessKeyId") if alias else configs.aws_access_key_id(),
+            aws_secret_access_key=alias.get("accessKeySecret") if alias else configs.aws_secret_access_key(),
             verify=(False if os.getenv("AWS_S3_UNTRUSTED_CERT", "false").lower() == "true" else None),
         )
 

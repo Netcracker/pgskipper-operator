@@ -18,7 +18,7 @@ import boto3
 import botocore
 import hashlib
 import io
-
+import utils
 import urllib3
 
 import botocore.exceptions
@@ -261,8 +261,8 @@ class AwsS3Vault(storage.Vault):
         return boto3.resource("s3",
                               region_name=os.getenv("AWS_DEFAULT_REGION") if os.getenv("AWS_DEFAULT_REGION") else None,
                               endpoint_url=os.getenv("AWS_S3_ENDPOINT_URL"),
-                              aws_access_key_id=os.getenv("AWS_ACCESS_KEY_ID"),
-                              aws_secret_access_key=os.getenv("AWS_SECRET_ACCESS_KEY"),
+                              aws_access_key_id=utils.read_secret_file(f"{utils.AWS_CREDS_PATH}/key_id", ""),
+                              aws_secret_access_key=utils.read_secret_file(f"{utils.AWS_CREDS_PATH}/access_key", ""),
                               verify=(False if os.getenv("AWS_S3_UNTRUSTED_CERT", "false").lower() == "true" else None))
 
     @staticmethod
