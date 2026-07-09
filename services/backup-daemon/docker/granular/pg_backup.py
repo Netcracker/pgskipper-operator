@@ -31,7 +31,7 @@ import utils
 
 
 class PostgreSQLDumpWorker(Thread):
-    def __init__(self, databases, backup_request, blob_path=None):
+    def __init__(self, databases, backup_request, blob_path=None, use_s3_alias=False):
         Thread.__init__(self)
 
         self.log = logging.getLogger("PostgreSQLDumpWorker")
@@ -64,11 +64,12 @@ class PostgreSQLDumpWorker(Thread):
         )
         self.create_backup_dir()
         self.storage_name = backup_request.get('storageName') or ""
+        self.use_s3_alias = use_s3_alias
 
         if blob_path:
-            self.s3 = storage_s3.AwsS3Vault(storage_name=self.storage_name, prefix="")
+            self.s3 = storage_s3.AwsS3Vault(storage_name=self.storage_name, prefix="", use_s3_alias=self.use_s3_alias,)
         else:
-            self.s3 = storage_s3.AwsS3Vault(storage_name=self.storage_name) if os.environ['STORAGE_TYPE'] == "s3" else None
+            self.s3 = storage_s3.AwsS3Vault(storage_name=self.storage_name, use_s3_alias=self.use_s3_alias,) if os.environ['STORAGE_TYPE'] == "s3" else None
 
         self._cancel_event = Event()
         if configs.get_encryption():
