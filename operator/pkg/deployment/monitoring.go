@@ -82,7 +82,7 @@ func NewMonitoringDeployment(metricCollector *netcrackerv1.MetricCollector, pgcl
 							VolumeSource: corev1.VolumeSource{
 								Secret: &corev1.SecretVolumeSource{
 									SecretName:  MetricCollectorUserCredentials,
-									DefaultMode: ptr.To[int32](0420),
+									DefaultMode: ptr.To[int32](420),
 								},
 							},
 						},
@@ -91,7 +91,7 @@ func NewMonitoringDeployment(metricCollector *netcrackerv1.MetricCollector, pgcl
 							VolumeSource: corev1.VolumeSource{
 								Secret: &corev1.SecretVolumeSource{
 									SecretName:  influxDbAdminCredentials,
-									DefaultMode: ptr.To[int32](0420),
+									DefaultMode: ptr.To[int32](420),
 								},
 							},
 						},
@@ -100,7 +100,7 @@ func NewMonitoringDeployment(metricCollector *netcrackerv1.MetricCollector, pgcl
 							VolumeSource: corev1.VolumeSource{
 								Secret: &corev1.SecretVolumeSource{
 									SecretName:  "postgres-credentials",
-									DefaultMode: ptr.To[int32](0420),
+									DefaultMode: ptr.To[int32](420),
 								},
 							},
 						},
