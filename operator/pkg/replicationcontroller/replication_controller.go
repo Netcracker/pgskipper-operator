@@ -64,7 +64,7 @@ func NewRCDeployment(cr v1.PatroniServices, sa, clusterName string, pgPort int) 
 							VolumeSource: corev1.VolumeSource{
 								Secret: &corev1.SecretVolumeSource{
 									SecretName:  "postgres-credentials",
-									DefaultMode: ptr.To[int32](0400),
+									DefaultMode: ptr.To[int32](0420),
 								},
 							},
 						},
@@ -73,7 +73,7 @@ func NewRCDeployment(cr v1.PatroniServices, sa, clusterName string, pgPort int) 
 							VolumeSource: corev1.VolumeSource{
 								Secret: &corev1.SecretVolumeSource{
 									SecretName:  "logical-replication-controller-creds",
-									DefaultMode: ptr.To[int32](0400),
+									DefaultMode: ptr.To[int32](0420),
 								},
 							},
 						},

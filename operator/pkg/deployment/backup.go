@@ -79,7 +79,7 @@ func NewBackupDaemonDeployment(backupDaemon *netcrackerv1.BackupDaemon, pgCluste
 							VolumeSource: corev1.VolumeSource{
 								Secret: &corev1.SecretVolumeSource{
 									SecretName: "postgres-credentials",
-									DefaultMode: ptr.To[int32](0400),
+									DefaultMode: ptr.To[int32](0420),
 								},
 							},
 						},
@@ -88,7 +88,7 @@ func NewBackupDaemonDeployment(backupDaemon *netcrackerv1.BackupDaemon, pgCluste
 							VolumeSource: corev1.VolumeSource{
 								Secret: &corev1.SecretVolumeSource{
 									SecretName: "replicator-credentials",
-									DefaultMode: ptr.To[int32](0400),
+									DefaultMode: ptr.To[int32](0420),
 								},
 							},
 						},
@@ -305,7 +305,7 @@ func NewBackupDaemonDeployment(backupDaemon *netcrackerv1.BackupDaemon, pgCluste
           VolumeSource: corev1.VolumeSource{
               Secret: &corev1.SecretVolumeSource{
                   SecretName:  GetRootSecretName(pgClusterName),
-                  DefaultMode: ptr.To[int32](0400),
+                  DefaultMode: ptr.To[int32](0420),
               },
           },
       },
@@ -314,7 +314,7 @@ func NewBackupDaemonDeployment(backupDaemon *netcrackerv1.BackupDaemon, pgCluste
           VolumeSource: corev1.VolumeSource{
               Secret: &corev1.SecretVolumeSource{
                   SecretName:  "replicator-credentials",
-                  DefaultMode: ptr.To[int32](0400),
+                  DefaultMode: ptr.To[int32](0420),
               },
           },
       },
