@@ -80,12 +80,33 @@ func (r *PatroniReconciler) Reconcile() error {
 	isStandbyClusterPresent := patroni.IsStandbyClusterConfigurationExist(cr)
 	isPgbackrestUsed := cr.Spec.PgBackRest != nil
 
+	masterPod, err := r.helper.GetPodsByLabel(r.cluster.PatroniMasterSelectors)
+	if err != nil && !errors.IsNotFound(err) {
+		return err
+	}
+
+	if len(masterPod.Items) != 0 {
+		// save locale version to config map
+		r.helper.EnsureLocaleVersion(masterPod.Items[0].Name)
+	}
+
 	if cr.Upgrade != nil && cr.Upgrade.Enabled {
-		logger.Info("Starting an upgrade procedure")
-		time.Sleep(30 * time.Second)
-		if err := r.upgrade.ProceedUpgrade(cr, r.cluster); err != nil {
-			logger.Error("Cannot upgrade patroni", zap.Error(err))
-			return err
+		if len(masterPod.Items) == 0 {
+			logger.Info("Skipping upgrade procedure: master pod is not available")
+			return fmt.Errorf("master pod is not available, cannot perform major upgrade")
+		} else if !r.upgrade.CheckUpgrade(cr, r.cluster) {
+			logger.Info("Major upgrade is enabled but PostgreSQL version is not changed, skipping upgrade procedure")
+			if err := r.upgrade.UpdateUpgradeToDone(); err != nil {
+				logger.Error("Cannot reset upgrade flag", zap.Error(err))
+				return err
+			}
+		} else {
+			logger.Info("Starting an upgrade procedure")
+			time.Sleep(30 * time.Second)
+			if err := r.upgrade.ProceedUpgrade(cr, r.cluster); err != nil {
+				logger.Error("Cannot upgrade patroni", zap.Error(err))
+				return err
+			}
 		}
 	}
 
@@ -138,7 +159,7 @@ func (r *PatroniReconciler) Reconcile() error {
 
 	// find possible deployments by pods
 	// try to get master pod
-	masterPod, err := r.helper.GetPodsByLabel(r.cluster.PatroniMasterSelectors)
+	masterPod, err = r.helper.GetPodsByLabel(r.cluster.PatroniMasterSelectors)
 	if err != nil {
 		if !errors.IsNotFound(err) {
 			return err
@@ -192,7 +213,7 @@ func (r *PatroniReconciler) Reconcile() error {
 		if _, err := r.helper.IsHealthyWithTimeoutDuringUpdate(3*time.Minute, r.cluster.PatroniUrl, r.cluster.PgHost, statefulCount); err == nil {
 
 			// check locale version, because different versions can affect postgres data
-			localeVersion := r.helper.GetLocaleVersion(masterPod.Items[0].Name)
+			localeVersion := r.helper.EnsureLocaleVersion(masterPod.Items[0].Name)
 
 			replicaPods, err := r.helper.GetPodsByLabel(r.cluster.PatroniReplicasSelector)
 			if err != nil {
