@@ -44,7 +44,7 @@ import (
 
 var (
 	pHelper *PatroniHelper = nil
-	
+
 	secretFilePath         = "/var/run/secrets/postgresql/"
 	replicatorPasswordPath = secretFilePath + "replicator-credentials/"
 )
@@ -663,17 +663,13 @@ func (ph *PatroniHelper) GetPGVersionFromPod(podName string) string {
 	}
 	return strings.TrimSpace(version)
 }
-func (ph *PatroniHelper) GetLocaleVersion(podName string) string {
+func (ph *PatroniHelper) EnsureLocaleVersion(podName string) string {
 
 	versionCM, err := util.FindCmInNamespaceByName(namespace, "deployment-info")
 	if err != nil || versionCM.Data["locale-version"] == "" {
 		version := ph.GetLocaleVersionFromPod(podName)
 		if version != "" {
-			versionCM.Data["locale-version"] = version
-			_, err := ph.CreateOrUpdateConfigMap(versionCM)
-			if err != nil {
-				logger.Error("Failed to create or update config map deployment-info", zap.Error(err))
-			}
+			ph.StoreDataToCM("locale-version", version)
 		}
 		return version
 	}
