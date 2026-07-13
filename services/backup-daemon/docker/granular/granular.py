@@ -289,7 +289,7 @@ class GranularBackupRequestEndpoint(flask_restful.Resource):
                                'storageName',
                                'blobPath']
 
-    def perform_granular_backup(self, backup_request):
+    def perform_granular_backup(self, backup_request, use_s3_alias=False):
         # # for gke full backup
         # if os.getenv("GOOGLE_APPLICATION_CREDENTIALS"):
         #     self.log.info('Perform GKE backup')
@@ -334,7 +334,7 @@ class GranularBackupRequestEndpoint(flask_restful.Resource):
         backup_id = backups.generate_backup_id()
         backup_request['backupId'] = backup_id
 
-        worker = pg_backup.PostgreSQLDumpWorker(databases, backup_request, backup_request.get('blobPath'))
+        worker = pg_backup.PostgreSQLDumpWorker(databases, backup_request, backup_request.get('blobPath'), use_s3_alias=use_s3_alias,)
 
         worker.start()
 
@@ -1084,7 +1084,7 @@ class NewBackup(flask_restful.Resource):
         databases = body.get("databases") or []
 
         try:
-            self.s3 = storage_s3.AwsS3Vault(storage_name=storage_name, prefix="")
+            self.s3 = storage_s3.AwsS3Vault(storage_name=storage_name, prefix="", use_s3_alias=True)
         except Exception as e:
             return {"message": str(e)}, http.client.BAD_REQUEST
         
@@ -1101,7 +1101,7 @@ class NewBackup(flask_restful.Resource):
             "blobPath": blob_path,
             "storageName": storage_name
         }
-        resp = GranularBackupRequestEndpoint().perform_granular_backup(backup_request)
+        resp = GranularBackupRequestEndpoint().perform_granular_backup(backup_request, use_s3_alias=True,)
         body = None
         code = None
         if isinstance(resp, tuple) and len(resp) >= 2:
@@ -1172,7 +1172,7 @@ class NewBackupStatus(flask_restful.Resource):
         blob_path = normalize_blobPath(meta.get("blobPath"))
 
         try:
-            self.s3 = storage_s3.AwsS3Vault(storage_name=storage_name, prefix="")
+            self.s3 = storage_s3.AwsS3Vault(storage_name=storage_name, prefix="", use_s3_alias=True)
         except Exception as e:
             return {"message": str(e)}, http.client.BAD_REQUEST
 
@@ -1217,7 +1217,7 @@ class NewBackupStatus(flask_restful.Resource):
         blob_path = normalize_blobPath(meta.get("blobPath"))
 
         try:
-            self.s3 = storage_s3.AwsS3Vault(storage_name=storage_name, prefix="")
+            self.s3 = storage_s3.AwsS3Vault(storage_name=storage_name, prefix="", use_s3_alias=True)
         except Exception as e:
             return {"message": str(e)}, http.client.BAD_REQUEST
 
@@ -1331,7 +1331,7 @@ class NewRestore(flask_restful.Resource):
         storage_name = self._normalize_storage_name(body.get("storageName"))
         
         try:
-            self.s3 = storage_s3.AwsS3Vault(storage_name=storage_name, prefix="")
+            self.s3 = storage_s3.AwsS3Vault(storage_name=storage_name, prefix="", use_s3_alias=True)
         except Exception as e:
             return {"message": str(e)}, http.client.BAD_REQUEST
         
@@ -1412,7 +1412,7 @@ class NewRestore(flask_restful.Resource):
             worker = pg_restore.PostgreSQLRestoreWorker(
                 requested, force,
                 {"backupId": backup_id, "namespace": namespace, "trackingId": tracking_id, "storageName": storage_name},
-                databases_mapping, owners_mapping, restore_roles, single_transaction, body.get("dbaasClone"), blob_path
+                databases_mapping, owners_mapping, restore_roles, single_transaction, body.get("dbaasClone"), blob_path, use_s3_alias=True,
             )
             worker.start()
 
@@ -1519,7 +1519,7 @@ class NewRestoreStatus(flask_restful.Resource):
             return "Invalid namespace name: %s." % namespace.encode("utf-8"), http.client.BAD_REQUEST
 
         try:
-            self.s3 = storage_s3.AwsS3Vault(storage_name=storage_name, prefix="")
+            self.s3 = storage_s3.AwsS3Vault(storage_name=storage_name, prefix="", use_s3_alias=True)
         except Exception as e:
             return {"message": str(e)}, http.client.BAD_REQUEST
 
@@ -1607,7 +1607,7 @@ class NewRestoreStatus(flask_restful.Resource):
             }, http.client.BAD_REQUEST
 
         try:
-            self.s3 = storage_s3.AwsS3Vault(storage_name=storage_name, prefix="")
+            self.s3 = storage_s3.AwsS3Vault(storage_name=storage_name, prefix="", use_s3_alias=True)
         except Exception as e:
             return {"message": str(e)}, http.client.BAD_REQUEST
 
