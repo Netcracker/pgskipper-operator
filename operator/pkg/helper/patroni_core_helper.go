@@ -603,7 +603,7 @@ func (ph *PatroniHelper) IsPatroniClusterHealthy(config *ClusterStatus) bool {
 	logger.Info("Check Is Patroni Cluster Healthy")
 	cr, err := ph.GetPatroniCoreCR()
 	if err != nil {
-		logger.Info(fmt.Sprintf("While getting PatroniCore CR an error occured: %v", err))
+		logger.Info(fmt.Sprintf("While getting PatroniCore CR an error occurred: %v", err))
 		return false
 	}
 	expectedMembersNum := cr.Spec.Patroni.Replicas

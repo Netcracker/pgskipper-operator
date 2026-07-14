@@ -901,7 +901,7 @@ func (rm *ResourceManager) UpdatePatroniReplicas(replicas int32, clusterName str
 			return err
 		}
 	}
-	logger.Info(fmt.Sprintf("%s cluster statefulsets have scaled to %v successfuly", clusterName, replicas))
+	logger.Info(fmt.Sprintf("%s cluster statefulsets have scaled to %v successfully", clusterName, replicas))
 	return nil
 }
 

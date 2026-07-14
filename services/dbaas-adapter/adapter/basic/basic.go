@@ -346,7 +346,7 @@ func (sa ServiceAdapter) CreateDatabase(ctx context.Context, requestOnCreateDb d
 			fmt.Printf("Successfully granted ALL privilege on public schema to %s\n", adminUser)
 		}
 
-		// explicitely providing create grants for PG15
+		// explicitly providing create grants for PG15
 		err = sa.grantCreateOnSchema(ctx, dbName, defaultSchema, adminUser)
 		if err != nil {
 			logger.Error(fmt.Sprintf("Couldn't create User %s", username), zap.Error(err))
