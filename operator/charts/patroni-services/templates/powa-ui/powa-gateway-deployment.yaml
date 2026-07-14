@@ -10,7 +10,6 @@ spec:
   parentRefs:
   - name: {{ include "gateway.name" . }}
     namespace: {{ include "gateway.namespace" . }}
-    port: 443
   hostnames: [{{ .Values.powaUI.ingress.host  | quote }}]
   rules:
   - matches:
