@@ -33,8 +33,8 @@ import (
 
 const (
 	CMName = "query-exporter-config"
-	
-	pgUserCredsPath   = util.SecretsBasePath + "postgres-credentials/"
+
+	pgUserCredsPath = util.SecretsBasePath + "postgres-credentials/"
 )
 
 var (

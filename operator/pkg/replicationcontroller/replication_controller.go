@@ -58,7 +58,7 @@ func NewRCDeployment(cr v1.PatroniServices, sa, clusterName string, pgPort int) 
 				Spec: corev1.PodSpec{
 					ServiceAccountName: sa,
 					Affinity:           &spec.Affinity,
-					Volumes: []corev1.Volume{					
+					Volumes: []corev1.Volume{
 						{
 							Name: "postgres-credentials",
 							VolumeSource: corev1.VolumeSource{
@@ -78,7 +78,7 @@ func NewRCDeployment(cr v1.PatroniServices, sa, clusterName string, pgPort int) 
 							},
 						},
 					},
-					InitContainers:     []corev1.Container{},
+					InitContainers: []corev1.Container{},
 					Containers: []corev1.Container{
 						{
 							Name:            deploymentName,
@@ -122,12 +122,12 @@ func NewRCDeployment(cr v1.PatroniServices, sa, clusterName string, pgPort int) 
 								{
 									MountPath: "/var/run/secrets/postgresql/replicator-api-creds",
 									Name:      "replicator-api-creds",
-									ReadOnly: true,
+									ReadOnly:  true,
 								},
 								{
 									MountPath: "/var/run/secrets/postgresql/postgres-credentials",
 									Name:      "postgres-credentials",
-									ReadOnly: true,
+									ReadOnly:  true,
 								},
 							},
 							Ports: []corev1.ContainerPort{

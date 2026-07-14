@@ -78,7 +78,7 @@ func NewBackupDaemonDeployment(backupDaemon *netcrackerv1.BackupDaemon, pgCluste
 							Name: "postgres-credentials",
 							VolumeSource: corev1.VolumeSource{
 								Secret: &corev1.SecretVolumeSource{
-									SecretName: "postgres-credentials",
+									SecretName:  "postgres-credentials",
 									DefaultMode: ptr.To[int32](0400),
 								},
 							},
@@ -87,7 +87,7 @@ func NewBackupDaemonDeployment(backupDaemon *netcrackerv1.BackupDaemon, pgCluste
 							Name: "replicator-credentials",
 							VolumeSource: corev1.VolumeSource{
 								Secret: &corev1.SecretVolumeSource{
-									SecretName: "replicator-credentials",
+									SecretName:  "replicator-credentials",
 									DefaultMode: ptr.To[int32](0400),
 								},
 							},
@@ -297,28 +297,28 @@ func NewBackupDaemonDeployment(backupDaemon *netcrackerv1.BackupDaemon, pgCluste
 			},
 		}
 	}
-// Add postgres-credentials volume regardless of storage type
+	// Add postgres-credentials volume regardless of storage type
 	deployment.Spec.Template.Spec.Volumes = append(
-      deployment.Spec.Template.Spec.Volumes,
-      corev1.Volume{
-          Name: "postgres-credentials",
-          VolumeSource: corev1.VolumeSource{
-              Secret: &corev1.SecretVolumeSource{
-                  SecretName:  GetRootSecretName(pgClusterName),
-                  DefaultMode: ptr.To[int32](0400),
-              },
-          },
-      },
-      corev1.Volume{
-          Name: "replicator-credentials",
-          VolumeSource: corev1.VolumeSource{
-              Secret: &corev1.SecretVolumeSource{
-                  SecretName:  "replicator-credentials",
-                  DefaultMode: ptr.To[int32](0400),
-              },
-          },
-      },
-  )
+		deployment.Spec.Template.Spec.Volumes,
+		corev1.Volume{
+			Name: "postgres-credentials",
+			VolumeSource: corev1.VolumeSource{
+				Secret: &corev1.SecretVolumeSource{
+					SecretName:  GetRootSecretName(pgClusterName),
+					DefaultMode: ptr.To[int32](0400),
+				},
+			},
+		},
+		corev1.Volume{
+			Name: "replicator-credentials",
+			VolumeSource: corev1.VolumeSource{
+				Secret: &corev1.SecretVolumeSource{
+					SecretName:  "replicator-credentials",
+					DefaultMode: ptr.To[int32](0400),
+				},
+			},
+		},
+	)
 
 	if backupDaemon.S3AliasesUsed {
 		deployment.Spec.Template.Spec.Containers[0].Env = append(

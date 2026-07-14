@@ -44,7 +44,7 @@ import (
 
 var (
 	pHelper *PatroniHelper = nil
-	
+
 	secretFilePath         = "/var/run/secrets/postgresql/"
 	replicatorPasswordPath = secretFilePath + "replicator-credentials/"
 )

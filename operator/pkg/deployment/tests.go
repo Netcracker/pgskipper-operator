@@ -75,7 +75,7 @@ func NewIntegrationTestsPod(cr *v1.PatroniServices, cluster *patroniv1.PatroniCl
 					},
 				},
 			},
-			InitContainers:     []corev1.Container{},
+			InitContainers: []corev1.Container{},
 			Containers: []corev1.Container{
 				{
 					Name:            name,
@@ -190,7 +190,7 @@ func NewCoreIntegrationTests(cr *patroniv1.PatroniCore, cluster *patroniv1.Patro
 		Spec: corev1.PodSpec{
 			ServiceAccountName: cr.Spec.ServiceAccountName,
 			Affinity:           &testsSpec.Affinity,
-			Volumes:            []corev1.Volume{
+			Volumes: []corev1.Volume{
 				{
 					Name: "postgres-credentials",
 					VolumeSource: corev1.VolumeSource{
@@ -200,7 +200,7 @@ func NewCoreIntegrationTests(cr *patroniv1.PatroniCore, cluster *patroniv1.Patro
 					},
 				},
 			},
-			InitContainers:     []corev1.Container{},
+			InitContainers: []corev1.Container{},
 			Containers: []corev1.Container{
 				{
 					Name:            name,

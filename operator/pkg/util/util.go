@@ -56,7 +56,7 @@ import (
 const (
 	TokenFilePath = "/var/run/secrets/kubernetes.io/serviceaccount/token"
 	ClusterName   = "patroni"
-	
+
 	SecretsBasePath = "/var/run/secrets/postgresql/"
 	PgUserCredsPath = SecretsBasePath + "postgres-credentials/"
 )
