@@ -51,7 +51,7 @@ var commands = []string{
 	"rm -rf /var/lib/pgsql/data/postgresql_node%[1]s/pg_wal_backup",
 	"mv /var/lib/pgsql/data/postgresql_node%[1]s/pg_wal /var/lib/pgsql/data/postgresql_node%[1]s/pg_wal_backup",
 	"ln -s /var/lib/pgsql/pg_wal /var/lib/pgsql/data/postgresql_node%[1]s",
-	"pg_ctl start -D /var/lib/pgsql/data/postgresql_node%[1]s",
+	"pg_ctl start -D /var/lib/pgsql/data/postgresql_node%[1]s -l /proc/1/fd/1",
 	"rm -rf /var/lib/pgsql/data/postgresql_node%[1]s/pg_wal_backup",
 }
 
