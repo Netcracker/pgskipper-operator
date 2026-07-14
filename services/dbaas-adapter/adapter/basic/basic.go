@@ -1573,7 +1573,7 @@ func (sa ServiceAdapter) getSchemasFromDB(dbName string) ([]string, error) {
 		var schema string
 		err := rows.Scan(&schema)
 		if err != nil {
-			sa.log.Error("cant scan schema name", zap.Error(err))
+			sa.log.Error("can't scan schema name", zap.Error(err))
 			return result, err
 		}
 		result = append(result, schema)

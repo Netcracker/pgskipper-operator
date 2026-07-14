@@ -19,7 +19,6 @@ import (
 
 	netcrackerv1 "github.com/Netcracker/pgskipper-operator/api/apps/v1"
 	"github.com/Netcracker/pgskipper-operator/pkg/storage"
-	"github.com/Netcracker/pgskipper-operator/pkg/util"
 	opUtils "github.com/Netcracker/pgskipper-operator/pkg/util"
 	"github.com/Netcracker/qubership-credential-manager/pkg/utils"
 	appsv1 "k8s.io/api/apps/v1"
@@ -224,11 +223,11 @@ func NewBackupDaemonDeployment(backupDaemon *netcrackerv1.BackupDaemon, pgCluste
 									Name:      "backup-data",
 								},
 								{
-									MountPath: util.SecretsBasePath + "postgres-credentials",
+									MountPath: opUtils.SecretsBasePath + "postgres-credentials",
 									Name:      "postgres-credentials",
 								},
 								{
-									MountPath: util.SecretsBasePath + "replicator-credentials",
+									MountPath: opUtils.SecretsBasePath + "replicator-credentials",
 									Name:      "replicator-credentials",
 								},
 							},

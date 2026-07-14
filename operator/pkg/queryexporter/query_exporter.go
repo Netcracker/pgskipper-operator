@@ -183,15 +183,6 @@ func getEnvVariables(spec v1.QueryExporter) []corev1.EnvVar {
 	}
 }
 
-func getSecretFieldEnv(fieldName string) *corev1.EnvVarSource {
-	return &corev1.EnvVarSource{
-		SecretKeyRef: &corev1.SecretKeySelector{
-			LocalObjectReference: corev1.LocalObjectReference{Name: expSec},
-			Key:                  fieldName,
-		},
-	}
-}
-
 func UpdatePreloadLibraries(cr *patroniv1.PatroniCore) {
 	helper.UpdatePreloadLibraries(cr, preloadLibraries)
 }

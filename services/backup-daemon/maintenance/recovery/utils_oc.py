@@ -403,7 +403,7 @@ class OpenshiftShellClient(OpenshiftClient):
         process = subprocess.Popen("{} exec {} -- {}".format(self.oc, pod_id, command), shell=True,
                                    stdout=subprocess.PIPE, stderr=subprocess.PIPE)
         if process.wait() != 0:
-            raise Exception("Error occured during execution. "
+            raise Exception("Error occurred during execution. "
                             "Return code: {}, stderr: {}, stdout: {}"
                             .format(process.returncode, process.stderr.read(), process.stdout.read()))
         return process.stdout.read().decode()

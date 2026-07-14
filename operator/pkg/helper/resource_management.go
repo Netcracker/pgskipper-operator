@@ -708,7 +708,7 @@ func (rm *ResourceManager) UpdatePatroniConfigMaps(clusterName string) error {
 			if err != nil {
 				return err
 			}
-			cmap.ObjectMeta.OwnerReferences = rm.GetOwnerReferences()
+			cmap.OwnerReferences = rm.GetOwnerReferences()
 			_, err = rm.CreateOrUpdateManagedConfigMap(cmap)
 			return err
 		})
