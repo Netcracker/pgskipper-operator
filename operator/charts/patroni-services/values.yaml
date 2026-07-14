@@ -14,9 +14,10 @@ imagePullPolicy: IfNotPresent
 
 privateRegistry:
   enabled: false
-  secrets:
-    - name:
-      create: false
+  secrets: []
+  # secrets:
+  #   - name:
+  #     create: false
       # registry: ghcr.io/netcracker
       # username:
       # password:
@@ -70,7 +71,7 @@ operator:
 
 
 policies:
-  tolerations:
+  tolerations: []
 #    - key: "node.kubernetes.io/unreachable"
 #      operator: "Exists"
 #      effect: "NoExecute"
@@ -87,9 +88,9 @@ tls:
       additionalDnsNames: []
       additionalIpAddresses: []
   certificates:
-    tls_key:
-    tls_crt:
-    ca_crt:
+    tls_key: ""
+    tls_crt: ""
+    ca_crt: ""
 
 ##  This section describes values for patroni deployment
 patroni:

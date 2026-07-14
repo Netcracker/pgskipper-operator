@@ -173,8 +173,8 @@ func (r *BackupDaemonReconciler) Reconcile() error {
 					Name: "aws-credentials",
 					VolumeSource: corev1.VolumeSource{
 						Secret: &corev1.SecretVolumeSource{
-							SecretName:  awsCredentialsSecretName,
-							DefaultMode: ptr.To[int32](0400),
+							SecretName: awsCredentialsSecretName,
+							DefaultMode: ptr.To[int32](420),
 						},
 					},
 				})
@@ -204,8 +204,8 @@ func (r *BackupDaemonReconciler) Reconcile() error {
 				Name: "s3-credentials",
 				VolumeSource: corev1.VolumeSource{
 					Secret: &corev1.SecretVolumeSource{
-						SecretName:  s3StorageCredentialsSecretName,
-						DefaultMode: ptr.To[int32](0400),
+						SecretName: s3StorageCredentialsSecretName,
+						DefaultMode: ptr.To[int32](420),
 					},
 				},
 			})
