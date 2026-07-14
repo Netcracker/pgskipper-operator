@@ -21,7 +21,6 @@ import (
 	"os"
 	"os/exec"
 	"strings"
-	
 
 	"go.uber.org/zap"
 	"go.uber.org/zap/zapcore"
@@ -99,7 +98,7 @@ func ReadSecretFile(path, defaultVal string) string {
 	}
 
 	value := strings.TrimSpace(string(data[:]))
-	
+
 	if value == "" {
 		logger.Info(fmt.Sprintf("Secret file %s is empty, using default value", path))
 		return defaultVal

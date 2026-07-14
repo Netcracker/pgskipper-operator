@@ -61,7 +61,7 @@ var (
 const (
 	SecretsBasePath = "/var/run/secrets/postgresql/"
 
-	certificatesFolder            = "/certs"
+	certificatesFolder               = "/certs"
 	metricCollectorCredentialsFolder = SecretsBasePath + "monitoring-user-credentials/"
 )
 
@@ -105,7 +105,7 @@ func ReadSecretFile(path string, defaultVal string) string {
 	}
 
 	value := strings.TrimSpace(string(data[:]))
-	
+
 	if value == "" {
 		Log.Info(fmt.Sprintf("Secret file %s is empty, using default value", path))
 		return defaultVal

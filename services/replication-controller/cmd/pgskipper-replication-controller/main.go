@@ -37,11 +37,11 @@ const (
 	usersPath       = "/users"
 
 	httpsPort = 8443
-	
+
 	secretsBasePath = "/var/run/secrets/postgresql/"
-	
-	pgUserCredsPath    = secretsBasePath + "postgres-credentials/"
-	apiUserCredsPath   = secretsBasePath + "logical-repl-credentials/"
+
+	pgUserCredsPath  = secretsBasePath + "postgres-credentials/"
+	apiUserCredsPath = secretsBasePath + "logical-repl-credentials/"
 )
 
 var (

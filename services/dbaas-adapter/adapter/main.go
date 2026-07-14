@@ -43,7 +43,7 @@ const (
 
 	secretsBasePath = "/var/run/secrets/postgresql/"
 
-	pgUserCredsPath    = secretsBasePath + "postgres-credentials/"
+	pgUserCredsPath       = secretsBasePath + "postgres-credentials/"
 	adapterCredsPath      = secretsBasePath + "dbaas-adapter-credentials/"
 	registrationCredsPath = secretsBasePath + "dbaas-aggregator-registration-credentials/"
 )
