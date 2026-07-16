@@ -222,7 +222,7 @@ func NewPatroniStatefulset(cr *patroniv1.PatroniCore, deploymentIdx int, cluster
 								},
 								{
 									Name:  "HEADLESS_SERVICE",
-									Value: fmt.Sprintf("patroni-%s-headless", clusterName),
+									Value: "backrest-headless",
 								},
 								{
 									Name:  "POD_DNS_NAME",
@@ -287,7 +287,7 @@ func NewPatroniStatefulset(cr *patroniv1.PatroniCore, deploymentIdx int, cluster
 					DNSPolicy:                     corev1.DNSClusterFirst,
 				},
 			},
-			ServiceName:                          fmt.Sprintf("patroni-%s-headless", clusterName),
+			ServiceName:                          "backrest-headless",
 			PodManagementPolicy:                  appsv1.OrderedReadyPodManagement,
 			UpdateStrategy:                       appsv1.StatefulSetUpdateStrategy{Type: appsv1.RollingUpdateStatefulSetStrategyType},
 			RevisionHistoryLimit:                 ptr.To[int32](10),

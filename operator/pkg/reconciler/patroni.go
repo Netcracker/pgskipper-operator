@@ -449,18 +449,16 @@ func (r *PatroniReconciler) processPatroniServices(cr *v1.PatroniCore, patroniSp
 					return err
 				}
 			}
-			pgBackRestHeadless := deployment.GetBackrestHeadless()
-			if err := r.helper.CreateOrUpdateService(pgBackRestHeadless); err != nil {
-				logger.Error(fmt.Sprintf("Cannot create service %s", pgBackRestHeadless.Name), zap.Error(err))
-				return err
-			}
 		}
 	}
 
-	// Create patroni headless service for DNS-based pod discovery
-	patroniHeadless := deployment.GetPatroniHeadless(r.cluster.ClusterName)
-	if err := r.helper.ResourceManager.CreateOrUpdateService(patroniHeadless); err != nil {
-		logger.Error(fmt.Sprintf("Cannot create service %s", patroniHeadless.Name), zap.Error(err))
+	// Create the headless service that governs the Patroni StatefulSet. It backs
+	// the stable per-pod DNS names used both for Patroni connect_address and for
+	// the pgBackRest PITR restore endpoint (<pod>.backrest-headless), so it must
+	// exist regardless of whether pgBackRest is enabled.
+	backrestHeadless := deployment.GetBackrestHeadless(r.cluster.ClusterName)
+	if err := r.helper.CreateOrUpdateService(backrestHeadless); err != nil {
+		logger.Error(fmt.Sprintf("Cannot create service %s", backrestHeadless.Name), zap.Error(err))
 		return err
 	}
 
