@@ -33,8 +33,8 @@ import (
 
 const (
 	CMName = "query-exporter-config"
-	
-	pgUserCredsPath   = util.SecretsBasePath + "postgres-credentials/"
+
+	pgUserCredsPath = util.SecretsBasePath + "postgres-credentials/"
 )
 
 var (
@@ -179,15 +179,6 @@ func getEnvVariables(spec v1.QueryExporter) []corev1.EnvVar {
 		{
 			Name:  "MAX_FAILED_TIMEOUTS",
 			Value: spec.MaxFailedTimeouts,
-		},
-	}
-}
-
-func getSecretFieldEnv(fieldName string) *corev1.EnvVarSource {
-	return &corev1.EnvVarSource{
-		SecretKeyRef: &corev1.SecretKeySelector{
-			LocalObjectReference: corev1.LocalObjectReference{Name: expSec},
-			Key:                  fieldName,
 		},
 	}
 }

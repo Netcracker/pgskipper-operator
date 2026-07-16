@@ -37,11 +37,11 @@ import (
 )
 
 const (
-	extCMName = "postgres-external"
-	awsCredentialsSecretName = "aws-credentials"
-	awsCredentialsMountPath = "/var/run/secrets/postgresql/aws-credentials"
+	extCMName                      = "postgres-external"
+	awsCredentialsSecretName       = "aws-credentials"
+	awsCredentialsMountPath        = "/var/run/secrets/postgresql/aws-credentials"
 	s3StorageCredentialsSecretName = "s3-storage-credentials"
-	s3StorageCredentialsMountPath = "/var/run/secrets/postgresql/s3-storage-credentials"
+	s3StorageCredentialsMountPath  = "/var/run/secrets/postgresql/s3-storage-credentials"
 )
 
 type BackupDaemonReconciler struct {
@@ -173,7 +173,7 @@ func (r *BackupDaemonReconciler) Reconcile() error {
 					Name: "aws-credentials",
 					VolumeSource: corev1.VolumeSource{
 						Secret: &corev1.SecretVolumeSource{
-							SecretName: awsCredentialsSecretName,
+							SecretName:  awsCredentialsSecretName,
 							DefaultMode: ptr.To[int32](420),
 						},
 					},
@@ -182,7 +182,7 @@ func (r *BackupDaemonReconciler) Reconcile() error {
 				append(backupDaemonDeployment.Spec.Template.Spec.Containers[0].VolumeMounts, corev1.VolumeMount{
 					Name:      "aws-credentials",
 					MountPath: awsCredentialsMountPath,
-					ReadOnly: true,
+					ReadOnly:  true,
 				})
 			backupDaemonDeployment.Spec.Template.Spec.Containers[0].Env =
 				append(backupDaemonDeployment.Spec.Template.Spec.Containers[0].Env, r.getAWSEnv(cr.Spec.ExternalDataBase)...)
@@ -197,14 +197,14 @@ func (r *BackupDaemonReconciler) Reconcile() error {
 			append(backupDaemonDeployment.Spec.Template.Spec.Containers[0].VolumeMounts, corev1.VolumeMount{
 				Name:      "s3-credentials",
 				MountPath: s3StorageCredentialsMountPath,
-				ReadOnly: true,
+				ReadOnly:  true,
 			})
 		backupDaemonDeployment.Spec.Template.Spec.Volumes =
 			append(backupDaemonDeployment.Spec.Template.Spec.Volumes, corev1.Volume{
 				Name: "s3-credentials",
 				VolumeSource: corev1.VolumeSource{
 					Secret: &corev1.SecretVolumeSource{
-						SecretName: s3StorageCredentialsSecretName,
+						SecretName:  s3StorageCredentialsSecretName,
 						DefaultMode: ptr.To[int32](420),
 					},
 				},

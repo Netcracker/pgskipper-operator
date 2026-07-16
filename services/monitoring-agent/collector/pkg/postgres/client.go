@@ -28,7 +28,6 @@ import (
 
 const (
 	pgUserCredsPath = util.SecretsBasePath + "postgres-credentials/"
-	
 )
 
 var logger = util.GetLogger()

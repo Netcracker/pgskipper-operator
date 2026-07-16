@@ -204,7 +204,7 @@ class OpenshiftClient(metaclass=ABCMeta):
     def get_stateful_set_replicas_count(self, stateful_set_name):
         stateful_set = self.get_stateful_set(stateful_set_name)
         return int(stateful_set.get("spec").get("replicas"))
-    
+
     def get_stateful_set_names_by_label(self, s: str) -> list[str]:
         sel = dict(p.strip().split("=", 1) for p in s.split(","))
         items = self.get_entities("statefulset")
@@ -403,7 +403,7 @@ class OpenshiftShellClient(OpenshiftClient):
         process = subprocess.Popen("{} exec {} -- {}".format(self.oc, pod_id, command), shell=True,
                                    stdout=subprocess.PIPE, stderr=subprocess.PIPE)
         if process.wait() != 0:
-            raise Exception("Error occured during execution. "
+            raise Exception("Error occurred during execution. "
                             "Return code: {}, stderr: {}, stdout: {}"
                             .format(process.returncode, process.stderr.read(), process.stdout.read()))
         return process.stdout.read().decode()
@@ -481,16 +481,15 @@ class OpenshiftPyClient(OpenshiftClient):
 
     def login(self, oc_url, username, password, project, skip_tls_verify=False):
         log.info("Log in as {} to {}".format(username, oc_url))
-        
         # Configuration for Kubernetes client
         os_config = client.Configuration()
         os_config.verify_ssl = not skip_tls_verify
         os_config.assert_hostname = False
         os_config.host = oc_url
-        
+
         openshift_token = get_api_token(oc_url, b"admin", b"admin")
         os_config.api_key = {"authorization": "Bearer " + openshift_token}
-        
+
         self._api_client = client.ApiClient(configuration=os_config)
 
         log.info("Will use namespace {}".format(project))

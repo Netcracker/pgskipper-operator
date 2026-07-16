@@ -19,6 +19,7 @@ import (
 	"context"
 	genericerror "errors"
 	"fmt"
+	"slices"
 	"strconv"
 	"strings"
 	"time"
@@ -38,7 +39,6 @@ import (
 	"k8s.io/client-go/kubernetes/scheme"
 	"k8s.io/client-go/rest"
 	"k8s.io/client-go/tools/remotecommand"
-	"k8s.io/utils/strings/slices"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
@@ -201,7 +201,7 @@ func (ph *PatroniHelper) isExpectedReplicationCount(pgHost string, count int) bo
 			}
 			pids = append(pids, pid)
 		}
-		logger.Debug(fmt.Sprintf("Pids with streaming state: %d Lenght: %d. Expected %d", pids, len(pids), count))
+		logger.Debug(fmt.Sprintf("Pids with streaming state: %d Length: %d. Expected %d", pids, len(pids), count))
 		return len(pids) >= count
 	}
 	return false
@@ -603,7 +603,7 @@ func (ph *PatroniHelper) IsPatroniClusterHealthy(config *ClusterStatus) bool {
 	logger.Info("Check Is Patroni Cluster Healthy")
 	cr, err := ph.GetPatroniCoreCR()
 	if err != nil {
-		logger.Info(fmt.Sprintf("While getting PatroniCore CR an error occured: %v", err))
+		logger.Info(fmt.Sprintf("While getting PatroniCore CR an error occurred: %v", err))
 		return false
 	}
 	expectedMembersNum := cr.Spec.Patroni.Replicas
@@ -631,7 +631,7 @@ func (ph *PatroniHelper) StoreDataToCM(key string, value string) {
 	if err == nil {
 		deploymentInfoCM.Data[key] = strings.TrimSpace(value)
 	} else {
-		logger.Warn("Cant to find config map deployment-info for update. Creating new one", zap.Error(err))
+		logger.Warn("Can't to find config map deployment-info for update. Creating new one", zap.Error(err))
 		deploymentInfoCM = &v1.ConfigMap{
 			ObjectMeta: metav1.ObjectMeta{
 				Name:      "deployment-info",

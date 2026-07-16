@@ -708,7 +708,7 @@ func (rm *ResourceManager) UpdatePatroniConfigMaps(clusterName string) error {
 			if err != nil {
 				return err
 			}
-			cmap.ObjectMeta.OwnerReferences = rm.GetOwnerReferences()
+			cmap.OwnerReferences = rm.GetOwnerReferences()
 			_, err = rm.CreateOrUpdateManagedConfigMap(cmap)
 			return err
 		})
@@ -901,7 +901,7 @@ func (rm *ResourceManager) UpdatePatroniReplicas(replicas int32, clusterName str
 			return err
 		}
 	}
-	logger.Info(fmt.Sprintf("%s cluster statefulsets have scaled to %v successfuly", clusterName, replicas))
+	logger.Info(fmt.Sprintf("%s cluster statefulsets have scaled to %v successfully", clusterName, replicas))
 	return nil
 }
 

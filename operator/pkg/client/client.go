@@ -20,7 +20,6 @@ import (
 	"fmt"
 	"net"
 	"net/url"
-	"os"
 	"strings"
 	"time"
 
@@ -34,7 +33,7 @@ import (
 )
 
 const (
-	pgUserCredsPath    = util.SecretsBasePath + "postgres-credentials/"
+	pgUserCredsPath = util.SecretsBasePath + "postgres-credentials/"
 )
 
 var (
@@ -236,13 +235,6 @@ func (adapter postgresAdapter) executeHealthQuery() error {
 	defer conn.Release()
 	_, err = conn.Exec(context.Background(), "SELECT 1")
 	return err
-}
-
-func getEnv(key, fallback string) string {
-	if value, ok := os.LookupEnv(key); ok {
-		return value
-	}
-	return fallback
 }
 
 func EscapeString(str string) string {

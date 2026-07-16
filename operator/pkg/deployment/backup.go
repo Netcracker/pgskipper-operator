@@ -19,7 +19,6 @@ import (
 
 	netcrackerv1 "github.com/Netcracker/pgskipper-operator/api/apps/v1"
 	"github.com/Netcracker/pgskipper-operator/pkg/storage"
-	"github.com/Netcracker/pgskipper-operator/pkg/util"
 	opUtils "github.com/Netcracker/pgskipper-operator/pkg/util"
 	"github.com/Netcracker/qubership-credential-manager/pkg/utils"
 	appsv1 "k8s.io/api/apps/v1"
@@ -78,7 +77,7 @@ func NewBackupDaemonDeployment(backupDaemon *netcrackerv1.BackupDaemon, pgCluste
 							Name: "postgres-credentials",
 							VolumeSource: corev1.VolumeSource{
 								Secret: &corev1.SecretVolumeSource{
-									SecretName: "postgres-credentials",
+									SecretName:  "postgres-credentials",
 									DefaultMode: ptr.To[int32](420),
 								},
 							},
@@ -87,7 +86,7 @@ func NewBackupDaemonDeployment(backupDaemon *netcrackerv1.BackupDaemon, pgCluste
 							Name: "replicator-credentials",
 							VolumeSource: corev1.VolumeSource{
 								Secret: &corev1.SecretVolumeSource{
-									SecretName: "replicator-credentials",
+									SecretName:  "replicator-credentials",
 									DefaultMode: ptr.To[int32](420),
 								},
 							},
@@ -224,11 +223,11 @@ func NewBackupDaemonDeployment(backupDaemon *netcrackerv1.BackupDaemon, pgCluste
 									Name:      "backup-data",
 								},
 								{
-									MountPath: util.SecretsBasePath + "postgres-credentials",
+									MountPath: opUtils.SecretsBasePath + "postgres-credentials",
 									Name:      "postgres-credentials",
 								},
 								{
-									MountPath: util.SecretsBasePath + "replicator-credentials",
+									MountPath: opUtils.SecretsBasePath + "replicator-credentials",
 									Name:      "replicator-credentials",
 								},
 							},
@@ -297,28 +296,28 @@ func NewBackupDaemonDeployment(backupDaemon *netcrackerv1.BackupDaemon, pgCluste
 			},
 		}
 	}
-// Add postgres-credentials volume regardless of storage type
+	// Add postgres-credentials volume regardless of storage type
 	deployment.Spec.Template.Spec.Volumes = append(
-      deployment.Spec.Template.Spec.Volumes,
-      corev1.Volume{
-          Name: "postgres-credentials",
-          VolumeSource: corev1.VolumeSource{
-              Secret: &corev1.SecretVolumeSource{
-                  SecretName:  GetRootSecretName(pgClusterName),
-                  DefaultMode: ptr.To[int32](420),
-              },
-          },
-      },
-      corev1.Volume{
-          Name: "replicator-credentials",
-          VolumeSource: corev1.VolumeSource{
-              Secret: &corev1.SecretVolumeSource{
-                  SecretName:  "replicator-credentials",
-                  DefaultMode: ptr.To[int32](420),
-              },
-          },
-      },
-  )
+		deployment.Spec.Template.Spec.Volumes,
+		corev1.Volume{
+			Name: "postgres-credentials",
+			VolumeSource: corev1.VolumeSource{
+				Secret: &corev1.SecretVolumeSource{
+					SecretName:  GetRootSecretName(pgClusterName),
+					DefaultMode: ptr.To[int32](420),
+				},
+			},
+		},
+		corev1.Volume{
+			Name: "replicator-credentials",
+			VolumeSource: corev1.VolumeSource{
+				Secret: &corev1.SecretVolumeSource{
+					SecretName:  "replicator-credentials",
+					DefaultMode: ptr.To[int32](420),
+				},
+			},
+		},
+	)
 
 	if backupDaemon.S3AliasesUsed {
 		deployment.Spec.Template.Spec.Containers[0].Env = append(

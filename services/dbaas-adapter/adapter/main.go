@@ -43,7 +43,7 @@ const (
 
 	secretsBasePath = "/var/run/secrets/postgresql/"
 
-	pgUserCredsPath    = secretsBasePath + "postgres-credentials/"
+	pgUserCredsPath       = secretsBasePath + "postgres-credentials/"
 	adapterCredsPath      = secretsBasePath + "dbaas-adapter-credentials/"
 	registrationCredsPath = secretsBasePath + "dbaas-aggregator-registration-credentials/"
 )
@@ -246,7 +246,7 @@ func main() {
 		*selfAddress = strings.ReplaceAll(*selfAddress, "8080", "8443")
 		logger.Info(fmt.Sprintf("replacing self address with https, %s", *selfAddress))
 	}
-	logger.Info(fmt.Sprintf("self address set for registring in aggregator, %s", *selfAddress))
+	logger.Info(fmt.Sprintf("self address set for registering in aggregator, %s", *selfAddress))
 	log.Fatal(fiber2.RunFiberServer(*servePort, func(app *fiber.App, ctx context.Context) error {
 		fiber2.BuildFiberDBaaSAdapterHandlers(
 			app,

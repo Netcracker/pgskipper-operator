@@ -175,17 +175,17 @@ func NewMonitoringDeployment(metricCollector *netcrackerv1.MetricCollector, pgcl
 								{
 									MountPath: util.SecretsBasePath + "monitoring-user-credentials",
 									Name:      "monitoring-user-credentials",
-									ReadOnly: true,
+									ReadOnly:  true,
 								},
 								{
 									MountPath: util.SecretsBasePath + "influx-db-admin-credentials",
 									Name:      "influx-db-admin-credentials",
-									ReadOnly: true,
+									ReadOnly:  true,
 								},
 								{
 									MountPath: util.SecretsBasePath + "postgres-credentials",
 									Name:      "postgres-credentials",
-									ReadOnly: true,
+									ReadOnly:  true,
 								},
 							},
 							Resources: *metricCollector.Resources,
@@ -222,7 +222,7 @@ func NewMonitoringDeployment(metricCollector *netcrackerv1.MetricCollector, pgcl
 			},
 		},
 	}
-	
+
 	if metricCollector.PriorityClassName != "" {
 		deployment.Spec.Template.Spec.PriorityClassName = metricCollector.PriorityClassName
 	}
