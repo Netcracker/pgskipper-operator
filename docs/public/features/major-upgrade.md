@@ -3,6 +3,7 @@ This section covers the upgrade process for the PostgreSQL service.
 * [Prerequisites](#prerequisites)
 * [Input Parameters](#input-parameters)
 * [Limitations](#limitations)
+* [Upgrading Logical Replication Slots](#upgrading-logical-replication-slots)
 * [Upgrade Process Under the Hood](#upgrade-process-under-the-hood)
 * [Validation Procedures](#validation-procedures)
 * [Troubleshooting](#troubleshooting)
@@ -63,6 +64,39 @@ If you are using Helm upgrade or Jenkins Job, it is better to collect the actual
 This is because Helm upgrade rewrites the whole `Custom Resource` and may change your cluster state, or break the Postgres Operator reconcile loop.  
 
 In case with using `backupDaemon.walArchiving: true` upgrade process may be ends with error. Please turn it off (`backupDaemon.walArchiving: false`) before start automatic upgrade, and turn it on after your job ends with success.
+
+# Upgrading Logical Replication Slots
+
+`pg_upgrade` is able to carry logical replication slots over to the new cluster, so subscribers don't need to be dropped and recreated after the Major Upgrade. This only works when PostgreSQL's own prerequisites for migrating logical slots are met. If they are not, `pg_upgrade` reports an error and the upgrade step fails.
+
+The prerequisites are:
+
+* The new cluster must have `wal_level` set to `logical`.
+* The new cluster must have `max_replication_slots` configured to a value greater than or equal to the number of slots present in the old cluster.
+* The output plugins referenced by the slots on the old cluster must be installed in the new PostgreSQL executable directory.
+* The old cluster has replicated all the transactions and logical decoding messages to subscribers (i.e., replication lag is zero).
+* All slots on the old cluster must be usable, i.e., there are no slots where `pg_replication_slots.conflicting` is not `true`.
+* The new cluster must not have permanent logical slots, i.e., there must be no slots where `pg_replication_slots.temporary` is `false`.
+
+If your cluster has logical replication slots (for example, used by CDC consumers), perform the following steps **before** starting the Major Upgrade:
+
+1. Stop the applications that write to the logical (publisher) databases that have replication slots, so that no new WAL is generated for those slots.
+2. Wait until the replication lag reaches zero for all logical slots. You can check the lag with the following query:
+
+```sql
+SELECT slot_name,
+       active,
+       pg_wal_lsn_diff(pg_current_wal_lsn(), confirmed_flush_lsn) AS lag_bytes
+FROM pg_replication_slots
+WHERE slot_type = 'logical';
+```
+
+   Proceed only once `lag_bytes` is `0` for every logical slot.
+
+3. Scale down the CDC/consumer applications that use these slots, so that the slots are no longer `active` (no active subscriber connections remain).
+4. Only after the lag is zero and all logical slots are inactive, start the Major Upgrade as described in [Input Parameters](#input-parameters).
+
+If these conditions aren't satisfied, the upgrade step will fail — see [Troubleshooting](#troubleshooting) and check `upgrade.output` for details. In that case, logical replication slots and subscriptions will need to be recreated manually after the upgrade completes.
 
 # Upgrade Process Under the Hood
 
