@@ -76,10 +76,10 @@ spec:
           {{- end }}
           {{- end }}
             - name: postgres-credentials
-              mountPath: /var/run/secrets/postgres-credentials
+              mountPath: /var/run/secrets/postgresql/postgres-credentials
               readOnly: true
             - name: replicator-credentials
-              mountPath: /var/run/secrets/replicator-credentials
+              mountPath: /var/run/secrets/postgresql/replicator-credentials
               readOnly: true
           env:
             - name: WATCH_NAMESPACE
