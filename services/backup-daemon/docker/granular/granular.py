@@ -151,9 +151,9 @@ def schedule_granular_backup(scheduler):
         logging.info('Start schedule granular backup')
         databases = configs.dbs_to_granular_backup()
         backup_request = {'databases': databases, 'namespace': 'schedule'}
-        compression_level = configs.granular_compression_level()
+        compression_level = configs.compression_level()
         if compression_level is not None:
-            backup_request['compression_level'] = compression_level
+            backup_request['compression_level'] = str(compression_level)
         items = cron_pattern.split(' ', 5)
         minute, hour, day, month, day_of_week = items[0], items[1], items[2], items[3], items[4]
 

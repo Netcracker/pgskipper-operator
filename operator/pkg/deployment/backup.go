@@ -159,10 +159,6 @@ func NewBackupDaemonDeployment(backupDaemon *netcrackerv1.BackupDaemon, pgCluste
 									Value: backupDaemon.GranularBackupSchedule,
 								},
 								{
-									Name:  "GRANULAR_COMPRESSION_LEVEL",
-									Value: strconv.Itoa(backupDaemon.GranularCompressionLevel),
-								},
-								{
 									Name:  "DATABASES_TO_SCHEDULE",
 									Value: backupDaemon.DatabasesToSchedule,
 								},
