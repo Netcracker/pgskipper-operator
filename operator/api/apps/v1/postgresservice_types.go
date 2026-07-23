@@ -286,6 +286,7 @@ type BackupDaemon struct {
 	JobFlag                string                   `json:"jobFlag,omitempty"`
 	ConnectTimeout         string                   `json:"connectTimeout,omitempty"`
 	GranularBackupSchedule string                   `json:"granularBackupSchedule,omitempty"`
+	GranularCompressionLevel int                      `json:"granularCompressionLevel,omitempty"`
 	DatabasesToSchedule    string                   `json:"databasesToSchedule,omitempty"`
 	WalArchiving           bool                     `json:"walArchiving,omitempty"`
 	AllowPrefix            bool                     `json:"allowPrefix,omitempty"`

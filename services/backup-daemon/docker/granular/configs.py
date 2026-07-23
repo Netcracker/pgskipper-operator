@@ -149,6 +149,11 @@ def diff_cron_pattern():
 def incr_cron_pattern():
     return os.getenv("INCR_SCHEDULE", "none")
 
+def granular_compression_level():
+    level = os.getenv("GRANULAR_COMPRESSION_LEVEL")
+    if level is not None:
+        return int(level)
+    return None
 
 def get_parallel_jobs():
     return os.getenv("JOB_FLAG" , "1")
