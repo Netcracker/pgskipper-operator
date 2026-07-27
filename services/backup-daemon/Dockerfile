@@ -15,7 +15,7 @@ RUN CGO_ENABLED=0 GOOS=$TARGETOS GOARCH=$TARGETARCH go build -o ./_output/bin/az
 
 FROM ubuntu:22.04
 
-ENV PGPASSWORD= PG_CLUSTER_NAME=common STORAGE_ROOT=/backup-storage EXTERNAL_STORAGE_ROOT=/external \
+ENV PG_CLUSTER_NAME=common STORAGE_ROOT=/backup-storage EXTERNAL_STORAGE_ROOT=/external \
     LC_ALL=en_US.UTF-8 \
     LANG=en_US.UTF-8
 
