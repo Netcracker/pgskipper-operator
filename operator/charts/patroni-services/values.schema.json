@@ -525,7 +525,7 @@
         },
         "compressionLevel": {
           "type": "integer",
-          "default": 5
+          "default": 9
         },
         "walArchiving": {
           "type": "boolean",
