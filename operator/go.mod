@@ -18,7 +18,7 @@ require (
 	google.golang.org/api v0.287.0
 	gopkg.in/yaml.v2 v2.4.0
 	k8s.io/api v0.35.3
-	k8s.io/apimachinery v0.36.2
+	k8s.io/apimachinery v0.36.3
 	k8s.io/client-go v0.35.3
 	k8s.io/code-generator v0.36.2
 	k8s.io/gengo v0.0.0-20211129171323-c02415ce4185
@@ -124,10 +124,10 @@ require (
 	k8s.io/apiextensions-apiserver v0.35.0 // indirect
 	k8s.io/gengo/v2 v2.0.0-20250922181213-ec3ebc5fd46b // indirect
 	k8s.io/klog/v2 v2.140.0 // indirect
-	k8s.io/streaming v0.36.2 // indirect
+	k8s.io/streaming v0.36.3 // indirect
 	sigs.k8s.io/json v0.0.0-20250730193827-2d320260d730 // indirect
 	sigs.k8s.io/randfill v1.0.0 // indirect
-	sigs.k8s.io/structured-merge-diff/v6 v6.3.2 // indirect
+	sigs.k8s.io/structured-merge-diff/v6 v6.3.3 // indirect
 	sigs.k8s.io/yaml v1.6.0 // indirect
 )
 
