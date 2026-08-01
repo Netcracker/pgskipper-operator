@@ -6,7 +6,7 @@ charset-normalizer==3.4.7
 click==8.4.2
 Flask==2.2.5
 Flask-RESTful==0.3.10
-google-auth==2.3.3
+google-auth==2.56.2
 idna==3.18
 importlib-metadata==9.0.0
 ipaddress==1.0.23
