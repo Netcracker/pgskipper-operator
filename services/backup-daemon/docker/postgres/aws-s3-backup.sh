@@ -53,6 +53,7 @@ POSTGRES_USER=$(read_secret_file "${PG_USER_CREDS_PATH}username" "postgres")
 POSTGRES_PASSWORD=$(read_secret_file "${PG_USER_CREDS_PATH}password" "")
 AWS_ACCESS_KEY_ID=$(read_secret_file "${AWS_CREDS_PATH}key_id" "")
 AWS_SECRET_ACCESS_KEY=$(read_secret_file "${AWS_CREDS_PATH}access_key" "")
+export AWS_ACCESS_KEY_ID AWS_SECRET_ACCESS_KEY
 
 function log() {
   log_module "$1" "aws-s3-backup" "$2"

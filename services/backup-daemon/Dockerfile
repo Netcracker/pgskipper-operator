@@ -42,6 +42,7 @@ RUN apt-get --no-install-recommends install -y comerr-dev \
                        postgresql-13 postgresql-14 postgresql-15 postgresql-16 postgresql-17 postgresql-18 \
                        jq \
                        openssl curl \
+                       awscli \
                        vim \
                        locales
 RUN python3 -m pip install -U setuptools==82.0.1 wheel==0.47.0
