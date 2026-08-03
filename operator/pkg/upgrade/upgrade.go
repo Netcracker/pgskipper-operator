@@ -46,6 +46,8 @@ var (
 	UpgradeLabels = map[string]string{"app": "pg-major-upgrade", "app.kubernetes.io/name": "pg-major-upgrade"}
 	powaUILabels  = map[string]string{"name": "powa"}
 	//noConnectionDatabases = []string{"template0", "template1"}
+
+	upgradePodOperationTimeout = 240 * time.Minute
 )
 
 func Init(client client.Client) *Upgrade {
@@ -438,16 +440,19 @@ func (u *Upgrade) ProceedUpgrade(cr *v1.PatroniCore, cluster *v1.PatroniClusterS
 	upgradePod.Spec.SecurityContext = patroniSfs.Spec.Template.Spec.SecurityContext
 
 	// create pod and wait till completed
-	if err := u.helper.CreatePod(upgradePod); err != nil {
+	state, err := u.createAndWaitTillPodIsReady(upgradePod)
+	if err != nil {
 		return err
 	}
-
-	if err = u.waitTillPodIsReady(upgradePod); err != nil {
-		failed, err := u.pgUpgradeCheckFailed(upgradePod, cluster, cr)
+	if state != "Succeeded" {
+		failed, checkErr := u.pgUpgradeCheckFailed(upgradePod, cluster, cr)
 		if failed {
 			return errors.New("postgresql major upgrade failed, please, check logs of upgrade pod")
 		}
-		return err
+		if checkErr != nil {
+			return checkErr
+		}
+		return fmt.Errorf("pod State is not equals to Succeeded: %s", state)
 	}
 
 	// clean up init key
@@ -635,12 +640,39 @@ func (u *Upgrade) ScalePowaDeployment(replicas int32) error {
 	return nil
 }
 
-func (u *Upgrade) waitTillPodIsReady(pod *corev1.Pod) error {
-	state, err := opUtil.WaitForCompletePod(pod)
-	if state != "Succeeded" {
-		return fmt.Errorf("pod State is not equals to Succeeded: %s", state)
+func (u *Upgrade) createAndWaitTillPodIsReady(pod *corev1.Pod) (string, error) {
+	if err := u.helper.CreatePod(pod); err != nil {
+		return "", err
 	}
-	return err
+
+	wasPending := false
+	pollErr := wait.PollUntilContextTimeout(context.Background(), 10*time.Second, upgradePodOperationTimeout, true, func(ctx context.Context) (done bool, err error) {
+		state, err := opUtil.GetPodPhase(pod)
+		logger.Info(fmt.Sprintf("Waiting for the pod phase Succeeded or Failed. Pod phase: %s", state))
+		if state == "Pending" {
+			wasPending = true
+		}
+		if wasPending && state == "NotFound" {
+			logger.Info("Upgrade pod disappeared after Pending phase, recreating it")
+			wasPending = false
+			if err := u.helper.CreatePod(pod); err != nil {
+				return false, err
+			}
+			return false, nil
+		}
+		if state == "Succeeded" || state == "Failed" {
+			return true, nil
+		}
+		return false, err
+	})
+	if pollErr != nil {
+		if errors.Is(pollErr, context.DeadlineExceeded) || errors.Is(pollErr, context.Canceled) {
+			return "TimeOut", fmt.Errorf("upgrade pod operation timed out: %w", pollErr)
+		}
+		return "TimeOut", pollErr
+	}
+	state, _ := opUtil.GetPodPhase(pod)
+	return state, nil
 }
 
 func (u *Upgrade) waitTillPodIsRunning(pod *corev1.Pod) error {
