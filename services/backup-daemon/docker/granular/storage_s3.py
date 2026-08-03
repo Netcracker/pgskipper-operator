@@ -194,9 +194,7 @@ class AwsS3Vault:
                 namespace = vault.split("/", 2)[1]
                 if namespace not in namespaces:
                     namespaces.append(namespace)
-                else:
-                    pass
-            return namespaces
+        return namespaces
 
     def get_backup_ids(self, storage, namespace):
         namespaced_path = self.get_prefixed_path(storage + "/" + namespace)
@@ -208,9 +206,7 @@ class AwsS3Vault:
                 backup_id = vault.split("/", 3)[2]
                 if backup_id not in backup_ids:
                     backup_ids.append(backup_id)
-                else:
-                    pass
-            return backup_ids
+        return backup_ids
 
     def get_prefixed_path(self, path):
         if self.aws_prefix:
