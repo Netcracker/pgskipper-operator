@@ -101,10 +101,17 @@ func (m *PatroniDRManager) processHealthRequest(response http.ResponseWriter, re
 	if err == nil {
 		isHealthy := m.patroniHelper.IsPatroniClusterHealthy(config)
 		isDegraded := m.patroniHelper.IsPatroniClusterDegraded(config, m.cluster.PgHost)
+		reconcileSuccessfull := m.helper.GetCurrentCRStatus() == "successful"
 		if isHealthy && !isDegraded {
+			log.Info("Patroni cluster is healthy")
 			status = "up"
 		}
 		if isDegraded {
+			log.Info("Patroni cluster is degraded")
+			status = "degraded"
+		}
+		if !reconcileSuccessfull {
+			log.Info("Reconcile status is not successful, setting health status to degraded")
 			status = "degraded"
 		}
 	}
