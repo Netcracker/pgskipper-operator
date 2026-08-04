@@ -38,6 +38,7 @@ type Backup struct {
 	Info       Info              `json:"info"`
 	Label      string            `json:"label"`
 	Type       string            `json:"type"`
+	Timestamp  Timestamp         `json:"timestamp"`
 }
 
 type Info struct {
@@ -56,6 +57,11 @@ type Status struct {
 	Code    int    `json:"code"`
 	Lock    Lock   `json:"lock"`
 	Message string `json:"message"`
+}
+
+type Timestamp struct {
+	Start int `json:"start"`
+	Stop  int `json:"stop"`	
 }
 
 func MakeFullBackup(timestamp string) error {
