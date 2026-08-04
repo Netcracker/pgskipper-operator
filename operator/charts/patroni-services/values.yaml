@@ -213,6 +213,11 @@ backupDaemon:
     type: provisioned
     # Size of the PVC that will be create for each of Patroni Pod as mount for data files
     size: 1Gi
+    # Optional annotations to apply to PVCs created for backup daemon storage.
+    # Use this to protect PVCs from ArgoCD pruning or add custom metadata.
+    # Example: Prevent ArgoCD from deleting PVCs during sync:
+    #    annotations:
+    #      argocd.argoproj.io/sync-options: Prune=false
     # Parameter specifies the list of labels that is used to bind suitable
     # persistent volumes with the persistent volume claims
     #    selectors:
@@ -240,6 +245,8 @@ backupDaemon:
 #     size: 3Gi
 #     volumes:
 #       - pg-backrest-backups-pv-1
+#     annotations:
+#       argocd.argoproj.io/sync-options: Prune=false
 #   s3:
 #     bucket: "pgbackrest"
 #     endpoint: "https://minio-service"
