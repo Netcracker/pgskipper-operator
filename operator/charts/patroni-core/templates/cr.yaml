@@ -124,6 +124,10 @@ spec:
         - {{ . }}
           {{- end }}
       {{ end }}
+      {{ if .Values.patroni.storage.annotations }}
+      annotations:
+          {{- toYaml .Values.patroni.storage.annotations | nindent 8 }}
+      {{ end }}
     {{ if .Values.patroni.standbyCluster }}
     standbyCluster:
       host:  {{ .Values.patroni.standbyCluster.host }}

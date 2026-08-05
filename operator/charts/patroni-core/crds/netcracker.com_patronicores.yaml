@@ -2113,6 +2113,10 @@ spec:
                         items:
                           type: string
                         type: array
+                      annotations:
+                        additionalProperties:
+                          type: string
+                        type: object
                       nodes:
                         items:
                           type: string
@@ -2470,6 +2474,10 @@ spec:
                         items:
                           type: string
                         type: array
+                      annotations:
+                        additionalProperties:
+                          type: string
+                        type: object
                       nodes:
                         items:
                           type: string
@@ -2603,6 +2611,10 @@ spec:
                         items:
                           type: string
                         type: array
+                      annotations:
+                        additionalProperties:
+                          type: string
+                        type: object
                       nodes:
                         items:
                           type: string

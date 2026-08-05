@@ -98,6 +98,10 @@ spec:
         - {{ . }}
           {{- end }}
       {{ end }}
+      {{ if .Values.backupDaemon.storage.annotations }}
+      annotations:
+          {{- toYaml .Values.backupDaemon.storage.annotations | nindent 8 }}
+      {{ end }}
     {{ if .Values.backupDaemon.priorityClassName }}
     priorityClassName: {{ .Values.backupDaemon.priorityClassName }}
     {{ end }}

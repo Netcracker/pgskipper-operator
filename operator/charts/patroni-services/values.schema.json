@@ -1266,6 +1266,13 @@
           "items": {
             "type": "string"
           }
+        },
+        "annotations": {
+          "type": "object",
+          "additionalProperties": {
+            "type": "string"
+          },
+          "description": "Optional annotations to apply to PVCs created for this storage. Use this to protect PVCs from ArgoCD pruning or add custom metadata."
         }
       }
     },

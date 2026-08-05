@@ -69,8 +69,9 @@ func NewPvc(pvcName string, storageEntity *commonv1.Storage, idx int) *corev1.Pe
 
 	pvc := &corev1.PersistentVolumeClaim{
 		ObjectMeta: metav1.ObjectMeta{
-			Name:      pvcName,
-			Namespace: util.GetNameSpace(),
+			Name:        pvcName,
+			Namespace:   util.GetNameSpace(),
+			Annotations: storageEntity.Annotations,
 		},
 		Spec: pvcSpec,
 	}
