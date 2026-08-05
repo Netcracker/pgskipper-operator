@@ -271,6 +271,15 @@ func (h *Helper) GetCurrentSiteManagerStatus() *qubershipv1.SiteManagerStatus {
 	return nil
 }
 
+func (h *Helper) GetCurrentCRStatus() string {
+	if cr, err := h.GetPostgresServiceCR(); err == nil {
+		if len(cr.Status.Conditions) > 0 {
+			return strings.ToLower(cr.Status.Conditions[0].Type)
+		}
+	}
+	return ""
+}
+
 //
 //func (h *Helper) UpdateSiteManagerStatusWithRetry(mode string, status string, clusterName string, patroniUrl string, pgHost string) error {
 //	patroniReg := fmt.Sprintf("pg-%s-node", clusterName)
