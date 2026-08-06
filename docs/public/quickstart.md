@@ -59,14 +59,30 @@ For `backupDaemon.storage` section point your PV the same way, but in a single c
 
 When setup is complete, we can proceed to install the postgres operator.
 
-Manually install CRD for Patroni-Core:
+### CRD Installation
+
+CRDs are cluster-scoped resources managed as a **dedicated application** that must be installed and synced before the main operator charts. The main microservice deployments rely on pre-installed CRDs and must not attempt to install them independently.
+
+Install the CRD application first:
+
 ```
 kubectl create -f ./operator/charts/patroni-core/crds/netcracker.com_patronicores.yaml
-```
-Manually install CRD for Postgres-Services
-```
 kubectl create -f ./operator/charts/patroni-services/crds/netcracker.com_patroniservices.yaml
 ```
+
+Wait for the CRDs to be registered before proceeding:
+
+```
+kubectl get crd netcracker.com_patronicores.yaml patroniservices.netcracker.com
+```
+
+#### Restricted Environments
+
+In environments where the deployment user lacks cluster-wide permissions, the dedicated CRDs application must **not** be installed. Instead, a cluster administrator must pre-install the CRDs out-of-band, and the `DISABLE_CRD=true` flag must be set on the main microservice application.
+
+> **Note:** `DISABLE_CRD=true` is deprecated for environments with cluster-wide permissions. Use the dedicated CRDs application approach in all other cases.
+
+### Install Patroni-Core Operator
 
 Install Patroni-Core Operator via Helm by following command:
 ```

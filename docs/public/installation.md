@@ -33,7 +33,7 @@ Both charts can be installed separately, but `Postgres` should be always initial
 The prerequisites to deploy the Postgres Service are as follows:
 
 * The project or namespace should be created.
-* The Custom Resource Definition (CRD) should be created by the cloud administrator, if deploy user do not have rights for CRD creation role.
+* The Custom Resource Definition (CRD) should be created by the cloud administrator, if deploy user do not have rights for CRD creation role. See [CRD Installation Approaches](#crd-installation-approaches) for available options.
 * If Dynamic Volume Provisioning is not available, all the persistence volumes for Patroni and Backup Daemon should be created manually, and NodeSelectors (that selects particular nodes) should be specified explicitly (or NodeAffinity are set on PVs).
 * In case of using `cinder` as Dynamic Volume Provisioning, you have to set `patroni.securityContext.fsGroupChangePolicy` as `OnRootMismatch` in deploy parameter.
 * In case of using `cinder` as Dynamic Volume Provisioning, you have to set both `backupDaemon.securityContext.runAsUser` and `backupDaemon.securityContext.fsGroup` in deploy parameter.
@@ -773,6 +773,36 @@ Patroni Core Operator allows configuration of TLS for PostgreSQL. By default, re
 | pgBackRest.s3.verifySsl      | bool     | no        | n/a                 | Specifies do the pgBackRest verify secure connection to the s3, or not. Possible value true or false.                         |
 
 # Installation
+
+## CRD Installation Approaches
+
+CRDs (`PatroniCore` and `PostgresService`) are cluster-scoped resources and require cluster-wide permissions to install. There are two approaches depending on the deployment environment.
+
+### Dedicated CRDs Application (Recommended)
+
+In standard environments where cluster-wide permissions are available, CRDs are managed as a **separate application** that is installed before the main microservice charts. This is the recommended approach because it makes CRD lifecycle management explicit and independent of the operator deployment.
+
+**Deployment order:**
+
+1. Install/sync the dedicated CRDs application first:
+
+   ```bash
+   kubectl create -f ./operator/charts/patroni-core/crds/netcracker.com_patronicores.yaml
+   kubectl create -f ./operator/charts/patroni-services/crds/netcracker.com_patroniservices.yaml
+   ```
+
+2. Wait for the CRD application to reach a synced/healthy state before proceeding.
+
+3. Install the main microservice applications (`patroni-core`, `patroni-services`). These deployments rely on the CRDs being pre-installed and **must not** attempt to install CRDs themselves.
+
+### Restricted Environments (No Cluster-Wide Permissions)
+
+In restricted environments where the deployment user does **not** have cluster-wide permissions (e.g., no rights to create `ClusterRole`, `ClusterRoleBinding`, or CRD resources), the dedicated CRDs application **must not be installed**. Instead:
+
+- The CRDs must be pre-installed by a cluster administrator out-of-band.
+- Set the `DISABLE_CRD=true` flag on the main microservice application to prevent it from attempting CRD installation.
+
+> **Deprecated:** `DISABLE_CRD=true` is deprecated for all environments where cluster-wide permissions are available. Use the dedicated CRDs application approach instead. The flag is retained only for restricted environments where cluster-wide permissions are unavailable.
 
 ### Helm
 
