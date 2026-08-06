@@ -1217,21 +1217,63 @@ queries:
     databases:
     - master
     metrics:
-    - pg_stat_bgwriter_checkpoints_timed
-    - pg_stat_bgwriter_checkpoint_sync_time
-    - pg_stat_bgwriter_buffers_backend
     - pg_stat_bgwriter_buffers_alloc
     - pg_stat_bgwriter_stats_reset
-    - pg_stat_bgwriter_checkpoints_req
-    - pg_stat_bgwriter_checkpoint_write_time
-    - pg_stat_bgwriter_buffers_checkpoint
     - pg_stat_bgwriter_buffers_clean
     - pg_stat_bgwriter_maxwritten_clean
-    - pg_stat_bgwriter_buffers_backend_fsync
-    sql: SELECT  current_database() as datname, checkpoints_timed as pg_stat_bgwriter_checkpoints_timed, checkpoints_req as pg_stat_bgwriter_checkpoints_req,
-      checkpoint_write_time as pg_stat_bgwriter_checkpoint_write_time, checkpoint_sync_time as pg_stat_bgwriter_checkpoint_sync_time, buffers_checkpoint as pg_stat_bgwriter_buffers_checkpoint, buffers_clean as pg_stat_bgwriter_buffers_clean,
-      maxwritten_clean as pg_stat_bgwriter_maxwritten_clean, buffers_backend as pg_stat_bgwriter_buffers_backend, buffers_backend_fsync as pg_stat_bgwriter_buffers_backend_fsync, buffers_alloc as pg_stat_bgwriter_buffers_alloc, stats_reset as pg_stat_bgwriter_stats_reset
+    sql: SELECT  current_database() as datname, buffers_alloc as pg_stat_bgwriter_buffers_alloc, stats_reset as pg_stat_bgwriter_stats_reset,
+      buffers_clean as pg_stat_bgwriter_buffers_clean, maxwritten_clean as pg_stat_bgwriter_maxwritten_clean
       FROM  pg_stat_bgwriter
+  pg_stat_checkpointer_query:
+    databases:
+    - master
+    metrics:
+    - pg_stat_bgwriter_checkpoints_timed
+    - pg_stat_bgwriter_checkpoints_req
+    - pg_stat_bgwriter_checkpoint_write_time
+    - pg_stat_bgwriter_checkpoint_sync_time
+    - pg_stat_bgwriter_buffers_checkpoint
+    sql: |
+      SELECT  current_database() as datname, 
+      CASE WHEN current_setting('server_version_num')::int >= 170000 
+        THEN (SELECT num_timed FROM pg_stat_checkpointer)
+        ELSE (SELECT checkpoints_timed FROM pg_stat_bgwriter)
+      END AS pg_stat_bgwriter_checkpoints_timed,
+      CASE WHEN current_setting('server_version_num')::int >= 170000 
+        THEN (SELECT num_requested FROM pg_stat_checkpointer)
+        ELSE (SELECT checkpoints_req FROM pg_stat_bgwriter)
+      END AS pg_stat_bgwriter_checkpoints_req,
+      CASE WHEN current_setting('server_version_num')::int >= 170000
+        THEN (SELECT write_time      FROM pg_stat_checkpointer)
+        ELSE (SELECT checkpoint_write_time  FROM pg_stat_bgwriter)
+      END AS pg_stat_bgwriter_checkpoint_write_time,
+      CASE WHEN current_setting('server_version_num')::int >= 170000
+        THEN (SELECT sync_time       FROM pg_stat_checkpointer)
+        ELSE (SELECT checkpoint_sync_time   FROM pg_stat_bgwriter)
+      END AS pg_stat_bgwriter_checkpoint_sync_time,
+      CASE WHEN current_setting('server_version_num')::int >= 170000
+        THEN (SELECT buffers_written FROM pg_stat_checkpointer)
+        ELSE (SELECT buffers_checkpoint     FROM pg_stat_bgwriter)
+      END AS pg_stat_bgwriter_buffers_checkpoint
+  pg_stat_io_backend_query:
+    databases:
+    - master
+    metrics:
+    - pg_stat_bgwriter_buffers_backend
+    - pg_stat_bgwriter_buffers_backend_fsync
+    sql: 
+      SELECT current_database() as datname,
+      CASE WHEN current_setting('server_version_num')::int >= 160000
+        THEN (SELECT COALESCE(sum(writes), 0) 
+          FROM pg_stat_io WHERE backend_type = 'client backend'
+          AND object = 'relation')
+        ELSE (SELECT buffers_backend     FROM pg_stat_bgwriter)
+      END AS pg_stat_bgwriter_buffers_backend,
+      CASE WHEN current_setting('server_version_num')::int >= 160000
+        THEN (SELECT COALESCE(sum(fsyncs), 0) 
+          FROM pg_stat_io WHERE backend_type = 'client backend')
+        ELSE (SELECT buffers_backend_fsync     FROM pg_stat_bgwriter)
+      END AS pg_stat_bgwriter_buffers_backend_fsync
   pg_stat_calls_query:
     databases:
     - master
