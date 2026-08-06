@@ -94,6 +94,11 @@ app.kubernetes.io/managed-by: {{ .Release.Service }}
 app.kubernetes.io/technology: "go"
 {{- end -}}
 
+{{/* Ingress/HTTPRoute labels */}}
+{{- define "ingress.labels" -}}
+deployment.netcracker.com/ingress-audience-type: "ops-user"
+deployment.netcracker.com/ingress-type: "private-network"
+{{- end -}}
 
 {{/*
 Create the name of the service account to use

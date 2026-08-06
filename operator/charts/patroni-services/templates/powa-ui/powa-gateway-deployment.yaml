@@ -6,6 +6,7 @@ metadata:
   name: powa-ui-httproute
   labels:
     {{ include "kubernetes.labels" . | nindent 4 }}
+    {{ include "ingress.labels" . | nindent 4 }}
 spec:
   parentRefs:
   - name: {{ include "gateway.name" . }}

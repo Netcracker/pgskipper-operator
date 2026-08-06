@@ -6,6 +6,7 @@ metadata:
   labels:
     name: powa-ui-ingress
       {{ include "kubernetes.labels" . | nindent 4 }}
+      {{ include "ingress.labels" . | nindent 4 }}
   annotations:
   {{- if .Values.tls.enabled }}
     nginx.ingress.kubernetes.io/backend-protocol: HTTPS
