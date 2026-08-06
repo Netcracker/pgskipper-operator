@@ -224,12 +224,21 @@ func (ph *PatroniHelper) isLeaderExist(config ClusterStatus) bool {
 	members := config.Members
 	for i := 0; i < len(members); i++ {
 		role := members[i].Role
-		if role == "leader" || role == "standby_leader" {
+		switch role {
+		case "leader":
 			logger.Debug("Check is Leader Exist - True")
 			return true
+		case "standby_leader":
+			state := members[i].State
+			if state == "streaming" {
+				logger.Debug("Check is Standby Leader Exist - True")
+				return true
+			} else {
+				logger.Info("Standby Leader Exists, but not in streaming state")
+			}
 		}
 	}
-	logger.Debug("Check is Leader Exist - False")
+	logger.Debug("Check is Leader or Standby Leader Exist - False")
 	return false
 }
 
