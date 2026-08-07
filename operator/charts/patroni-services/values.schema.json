@@ -35,6 +35,18 @@
     "global": {
       "$ref": "#/$defs/global"
     },
+    "GATEWAY_SYSTEM_TYPE": {
+      "type": "string",
+      "default": "legacy-ingress"
+    },
+    "GATEWAY_SYSTEM_NAMESPACE": {
+      "type": "string",
+      "default": "gateway-system"
+    },
+    "GATEWAY_SYSTEM_NAME": {
+      "type": "string",
+      "default": "default-external-gateway"
+    },
     "serviceAccount": {
       "$ref": "#/$defs/serviceAccount"
     },
