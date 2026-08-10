@@ -346,6 +346,17 @@ ReadOnly Postgres host for DBaaS adapter
 {{- end -}}
 
 {{/*
+Return type for gateway
+*/}}
+{{- define "gateway.type" -}}
+{{- if and .Values.GATEWAY_SYSTEM_TYPE .Values.global.cloudIntegrationEnabled }}
+{{- .Values.GATEWAY_SYSTEM_TYPE }}
+{{- else }}
+{{- default "legacy-ingress" .Values.powaUI.ingress.gatewayType }}
+{{- end -}}
+{{- end -}}
+
+{{/*
 Return name for gateway
 */}}
 {{- define "gateway.name" -}}
