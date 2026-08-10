@@ -1063,6 +1063,18 @@
             },
             "host": {
               "type": "string"
+            },
+            "gatewayType": {
+              "type": "string",
+              "default": "legacy-ingress"
+            },
+            "gatewayName": {
+              "type": "string",
+              "default": "default-external-gateway"
+            },
+            "gatewayNamespace": {
+              "type": "string",
+              "default": "gateway-system"
             }
           }
         },
