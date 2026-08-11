@@ -81,3 +81,5 @@ tags:
   nofailover: ${DR_MODE}
   noloadbalance: false
   nosync: false
+log:
+  level: WARNING

@@ -221,10 +221,22 @@ For advanced installation scenarios (AWS, Azure, GCP, disaster recovery), see th
 |-----------|-------------|---------|
 | `patroni.replicas` | Number of PostgreSQL replicas | `2` |
 | `patroni.storage.size` | PV size per replica | `5Gi` |
+| `patroni.patroniParams` | Patroni DCS configuration parameters | See below |
 | `backupDaemon.install` | Enable backup daemon | `true` |
 | `backupDaemon.schedule` | Backup schedule (cron) | `0 0/7 * * *` |
 | `metricCollector.install` | Enable monitoring stack | `true` |
 | `tls.enabled` | Enable TLS/SSL | `false` |
+
+### Patroni Configuration Defaults
+
+The operator applies the following default Patroni configuration (from `operator/build/configs/patroni.config.yaml`):
+
+| Parameter | Default Value | Description |
+|-----------|---------------|-------------|
+| `loop_wait` | `20s` | Time between Patroni state checks |
+| `ttl` | `45s` | Time-to-live for leader lock in DCS |
+| `retry_timeout` | `10s` | Timeout for retrying failed operations |
+
 
 See Helm chart values files for comprehensive configuration options:
 - [patroni-core values](operator/charts/patroni-core/values.yaml)
