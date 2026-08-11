@@ -236,9 +236,7 @@ The operator applies the following default Patroni configuration (from `operator
 | `loop_wait` | `20s` | Time between Patroni state checks |
 | `ttl` | `45s` | Time-to-live for leader lock in DCS |
 | `retry_timeout` | `10s` | Timeout for retrying failed operations |
-| `log.level` | `WARNING` | Patroni log level (INFO, WARNING, ERROR). Set to WARNING to suppress INFO-level heartbeat logs |
 
-**Note on logging**: The default log level is `WARNING` to reduce log verbosity in production. This suppresses INFO-level "no action" heartbeat messages (every ~15s) while preserving important alerts like failovers, promotions, replication issues, and errors.
 
 See Helm chart values files for comprehensive configuration options:
 - [patroni-core values](operator/charts/patroni-core/values.yaml)
