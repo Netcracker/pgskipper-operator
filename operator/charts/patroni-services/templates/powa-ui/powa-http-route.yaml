@@ -7,6 +7,7 @@ metadata:
   name: powa-ui-frontend-redirect
   labels:
     {{ include "kubernetes.labels" . | nindent 4 }}
+    {{ include "ingress.labels" . | nindent 4 }}
 spec:
   parentRefs:
   - name: {{ include "gateway.name" . }}
