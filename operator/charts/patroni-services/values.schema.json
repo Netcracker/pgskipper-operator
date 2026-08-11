@@ -4,6 +4,26 @@
   "type": "object",
   "additionalProperties": true,
   "properties": {
+    "pvc": {
+      "type": "object",
+      "additionalProperties": false,
+      "description": "Global PVC configuration",
+      "properties": {
+        "metadata": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "annotations": {
+              "type": "object",
+              "additionalProperties": {
+                "type": "string"
+              },
+              "description": "Global annotations applied to all PVCs. Storage-specific annotations will override these."
+            }
+          }
+        }
+      }
+    },
     "postgresUser": {
       "type": "string",
       "default": "postgres",

@@ -2,6 +2,14 @@
 ## This is a YAML-formatted file.
 ## Declare variables to be passed into your templates.
 
+# Global PVC annotations applied to all PersistentVolumeClaims created by the operator.
+# Use this to protect PVCs from ArgoCD pruning or add custom metadata.
+# Storage-specific annotations will override these global annotations if both are set.
+# pvc:
+#   metadata:
+#     annotations:
+#       argocd.argoproj.io/sync-options: Prune=false
+
 # The name of database superuser.
 postgresUser: postgres
 # The password for the database superuser.
@@ -185,11 +193,6 @@ patroni:
     type: pv
     # Size of the PVC that will be create for each of Patroni Pod as mount for data files
     size: 5Gi
-    # Optional annotations to apply to PVCs created for Patroni storage.
-    # Use this to protect PVCs from ArgoCD pruning or add custom metadata.
-    # Example: Prevent ArgoCD from deleting PVCs during sync:
-    #    annotations:
-    #      argocd.argoproj.io/sync-options: Prune=false
     # Parameter specifies the list of labels that is used to bind suitable
     # persistent volumes with the persistent volume claims
     #    selectors:
@@ -233,10 +236,6 @@ patroni:
     #    type: provisioned
     # Size of the PVC that will be created for each of Patroni Pod as mount for data files
     #    size: 10Gi
-    # Optional annotations to apply to PVCs created for WAL storage.
-    # Use this to protect PVCs from ArgoCD pruning or add custom metadata.
-    #    annotations:
-    #      argocd.argoproj.io/sync-options: Prune=false
     # Parameter specifies the list of labels that is used to bind suitable
     # persistent volumes with the persistent volume claims
     #    selectors:
@@ -269,8 +268,6 @@ patroni:
 #     size: 3Gi
 #     volumes:
 #       - pg-backrest-backups-pv-1
-#     annotations:
-#       argocd.argoproj.io/sync-options: Prune=false
 #   s3:
 #     bucket: "pgbackrest"
 #     endpoint: "https://minio-service"
