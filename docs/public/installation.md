@@ -198,16 +198,17 @@ This sections describes all possible deploy parameters per Helm Chart per compon
 
 The general parameters used for the configurations are specified below.
 
-| Parameter             | Type   | Mandatory | Default value | Description                                                                            |
-|-----------------------|--------|-----------|---------------|----------------------------------------------------------------------------------------|
-| postgresUser          | string | no        | postgres      | Specifies the name of the database superuser.                                          |
-| postgresPassword      | string | yes       | p@ssWOrD1      | Specifies the password for the database superuser.                                     |
-| replicatorPassword    | string | no        | replicator      | Specifies the password for the database replicator.                                    |
-| serviceAccount.create | bool   | no        | true          | Specifies whether a service account needs to be created.                               |
-| serviceAccount.name   | string | no        | postgres-sa   | Specifies name of the Service Account under which Postgres Operator will work.         |
-| runTestsOnly          | bool   | no        | false         | Indicates whether to run Integration Tests (skipping deploy step) only or not.         |
-| affinity              | json   | no        | n/a           | Defines affinity scheduling rules for all components. Can be overridden per component. |
-| podLabels             | yaml   | no        | n/a           | Specifies custom pod labels for all the components. Can be overridden per component.   |
+| Parameter                  | Type   | Mandatory | Default value | Description                                                                            |
+|----------------------------|--------|-----------|---------------|----------------------------------------------------------------------------------------|
+| pvc.metadata.annotations   | map[string]string | no | n/a    | Global annotations applied to all PVCs created by the operator. Use `argocd.argoproj.io/sync-options: Prune=false` to protect all PVCs from ArgoCD pruning. Storage-specific annotations override global ones. |
+| postgresUser               | string | no        | postgres      | Specifies the name of the database superuser.                                          |
+| postgresPassword           | string | yes       | p@ssWOrD1      | Specifies the password for the database superuser.                                     |
+| replicatorPassword         | string | no        | replicator      | Specifies the password for the database replicator.                                    |
+| serviceAccount.create      | bool   | no        | true          | Specifies whether a service account needs to be created.                               |
+| serviceAccount.name        | string | no        | postgres-sa   | Specifies name of the Service Account under which Postgres Operator will work.         |
+| runTestsOnly               | bool   | no        | false         | Indicates whether to run Integration Tests (skipping deploy step) only or not.         |
+| affinity                   | json   | no        | n/a           | Defines affinity scheduling rules for all components. Can be overridden per component. |
+| podLabels                  | yaml   | no        | n/a           | Specifies custom pod labels for all the components. Can be overridden per component.   |
 
 **Note**: `postgresUser` is not the user which will be created during deployment. You should mention here the user which is already present with superuser role. If you need to use some other user instead of postgres, you should create the desired user manually with superuser role.
 
@@ -340,16 +341,17 @@ Patroni Core Operator allows configuration of TLS for PostgreSQL. By default, re
 
 The general parameters used for the configurations are specified below.
 
-| Parameter              | Type   | Mandatory | Default value | Description                                                                            |
-|------------------------|--------|-----------|---------------|----------------------------------------------------------------------------------------|
-| postgresUser           | string | no        | postgres      | Specifies the name of the database superuser.                                          |
-| postgresPassword       | string | yes       | p@ssWOrD1      | Specifies the password for the database superuser.                                     |
-| replicatorPassword     | string | no        | replicator      | Specifies the password for the database replicator.                                    |
-| serviceAccount.create  | bool   | no        | true          | Specifies whether a service account needs to be created.                               |
-| serviceAccount.name    | string | no        | postgres-sa   | Specifies name of the Service Account under which Postgres Operator will work.         |
-| runTestsOnly           | bool   | no        | false         | Indicates whether to run Integration Tests (skipping deploy step) only or not.         |
-| affinity               | json   | no        | n/a           | Defines affinity scheduling rules for all components. Can be overridden per component. |
-| podLabels              | yaml   | no        | n/a           | Specifies custom pod labels for all the components. Can be overridden per component.   |
+| Parameter                | Type   | Mandatory | Default value | Description                                                                            |
+|--------------------------|--------|-----------|---------------|----------------------------------------------------------------------------------------|
+| pvc.metadata.annotations | map[string]string | no | n/a    | Global annotations applied to all PVCs created by the operator. Use `argocd.argoproj.io/sync-options: Prune=false` to protect all PVCs from ArgoCD pruning. Storage-specific annotations override global ones. |
+| postgresUser             | string | no        | postgres      | Specifies the name of the database superuser.                                          |
+| postgresPassword         | string | yes       | p@ssWOrD1      | Specifies the password for the database superuser.                                     |
+| replicatorPassword       | string | no        | replicator      | Specifies the password for the database replicator.                                    |
+| serviceAccount.create    | bool   | no        | true          | Specifies whether a service account needs to be created.                               |
+| serviceAccount.name      | string | no        | postgres-sa   | Specifies name of the Service Account under which Postgres Operator will work.         |
+| runTestsOnly             | bool   | no        | false         | Indicates whether to run Integration Tests (skipping deploy step) only or not.         |
+| affinity                 | json   | no        | n/a           | Defines affinity scheduling rules for all components. Can be overridden per component. |
+| podLabels                | yaml   | no        | n/a           | Specifies custom pod labels for all the components. Can be overridden per component.   |
 
 **Note**: `postgresUser` is not the user which will be created during deployment. You should mention here the user which is already present with superuser role. If you need to use some other user instead of postgres, you should create the desired user manually with superuser role.
 
