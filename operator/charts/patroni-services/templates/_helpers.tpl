@@ -256,6 +256,16 @@ Usage: (fromYaml (include "backupDaemon.s3Aliases" .)).items
 items: {{ toYaml .Values.CLOUD_BACKUP_STORAGE_LOCATION | nindent 2 }}
 {{- else if .Values.backupDaemon.s3Aliases -}}
 items: {{ toYaml .Values.backupDaemon.s3Aliases | nindent 2 }}
+{{- else if .Values.backupDaemon.s3Storage -}}
+items:
+  - name: default
+    spec:
+      storageBucket: {{ .Values.backupDaemon.s3Storage.bucket | quote }}
+      storageServerUrl: {{ .Values.backupDaemon.s3Storage.url | quote }}
+      storageUsername: {{ .Values.backupDaemon.s3Storage.accessKeyId | quote }}
+      storageRegion: {{ default "us-east-1" .Values.backupDaemon.s3Storage.region | quote }}
+    secretContent:
+      storagePassword: {{ .Values.backupDaemon.s3Storage.secretAccessKey | quote }}
 {{- else -}}
 items: []
 {{- end -}}
