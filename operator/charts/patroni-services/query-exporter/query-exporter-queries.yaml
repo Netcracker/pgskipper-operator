@@ -1217,21 +1217,45 @@ queries:
     databases:
     - master
     metrics:
-    - pg_stat_bgwriter_checkpoints_timed
-    - pg_stat_bgwriter_checkpoint_sync_time
-    - pg_stat_bgwriter_buffers_backend
     - pg_stat_bgwriter_buffers_alloc
     - pg_stat_bgwriter_stats_reset
-    - pg_stat_bgwriter_checkpoints_req
-    - pg_stat_bgwriter_checkpoint_write_time
-    - pg_stat_bgwriter_buffers_checkpoint
     - pg_stat_bgwriter_buffers_clean
     - pg_stat_bgwriter_maxwritten_clean
+    sql: SELECT current_database() as datname, buffers_alloc as pg_stat_bgwriter_buffers_alloc, stats_reset as pg_stat_bgwriter_stats_reset, buffers_clean as pg_stat_bgwriter_buffers_clean, maxwritten_clean as pg_stat_bgwriter_maxwritten_clean FROM pg_stat_bgwriter
+  pg_stat_bgwriter_checkpoint_query:
+    databases:
+    - master
+    metrics:
+    - pg_stat_bgwriter_checkpoints_timed
+    - pg_stat_bgwriter_checkpoints_req
+    - pg_stat_bgwriter_checkpoint_write_time
+    - pg_stat_bgwriter_checkpoint_sync_time
+    - pg_stat_bgwriter_buffers_checkpoint
+    sql: SELECT current_database() as datname, checkpoints_timed as pg_stat_bgwriter_checkpoints_timed, checkpoints_req as pg_stat_bgwriter_checkpoints_req, checkpoint_write_time as pg_stat_bgwriter_checkpoint_write_time, checkpoint_sync_time as pg_stat_bgwriter_checkpoint_sync_time, buffers_checkpoint as pg_stat_bgwriter_buffers_checkpoint FROM pg_stat_bgwriter
+  pg_stat_bgwriter_backend_query:
+    databases:
+    - master
+    metrics:
+    - pg_stat_bgwriter_buffers_backend
     - pg_stat_bgwriter_buffers_backend_fsync
-    sql: SELECT  current_database() as datname, checkpoints_timed as pg_stat_bgwriter_checkpoints_timed, checkpoints_req as pg_stat_bgwriter_checkpoints_req,
-      checkpoint_write_time as pg_stat_bgwriter_checkpoint_write_time, checkpoint_sync_time as pg_stat_bgwriter_checkpoint_sync_time, buffers_checkpoint as pg_stat_bgwriter_buffers_checkpoint, buffers_clean as pg_stat_bgwriter_buffers_clean,
-      maxwritten_clean as pg_stat_bgwriter_maxwritten_clean, buffers_backend as pg_stat_bgwriter_buffers_backend, buffers_backend_fsync as pg_stat_bgwriter_buffers_backend_fsync, buffers_alloc as pg_stat_bgwriter_buffers_alloc, stats_reset as pg_stat_bgwriter_stats_reset
-      FROM  pg_stat_bgwriter
+    sql: SELECT current_database() as datname, buffers_backend as pg_stat_bgwriter_buffers_backend, buffers_backend_fsync as pg_stat_bgwriter_buffers_backend_fsync FROM pg_stat_bgwriter
+  pg_stat_checkpointer_query:
+    databases:
+    - master
+    metrics:
+    - pg_stat_bgwriter_checkpoints_timed
+    - pg_stat_bgwriter_checkpoints_req
+    - pg_stat_bgwriter_checkpoint_write_time
+    - pg_stat_bgwriter_checkpoint_sync_time
+    - pg_stat_bgwriter_buffers_checkpoint
+    sql: SELECT current_database() as datname, num_timed as pg_stat_bgwriter_checkpoints_timed, num_requested as pg_stat_bgwriter_checkpoints_req, write_time as pg_stat_bgwriter_checkpoint_write_time, sync_time as pg_stat_bgwriter_checkpoint_sync_time, buffers_written as pg_stat_bgwriter_buffers_checkpoint FROM pg_stat_checkpointer
+  pg_stat_io_backend_query:
+    databases:
+    - master
+    metrics:
+    - pg_stat_bgwriter_buffers_backend
+    - pg_stat_bgwriter_buffers_backend_fsync
+    sql: SELECT current_database() as datname, COALESCE(sum(writes), 0) as pg_stat_bgwriter_buffers_backend, COALESCE(sum(fsyncs), 0) as pg_stat_bgwriter_buffers_backend_fsync FROM pg_stat_io WHERE backend_type = 'client backend'
   pg_stat_calls_query:
     databases:
     - master
