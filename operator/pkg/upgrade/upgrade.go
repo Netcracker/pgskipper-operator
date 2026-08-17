@@ -290,6 +290,9 @@ func (u *Upgrade) pgUpgradeCheckFailed(upgradePod *corev1.Pod, cluster *v1.Patro
 		if err = opUtil.WaitForPatroni(cr, cluster.PatroniMasterSelectors, cluster.PatroniReplicasSelector); err != nil {
 			return false, err
 		}
+		if err = u.RestoreRODatabases(cluster.PgHost, cluster.ClusterName); err != nil {
+			return false, err
+		}
 		return true, nil
 	}
 	return false, nil
@@ -385,6 +388,10 @@ func (u *Upgrade) ProceedUpgrade(cr *v1.PatroniCore, cluster *v1.PatroniClusterS
 		return err
 	}
 
+	if err := u.HandleReplicationSlotsBeforeUpgrade(cluster.PgHost, cluster.ClusterName); err != nil {
+		return err
+	}
+
 	config, _ := u.helper.GetPatroniClusterConfig(cluster.PatroniUrl)
 	if !u.helper.IsPatroniClusterHealthy(config) {
 		return errors.New("patroni cluster is not healthy enough for upgrade procedure. Exiting")
@@ -467,6 +474,10 @@ func (u *Upgrade) ProceedUpgrade(cr *v1.PatroniCore, cluster *v1.PatroniClusterS
 	}
 
 	if err := opUtil.WaitForLeader(cluster.PatroniMasterSelectors); err != nil {
+		return err
+	}
+
+	if err := u.RestoreRODatabases(cluster.PgHost, cluster.ClusterName); err != nil {
 		return err
 	}
 
