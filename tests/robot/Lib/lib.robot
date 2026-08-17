@@ -53,7 +53,7 @@ Check master exists
     ...  Check  if master pod patroni exists
     ...
     Log To Console   \n---== Check master exists ==---
-    ${MASTER}=   Get Pod   label=pgtype:master   status=Running
+    ${MASTER}=   Get Pod   label=pgtype:primary   status=Running
     Should Not Be Empty  ${MASTER.metadata.name}
     Log To Console  Master pod: "${MASTER.metadata.name}"
 

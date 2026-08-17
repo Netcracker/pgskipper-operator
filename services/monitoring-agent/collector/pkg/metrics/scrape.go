@@ -211,7 +211,7 @@ func (s *Scraper) gatherClasterInfo(podItems []v1.Pod) (masters []v1.Pod, replic
 			workingNodes++
 		}
 		role := util.SafeGet(pod.Annotations["status"], append(make([]interface{}, 0), "role"), "")
-		if role == "master" {
+		if role == "primary" {
 			masters = append(masters, pod)
 			masterName = pod.Name
 		} else if role == "replica" {

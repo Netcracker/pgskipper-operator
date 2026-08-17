@@ -97,7 +97,7 @@ class pgsLibrary(object):
     def get_master_pod(self):
         for pod in self.pl_lib.get_pods(self._namespace):
             if "pgtype" in pod.metadata.labels and pod.metadata.labels[
-                'pgtype'] == 'master' and pod.status.phase == 'Running':
+                'pgtype'] == 'primary' and pod.status.phase == 'Running':
                 return pod
         BuiltIn().run_keyword('Fail', "Master pod not found")
         return None

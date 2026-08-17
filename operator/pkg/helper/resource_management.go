@@ -215,7 +215,12 @@ func (rm *ResourceManager) GetPodsByLabel(selectors map[string]string) (corev1.P
 	podList := &corev1.PodList{}
 	listOpts := []client.ListOption{
 		client.InNamespace(namespace),
-		client.MatchingLabels(selectors),
+	}
+	if util.UsesPatroniPrimaryPgTypeSelector(selectors) {
+		clusterName := selectors[util.PatroniClusterLabelKey]
+		listOpts = append(listOpts, client.MatchingLabelsSelector{Selector: util.PatroniPrimaryPodLabelSelector(clusterName)})
+	} else {
+		listOpts = append(listOpts, client.MatchingLabels(selectors))
 	}
 	if err := rm.kubeClient.List(context.Background(), podList, listOpts...); err != nil {
 		logger.Error("Can not get pods by label", zap.Error(err))

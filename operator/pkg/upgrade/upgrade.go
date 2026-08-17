@@ -42,7 +42,7 @@ import (
 var (
 	namespace     = opUtil.GetNameSpace()
 	logger        = opUtil.GetLogger()
-	MasterLabel   = map[string]string{"pgtype": "master"}
+	MasterLabel   = map[string]string{opUtil.PatroniPgTypeLabelKey: opUtil.PatroniRolePrimary}
 	UpgradeLabels = map[string]string{"app": "pg-major-upgrade", "app.kubernetes.io/name": "pg-major-upgrade"}
 	powaUILabels  = map[string]string{"name": "powa"}
 	//noConnectionDatabases = []string{"template0", "template1"}
@@ -535,7 +535,7 @@ func (u *Upgrade) getUpgradePod(cr *v1.PatroniCore, leaderName string, initDbArg
 						},
 						{
 							Name:  "TYPE",
-							Value: "master",
+							Value: opUtil.PatroniRolePrimary,
 						},
 						{
 							Name:  "OPERATOR",

@@ -50,8 +50,6 @@ kubernetes:
   labels:
     app: ${PATRONI_CLUSTER_NAME}
   role_label: pgtype
-  leader_label_value: master
-  standby_leader_label_value: master
   scope_label: app
   pod_ip: ${LISTEN_ADDR}
 postgresql:

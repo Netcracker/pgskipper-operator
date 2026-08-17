@@ -37,8 +37,8 @@ import (
 var (
 	logger              = util.GetLogger()
 	namespace           = util.GetNameSpace()
-	MasterLabel         = map[string]string{"pgtype": "master"}
-	ReplicasLabel       = map[string]string{"pgtype": "replica"}
+	MasterLabel   = map[string]string{util.PatroniPgTypeLabelKey: util.PatroniRolePrimary}
+	ReplicasLabel = map[string]string{util.PatroniPgTypeLabelKey: util.PatroniRoleReplica}
 	authHeaders         = map[string]AuthPair{}
 	patroniRunningState = []string{"running", "streaming", "in archive recovery"}
 
