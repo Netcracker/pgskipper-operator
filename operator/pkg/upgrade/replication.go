@@ -26,6 +26,7 @@ var (
 
 	terminateQuery = `SELECT pg_terminate_backend(pid) FROM pg_stat_activity WHERE datname = '%s' AND pid <> pg_backend_pid()`
 	restoreROQuery = `ALTER DATABASE "%s" SET default_transaction_read_only = off`
+	setRoQuery     = `ALTER DATABASE "%s" SET default_transaction_read_only = on`
 )
 
 type replicationSlot struct {
@@ -79,7 +80,7 @@ func uniqueLogicalDatabases(slots []replicationSlot) []string {
 func (u *Upgrade) prepareRODatabases(pgC *pgClient.PostgresClient, databases []string) error {
 	for _, db := range databases {
 		quotedDB := strings.ReplaceAll(db, `"`, `""`)
-		if err := pgC.Execute(fmt.Sprintf(restoreROQuery, quotedDB)); err != nil {
+		if err := pgC.Execute(fmt.Sprintf(setRoQuery, quotedDB)); err != nil {
 			return fmt.Errorf("failed to set database %q read-only: %w", db, err)
 		}
 		if err := pgC.Execute(fmt.Sprintf(terminateQuery, db)); err != nil {
@@ -174,7 +175,7 @@ func (u *Upgrade) restoreRODatabases(pgC *pgClient.PostgresClient, databases []s
 			continue
 		}
 		quotedDB := strings.ReplaceAll(db, `"`, `""`)
-		if err := pgC.Execute(fmt.Sprintf(`ALTER DATABASE "%s" SET default_transaction_read_only = off`, quotedDB)); err != nil {
+		if err := pgC.Execute(fmt.Sprintf(restoreROQuery, quotedDB)); err != nil {
 			return fmt.Errorf("failed to unset read-only for database %q: %w", db, err)
 		}
 		logger.Info(fmt.Sprintf(`Database "%s" read-only mode disabled`, db))
