@@ -63,6 +63,7 @@ const (
 
 	certificatesFolder               = "/certs"
 	metricCollectorCredentialsFolder = SecretsBasePath + "monitoring-user-credentials/"
+	patroniRestApiCredsFolder        = SecretsBasePath + "patroni-rest-api-credentials/"
 )
 
 func GetLogger() *zap.Logger {
@@ -152,7 +153,7 @@ func GetLeaderPod(client *http.Client, token, clusterName string) map[string]int
 
 	url := fmt.Sprintf("http://pg-%s-api:8008/cluster", clusterName)
 
-	status, response, err := ProcessHttpRequest(client, url, token)
+	status, response, err := ProcessPatroniHttpRequest(client, url)
 	if err != nil {
 		Log.Warn(fmt.Sprintf("Error, while http request to find leader patroni pod: %s", err))
 	}
@@ -184,6 +185,28 @@ func ProcessHttpRequest(client *http.Client, url string, token string) (string, 
 	}
 	var bearer = "bearer " + token
 	req.Header.Set("Authorization", bearer)
+	resp, err := client.Do(req)
+	if err != nil {
+		return "", nil, err
+	}
+	defer resp.Body.Close()
+	body, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return "", nil, err
+	}
+	return resp.Status, body, nil
+}
+
+func ProcessPatroniHttpRequest(client *http.Client, url string) (string, []byte, error) {
+	req, err := http.NewRequest("GET", url, nil)
+	if err != nil {
+		return "", nil, err
+	}
+	username := ReadSecretFile(patroniRestApiCredsFolder+"username", "")
+	password := ReadSecretFile(patroniRestApiCredsFolder+"password", "")
+	if username != "" && password != "" {
+		req.SetBasicAuth(username, password)
+	}
 	resp, err := client.Do(req)
 	if err != nil {
 		return "", nil, err

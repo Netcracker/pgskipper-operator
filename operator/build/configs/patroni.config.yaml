@@ -50,6 +50,8 @@ kubernetes:
   labels:
     app: ${PATRONI_CLUSTER_NAME}
   role_label: pgtype
+  leader_label_value: master
+  standby_leader_label_value: master
   scope_label: app
   pod_ip: ${LISTEN_ADDR}
 postgresql:
@@ -76,6 +78,9 @@ postgresql:
 restapi:
   connect_address: ${LISTEN_ADDR}:8008
   listen: ${LISTEN_ADDR}:8008
+  authentication:
+    username: ${PATRONI_REST_API_USER}
+    password: ${PATRONI_REST_API_PASSWORD}
 tags:
   clonefrom: false
   nofailover: ${DR_MODE}

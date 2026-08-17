@@ -150,7 +150,7 @@ func (s *Scraper) IsCurrentSiteActive(ctx context.Context) (bool, error) {
 	var response = ClusterInfo{}
 	url := fmt.Sprintf("http://pg-%s-api:8008/cluster", clusterName)
 
-	status, body, err := util.ProcessHttpRequest(s.httpClient, url, s.token)
+	status, body, err := util.ProcessPatroniHttpRequest(s.httpClient, url)
 	if err != nil {
 		logger.Error(fmt.Sprintf("Cannot collect backup status metric. url %v", url))
 		return false, err

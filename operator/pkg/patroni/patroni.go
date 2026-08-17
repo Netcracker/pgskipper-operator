@@ -47,6 +47,32 @@ type ClusterResponse struct {
 
 type Members map[string]interface{}
 
+func AddPatroniBasicAuth(req *http.Request) {
+	username := util.ReadSecretFile(util.PatroniRestApiCredsPath+"username", "")
+	password := util.ReadSecretFile(util.PatroniRestApiCredsPath+"password", "")
+	if username != "" && password != "" {
+		req.SetBasicAuth(username, password)
+	}
+}
+
+func patroniGet(client *http.Client, url string) (*http.Response, error) {
+	req, err := http.NewRequest(http.MethodGet, url, nil)
+	if err != nil {
+		return nil, err
+	}
+	AddPatroniBasicAuth(req)
+	return client.Do(req)
+}
+
+func patroniPost(client *http.Client, url string, body io.Reader) (*http.Response, error) {
+	req, err := http.NewRequest(http.MethodPost, url, body)
+	if err != nil {
+		return nil, err
+	}
+	AddPatroniBasicAuth(req)
+	return client.Do(req)
+}
+
 func SetWalArchiving(spec qubershipv1.PatroniServicesSpec, patroniUrl string) error {
 	postgreSQLParams := map[string]interface{}{}
 	recoveryParams := map[string]string{}
@@ -199,7 +225,7 @@ func SetSslStatus(cr *patroniv1.PatroniCore, patroniUrl string) error {
 
 func GetPatroniCurrentConfig(patroniUrl string) (map[string]interface{}, error) {
 
-	resp, err := http.Get(patroniUrl + "/config")
+	resp, err := patroniGet(&http.Client{}, patroniUrl+"/config")
 	if err != nil {
 		return nil, fmt.Errorf("failed to retrieve patroni config: %w", err)
 	}
@@ -440,6 +466,7 @@ func UpdatePatroniConfig(values map[string]interface{}, patroniUrl string) error
 			logger.Error("Cannot prepare request for updating patroni", zap.Error(err))
 			return false, nil
 		}
+		AddPatroniBasicAuth(req)
 		resp, err := client.Do(req)
 		if err != nil {
 			logger.Error(fmt.Sprintf("Failed to patch postgresql params via patroni, %v, Retrying", resp), zap.Error(err))
@@ -471,7 +498,7 @@ func getPatroniHosts(patroniUrl string) ([]string, error) {
 	hosts := make([]string, 0, 2)
 	response := ClusterResponse{}
 	if retryError := wait.PollUntilContextTimeout(context.Background(), time.Second, 1*time.Minute, true, func(ctx context.Context) (done bool, err error) {
-		resp, err := http.Get(patroniUrl + "cluster")
+		resp, err := patroniGet(&http.Client{}, patroniUrl+"cluster")
 		if err != nil {
 			logger.Error(fmt.Sprintf("cannot receive patroni hosts, get resp %v", resp), zap.Error(err))
 			return false, nil
@@ -503,7 +530,7 @@ func getPatroniHosts(patroniUrl string) ([]string, error) {
 
 func restartIfPending(patroniUrl string) error {
 	return wait.PollUntilContextTimeout(context.Background(), 10*time.Second, 120*time.Minute, true, func(ctx context.Context) (done bool, err error) {
-		resp, err := http.Get(patroniUrl + "patroni")
+		resp, err := patroniGet(&http.Client{}, patroniUrl+"patroni")
 		if err != nil {
 			logger.Error("Get request to patroni failed, retrying", zap.Error(err))
 			return false, nil
@@ -524,7 +551,7 @@ func restartIfPending(patroniUrl string) error {
 			pendingRestart, ok := responseAsJson["pending_restart"]
 			if ok && pendingRestart.(bool) {
 				logger.Info("restartPending, will schedule restart of patroni")
-				resp, err = http.Post(patroniUrl+"restart", "", nil)
+				resp, err = patroniPost(&http.Client{}, patroniUrl+"restart", nil)
 				defer func() {
 					_ = resp.Body.Close()
 				}()

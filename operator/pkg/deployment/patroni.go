@@ -183,6 +183,24 @@ func NewPatroniStatefulset(cr *patroniv1.PatroniCore, deploymentIdx int, cluster
 									},
 								},
 								{
+									Name: "PATRONI_REST_API_USER",
+									ValueFrom: &corev1.EnvVarSource{
+										SecretKeyRef: &corev1.SecretKeySelector{
+											LocalObjectReference: corev1.LocalObjectReference{Name: "patroni-rest-api-credentials"},
+											Key:                  "username",
+										},
+									},
+								},
+								{
+									Name: "PATRONI_REST_API_PASSWORD",
+									ValueFrom: &corev1.EnvVarSource{
+										SecretKeyRef: &corev1.SecretKeySelector{
+											LocalObjectReference: corev1.LocalObjectReference{Name: "patroni-rest-api-credentials"},
+											Key:                  "password",
+										},
+									},
+								},
+								{
 									Name:  "PG_MAX_CONNECTIONS",
 									Value: getMaxConnections(cr),
 								},

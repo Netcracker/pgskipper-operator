@@ -19,6 +19,7 @@ from utils import get_postgres_version_by_path
 
 _SECRET_BASE_PATH = "/var/run/secrets/postgresql/"
 _PG_USER_CREDS_PATH = _SECRET_BASE_PATH + "postgres-credentials/"
+_PATRONI_REST_API_CREDS_PATH = _SECRET_BASE_PATH + "patroni-rest-api-credentials/"
 _AWS_CREDS_PATH = _SECRET_BASE_PATH + "s3-storage-credentials/"
 
 _PROTECTED_DATABASES = ['template0', 'template1', 'postgres',
@@ -104,6 +105,22 @@ def postgresql_port():
 
 def postgres_password():
     return read_secret_file(_PG_USER_CREDS_PATH + "password", '')
+
+
+def patroni_rest_api_user():
+    return read_secret_file(_PATRONI_REST_API_CREDS_PATH + "username", '')
+
+
+def patroni_rest_api_password():
+    return read_secret_file(_PATRONI_REST_API_CREDS_PATH + "password", '')
+
+
+def patroni_rest_api_auth():
+    user = patroni_rest_api_user()
+    password = patroni_rest_api_password()
+    if user and password:
+        return (user, password)
+    return None
 
 
 def aws_access_key_id():

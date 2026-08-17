@@ -205,7 +205,13 @@ function main() {
         # Check cluster state via patroni API
         PGBACKREST_SRV="backrest"
         if [ "${BACKUP_FROM_STANDBY}" == "true" ]; then
-          PATRONI_RESPONSE=$(curl -s pg-patroni:8008/cluster)
+          PATRONI_REST_API_USER="$(cat /var/run/secrets/postgresql/patroni-rest-api-credentials/username 2>/dev/null | tr -d '\n')"
+          PATRONI_REST_API_PASSWORD="$(cat /var/run/secrets/postgresql/patroni-rest-api-credentials/password 2>/dev/null | tr -d '\n')"
+          if [ -n "${PATRONI_REST_API_USER}" ] && [ -n "${PATRONI_REST_API_PASSWORD}" ]; then
+            PATRONI_RESPONSE=$(curl -s -u "${PATRONI_REST_API_USER}:${PATRONI_REST_API_PASSWORD}" pg-patroni:8008/cluster)
+          else
+            PATRONI_RESPONSE=$(curl -s pg-patroni:8008/cluster)
+          fi
           if [ $? -eq 0 ]; then
               # First verify we got valid JSON response
               if echo "$PATRONI_RESPONSE" | jq . >/dev/null 2>&1; then

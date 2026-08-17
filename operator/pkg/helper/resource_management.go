@@ -29,6 +29,7 @@ import (
 
 	qubershipv1 "github.com/Netcracker/pgskipper-operator/api/apps/v1"
 	patroniv1 "github.com/Netcracker/pgskipper-operator/api/patroni/v1"
+	"github.com/Netcracker/pgskipper-operator/pkg/patroni"
 	"github.com/Netcracker/pgskipper-operator/pkg/util"
 	"go.uber.org/zap"
 	appsv1 "k8s.io/api/apps/v1"
@@ -948,7 +949,12 @@ func (rm *ResourceManager) GetPatroniClusterConfig(patroniUrl string) (*ClusterS
 	httpC := http.Client{
 		Timeout: 5 * time.Second,
 	}
-	resp, err := httpC.Get(patroniUrl + "cluster")
+	req, err := http.NewRequest(http.MethodGet, patroniUrl+"cluster", nil)
+	if err != nil {
+		return &ClusterStatus{}, err
+	}
+	patroni.AddPatroniBasicAuth(req)
+	resp, err := httpC.Do(req)
 	if err != nil {
 		logger.Error("Get request to patroni cluster failed, retrying")
 		return &ClusterStatus{}, err
