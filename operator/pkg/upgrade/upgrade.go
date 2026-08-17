@@ -509,7 +509,7 @@ func (u *Upgrade) getUpgradePod(cr *v1.PatroniCore, leaderName string, initDbArg
 	upgradePod := &corev1.Pod{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      "pg-major-upgrade-" + strconv.Itoa(int(time.Now().Unix())),
-			Labels:    opUtil.Merge(UpgradeLabels, patroniSpec.PodLabels),
+			Labels:    opUtil.Merge(patroniSpec.PodLabels, UpgradeLabels),
 			Namespace: opUtil.GetNameSpace(),
 		},
 		Spec: corev1.PodSpec{
@@ -707,7 +707,7 @@ func (u *Upgrade) getUpgradeCheckPod(cr *v1.PatroniCore) *corev1.Pod {
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      "pg-major-upgrade-check-" + strconv.Itoa(int(time.Now().Unix())),
 			Namespace: opUtil.GetNameSpace(),
-			Labels:    opUtil.Merge(UpgradeLabels, patroniSpec.PodLabels),
+			Labels:    opUtil.Merge(patroniSpec.PodLabels, UpgradeLabels),
 		},
 		Spec: corev1.PodSpec{
 			RestartPolicy: corev1.RestartPolicyNever,
