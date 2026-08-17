@@ -113,6 +113,17 @@ func (r *BackupDaemonReconciler) Reconcile() error {
 	backupDaemonDeployment.Spec.Template.Spec.Volumes = append(backupDaemonDeployment.Spec.Template.Spec.Volumes, util.GetTmpVolume())
 	backupDaemonDeployment.Spec.Template.Spec.Containers[0].VolumeMounts = append(backupDaemonDeployment.Spec.Template.Spec.Containers[0].VolumeMounts, util.GetTmpVolumeMount())
 
+	if cr.Spec.ExternalDataBase == nil {
+		backupDaemonDeployment.Spec.Template.Spec.Volumes = append(
+			backupDaemonDeployment.Spec.Template.Spec.Volumes,
+			deployment.PatroniRestApiCredentialsVolume(),
+		)
+		backupDaemonDeployment.Spec.Template.Spec.Containers[0].VolumeMounts = append(
+			backupDaemonDeployment.Spec.Template.Spec.Containers[0].VolumeMounts,
+			deployment.PatroniRestApiCredentialsVolumeMount(),
+		)
+	}
+
 	// External database Section
 	if cr.Spec.ExternalDataBase != nil {
 		envValue := corev1.EnvVar{

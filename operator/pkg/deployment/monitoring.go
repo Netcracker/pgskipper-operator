@@ -104,15 +104,6 @@ func NewMonitoringDeployment(metricCollector *netcrackerv1.MetricCollector, pgcl
 								},
 							},
 						},
-						{
-							Name: "patroni-rest-api-credentials",
-							VolumeSource: corev1.VolumeSource{
-								Secret: &corev1.SecretVolumeSource{
-									SecretName:  "patroni-rest-api-credentials",
-									DefaultMode: ptr.To[int32](420),
-								},
-							},
-						},
 					},
 					InitContainers: []corev1.Container{},
 					Containers: []corev1.Container{
@@ -194,11 +185,6 @@ func NewMonitoringDeployment(metricCollector *netcrackerv1.MetricCollector, pgcl
 								{
 									MountPath: util.SecretsBasePath + "postgres-credentials",
 									Name:      "postgres-credentials",
-									ReadOnly:  true,
-								},
-								{
-									MountPath: util.SecretsBasePath + "patroni-rest-api-credentials",
-									Name:      "patroni-rest-api-credentials",
 									ReadOnly:  true,
 								},
 							},

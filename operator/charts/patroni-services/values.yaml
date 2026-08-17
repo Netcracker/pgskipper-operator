@@ -19,8 +19,6 @@ postgresUser: postgres
 # The password for the database superuser.
 postgresPassword: "p@ssWOrD1"
 replicatorPassword: "replicator"
-patroniRestApiUser: "patroni"
-patroniRestApiPassword: "p@ssWOrD2"
 
 podLabels: {}
 

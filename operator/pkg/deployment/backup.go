@@ -91,15 +91,6 @@ func NewBackupDaemonDeployment(backupDaemon *netcrackerv1.BackupDaemon, pgCluste
 								},
 							},
 						},
-						{
-							Name: "patroni-rest-api-credentials",
-							VolumeSource: corev1.VolumeSource{
-								Secret: &corev1.SecretVolumeSource{
-									SecretName:  "patroni-rest-api-credentials",
-									DefaultMode: ptr.To[int32](420),
-								},
-							},
-						},
 					},
 					ServiceAccountName: serviceAccountName,
 					Affinity:           &backupDaemon.Affinity,
@@ -239,10 +230,6 @@ func NewBackupDaemonDeployment(backupDaemon *netcrackerv1.BackupDaemon, pgCluste
 									MountPath: opUtils.SecretsBasePath + "replicator-credentials",
 									Name:      "replicator-credentials",
 								},
-								{
-									MountPath: opUtils.SecretsBasePath + "patroni-rest-api-credentials",
-									Name:      "patroni-rest-api-credentials",
-								},
 							},
 							LivenessProbe: &corev1.Probe{
 								ProbeHandler: corev1.ProbeHandler{
@@ -326,15 +313,6 @@ func NewBackupDaemonDeployment(backupDaemon *netcrackerv1.BackupDaemon, pgCluste
 			VolumeSource: corev1.VolumeSource{
 				Secret: &corev1.SecretVolumeSource{
 					SecretName:  "replicator-credentials",
-					DefaultMode: ptr.To[int32](420),
-				},
-			},
-		},
-		corev1.Volume{
-			Name: "patroni-rest-api-credentials",
-			VolumeSource: corev1.VolumeSource{
-				Secret: &corev1.SecretVolumeSource{
-					SecretName:  "patroni-rest-api-credentials",
 					DefaultMode: ptr.To[int32](420),
 				},
 			},

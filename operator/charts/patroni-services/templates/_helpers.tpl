@@ -327,14 +327,6 @@ ReadOnly Postgres host for DBaaS adapter
   {{- end -}}
 {{- end -}}
 
-{{- define "patroni.restApiUser" -}}
-  {{- default "patroni" .Values.patroniRestApiUser -}}
-{{- end -}}
-
-{{- define "patroni.restApiPassword" -}}
-  {{- default "p@ssWOrD2" .Values.patroniRestApiPassword -}}
-{{- end -}}
-
 
 {{- define "postgres.API_DBAAS_ADDRESS" -}}
   {{- if and .Values.API_DBAAS_ADDRESS  .Values.global.cloudIntegrationEnabled -}}
