@@ -29,7 +29,6 @@ import (
 
 	qubershipv1 "github.com/Netcracker/pgskipper-operator/api/apps/v1"
 	patroniv1 "github.com/Netcracker/pgskipper-operator/api/patroni/v1"
-	"github.com/Netcracker/pgskipper-operator/pkg/patroni"
 	"github.com/Netcracker/pgskipper-operator/pkg/util"
 	"go.uber.org/zap"
 	appsv1 "k8s.io/api/apps/v1"
@@ -215,12 +214,7 @@ func (rm *ResourceManager) GetPodsByLabel(selectors map[string]string) (corev1.P
 	podList := &corev1.PodList{}
 	listOpts := []client.ListOption{
 		client.InNamespace(namespace),
-	}
-	if util.UsesPatroniPrimaryPgTypeSelector(selectors) {
-		clusterName := selectors[util.PatroniClusterLabelKey]
-		listOpts = append(listOpts, client.MatchingLabelsSelector{Selector: util.PatroniPrimaryPodLabelSelector(clusterName)})
-	} else {
-		listOpts = append(listOpts, client.MatchingLabels(selectors))
+		client.MatchingLabels(selectors),
 	}
 	if err := rm.kubeClient.List(context.Background(), podList, listOpts...); err != nil {
 		logger.Error("Can not get pods by label", zap.Error(err))
@@ -958,7 +952,6 @@ func (rm *ResourceManager) GetPatroniClusterConfig(patroniUrl string) (*ClusterS
 	if err != nil {
 		return &ClusterStatus{}, err
 	}
-	patroni.AddPatroniBasicAuth(req)
 	resp, err := httpC.Do(req)
 	if err != nil {
 		logger.Error("Get request to patroni cluster failed, retrying")

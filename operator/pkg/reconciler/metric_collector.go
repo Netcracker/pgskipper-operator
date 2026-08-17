@@ -117,17 +117,6 @@ func (r *MetricCollectorReconciler) Reconcile() error {
 	monitoringDeployment.Spec.Template.Spec.Volumes = append(monitoringDeployment.Spec.Template.Spec.Volumes, opUtil.GetTmpVolume())
 	monitoringDeployment.Spec.Template.Spec.Containers[0].VolumeMounts = append(monitoringDeployment.Spec.Template.Spec.Containers[0].VolumeMounts, opUtil.GetTmpVolumeMount())
 
-	if cr.Spec.ExternalDataBase == nil {
-		monitoringDeployment.Spec.Template.Spec.Volumes = append(
-			monitoringDeployment.Spec.Template.Spec.Volumes,
-			deployment.PatroniRestApiCredentialsVolume(),
-		)
-		monitoringDeployment.Spec.Template.Spec.Containers[0].VolumeMounts = append(
-			monitoringDeployment.Spec.Template.Spec.Containers[0].VolumeMounts,
-			deployment.PatroniRestApiCredentialsVolumeMount(),
-		)
-	}
-
 	if err := r.helper.CreateOrUpdateDeploymentForce(monitoringDeployment, true); err != nil {
 		logger.Error(fmt.Sprintf("Cannot create or update deployment %s", monitoringDeployment.Name), zap.Error(err))
 		return err

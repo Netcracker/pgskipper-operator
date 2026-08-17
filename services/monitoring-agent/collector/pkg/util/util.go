@@ -63,7 +63,6 @@ const (
 
 	certificatesFolder               = "/certs"
 	metricCollectorCredentialsFolder = SecretsBasePath + "monitoring-user-credentials/"
-	patroniRestApiCredsFolder        = SecretsBasePath + "patroni-rest-api-credentials/"
 )
 
 func GetLogger() *zap.Logger {
@@ -201,11 +200,6 @@ func ProcessPatroniHttpRequest(client *http.Client, url string) (string, []byte,
 	req, err := http.NewRequest("GET", url, nil)
 	if err != nil {
 		return "", nil, err
-	}
-	username := ReadSecretFile(patroniRestApiCredsFolder+"username", "")
-	password := ReadSecretFile(patroniRestApiCredsFolder+"password", "")
-	if username != "" && password != "" {
-		req.SetBasicAuth(username, password)
 	}
 	resp, err := client.Do(req)
 	if err != nil {

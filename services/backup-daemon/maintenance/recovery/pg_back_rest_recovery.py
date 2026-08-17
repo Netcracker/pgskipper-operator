@@ -68,23 +68,8 @@ class PgBackRestRecovery():
 
 
     def get_patroni_replicas_ip(self, statefulsets):
-        auth = self._get_patroni_rest_api_auth()
-        r = requests.get("http://pg-patroni:8008", auth=auth)
+        r = requests.get("http://pg-patroni:8008")
         return r.json()['replication']
-
-    def _get_patroni_rest_api_auth(self):
-        creds_path = "/var/run/secrets/postgresql/patroni-rest-api-credentials/"
-        try:
-            with open(creds_path + "username") as username_file:
-                username = username_file.read().strip()
-            with open(creds_path + "password") as password_file:
-                password = password_file.read().strip()
-            if username and password:
-                return (username, password)
-        except OSError:
-            pass
-        return None
-
 
     def get_patroni_statefulsets(self):
         stateful_sets = self.apps_api.list_namespaced_stateful_set(self.project).items

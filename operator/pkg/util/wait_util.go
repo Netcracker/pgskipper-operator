@@ -221,12 +221,7 @@ func checkPodsByLabel(labelSelectors map[string]string, numberOfPods int) (done 
 	podList := &corev1.PodList{}
 	listOpts := []client.ListOption{
 		client.InNamespace(namespace),
-	}
-	if UsesPatroniPrimaryPgTypeSelector(labelSelectors) {
-		clusterName := labelSelectors[PatroniClusterLabelKey]
-		listOpts = append(listOpts, client.MatchingLabelsSelector{Selector: PatroniPrimaryPodLabelSelector(clusterName)})
-	} else {
-		listOpts = append(listOpts, client.MatchingLabels(labelSelectors))
+		client.MatchingLabels(labelSelectors),
 	}
 	listOpts = append(listOpts, client.MatchingFields{"status.phase": "Running"})
 	if err = k8sClient.List(context.Background(), podList, listOpts...); err != nil {

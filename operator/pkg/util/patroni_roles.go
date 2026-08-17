@@ -14,79 +14,25 @@
 
 package util
 
-import (
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/apimachinery/pkg/labels"
-	"sigs.k8s.io/controller-runtime/pkg/client"
-)
-
 const (
-	PatroniPgTypeLabelKey = "pgtype"
-	PatroniClusterLabelKey  = "pgcluster"
+	PatroniPgTypeLabelKey  = "pgtype"
+	PatroniClusterLabelKey = "pgcluster"
 
-	// PatroniRoleMaster is the leader pod label value used by Patroni < 4.x.
-	PatroniRoleMaster = "master"
-	// PatroniRolePrimary is the leader pod label value used by Patroni 4.x+.
+	PatroniRoleMaster  = "master"
 	PatroniRolePrimary = "primary"
 	PatroniRoleReplica = "replica"
 )
 
-var PatroniPrimaryRoleLabelValues = []string{PatroniRoleMaster, PatroniRolePrimary}
-
-func IsPatroniPrimaryPgType(pgType string) bool {
-	return pgType == PatroniRoleMaster || pgType == PatroniRolePrimary
-}
-
-func IsPatroniPrimaryRole(role string) bool {
-	return role == PatroniRoleMaster || role == PatroniRolePrimary
-}
-
 func PatroniMasterLabelSelector(clusterName string) map[string]string {
 	return map[string]string{
-		PatroniPgTypeLabelKey: PatroniRolePrimary,
+		PatroniPgTypeLabelKey:  PatroniRolePrimary,
 		PatroniClusterLabelKey: clusterName,
 	}
 }
 
 func PatroniReplicasLabelSelector(clusterName string) map[string]string {
 	return map[string]string{
-		PatroniPgTypeLabelKey: PatroniRoleReplica,
+		PatroniPgTypeLabelKey:  PatroniRoleReplica,
 		PatroniClusterLabelKey: clusterName,
 	}
-}
-
-func PatroniPrimaryPodLabelSelector(clusterName string) labels.Selector {
-	selector := &metav1.LabelSelector{
-		MatchExpressions: []metav1.LabelSelectorRequirement{
-			{
-				Key:      PatroniPgTypeLabelKey,
-				Operator: metav1.LabelSelectorOpIn,
-				Values:   PatroniPrimaryRoleLabelValues,
-			},
-		},
-	}
-	if clusterName != "" {
-		selector.MatchLabels = map[string]string{PatroniClusterLabelKey: clusterName}
-	}
-	parsed, err := metav1.LabelSelectorAsSelector(selector)
-	if err != nil {
-		return labels.SelectorFromSet(PatroniMasterLabelSelector(clusterName))
-	}
-	return parsed
-}
-
-func PatroniPrimaryPodListOptions(clusterName string) []client.ListOption {
-	return []client.ListOption{
-		client.InNamespace(GetNameSpace()),
-		client.MatchingLabelsSelector{Selector: PatroniPrimaryPodLabelSelector(clusterName)},
-	}
-}
-
-func PatroniPrimaryServiceSelector(clusterName string) map[string]string {
-	return PatroniMasterLabelSelector(clusterName)
-}
-
-func UsesPatroniPrimaryPgTypeSelector(selectors map[string]string) bool {
-	pgType, ok := selectors[PatroniPgTypeLabelKey]
-	return ok && IsPatroniPrimaryPgType(pgType)
 }

@@ -183,14 +183,11 @@ Patroni REST Working
     ...  Check if patroni REST works
     ...
     ${pg_cluster_name}=   Get Environment Variable   PG_CLUSTER_NAME   default=patroni
-    ${user}=   Get Secret Or Env   PATRONI_REST_API_USER   ${PATRONI_REST_API_USER_PATH}
-    ${password}=   Get Secret Or Env   PATRONI_REST_API_PASSWORD   ${PATRONI_REST_API_PASSWORD_PATH}
-    @{auth}=   Create List   ${user}   ${password}
     @{PODS}=   Get Pods   repl_name=pg-${pg_cluster_name}
     FOR   ${POD}   IN   @{PODS}
        ${pod_ip}=   Get Ip   ${POD.status.pod_ip}
        Log To Console   Pod ${POD.metadata.name} has ip ${pod_ip}
-       Create Session   patroni_rest   http://${pod_ip}:8008   auth=${auth}
+       Create Session   patroni_rest   http://${pod_ip}:8008
        ${resp}=   GET On Session   patroni_rest   /
        Should Be Equal As Integers   ${resp.status_code}   200
        Log To Console   REST responce: ${resp.text}

@@ -48,6 +48,11 @@ type ClusterResponse struct {
 type Members map[string]interface{}
 
 func AddPatroniBasicAuth(req *http.Request) {
+	switch req.Method {
+	case http.MethodPost, http.MethodPut, http.MethodDelete, http.MethodPatch:
+	default:
+		return
+	}
 	username := util.ReadSecretFile(util.PatroniRestApiCredsPath+"username", "")
 	password := util.ReadSecretFile(util.PatroniRestApiCredsPath+"password", "")
 	if username != "" && password != "" {
@@ -60,7 +65,6 @@ func patroniGet(client *http.Client, url string) (*http.Response, error) {
 	if err != nil {
 		return nil, err
 	}
-	AddPatroniBasicAuth(req)
 	return client.Do(req)
 }
 
@@ -625,4 +629,28 @@ func GenerateLDAPConfig(cr *patroniv1.PatroniCore) []string {
 			ldapServer, ldapPort, ldapBasedn, ldapBinddn, ldapBindpasswd, ldapSearchAttribute,
 		),
 	}
+}
+
+func ReloadPatroniConfig(patroniUrl string) error {
+	hosts, err := getPatroniHosts(patroniUrl)
+	if err != nil {
+		return err
+	}
+	client := &http.Client{}
+	for _, host := range hosts {
+		resp, err := patroniPost(client, host+"reload", nil)
+		if err != nil {
+			return fmt.Errorf("patroni reload failed for %s: %w", host, err)
+		}
+		defer func() {
+			if resp != nil && resp.Body != nil {
+				_ = resp.Body.Close()
+			}
+		}()
+		if resp.StatusCode != http.StatusOK && resp.StatusCode != http.StatusAccepted {
+			return fmt.Errorf("patroni reload failed for %s: status %s", host, resp.Status)
+		}
+		logger.Info(fmt.Sprintf("Patroni config reloaded on %s", host))
+	}
+	return nil
 }

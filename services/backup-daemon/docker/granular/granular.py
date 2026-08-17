@@ -1773,7 +1773,6 @@ def get_pgbackrest_service():
             # Query Patroni API
             patroni_response = requests.get(
                 "http://pg-patroni:8008/cluster",
-                auth=configs.patroni_rest_api_auth(),
             ).json()
             
             # Look for healthy streaming replicas
