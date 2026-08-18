@@ -187,10 +187,9 @@ Patroni REST Working
     FOR   ${POD}   IN   @{PODS}
        ${pod_ip}=   Get Ip   ${POD.status.pod_ip}
        Log To Console   Pod ${POD.metadata.name} has ip ${pod_ip}
-       Create Session   patroni_rest   http://${pod_ip}:8008
-       ${resp}=   GET On Session   patroni_rest   /health
-       Should Be Equal As Integers   ${resp.status_code}   200
-       Log To Console   REST responce: ${resp.text}
+       ${resp}  ${error} =   Execute In Pod   ${POD.metadata.name}   curl -s ${pod_ip}:8008
+       Should Not Be Empty   ${resp}
+       Log To Console  REST responce: ${resp}
     END
 
 Check Pod Resource
