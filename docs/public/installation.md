@@ -204,6 +204,8 @@ The general parameters used for the configurations are specified below.
 | postgresUser               | string | no        | postgres      | Specifies the name of the database superuser.                                          |
 | postgresPassword           | string | yes       | p@ssWOrD1      | Specifies the password for the database superuser.                                     |
 | replicatorPassword         | string | no        | replicator      | Specifies the password for the database replicator.                                    |
+| patroniRestApiUser         | string | no        | patroni         | Specifies the username for Patroni REST API authentication.                            |
+| patroniRestApiPassword     | string | no        | p@ssWOrD2       | Specifies the password for Patroni REST API authentication.                            |
 | serviceAccount.create      | bool   | no        | true          | Specifies whether a service account needs to be created.                               |
 | serviceAccount.name        | string | no        | postgres-sa   | Specifies name of the Service Account under which Postgres Operator will work.         |
 | runTestsOnly               | bool   | no        | false         | Indicates whether to run Integration Tests (skipping deploy step) only or not.         |

@@ -180,7 +180,7 @@ Check If Patroni CLI Works
 Patroni REST Working
     [Documentation]
     ...
-    ...  Check if patroni REST works
+    ...  Check if patroni REST works on every pod
     ...
     ${pg_cluster_name}=   Get Environment Variable   PG_CLUSTER_NAME   default=patroni
     @{PODS}=   Get Pods   repl_name=pg-${pg_cluster_name}
@@ -188,7 +188,7 @@ Patroni REST Working
        ${pod_ip}=   Get Ip   ${POD.status.pod_ip}
        Log To Console   Pod ${POD.metadata.name} has ip ${pod_ip}
        Create Session   patroni_rest   http://${pod_ip}:8008
-       ${resp}=   GET On Session   patroni_rest   /
+       ${resp}=   GET On Session   patroni_rest   /health
        Should Be Equal As Integers   ${resp.status_code}   200
        Log To Console   REST responce: ${resp.text}
     END
