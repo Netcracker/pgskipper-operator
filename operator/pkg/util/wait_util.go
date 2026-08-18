@@ -222,8 +222,8 @@ func checkPodsByLabel(labelSelectors map[string]string, numberOfPods int) (done 
 	listOpts := []client.ListOption{
 		client.InNamespace(namespace),
 		client.MatchingLabels(labelSelectors),
+		client.MatchingFields{"status.phase": "Running"},
 	}
-	listOpts = append(listOpts, client.MatchingFields{"status.phase": "Running"})
 	if err = k8sClient.List(context.Background(), podList, listOpts...); err != nil {
 		if errors.IsNotFound(err) {
 			uLog.Info("Pods doesn't exist yet.")

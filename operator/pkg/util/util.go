@@ -54,6 +54,15 @@ import (
 )
 
 const (
+	PatroniPgTypeLabelKey  = "pgtype"
+	PatroniClusterLabelKey = "pgcluster"
+
+	PatroniRoleMaster  = "master"
+	PatroniRolePrimary = "primary"
+	PatroniRoleReplica = "replica"
+)
+
+const (
 	TokenFilePath = "/var/run/secrets/kubernetes.io/serviceaccount/token"
 	ClusterName   = "patroni"
 
@@ -225,8 +234,8 @@ func GetPatroniClusterSettings(patroniClusterName string) *patroniv1.PatroniClus
 		PatroniLabels:              map[string]string{"app": clusterName, "pgcluster": clusterName},
 		PatroniCommonLabels:        map[string]string{"app": clusterName},
 		PostgresServiceName:        pgServiceName,
-		PatroniMasterSelectors:     PatroniMasterLabelSelector(clusterName),
-		PatroniReplicasSelector:    PatroniReplicasLabelSelector(clusterName),
+		PatroniMasterSelectors:     map[string]string{PatroniPgTypeLabelKey: PatroniRolePrimary, PatroniClusterLabelKey: clusterName},
+		PatroniReplicasSelector:    map[string]string{PatroniPgTypeLabelKey: PatroniRoleReplica, PatroniClusterLabelKey: clusterName},
 		PatroniReplicasServiceName: pgReplicasServiceName,
 		PatroniUrl:                 patroniUrl,
 		PatroniCM:                  "patroni.config.yaml",

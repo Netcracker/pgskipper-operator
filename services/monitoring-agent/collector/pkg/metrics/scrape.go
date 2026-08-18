@@ -433,7 +433,7 @@ func (s *Scraper) collectReplicationLag() {
 
 	url := fmt.Sprintf("http://pg-%s-api:8008/cluster", clusterName)
 
-	status, response, err := util.ProcessPatroniHttpRequest(s.httpClient, url)
+	status, response, err := util.ProcessHttpRequest(s.httpClient, url, s.token)
 	if err != nil {
 		logger.Error(err.Error())
 	}

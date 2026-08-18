@@ -948,11 +948,7 @@ func (rm *ResourceManager) GetPatroniClusterConfig(patroniUrl string) (*ClusterS
 	httpC := http.Client{
 		Timeout: 5 * time.Second,
 	}
-	req, err := http.NewRequest(http.MethodGet, patroniUrl+"cluster", nil)
-	if err != nil {
-		return &ClusterStatus{}, err
-	}
-	resp, err := httpC.Do(req)
+	resp, err := httpC.Get(patroniUrl + "cluster")
 	if err != nil {
 		logger.Error("Get request to patroni cluster failed, retrying")
 		return &ClusterStatus{}, err

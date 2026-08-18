@@ -60,14 +60,6 @@ func AddPatroniBasicAuth(req *http.Request) {
 	}
 }
 
-func patroniGet(client *http.Client, url string) (*http.Response, error) {
-	req, err := http.NewRequest(http.MethodGet, url, nil)
-	if err != nil {
-		return nil, err
-	}
-	return client.Do(req)
-}
-
 func patroniPost(client *http.Client, url string, body io.Reader) (*http.Response, error) {
 	req, err := http.NewRequest(http.MethodPost, url, body)
 	if err != nil {
@@ -229,7 +221,7 @@ func SetSslStatus(cr *patroniv1.PatroniCore, patroniUrl string) error {
 
 func GetPatroniCurrentConfig(patroniUrl string) (map[string]interface{}, error) {
 
-	resp, err := patroniGet(&http.Client{}, patroniUrl+"/config")
+	resp, err := http.Get(patroniUrl + "/config")
 	if err != nil {
 		return nil, fmt.Errorf("failed to retrieve patroni config: %w", err)
 	}
@@ -502,7 +494,7 @@ func getPatroniHosts(patroniUrl string) ([]string, error) {
 	hosts := make([]string, 0, 2)
 	response := ClusterResponse{}
 	if retryError := wait.PollUntilContextTimeout(context.Background(), time.Second, 1*time.Minute, true, func(ctx context.Context) (done bool, err error) {
-		resp, err := patroniGet(&http.Client{}, patroniUrl+"cluster")
+		resp, err := http.Get(patroniUrl + "cluster")
 		if err != nil {
 			logger.Error(fmt.Sprintf("cannot receive patroni hosts, get resp %v", resp), zap.Error(err))
 			return false, nil
@@ -534,7 +526,7 @@ func getPatroniHosts(patroniUrl string) ([]string, error) {
 
 func restartIfPending(patroniUrl string) error {
 	return wait.PollUntilContextTimeout(context.Background(), 10*time.Second, 120*time.Minute, true, func(ctx context.Context) (done bool, err error) {
-		resp, err := patroniGet(&http.Client{}, patroniUrl+"patroni")
+		resp, err := http.Get(patroniUrl + "patroni")
 		if err != nil {
 			logger.Error("Get request to patroni failed, retrying", zap.Error(err))
 			return false, nil
