@@ -132,7 +132,7 @@ Please check output upgrade file `cat /var/lib/pgsql/data/upgrade.output` (from 
 
 **2. PostgreSQL Cluster Status:**  
 
-Only one patroni pod is up, it has label `pgtype=master`, works fine and you may execute `psql` in terminal. Other Patroni pods are not working. 
+Only one patroni pod is up, it has label `pgtype=primary`, works fine and you may execute `psql` in terminal. Other Patroni pods are not working.
 
 **Manual steps are:**   
 
@@ -154,7 +154,7 @@ Only one patroni pod is up, it has label `pgtype=master`, works fine and you may
 
 **3. PostgreSQL Cluster Status:**  
 
-All patroni pods are up, and working fine, pods `pgtype=master` and `pgtype=replica` appears.
+All patroni pods are up, and working fine, pods `pgtype=primary` and `pgtype=replica` appears.
 
 **Manual Steps Are:**   
 

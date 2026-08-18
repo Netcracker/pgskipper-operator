@@ -177,7 +177,7 @@ helm install --namespace=postgres --create-namespace \
 
 3. Wait for leader promotion:
 ```bash
-kubectl -n postgres get pods --selector=pgtype=master --field-selector=status.phase=Running
+kubectl -n postgres get pods --selector=pgtype=primary --field-selector=status.phase=Running
 ```
 
 4. Install Patroni Services:

@@ -485,7 +485,7 @@ def check_if_replication_works(oc_client, pg, pg_cluster_name):
     log.info("Start replication check")
     replicas = oc_client.get_cluster_pods_desc(pg_cluster_name)
     master_replicas = list([p for p in replicas if "pgtype" in p["metadata"]["labels"] and
-                                            p["metadata"]["labels"]["pgtype"] == "master"])
+                                            p["metadata"]["labels"]["pgtype"] == "primary"])
 
     if len(master_replicas) > 1:
         raise RecoveryException("FAILURE: Several masters detected. Healthy PostgreSQL cluster should have one master.")

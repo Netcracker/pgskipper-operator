@@ -244,7 +244,7 @@ check_user
 
 check_pgsql_version
 
-if [[ "${TYPE}" == "master" ]]; then
+if [[ "${TYPE}" == "primary" ]]; then
     handle_master_upgrade
 elif [[ "${TYPE}" == "replica" ]]; then
     handle_replica_upgrade

@@ -101,7 +101,7 @@ It should return two patroni pods w/o any restarts
 After that wait for the leader promotion, you may determine the leader pod by following command:
 ```
 kubectl -n postgres get pods \
-  --selector=pgtype=master \
+  --selector=pgtype=primary \
   --field-selector=status.phase=Running
 ```
 
@@ -136,7 +136,7 @@ After successful installation or upgrade, it is necessary to check the state of 
 Navigate to the target PostgreSQL namespace and check the following:
 
 * All the requested deployments exist. For example, components such as Patroni, PostgreSQL Backup Daemon, PostgreSQL Monitoring Collector, and so on should exist if they are marked for installation.
-* Pods with the `pgtype=master` label exist.
+* Pods with the `pgtype=primary` label exist.
 * Pods with the `pgtype=replica` label exist.
 * All the pods have Ready `1/1` status.
 
@@ -176,7 +176,7 @@ The following lines describe the operator installation status:
 
 Open new terminal and run the following commands for create port forward to the database Pod:
 ```
-PG_MASTER_POD=$(kubectl get pod -n postgres -o name -l app=patroni,pgtype=master)
+PG_MASTER_POD=$(kubectl get pod -n postgres -o name -l app=patroni,pgtype=primary)
 kubectl -n postgres port-forward "${PG_MASTER_POD}" 5432:5432
 ```
 

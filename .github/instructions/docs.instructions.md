@@ -1,0 +1,4 @@
+---
+description: Documentation skills available in this project. Never invoke automatically — only when explicitly requested by the user.
+applyTo: "**/*"
+---

@@ -169,6 +169,14 @@ IP addresses used to generate SSL certificate with "Subject Alternative Name" fi
   {{- end -}}
 {{- end -}}
 
+{{- define "patroni.restApiUser" -}}
+  {{- default "patroni" .Values.patroniRestApiUser -}}
+{{- end -}}
+
+{{- define "patroni.restApiPassword" -}}
+  {{- default "p@ssWOrD2" .Values.patroniRestApiPassword -}}
+{{- end -}}
+
 {{/*
 Init container section for postgres-operator
 */}}

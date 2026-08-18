@@ -182,8 +182,10 @@ func ProcessHttpRequest(client *http.Client, url string, token string) (string, 
 	if err != nil {
 		return "", nil, err
 	}
-	var bearer = "bearer " + token
-	req.Header.Set("Authorization", bearer)
+	if token != "" {
+		var bearer = "bearer " + token
+		req.Header.Set("Authorization", bearer)
+	}
 	resp, err := client.Do(req)
 	if err != nil {
 		return "", nil, err
