@@ -160,10 +160,16 @@ func GetPgBackRestService(labels map[string]string, standby bool) *corev1.Servic
 	}
 }
 
-func GetBackrestHeadless() *corev1.Service {
-	labels := map[string]string{"app": "patroni"}
+// GetBackrestHeadless returns the headless service that governs the Patroni
+// StatefulSet. It provides stable per-pod DNS names (<pod>.backrest-headless)
+// used both for Patroni connect_address and for the pgBackRest PITR restore
+// endpoint invoked by the backup daemon.
+func GetBackrestHeadless(clusterName string) *corev1.Service {
+	labels := map[string]string{"app": clusterName}
 	ports := []corev1.ServicePort{
 		{Name: "backrest", Port: 3000},
+		{Name: "postgresql", Port: 5432},
+		{Name: "patroni-api", Port: 8008},
 	}
 	return &corev1.Service{
 		TypeMeta: metav1.TypeMeta{

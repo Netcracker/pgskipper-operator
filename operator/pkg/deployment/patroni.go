@@ -222,6 +222,31 @@ func NewPatroniStatefulset(cr *patroniv1.PatroniCore, deploymentIdx int, cluster
 									},
 								},
 								{
+									Name: "POD_NAME",
+									ValueFrom: &corev1.EnvVarSource{
+										FieldRef: &corev1.ObjectFieldSelector{
+											APIVersion: "v1",
+											FieldPath:  "metadata.name",
+										},
+									},
+								},
+								{
+									Name:  "HEADLESS_SERVICE",
+									Value: "backrest-headless",
+								},
+								{
+									Name:  "POD_DNS_NAME",
+									Value: "$(POD_NAME).$(HEADLESS_SERVICE).$(POD_NAMESPACE).svc",
+								},
+								{
+									Name: "PG_RESOURCES_LIMIT_MEM",
+									ValueFrom: &corev1.EnvVarSource{
+										ResourceFieldRef: &corev1.ResourceFieldSelector{
+											Resource: "limits.memory",
+										},
+									},
+								},
+								{
 									Name:  "PATRONI_CLUSTER_NAME",
 									Value: clusterName,
 								},
