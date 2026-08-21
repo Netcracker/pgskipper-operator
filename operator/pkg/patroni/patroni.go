@@ -599,3 +599,30 @@ func GenerateLDAPConfig(cr *patroniv1.PatroniCore) []string {
 		),
 	}
 }
+
+func Switchover(patroniURL, leader, candidate string) error {
+	body := map[string]string{"leader": leader, "candidate": candidate}
+
+	data, err := json.Marshal(body)
+	if err != nil {
+		return err
+	}
+
+	resp, err := http.Post(patroniURL+"switchover", "application/json", bytes.NewBuffer(data))
+	if err != nil {
+		return err
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode < http.StatusOK ||
+		resp.StatusCode >= http.StatusMultipleChoices {
+
+		responseBody, _ := io.ReadAll(resp.Body)
+
+		return fmt.Errorf("Patroni switchover failed: %s, response: %s", resp.Status, string(responseBody))
+	}
+
+	logger.Info(fmt.Sprintf("Patroni switchover from %s to %s requested successfully", leader, candidate))
+
+	return nil
+}

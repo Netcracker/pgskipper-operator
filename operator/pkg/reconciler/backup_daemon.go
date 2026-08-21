@@ -18,6 +18,7 @@ import (
 	"fmt"
 	"strconv"
 	"strings"
+	"time"
 
 	qubershipv1 "github.com/Netcracker/pgskipper-operator/api/apps/v1"
 	commonv1 "github.com/Netcracker/pgskipper-operator/api/common/v1"
@@ -61,11 +62,39 @@ func NewBackupDaemonReconciler(cr *qubershipv1.PatroniServices, helper *helper.H
 func (r *BackupDaemonReconciler) Reconcile() error {
 	cr := r.cr
 	bdSpec := cr.Spec.BackupDaemon
+	var backupPvc *corev1.PersistentVolumeClaim
+	backupPvcRestartRequired := false
+
 	if bdSpec.Storage.Type != "ephemeral" && bdSpec.Storage.Type != "s3" {
-		backupPvc := storage.NewPvc("postgres-backup-pvc", &bdSpec.Storage, 1)
-		if err := r.helper.CreatePvcIfNotExists(backupPvc); err != nil {
-			logger.Error(fmt.Sprintf("Cannot create pvc %s", backupPvc.Name), zap.Error(err))
+		backupPvc = storage.NewPvc(
+			"postgres-backup-pvc",
+			&bdSpec.Storage,
+			1,
+		)
+
+		resizeInProgress, err := r.helper.CreateOrResizePvc(backupPvc)
+		if err != nil {
+			logger.Error(
+				fmt.Sprintf("Cannot create or resize pvc %s", backupPvc.Name),
+				zap.Error(err),
+			)
 			return err
+		}
+
+		if resizeInProgress {
+			logger.Info(fmt.Sprintf(
+				"Waiting for PVC %s resize state",
+				backupPvc.Name,
+			))
+
+			backupPvcRestartRequired, err = r.helper.WaitForPvcResizeState(
+				backupPvc.Name,
+				backupPvc.Namespace,
+				backupPvc.Spec.Resources.Requests[corev1.ResourceStorage],
+			)
+			if err != nil {
+				return err
+			}
 		}
 	}
 	if bdSpec.ExternalPv != nil {
@@ -256,9 +285,62 @@ func (r *BackupDaemonReconciler) Reconcile() error {
 		backupDaemonDeployment.Spec.Template.Spec.Containers[0].Env = append(backupDaemonDeployment.Spec.Template.Spec.Containers[0].Env, envValue...)
 	}
 
+	if backupPvcRestartRequired {
+		logger.Info(fmt.Sprintf("Restarting Backup Daemon deployment %s to complete PVC resize", backupDaemonDeployment.Name))
+
+		backupPods, err := r.helper.GetNamespacePodListBySelectors(
+			map[string]string{"app": "postgres-backup-daemon"},
+		)
+		if err != nil {
+			return err
+		}
+
+		if err := r.helper.DeleteDeployment(backupDaemonDeployment); err != nil {
+			return err
+		}
+
+		if err := r.helper.WaitTillDeploymentDeleted(backupDaemonDeployment); err != nil {
+			return err
+		}
+
+		for _, pod := range backupPods.Items {
+			if err := r.helper.WaitForPodDeletion(pod.Name, 2*time.Minute); err != nil {
+				return err
+			}
+		}
+
+		time.Sleep(10 * time.Second)
+	}
+
 	if err := r.helper.CreateOrUpdateDeploymentForce(backupDaemonDeployment, true); err != nil {
 		logger.Error(fmt.Sprintf("Cannot create or update deployment %s", backupDaemonDeployment.Name), zap.Error(err))
 		return err
+	}
+	if backupPvcRestartRequired {
+		desiredSize := backupPvc.Spec.Resources.Requests[corev1.ResourceStorage]
+
+		resized, err := r.helper.WaitForPvcCapacity(
+			backupPvc.Name,
+			backupPvc.Namespace,
+			desiredSize,
+			2*time.Minute,
+		)
+		if err != nil {
+			return err
+		}
+
+		if !resized {
+			return fmt.Errorf(
+				"Backup Daemon PVC %s filesystem resize is still pending",
+				backupPvc.Name,
+			)
+		}
+
+		logger.Info(fmt.Sprintf(
+			"Backup Daemon PVC %s successfully resized to %s",
+			backupPvc.Name,
+			desiredSize.String(),
+		))
 	}
 	if err := util.WaitForBackupDaemon(); err != nil {
 		logger.Error("Failed to wait for backup daemon, exiting", zap.Error(err))
