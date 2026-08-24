@@ -179,7 +179,7 @@ Before installing Patroni Services, ensure a PostgreSQL leader has been elected:
 
 ```bash
 # Wait for master pod to be ready
-kubectl -n postgres get pods --selector=pgtype=master --field-selector=status.phase=Running
+kubectl -n postgres get pods --selector=pgtype=primary --field-selector=status.phase=Running
 
 # Verify cluster status
 kubectl -n postgres get patronicore patroni-core -o jsonpath='{.status.conditions[?(@.type=="Successful")]}'
@@ -248,7 +248,7 @@ See Helm chart values files for comprehensive configuration options:
 
 ```bash
 # Port forward to the master pod
-PG_MASTER_POD=$(kubectl get pod -n postgres -o name -l app=patroni,pgtype=master)
+PG_MASTER_POD=$(kubectl get pod -n postgres -o name -l app=patroni,pgtype=primary)
 kubectl -n postgres port-forward "${PG_MASTER_POD}" 5432:5432
 
 # Get credentials
@@ -271,7 +271,7 @@ kubectl -n postgres get patroniservices patroni-services -o jsonpath='{.status.c
 kubectl -n postgres get pods -l app=patroni
 
 # Check master/replica status
-kubectl -n postgres get pods -l pgtype=master
+kubectl -n postgres get pods -l pgtype=primary
 kubectl -n postgres get pods -l pgtype=replica
 ```
 

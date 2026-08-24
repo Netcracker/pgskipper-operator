@@ -149,6 +149,9 @@ func NewIntegrationTestsPod(cr *v1.PatroniServices, cluster *patroniv1.PatroniCl
 		testsSpec,
 		fmt.Sprintf("%s-atp-storage-secret", cr.Name),
 	)
+	if cr.Spec.ExternalDataBase == nil {
+		appendPatroniRestApiTestCredentials(pod)
+	}
 	addTestPodHardening(pod)
 
 	return pod
@@ -278,6 +281,7 @@ func NewCoreIntegrationTests(cr *patroniv1.PatroniCore, cluster *patroniv1.Patro
 		testsSpec,
 		fmt.Sprintf("%s-atp-storage-secret", cr.Name),
 	)
+	appendPatroniRestApiTestCredentials(pod)
 	addTestPodHardening(pod)
 
 	return pod
@@ -303,6 +307,14 @@ func addTestPodHardening(pod *corev1.Pod) {
 	pod.Spec.Containers[0].VolumeMounts = append(pod.Spec.Containers[0].VolumeMounts,
 		util.GetTmpVolumeMount(),
 		corev1.VolumeMount{Name: "robot-output", MountPath: "/opt/robot/output"},
+	)
+}
+
+func appendPatroniRestApiTestCredentials(pod *corev1.Pod) {
+	pod.Spec.Volumes = append(pod.Spec.Volumes, PatroniRestApiCredentialsVolume())
+	pod.Spec.Containers[0].VolumeMounts = append(
+		pod.Spec.Containers[0].VolumeMounts,
+		PatroniRestApiCredentialsVolumeMount(),
 	)
 }
 

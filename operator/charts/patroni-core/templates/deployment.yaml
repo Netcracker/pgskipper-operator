@@ -75,6 +75,9 @@ spec:
             - mountPath: /var/run/secrets/postgresql/replicator-credentials
               name: replicator-credentials
               readOnly: true
+            - mountPath: /var/run/secrets/postgresql/patroni-rest-api-credentials
+              name: patroni-rest-api-credentials
+              readOnly: true
           env:
             - name: WATCH_NAMESPACE
               valueFrom:
@@ -165,6 +168,10 @@ spec:
           secret:
             defaultMode: 420
             secretName: replicator-credentials
+        - name: patroni-rest-api-credentials
+          secret:
+            defaultMode: 420
+            secretName: patroni-rest-api-credentials
       tolerations:
         {{- range $tKey, $t := .Values.policies.tolerations }}
         - key: {{ $t.key }}

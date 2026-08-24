@@ -58,6 +58,28 @@ func PatroniSecret(nameSpace string, userName string, patroniLabels map[string]s
 	return secret
 }
 
+const PatroniRestApiCredentialsSecretName = "patroni-rest-api-credentials"
+
+func PatroniRestApiCredentialsVolume() corev1.Volume {
+	return corev1.Volume{
+		Name: PatroniRestApiCredentialsSecretName,
+		VolumeSource: corev1.VolumeSource{
+			Secret: &corev1.SecretVolumeSource{
+				SecretName:  PatroniRestApiCredentialsSecretName,
+				DefaultMode: ptr.To[int32](420),
+			},
+		},
+	}
+}
+
+func PatroniRestApiCredentialsVolumeMount() corev1.VolumeMount {
+	return corev1.VolumeMount{
+		MountPath: util.SecretsBasePath + PatroniRestApiCredentialsSecretName,
+		Name:      PatroniRestApiCredentialsSecretName,
+		ReadOnly:  true,
+	}
+}
+
 func GetPortsForPatroniService(clusterName string) []corev1.ServicePort {
 	return []corev1.ServicePort{
 		{Name: "pg-" + clusterName, Port: 5432},
@@ -178,6 +200,24 @@ func NewPatroniStatefulset(cr *patroniv1.PatroniCore, deploymentIdx int, cluster
 									ValueFrom: &corev1.EnvVarSource{
 										SecretKeyRef: &corev1.SecretKeySelector{
 											LocalObjectReference: corev1.LocalObjectReference{Name: "replicator-credentials"},
+											Key:                  "password",
+										},
+									},
+								},
+								{
+									Name: "PATRONI_REST_API_USER",
+									ValueFrom: &corev1.EnvVarSource{
+										SecretKeyRef: &corev1.SecretKeySelector{
+											LocalObjectReference: corev1.LocalObjectReference{Name: "patroni-rest-api-credentials"},
+											Key:                  "username",
+										},
+									},
+								},
+								{
+									Name: "PATRONI_REST_API_PASSWORD",
+									ValueFrom: &corev1.EnvVarSource{
+										SecretKeyRef: &corev1.SecretKeySelector{
+											LocalObjectReference: corev1.LocalObjectReference{Name: "patroni-rest-api-credentials"},
 											Key:                  "password",
 										},
 									},

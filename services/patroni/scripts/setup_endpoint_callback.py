@@ -34,8 +34,8 @@ def main():
         logger.info("Cluster name: {}, new role: {}".format(cluster, role))
         if action not in ('on_start', 'on_role_change', 'on_restart', 'on_reload'):
             return
-        if role == "master":
-            logger.info("We were promoted to master. "
+        if role == "primary":
+            logger.info("We were promoted to primary. "
                         "Start configuration checks.")
             logger.info("Triggering propagate_settings script.")
             subprocess.check_call("/propagate_settings.sh")

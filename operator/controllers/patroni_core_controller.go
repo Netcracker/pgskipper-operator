@@ -51,7 +51,7 @@ import (
 // PatroniCoreReconciler reconciles a PatroniCore object
 
 var (
-	MasterLabel                   = map[string]string{"pgtype": "master"}
+	MasterLabel                   = map[string]string{utils.PatroniPgTypeLabelKey: utils.PatroniRolePrimary}
 	patroniCoreOperatorLockCmName = "patroni-core-operator-lock"
 	backRestcontainerName         = "pgbackrest-sidecar"
 	stanzaUpgradeCommand          = "pgbackrest stanza-upgrade"

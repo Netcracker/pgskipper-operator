@@ -721,3 +721,18 @@ func (ph *PatroniHelper) GetStatefulSetIds(statefulsets []*appsv1.StatefulSet) (
 	}
 	return ids, nil
 }
+
+func (ph *PatroniHelper) ReloadPatroniIfLegacyMasterLabel(clusterName, patroniUrl string) error {
+	pods, err := ph.GetPodsByLabel(map[string]string{
+		util.PatroniPgTypeLabelKey:  util.PatroniRoleMaster,
+		util.PatroniClusterLabelKey: clusterName,
+	})
+	if err != nil {
+		return err
+	}
+	if len(pods.Items) == 0 {
+		return nil
+	}
+	logger.Info("Legacy pgtype=master label detected, reloading patroni config")
+	return patroni.ReloadPatroniConfig(patroniUrl)
+}

@@ -13,6 +13,8 @@ ${PGSSLMODE}        %{PGSSLMODE}
 ${INTERNAL_TLS_ENABLED}    %{INTERNAL_TLS_ENABLED}
 ${PG_ROOT_PASSWORD_PATH}        /var/run/secrets/postgresql/postgres-credentials/password
 ${PG_ROOT_USERNAME_PATH}        /var/run/secrets/postgresql/postgres-credentials/username
+${PATRONI_REST_API_USER_PATH}        /var/run/secrets/postgresql/patroni-rest-api-credentials/username
+${PATRONI_REST_API_PASSWORD_PATH}    /var/run/secrets/postgresql/patroni-rest-api-credentials/password
 
 *** Keywords ***
 Checks Before Tests
@@ -51,7 +53,7 @@ Check master exists
     ...  Check  if master pod patroni exists
     ...
     Log To Console   \n---== Check master exists ==---
-    ${MASTER}=   Get Pod   label=pgtype:master   status=Running
+    ${MASTER}=   Get Pod   label=pgtype:primary   status=Running
     Should Not Be Empty  ${MASTER.metadata.name}
     Log To Console  Master pod: "${MASTER.metadata.name}"
 
@@ -178,12 +180,12 @@ Check If Patroni CLI Works
 Patroni REST Working
     [Documentation]
     ...
-    ...  Check if patroni REST works
+    ...  Check if patroni REST works on every pod
     ...
     ${pg_cluster_name}=   Get Environment Variable   PG_CLUSTER_NAME   default=patroni
     @{PODS}=   Get Pods   repl_name=pg-${pg_cluster_name}
     FOR   ${POD}   IN   @{PODS}
-       ${pod_ip}   Get Ip   ${POD.status.pod_ip}
+       ${pod_ip}=   Get Ip   ${POD.status.pod_ip}
        Log To Console   Pod ${POD.metadata.name} has ip ${pod_ip}
        ${resp}  ${error} =   Execute In Pod   ${POD.metadata.name}   curl -s ${pod_ip}:8008
        Should Not Be Empty   ${resp}
