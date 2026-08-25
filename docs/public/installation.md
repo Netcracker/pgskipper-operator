@@ -33,7 +33,7 @@ Both charts can be installed separately, but `Postgres` should be always initial
 The prerequisites to deploy the Postgres Service are as follows:
 
 * The project or namespace should be created.
-* The Custom Resource Definition (CRD) should be created by the cloud administrator, if deploy user do not have rights for CRD creation role.
+* The Custom Resource Definition (CRD) should be created by the cloud administrator, if deploy user do not have rights for CRD creation role. See [CRD Installation Approaches](#crd-installation-approaches) for available options.
 * If Dynamic Volume Provisioning is not available, all the persistence volumes for Patroni and Backup Daemon should be created manually, and NodeSelectors (that selects particular nodes) should be specified explicitly (or NodeAffinity are set on PVs).
 * In case of using `cinder` as Dynamic Volume Provisioning, you have to set `patroni.securityContext.fsGroupChangePolicy` as `OnRootMismatch` in deploy parameter.
 * In case of using `cinder` as Dynamic Volume Provisioning, you have to set both `backupDaemon.securityContext.runAsUser` and `backupDaemon.securityContext.fsGroup` in deploy parameter.
@@ -198,16 +198,19 @@ This sections describes all possible deploy parameters per Helm Chart per compon
 
 The general parameters used for the configurations are specified below.
 
-| Parameter             | Type   | Mandatory | Default value | Description                                                                            |
-|-----------------------|--------|-----------|---------------|----------------------------------------------------------------------------------------|
-| postgresUser          | string | no        | postgres      | Specifies the name of the database superuser.                                          |
-| postgresPassword      | string | yes       | p@ssWOrD1      | Specifies the password for the database superuser.                                     |
-| replicatorPassword    | string | no        | replicator      | Specifies the password for the database replicator.                                    |
-| serviceAccount.create | bool   | no        | true          | Specifies whether a service account needs to be created.                               |
-| serviceAccount.name   | string | no        | postgres-sa   | Specifies name of the Service Account under which Postgres Operator will work.         |
-| runTestsOnly          | bool   | no        | false         | Indicates whether to run Integration Tests (skipping deploy step) only or not.         |
-| affinity              | json   | no        | n/a           | Defines affinity scheduling rules for all components. Can be overridden per component. |
-| podLabels             | yaml   | no        | n/a           | Specifies custom pod labels for all the components. Can be overridden per component.   |
+| Parameter                  | Type   | Mandatory | Default value | Description                                                                            |
+|----------------------------|--------|-----------|---------------|----------------------------------------------------------------------------------------|
+| pvc.metadata.annotations   | map[string]string | no | n/a    | Global annotations applied to all PVCs created by the operator. Use `argocd.argoproj.io/sync-options: Prune=false` to protect all PVCs from ArgoCD pruning. Storage-specific annotations override global ones. |
+| postgresUser               | string | no        | postgres      | Specifies the name of the database superuser.                                          |
+| postgresPassword           | string | yes       | p@ssWOrD1      | Specifies the password for the database superuser.                                     |
+| replicatorPassword         | string | no        | replicator      | Specifies the password for the database replicator.                                    |
+| patroniRestApiUser         | string | no        | patroni         | Specifies the username for Patroni REST API authentication.                            |
+| patroniRestApiPassword     | string | no        | p@ssWOrD2       | Specifies the password for Patroni REST API authentication.                            |
+| serviceAccount.create      | bool   | no        | true          | Specifies whether a service account needs to be created.                               |
+| serviceAccount.name        | string | no        | postgres-sa   | Specifies name of the Service Account under which Postgres Operator will work.         |
+| runTestsOnly               | bool   | no        | false         | Indicates whether to run Integration Tests (skipping deploy step) only or not.         |
+| affinity                   | json   | no        | n/a           | Defines affinity scheduling rules for all components. Can be overridden per component. |
+| podLabels                  | yaml   | no        | n/a           | Specifies custom pod labels for all the components. Can be overridden per component.   |
 
 **Note**: `postgresUser` is not the user which will be created during deployment. You should mention here the user which is already present with superuser role. If you need to use some other user instead of postgres, you should create the desired user manually with superuser role.
 
@@ -256,6 +259,7 @@ This sections describes all possible deploy parameters for Patroni component.
 | patroni.storage.nodes                 | []string                                                                        | no        | n/a                                                             | Specifies list of nodes to which Patroni pods will be scheduled.                                                            |
 | patroni.storage.selectors             | []string                                                                        | no        | n/a                                                             | Specifies list of selector to choose PVCs.                                                                                  |
 | patroni.storage.volumes               | []string                                                                        | no        | n/a                                                             | Specifies list of Persistence Volumes that will be used for PVCs.  Should be specified only in case of `pv` storageClass.   |
+| patroni.storage.annotations           | map[string]string                                                               | no        | n/a                                                             | Specifies optional annotations to apply to PVCs. Use `argocd.argoproj.io/sync-options: Prune=false` to protect from ArgoCD pruning. |
 | patroni.pgWalStorage                  | Storage Group                                                                   | no        | n/a                                                             | Specifies set of storage parameters for separater volume for `pg_wal` directory. Parameters are the same as for `storage`.  |
 | patroni.pgWalStorageAutoManage        | bool                                                                            | no        | n/a                                                             | Specifies is pg_wal files have to be moved to separate volume `pg_wal` directory automatically.                             |
 | patroni.priorityClassName             | string                                                                          | no        | n/a                                                             | Specifies [Priority Class](https://kubernetes.io/docs/concepts/scheduling-eviction/pod-priority-preemption/#priorityclass). |
@@ -339,16 +343,17 @@ Patroni Core Operator allows configuration of TLS for PostgreSQL. By default, re
 
 The general parameters used for the configurations are specified below.
 
-| Parameter              | Type   | Mandatory | Default value | Description                                                                            |
-|------------------------|--------|-----------|---------------|----------------------------------------------------------------------------------------|
-| postgresUser           | string | no        | postgres      | Specifies the name of the database superuser.                                          |
-| postgresPassword       | string | yes       | p@ssWOrD1      | Specifies the password for the database superuser.                                     |
-| replicatorPassword     | string | no        | replicator      | Specifies the password for the database replicator.                                    |
-| serviceAccount.create  | bool   | no        | true          | Specifies whether a service account needs to be created.                               |
-| serviceAccount.name    | string | no        | postgres-sa   | Specifies name of the Service Account under which Postgres Operator will work.         |
-| runTestsOnly           | bool   | no        | false         | Indicates whether to run Integration Tests (skipping deploy step) only or not.         |
-| affinity               | json   | no        | n/a           | Defines affinity scheduling rules for all components. Can be overridden per component. |
-| podLabels              | yaml   | no        | n/a           | Specifies custom pod labels for all the components. Can be overridden per component.   |
+| Parameter                | Type   | Mandatory | Default value | Description                                                                            |
+|--------------------------|--------|-----------|---------------|----------------------------------------------------------------------------------------|
+| pvc.metadata.annotations | map[string]string | no | n/a    | Global annotations applied to all PVCs created by the operator. Use `argocd.argoproj.io/sync-options: Prune=false` to protect all PVCs from ArgoCD pruning. Storage-specific annotations override global ones. |
+| postgresUser             | string | no        | postgres      | Specifies the name of the database superuser.                                          |
+| postgresPassword         | string | yes       | p@ssWOrD1      | Specifies the password for the database superuser.                                     |
+| replicatorPassword       | string | no        | replicator      | Specifies the password for the database replicator.                                    |
+| serviceAccount.create    | bool   | no        | true          | Specifies whether a service account needs to be created.                               |
+| serviceAccount.name      | string | no        | postgres-sa   | Specifies name of the Service Account under which Postgres Operator will work.         |
+| runTestsOnly             | bool   | no        | false         | Indicates whether to run Integration Tests (skipping deploy step) only or not.         |
+| affinity                 | json   | no        | n/a           | Defines affinity scheduling rules for all components. Can be overridden per component. |
+| podLabels                | yaml   | no        | n/a           | Specifies custom pod labels for all the components. Can be overridden per component.   |
 
 **Note**: `postgresUser` is not the user which will be created during deployment. You should mention here the user which is already present with superuser role. If you need to use some other user instead of postgres, you should create the desired user manually with superuser role.
 
@@ -407,6 +412,7 @@ This sections describes all possible deploy parameters for PostgreSQL Backup Dae
 | backupDaemon.storage.selectors         | []string                                                                        | no        | n/a           | Specifies list of selector to choose PVCs.                                                                                                                                                                                                                                                             |
 | backupDaemon.storage.volumes           | []string                                                                        | no        | n/a           | Specifies list of Persistence Volumes that will be used for PVCs. Should be specified only in case of `pv` storageClass.                                                                                                                                                                               |
 | backupDaemon.storage.accessMode        | []string                                                                        | no        | n/a           | Specifies list of [Access Modes](https://kubernetes.io/docs/concepts/storage/persistent-volumes/#access-modes) that will be used for PVCs.                                                                                                                                                             |
+| backupDaemon.storage.annotations       | map[string]string                                                               | no        | n/a           | Specifies optional annotations to apply to PVCs. Use `argocd.argoproj.io/sync-options: Prune=false` to protect from ArgoCD pruning.                                                                                                                                                                   |
 | backupDaemon.s3Storage.url             | string                                                                          | no        | n/a           | Specifies url address to S3 storage.                                                                                                                                                                                                                                                                   |
 | backupDaemon.s3Storage.accessKeyId     | string                                                                          | no        | n/a           | Specifies S3 accessKeyId credential.                                                                                                                                                                                                                                                                   |
 | backupDaemon.s3Storage.secretAccessKey | string                                                                          | no        | n/a           | Specifies S3 secretAccessKey credential.                                                                                                                                                                                                                                                               |
@@ -771,6 +777,36 @@ Patroni Core Operator allows configuration of TLS for PostgreSQL. By default, re
 | pgBackRest.s3.verifySsl      | bool     | no        | n/a                 | Specifies do the pgBackRest verify secure connection to the s3, or not. Possible value true or false.                         |
 
 # Installation
+
+## CRD Installation Approaches
+
+CRDs (`PatroniCore` and `PostgresService`) are cluster-scoped resources and require cluster-wide permissions to install. There are two approaches depending on the deployment environment.
+
+### Dedicated CRDs Application (Recommended)
+
+In standard environments where cluster-wide permissions are available, CRDs are managed as a **separate application** that is installed before the main microservice charts. This is the recommended approach because it makes CRD lifecycle management explicit and independent of the operator deployment.
+
+**Deployment order:**
+
+1. Install/sync the dedicated CRDs application first:
+
+   ```bash
+   kubectl create -f ./operator/charts/patroni-core/crds/netcracker.com_patronicores.yaml
+   kubectl create -f ./operator/charts/patroni-services/crds/netcracker.com_patroniservices.yaml
+   ```
+
+2. Wait for the CRD application to reach a synced/healthy state before proceeding.
+
+3. Install the main microservice applications (`patroni-core`, `patroni-services`). These deployments rely on the CRDs being pre-installed and **must not** attempt to install CRDs themselves.
+
+### Restricted Environments (No Cluster-Wide Permissions)
+
+In restricted environments where the deployment user does **not** have cluster-wide permissions (e.g., no rights to create `ClusterRole`, `ClusterRoleBinding`, or CRD resources), the dedicated CRDs application **must not be installed**. Instead:
+
+- The CRDs must be pre-installed by a cluster administrator out-of-band.
+- Set the `DISABLE_CRD=true` flag on the main microservice application to prevent it from attempting CRD installation.
+
+> **Deprecated:** `DISABLE_CRD=true` is deprecated for all environments where cluster-wide permissions are available. Use the dedicated CRDs application approach instead. The flag is retained only for restricted environments where cluster-wide permissions are unavailable.
 
 ### Helm
 

@@ -98,6 +98,12 @@ function handle_master_upgrade() {
 
     echo "${SHARED_PRELOAD_LIBRARIES}" >> "${MIGRATION_PATH}/tmp/pg/postgresql.conf"
 
+    WAL_LEVEL=$(grep "wal_level" "/var/lib/pgsql/data/${DATA_DIR}/postgresql.conf")
+    if [[ ! -z ${WAL_LEVEL} ]]; then
+        echo "wal_level found in PostgreSQL config, will use it"
+        echo "${WAL_LEVEL}" >> "${MIGRATION_PATH}/tmp/pg/postgresql.conf"
+    fi
+
     ls -la "${MIGRATION_PATH}"
 
     echo "[$(date +%Y-%m-%dT%H:%M:%S)] Check cluster before upgrade"
@@ -244,7 +250,7 @@ check_user
 
 check_pgsql_version
 
-if [[ "${TYPE}" == "master" ]]; then
+if [[ "${TYPE}" == "primary" ]]; then
     handle_master_upgrade
 elif [[ "${TYPE}" == "replica" ]]; then
     handle_replica_upgrade

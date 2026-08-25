@@ -37,8 +37,8 @@ import (
 var (
 	logger              = util.GetLogger()
 	namespace           = util.GetNameSpace()
-	MasterLabel         = map[string]string{"pgtype": "master"}
-	ReplicasLabel       = map[string]string{"pgtype": "replica"}
+	MasterLabel         = map[string]string{util.PatroniPgTypeLabelKey: util.PatroniRolePrimary}
+	ReplicasLabel       = map[string]string{util.PatroniPgTypeLabelKey: util.PatroniRoleReplica}
 	authHeaders         = map[string]AuthPair{}
 	patroniRunningState = []string{"running", "streaming", "in archive recovery"}
 
@@ -269,6 +269,15 @@ func (h *Helper) GetCurrentSiteManagerStatus() *qubershipv1.SiteManagerStatus {
 		return &cr.Status.SiteManagerStatus
 	}
 	return nil
+}
+
+func (h *Helper) GetCurrentCRStatus() string {
+	if cr, err := h.GetPostgresServiceCR(); err == nil {
+		if len(cr.Status.Conditions) > 0 {
+			return strings.ToLower(cr.Status.Conditions[0].Type)
+		}
+	}
+	return ""
 }
 
 //

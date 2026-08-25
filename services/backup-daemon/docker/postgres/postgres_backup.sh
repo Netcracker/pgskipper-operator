@@ -24,7 +24,8 @@ readonly SWIFT_STORAGE="swift"
 readonly ENCRYPTION_KEY="$2"
 
 BACKUP_DESTINATION_DIRECTORY="$1"
-BACKUP_NAME="pg_${PG_CLUSTER_NAME}_backup_$(basename ${BACKUP_DESTINATION_DIRECTORY}).tar.gz"
+BACKUP_ID=$(basename ${BACKUP_DESTINATION_DIRECTORY})
+BACKUP_NAME="pg_${PG_CLUSTER_NAME}_backup_${BACKUP_ID}.tar.gz"
 
 POSTGRES_USER=$(cat /var/run/secrets/postgresql/postgres-credentials/username)
 POSTGRES_PASSWORD=$(cat /var/run/secrets/postgresql/postgres-credentials/password)
@@ -43,10 +44,10 @@ function do_backup() {
     log "Backup id must be specified explicitly"
   fi
   log BACKUP_ID
-  log "BACKUP_ID"
-  local validation_pipe="pg-backup-${BACKUP_ID}.pipe"
-  local pg_basebackup_stderr_file="pg-backup-${BACKUP_ID}.error.log"
-  local validation_stderr_file="pg-backup-validation-${BACKUP_ID}.error.log"
+  log "${BACKUP_ID}"
+  local validation_pipe="${BACKUP_DESTINATION_DIRECTORY}/pg-backup-${BACKUP_ID}.pipe"
+  local pg_basebackup_stderr_file="${BACKUP_DESTINATION_DIRECTORY}/pg-backup-${BACKUP_ID}.error.log"
+  local validation_stderr_file="${BACKUP_DESTINATION_DIRECTORY}/pg-backup-validation-${BACKUP_ID}.error.log"
 
   register_delete_on_exit "${validation_pipe}" "${validation_stderr_file}" "${pg_basebackup_stderr_file}"
 
@@ -57,7 +58,7 @@ function do_backup() {
 
   log "start backup streaming to mounted storage"
   if [[ -n "$ENCRYPTION_KEY" ]]; then
-     BACKUP_NAME="pg_backup_$(basename ${BACKUP_DESTINATION_DIRECTORY})_enc.tar.gz"
+     BACKUP_NAME="pg_backup_${BACKUP_ID}_enc.tar.gz"
     log "Encryption key is set will encrypt backup"
     $PG_BASEBACKUP -h "${POSTGRES_HOST}" -p "${POSTGRES_PORT}" -U "${REPLICATION_USER}" -D - -X fetch --format=tar --gzip 2> "${pg_basebackup_stderr_file}" \
     | tee "${validation_pipe}" | openssl enc -aes-256-cbc -nosalt -pass pass:"$ENCRYPTION_KEY" > "${BACKUP_DESTINATION_DIRECTORY}/${BACKUP_NAME}"
@@ -95,7 +96,7 @@ function do_swift_backup() {
   # Validate TAR stream on the fly.
   # This will not validate backup data itself, but will check archive's integrity.
   if [[ -n "$ENCRYPTION_KEY" ]]; then
-    BACKUP_NAME="pg_backup_$(basename ${BACKUP_DESTINATION_DIRECTORY})_enc.tar.gz"
+    BACKUP_NAME="pg_backup_${BACKUP_ID}_enc.tar.gz"
     log "Encryption key is set will encrypt backup"
     $PG_BASEBACKUP -h "${POSTGRES_HOST}" -p "${POSTGRES_PORT}" -U "${REPLICATION_USER}" -D - -X fetch --format=tar --gzip 2> "${pg_basebackup_error_file}" \
     | tee "${pg_backup_pipe}" \
@@ -142,39 +143,39 @@ function main() {
   if python -c "import sys; sys.exit(0 if float("${version}") >= 18.0 else 1)"; then
     log "Using pgsql 18 bins for pg_basebackup"
     PG_BASEBACKUP="/usr/lib/postgresql/18/bin/pg_basebackup"
-    BACKUP_NAME="pg_backup_$(basename ${BACKUP_DESTINATION_DIRECTORY}).tar.gz"
+    BACKUP_NAME="pg_backup_${BACKUP_ID}.tar.gz"
   elif python -c "import sys; sys.exit(0 if 17.0 <= float("${version}") < 18.0 else 1)"; then
     log "Using pgsql 17 bins for pg_basebackup"
     PG_BASEBACKUP="/usr/lib/postgresql/17/bin/pg_basebackup"
-    BACKUP_NAME="pg_backup_$(basename ${BACKUP_DESTINATION_DIRECTORY}).tar.gz"
+    BACKUP_NAME="pg_backup_${BACKUP_ID}.tar.gz"
   elif python -c "import sys; sys.exit(0 if 16.0 <= float("${version}") < 17.0 else 1)"; then
     log "Using pgsql 16 bins for pg_basebackup"
     PG_BASEBACKUP="/usr/lib/postgresql/16/bin/pg_basebackup"
-    BACKUP_NAME="pg_backup_$(basename ${BACKUP_DESTINATION_DIRECTORY}).tar.gz"
+    BACKUP_NAME="pg_backup_${BACKUP_ID}.tar.gz"
   elif python -c "import sys; sys.exit(0 if 15.0 <= float("${version}") < 16.0 else 1)"; then
     log "Using pgsql 15 bins for pg_basebackup"
     PG_BASEBACKUP="/usr/lib/postgresql/15/bin/pg_basebackup"
-    BACKUP_NAME="pg_backup_$(basename ${BACKUP_DESTINATION_DIRECTORY}).tar.gz"
+    BACKUP_NAME="pg_backup_${BACKUP_ID}.tar.gz"
   elif python -c "import sys; sys.exit(0 if 14.0 <= float("${version}") < 15.0 else 1)"; then
     log "Using pgsql 14 bins for pg_basebackup"
     PG_BASEBACKUP="/usr/lib/postgresql/14/bin/pg_basebackup"
-    BACKUP_NAME="pg_backup_$(basename ${BACKUP_DESTINATION_DIRECTORY}).tar.gz"
+    BACKUP_NAME="pg_backup_${BACKUP_ID}.tar.gz"
   elif python -c "import sys; sys.exit(0 if 13.0 <= float("${version}") < 14.0 else 1)"; then
     log "Using pgsql 13 bins for pg_basebackup"
     PG_BASEBACKUP="/usr/lib/postgresql/13/bin/pg_basebackup"
-    BACKUP_NAME="pg_backup_$(basename ${BACKUP_DESTINATION_DIRECTORY}).tar.gz"
+    BACKUP_NAME="pg_backup_${BACKUP_ID}.tar.gz"
   elif python -c "import sys; sys.exit(0 if 12.0 <= float("${version}") < 13.0 else 1)"; then
     log "Using pgsql 12 bins for pg_basebackup"
     PG_BASEBACKUP="/usr/lib/postgresql/12/bin/pg_basebackup"
-    BACKUP_NAME="pg_backup_$(basename ${BACKUP_DESTINATION_DIRECTORY}).tar.gz"
+    BACKUP_NAME="pg_backup_${BACKUP_ID}.tar.gz"
   elif python -c "import sys; sys.exit(0 if 11.0 <= float("${version}") < 12.0 else 1)"; then
     log "Using pgsql 11 bins for pg_basebackup"
     PG_BASEBACKUP="/usr/lib/postgresql/11/bin/pg_basebackup"
-    BACKUP_NAME="pg_backup_$(basename ${BACKUP_DESTINATION_DIRECTORY}).tar.gz"
+    BACKUP_NAME="pg_backup_${BACKUP_ID}.tar.gz"
   elif python -c "import sys; sys.exit(0 if 10.0 <= float("${version}") < 11.0 else 1)"; then
     log "Using pgsql 10 bins for pg_basebackup"
     PG_BASEBACKUP="/usr/lib/postgresql/10/bin/pg_basebackup"
-    BACKUP_NAME="pg_backup_$(basename ${BACKUP_DESTINATION_DIRECTORY}).tar.gz"
+    BACKUP_NAME="pg_backup_${BACKUP_ID}.tar.gz"
   else
     if [ "${PG_CLUSTER_NAME}" != "gpdb" ]
     then
@@ -199,9 +200,8 @@ function main() {
     process_exit_code $? "PostgreSQL backup to AWS S3 has finished with an error."
   elif [[ "${STORAGE_TYPE}" == "pgbackrest" ]]; then
         log "Using pgbackrest as external backuper"
-        BACKUP_ID=$(basename ${BACKUP_DESTINATION_DIRECTORY})
         log "'$BACKUP_ID'"
-        log "BACKUP_DESTINATION_DIRECTORY"
+        log "$BACKUP_DESTINATION_DIRECTORY"
         # Check cluster state via patroni API
         PGBACKREST_SRV="backrest"
         if [ "${BACKUP_FROM_STANDBY}" == "true" ]; then

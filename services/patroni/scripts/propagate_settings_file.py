@@ -99,7 +99,7 @@ def main():
         #         return
         iterations = int(os.getenv('CHANGE_SETTINGS_RETRIES', 5))
         sleep = int(os.getenv('CHANGE_SETTINGS_INTERVAL', 3))
-        if patroni_restart_state(basic_auth, iterations, sleep):
+        if patroni_restart_state(iterations, sleep):
             schedule_restart()
 
             return

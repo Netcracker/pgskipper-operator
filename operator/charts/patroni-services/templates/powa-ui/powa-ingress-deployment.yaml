@@ -1,11 +1,13 @@
 {{ if .Values.powaUI.install }}
 {{- if .Values.powaUI.ingress.enabled }}
+{{- if contains "legacy-ingress" (include "gateway.type" .) }}
 apiVersion: networking.k8s.io/v1
 kind: Ingress
 metadata:
   labels:
     name: powa-ui-ingress
       {{ include "kubernetes.labels" . | nindent 4 }}
+      {{ include "ingress.labels" . | nindent 4 }}
   annotations:
   {{- if .Values.tls.enabled }}
     nginx.ingress.kubernetes.io/backend-protocol: HTTPS
@@ -13,7 +15,9 @@ metadata:
     nginx.ingress.kubernetes.io/proxy-ssl-name: '{{ printf "powa-ui.%s" .Release.Namespace }}'
     nginx.ingress.kubernetes.io/proxy-ssl-secret: '{{ printf "%s/%s" .Release.Namespace (include "postgres.certServicesSecret" .) }}'
   {{- end }}
+  {{- if contains "gateway-api-default" (include "gateway.type" .) }}
     gateway-api-converter.netcracker.com/ignore: "true"
+  {{- end }}
   name: powa-ui-ingress
 spec:
   {{- if .Values.tls.enabled }}
@@ -32,5 +36,6 @@ spec:
                   name: web
             path: /
             pathType: ImplementationSpecific
+{{- end }}
 {{ end }}
 {{ end }}

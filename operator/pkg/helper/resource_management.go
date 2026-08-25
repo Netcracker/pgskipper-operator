@@ -516,8 +516,17 @@ func (rm *ResourceManager) CreatePvcIfNotExists(pvc *corev1.PersistentVolumeClai
 			return err
 		}
 	} else {
-		logger.Info(fmt.Sprintf("PVC %s exists, clearing owner reference...", pvc.Name))
+		logger.Info(fmt.Sprintf("PVC %s exists, clearing owner reference and updating annotations...", pvc.Name))
 		foundPvc.OwnerReferences = nil
+		if pvc.Annotations != nil {
+			if foundPvc.Annotations == nil {
+				foundPvc.Annotations = make(map[string]string)
+			}
+			for key, value := range pvc.Annotations {
+				foundPvc.Annotations[key] = value
+			}
+		}
+
 		err := rm.kubeClient.Update(context.TODO(), foundPvc)
 		if err != nil {
 			logger.Error(fmt.Sprintf("Failed to clear Owner Reference for %s", pvc.Name), zap.Error(err))

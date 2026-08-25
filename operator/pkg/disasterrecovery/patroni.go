@@ -101,10 +101,17 @@ func (m *PatroniDRManager) processHealthRequest(response http.ResponseWriter, re
 	if err == nil {
 		isHealthy := m.patroniHelper.IsPatroniClusterHealthy(config)
 		isDegraded := m.patroniHelper.IsPatroniClusterDegraded(config, m.cluster.PgHost)
+		reconcileSuccessfull := m.helper.GetCurrentCRStatus() == "successful"
 		if isHealthy && !isDegraded {
+			log.Info("Patroni cluster is healthy")
 			status = "up"
 		}
 		if isDegraded {
+			log.Info("Patroni cluster is degraded")
+			status = "degraded"
+		}
+		if !reconcileSuccessfull {
+			log.Info("Reconcile status is not successful, setting health status to degraded")
 			status = "degraded"
 		}
 	}
@@ -156,18 +163,8 @@ func (m *PatroniDRManager) processStandByMode(healthy bool) (bool, error) {
 			log.Error("Can not terminate active connections", zap.Error(err))
 			return false, err
 		}
-	} else {
-		log.Info("patroni cluster is not healthy before set mode to standby, proceeding with clean up")
-		//patch standby to init
-		if err := m.patroniHelper.AddStandbyClusterConfigurationConfigMap(m.cluster.PatroniUrl); err != nil {
-			log.Error("Can not update config map with standby cluster configuration")
-			return false, err
-		}
-		if err := m.reinitStandbyPods(); err != nil {
-			return false, err
-		}
 	}
-	// do we really need to wait for reconcile supplementary services after process standby mode?
+
 	if err := m.addStandbyClusterConfigInCR(); err != nil {
 		log.Error("Can not set standby configuration", zap.Error(err))
 		return false, err
@@ -178,12 +175,9 @@ func (m *PatroniDRManager) processStandByMode(healthy bool) (bool, error) {
 	}
 
 	if healthy, err := m.waitForClusterHealthy(); err != nil || !healthy {
-		log.Error("Error occurred while reinit")
-		return m.processStandByMode(healthy)
-	}
-	if err := m.patroniHelper.DeleteCleanerInitContainer(m.cluster.ClusterName); err != nil {
 		return false, err
 	}
+
 	log.Info("patroni cluster is healthy after set mode to standby")
 	return true, nil
 }

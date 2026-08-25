@@ -94,6 +94,11 @@ app.kubernetes.io/managed-by: {{ .Release.Service }}
 app.kubernetes.io/technology: "go"
 {{- end -}}
 
+{{/* Ingress/HTTPRoute labels */}}
+{{- define "ingress.labels" -}}
+deployment.netcracker.com/ingress-audience-type: "ops-user"
+deployment.netcracker.com/ingress-type: "private-network"
+{{- end -}}
 
 {{/*
 Create the name of the service account to use
@@ -251,6 +256,16 @@ Usage: (fromYaml (include "backupDaemon.s3Aliases" .)).items
 items: {{ toYaml .Values.CLOUD_BACKUP_STORAGE_LOCATION | nindent 2 }}
 {{- else if .Values.backupDaemon.s3Aliases -}}
 items: {{ toYaml .Values.backupDaemon.s3Aliases | nindent 2 }}
+{{- else if .Values.backupDaemon.s3Storage -}}
+items:
+  - name: default
+    spec:
+      storageBucket: {{ .Values.backupDaemon.s3Storage.bucket | quote }}
+      storageServerUrl: {{ .Values.backupDaemon.s3Storage.url | quote }}
+      storageUsername: {{ .Values.backupDaemon.s3Storage.accessKeyId | quote }}
+      storageRegion: {{ default "us-east-1" .Values.backupDaemon.s3Storage.region | quote }}
+    secretContent:
+      storagePassword: {{ .Values.backupDaemon.s3Storage.secretAccessKey | quote }}
 {{- else -}}
 items: []
 {{- end -}}
@@ -343,6 +358,17 @@ ReadOnly Postgres host for DBaaS adapter
   {{- else -}}
     {{- .Values.metricCollector.install -}}
   {{- end -}}
+{{- end -}}
+
+{{/*
+Return type for gateway
+*/}}
+{{- define "gateway.type" -}}
+{{- if and .Values.GATEWAY_SYSTEM_TYPE .Values.global.cloudIntegrationEnabled }}
+{{- .Values.GATEWAY_SYSTEM_TYPE }}
+{{- else }}
+{{- default "legacy-ingress" .Values.powaUI.ingress.gatewayType }}
+{{- end -}}
 {{- end -}}
 
 {{/*

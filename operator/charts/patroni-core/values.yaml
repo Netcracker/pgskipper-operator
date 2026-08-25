@@ -2,11 +2,25 @@
 ## This is a YAML-formatted file.
 ## Declare variables to be passed into your templates.
 
+# Global PVC annotations applied to all PersistentVolumeClaims created by the operator.
+# Use this to protect PVCs from ArgoCD pruning or add custom metadata.
+# Storage-specific annotations will override these global annotations if both are set.
+# Example:
+# pvc:
+#   metadata:
+#     annotations:
+#       argocd.argoproj.io/sync-options: Prune=false
+pvc:
+  metadata:
+    annotations: {}
+
 # The name of database superuser.
 postgresUser: postgres
 # The password for the database superuser.
 postgresPassword: "p@ssWOrD1"
 replicatorPassword: "replicator"
+patroniRestApiUser: "patroni"
+patroniRestApiPassword: "p@ssWOrD2"
 
 podLabels: {}
 

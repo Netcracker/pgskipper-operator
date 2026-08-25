@@ -179,7 +179,7 @@ Before installing Patroni Services, ensure a PostgreSQL leader has been elected:
 
 ```bash
 # Wait for master pod to be ready
-kubectl -n postgres get pods --selector=pgtype=master --field-selector=status.phase=Running
+kubectl -n postgres get pods --selector=pgtype=primary --field-selector=status.phase=Running
 
 # Verify cluster status
 kubectl -n postgres get patronicore patroni-core -o jsonpath='{.status.conditions[?(@.type=="Successful")]}'
@@ -221,10 +221,22 @@ For advanced installation scenarios (AWS, Azure, GCP, disaster recovery), see th
 |-----------|-------------|---------|
 | `patroni.replicas` | Number of PostgreSQL replicas | `2` |
 | `patroni.storage.size` | PV size per replica | `5Gi` |
+| `patroni.patroniParams` | Patroni DCS configuration parameters | See below |
 | `backupDaemon.install` | Enable backup daemon | `true` |
 | `backupDaemon.schedule` | Backup schedule (cron) | `0 0/7 * * *` |
 | `metricCollector.install` | Enable monitoring stack | `true` |
 | `tls.enabled` | Enable TLS/SSL | `false` |
+
+### Patroni Configuration Defaults
+
+The operator applies the following default Patroni configuration (from `operator/build/configs/patroni.config.yaml`):
+
+| Parameter | Default Value | Description |
+|-----------|---------------|-------------|
+| `loop_wait` | `20s` | Time between Patroni state checks |
+| `ttl` | `45s` | Time-to-live for leader lock in DCS |
+| `retry_timeout` | `10s` | Timeout for retrying failed operations |
+
 
 See Helm chart values files for comprehensive configuration options:
 - [patroni-core values](operator/charts/patroni-core/values.yaml)
@@ -236,7 +248,7 @@ See Helm chart values files for comprehensive configuration options:
 
 ```bash
 # Port forward to the master pod
-PG_MASTER_POD=$(kubectl get pod -n postgres -o name -l app=patroni,pgtype=master)
+PG_MASTER_POD=$(kubectl get pod -n postgres -o name -l app=patroni,pgtype=primary)
 kubectl -n postgres port-forward "${PG_MASTER_POD}" 5432:5432
 
 # Get credentials
@@ -259,7 +271,7 @@ kubectl -n postgres get patroniservices patroni-services -o jsonpath='{.status.c
 kubectl -n postgres get pods -l app=patroni
 
 # Check master/replica status
-kubectl -n postgres get pods -l pgtype=master
+kubectl -n postgres get pods -l pgtype=primary
 kubectl -n postgres get pods -l pgtype=replica
 ```
 

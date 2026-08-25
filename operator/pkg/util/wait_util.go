@@ -40,7 +40,7 @@ var (
 
 func WaitForStabilityDepl(dep appsv1.Deployment, revision int64, oldGeneration int64) error {
 	uLog.Info(fmt.Sprintf("waitForStability of %s.", dep.Name))
-	return wait.PollUntilContextTimeout(context.Background(), time.Second, 5*time.Minute, true, func(ctx context.Context) (done bool, err error) {
+	return wait.PollUntilContextTimeout(context.Background(), time.Second, getWaitTimeout(), true, func(ctx context.Context) (done bool, err error) {
 		d := &appsv1.Deployment{}
 		if err := k8sClient.Get(context.Background(), types.NamespacedName{Name: dep.Name, Namespace: dep.Namespace}, d); err != nil {
 			uLog.Info("Deployment doesn't exist yet.")
@@ -57,7 +57,7 @@ func WaitForStabilityDepl(dep appsv1.Deployment, revision int64, oldGeneration i
 
 func WaitForStabilityStatefulSet(stSet appsv1.StatefulSet, revision string, oldGeneration int64) error {
 	uLog.Info(fmt.Sprintf("waitForStability of %s.", stSet.Name))
-	return wait.PollUntilContextTimeout(context.Background(), time.Second, 5*time.Minute, true, func(ctx context.Context) (done bool, err error) {
+	return wait.PollUntilContextTimeout(context.Background(), time.Second, getWaitTimeout(), true, func(ctx context.Context) (done bool, err error) {
 		d := &appsv1.StatefulSet{}
 		if err := k8sClient.Get(context.Background(), types.NamespacedName{Name: stSet.Name, Namespace: stSet.Namespace}, d); err != nil {
 			uLog.Info("Statefulset doesn't exist yet.")

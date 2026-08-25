@@ -4,6 +4,26 @@
   "type": "object",
   "additionalProperties": true,
   "properties": {
+    "pvc": {
+      "type": "object",
+      "additionalProperties": false,
+      "description": "Global PVC configuration",
+      "properties": {
+        "metadata": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "annotations": {
+              "type": "object",
+              "additionalProperties": {
+                "type": "string"
+              },
+              "description": "Global annotations applied to all PVCs. Storage-specific annotations will override these."
+            }
+          }
+        }
+      }
+    },
     "postgresUser": {
       "type": "string",
       "default": "postgres",
@@ -34,6 +54,18 @@
     },
     "global": {
       "$ref": "#/$defs/global"
+    },
+    "GATEWAY_SYSTEM_TYPE": {
+      "type": "string",
+      "default": "legacy-ingress"
+    },
+    "GATEWAY_SYSTEM_NAMESPACE": {
+      "type": "string",
+      "default": "gateway-system"
+    },
+    "GATEWAY_SYSTEM_NAME": {
+      "type": "string",
+      "default": "default-external-gateway"
     },
     "serviceAccount": {
       "$ref": "#/$defs/serviceAccount"
@@ -271,6 +303,13 @@
               }
             }
           }
+        },
+        "affinity": {
+          "$ref": "#/$defs/affinity"
+        },
+        "reconcileRetries": {
+          "type": "integer",
+          "default": 3
         }
       }
     },
@@ -501,6 +540,17 @@
         },
         "priorityClassName": {
           "type": "string"
+        },
+        "devMetricsInterval": {
+          "type": "integer",
+          "default": 10
+        },
+        "devMetricsTimeout": {
+          "type": "integer",
+          "default": 10
+        },
+        "affinity": {
+          "$ref": "#/$defs/affinity"
         }
       }
     },
@@ -833,6 +883,10 @@
         "pgHost": {
           "type": "string"
         },
+        "pgPort": {
+          "type": "string",
+          "default": "5432"
+        },
         "dbName": {
           "type": "string",
           "default": "postgres"
@@ -878,6 +932,9 @@
             "password": {
               "type": "string",
               "default": "dbaas-aggregator"
+            },
+            "address": {
+              "type": "string"
             }
           }
         },
@@ -890,11 +947,25 @@
         "updateExtensions": {
           "type": "boolean"
         },
+        "apiVersion": {
+          "type": "string"
+        },
+        "debug": {
+          "type": "boolean",
+          "default": false
+        },
+        "updateRoles": {
+          "type": "boolean",
+          "default": false
+        },
         "resources": {
           "$ref": "#/$defs/resourceRequirements"
         },
         "priorityClassName": {
           "type": "string"
+        },
+        "affinity": {
+          "$ref": "#/$defs/affinity"
         }
       }
     },
@@ -1051,6 +1122,18 @@
             },
             "host": {
               "type": "string"
+            },
+            "gatewayType": {
+              "type": "string",
+              "default": "legacy-ingress"
+            },
+            "gatewayName": {
+              "type": "string",
+              "default": "default-external-gateway"
+            },
+            "gatewayNamespace": {
+              "type": "string",
+              "default": "gateway-system"
             }
           }
         },
@@ -1266,6 +1349,13 @@
           "items": {
             "type": "string"
           }
+        },
+        "annotations": {
+          "type": "object",
+          "additionalProperties": {
+            "type": "string"
+          },
+          "description": "Optional annotations to apply to PVCs created for this storage. Use this to protect PVCs from ArgoCD pruning or add custom metadata."
         }
       }
     },

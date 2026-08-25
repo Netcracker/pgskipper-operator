@@ -42,10 +42,12 @@ import (
 var (
 	namespace     = opUtil.GetNameSpace()
 	logger        = opUtil.GetLogger()
-	MasterLabel   = map[string]string{"pgtype": "master"}
+	MasterLabel   = map[string]string{opUtil.PatroniPgTypeLabelKey: opUtil.PatroniRolePrimary}
 	UpgradeLabels = map[string]string{"app": "pg-major-upgrade", "app.kubernetes.io/name": "pg-major-upgrade"}
 	powaUILabels  = map[string]string{"name": "powa"}
 	//noConnectionDatabases = []string{"template0", "template1"}
+
+	upgradePodOperationTimeout = 240 * time.Minute
 )
 
 func Init(client client.Client) *Upgrade {
@@ -288,6 +290,9 @@ func (u *Upgrade) pgUpgradeCheckFailed(upgradePod *corev1.Pod, cluster *v1.Patro
 		if err = opUtil.WaitForPatroni(cr, cluster.PatroniMasterSelectors, cluster.PatroniReplicasSelector); err != nil {
 			return false, err
 		}
+		if err = u.RestoreRODatabases(cluster.PgHost, cluster.ClusterName); err != nil {
+			return false, err
+		}
 		return true, nil
 	}
 	return false, nil
@@ -383,6 +388,10 @@ func (u *Upgrade) ProceedUpgrade(cr *v1.PatroniCore, cluster *v1.PatroniClusterS
 		return err
 	}
 
+	if err := u.HandleReplicationSlotsBeforeUpgrade(cluster.PgHost, cluster.ClusterName); err != nil {
+		return err
+	}
+
 	config, _ := u.helper.GetPatroniClusterConfig(cluster.PatroniUrl)
 	if !u.helper.IsPatroniClusterHealthy(config) {
 		return errors.New("patroni cluster is not healthy enough for upgrade procedure. Exiting")
@@ -438,16 +447,19 @@ func (u *Upgrade) ProceedUpgrade(cr *v1.PatroniCore, cluster *v1.PatroniClusterS
 	upgradePod.Spec.SecurityContext = patroniSfs.Spec.Template.Spec.SecurityContext
 
 	// create pod and wait till completed
-	if err := u.helper.CreatePod(upgradePod); err != nil {
+	state, err := u.createAndWaitTillPodIsReady(upgradePod)
+	if err != nil {
 		return err
 	}
-
-	if err = u.waitTillPodIsReady(upgradePod); err != nil {
-		failed, err := u.pgUpgradeCheckFailed(upgradePod, cluster, cr)
+	if state != "Succeeded" {
+		failed, checkErr := u.pgUpgradeCheckFailed(upgradePod, cluster, cr)
 		if failed {
 			return errors.New("postgresql major upgrade failed, please, check logs of upgrade pod")
 		}
-		return err
+		if checkErr != nil {
+			return checkErr
+		}
+		return fmt.Errorf("pod State is not equals to Succeeded: %s", state)
 	}
 
 	// clean up init key
@@ -462,6 +474,10 @@ func (u *Upgrade) ProceedUpgrade(cr *v1.PatroniCore, cluster *v1.PatroniClusterS
 	}
 
 	if err := opUtil.WaitForLeader(cluster.PatroniMasterSelectors); err != nil {
+		return err
+	}
+
+	if err := u.RestoreRODatabases(cluster.PgHost, cluster.ClusterName); err != nil {
 		return err
 	}
 
@@ -504,7 +520,7 @@ func (u *Upgrade) getUpgradePod(cr *v1.PatroniCore, leaderName string, initDbArg
 	upgradePod := &corev1.Pod{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      "pg-major-upgrade-" + strconv.Itoa(int(time.Now().Unix())),
-			Labels:    opUtil.Merge(UpgradeLabels, patroniSpec.PodLabels),
+			Labels:    opUtil.Merge(patroniSpec.PodLabels, UpgradeLabels),
 			Namespace: opUtil.GetNameSpace(),
 		},
 		Spec: corev1.PodSpec{
@@ -530,7 +546,7 @@ func (u *Upgrade) getUpgradePod(cr *v1.PatroniCore, leaderName string, initDbArg
 						},
 						{
 							Name:  "TYPE",
-							Value: "master",
+							Value: opUtil.PatroniRolePrimary,
 						},
 						{
 							Name:  "OPERATOR",
@@ -635,12 +651,39 @@ func (u *Upgrade) ScalePowaDeployment(replicas int32) error {
 	return nil
 }
 
-func (u *Upgrade) waitTillPodIsReady(pod *corev1.Pod) error {
-	state, err := opUtil.WaitForCompletePod(pod)
-	if state != "Succeeded" {
-		return fmt.Errorf("pod State is not equals to Succeeded: %s", state)
+func (u *Upgrade) createAndWaitTillPodIsReady(pod *corev1.Pod) (string, error) {
+	if err := u.helper.CreatePod(pod); err != nil {
+		return "", err
 	}
-	return err
+
+	wasPending := false
+	pollErr := wait.PollUntilContextTimeout(context.Background(), 10*time.Second, upgradePodOperationTimeout, true, func(ctx context.Context) (done bool, err error) {
+		state, err := opUtil.GetPodPhase(pod)
+		logger.Info(fmt.Sprintf("Waiting for the pod phase Succeeded or Failed. Pod phase: %s", state))
+		if state == "Pending" {
+			wasPending = true
+		}
+		if wasPending && state == "NotFound" {
+			logger.Info("Upgrade pod disappeared after Pending phase, recreating it")
+			wasPending = false
+			if err := u.helper.CreatePod(pod); err != nil {
+				return false, err
+			}
+			return false, nil
+		}
+		if state == "Succeeded" || state == "Failed" {
+			return true, nil
+		}
+		return false, err
+	})
+	if pollErr != nil {
+		if errors.Is(pollErr, context.DeadlineExceeded) || errors.Is(pollErr, context.Canceled) {
+			return "TimeOut", fmt.Errorf("upgrade pod operation timed out: %w", pollErr)
+		}
+		return "TimeOut", pollErr
+	}
+	state, _ := opUtil.GetPodPhase(pod)
+	return state, nil
 }
 
 func (u *Upgrade) waitTillPodIsRunning(pod *corev1.Pod) error {
@@ -675,7 +718,7 @@ func (u *Upgrade) getUpgradeCheckPod(cr *v1.PatroniCore) *corev1.Pod {
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      "pg-major-upgrade-check-" + strconv.Itoa(int(time.Now().Unix())),
 			Namespace: opUtil.GetNameSpace(),
-			Labels:    opUtil.Merge(UpgradeLabels, patroniSpec.PodLabels),
+			Labels:    opUtil.Merge(patroniSpec.PodLabels, UpgradeLabels),
 		},
 		Spec: corev1.PodSpec{
 			RestartPolicy: corev1.RestartPolicyNever,

@@ -224,12 +224,21 @@ func (ph *PatroniHelper) isLeaderExist(config ClusterStatus) bool {
 	members := config.Members
 	for i := 0; i < len(members); i++ {
 		role := members[i].Role
-		if role == "leader" || role == "standby_leader" {
+		switch role {
+		case "leader":
 			logger.Debug("Check is Leader Exist - True")
 			return true
+		case "standby_leader":
+			state := members[i].State
+			if state == "streaming" {
+				logger.Debug("Check is Standby Leader Exist - True")
+				return true
+			} else {
+				logger.Info("Standby Leader Exists, but not in streaming state")
+			}
 		}
 	}
-	logger.Debug("Check is Leader Exist - False")
+	logger.Debug("Check is Leader or Standby Leader Exist - False")
 	return false
 }
 
@@ -711,4 +720,19 @@ func (ph *PatroniHelper) GetStatefulSetIds(statefulsets []*appsv1.StatefulSet) (
 		ids = append(ids, statefulsetIdx)
 	}
 	return ids, nil
+}
+
+func (ph *PatroniHelper) ReloadPatroniIfLegacyMasterLabel(clusterName, patroniUrl string) error {
+	pods, err := ph.GetPodsByLabel(map[string]string{
+		util.PatroniPgTypeLabelKey:  util.PatroniRoleMaster,
+		util.PatroniClusterLabelKey: clusterName,
+	})
+	if err != nil {
+		return err
+	}
+	if len(pods.Items) == 0 {
+		return nil
+	}
+	logger.Info("Legacy pgtype=master label detected, reloading patroni config")
+	return patroni.ReloadPatroniConfig(patroniUrl)
 }

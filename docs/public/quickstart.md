@@ -59,14 +59,30 @@ For `backupDaemon.storage` section point your PV the same way, but in a single c
 
 When setup is complete, we can proceed to install the postgres operator.
 
-Manually install CRD for Patroni-Core:
+### CRD Installation
+
+CRDs are cluster-scoped resources managed as a **dedicated application** that must be installed and synced before the main operator charts. The main microservice deployments rely on pre-installed CRDs and must not attempt to install them independently.
+
+Install the CRD application first:
+
 ```
 kubectl create -f ./operator/charts/patroni-core/crds/netcracker.com_patronicores.yaml
-```
-Manually install CRD for Postgres-Services
-```
 kubectl create -f ./operator/charts/patroni-services/crds/netcracker.com_patroniservices.yaml
 ```
+
+Wait for the CRDs to be registered before proceeding:
+
+```
+kubectl get crd netcracker.com_patronicores.yaml patroniservices.netcracker.com
+```
+
+#### Restricted Environments
+
+In environments where the deployment user lacks cluster-wide permissions, the dedicated CRDs application must **not** be installed. Instead, a cluster administrator must pre-install the CRDs out-of-band, and the `DISABLE_CRD=true` flag must be set on the main microservice application.
+
+> **Note:** `DISABLE_CRD=true` is deprecated for environments with cluster-wide permissions. Use the dedicated CRDs application approach in all other cases.
+
+### Install Patroni-Core Operator
 
 Install Patroni-Core Operator via Helm by following command:
 ```
@@ -85,7 +101,7 @@ It should return two patroni pods w/o any restarts
 After that wait for the leader promotion, you may determine the leader pod by following command:
 ```
 kubectl -n postgres get pods \
-  --selector=pgtype=master \
+  --selector=pgtype=primary \
   --field-selector=status.phase=Running
 ```
 
@@ -120,7 +136,7 @@ After successful installation or upgrade, it is necessary to check the state of 
 Navigate to the target PostgreSQL namespace and check the following:
 
 * All the requested deployments exist. For example, components such as Patroni, PostgreSQL Backup Daemon, PostgreSQL Monitoring Collector, and so on should exist if they are marked for installation.
-* Pods with the `pgtype=master` label exist.
+* Pods with the `pgtype=primary` label exist.
 * Pods with the `pgtype=replica` label exist.
 * All the pods have Ready `1/1` status.
 
@@ -160,7 +176,7 @@ The following lines describe the operator installation status:
 
 Open new terminal and run the following commands for create port forward to the database Pod:
 ```
-PG_MASTER_POD=$(kubectl get pod -n postgres -o name -l app=patroni,pgtype=master)
+PG_MASTER_POD=$(kubectl get pod -n postgres -o name -l app=patroni,pgtype=primary)
 kubectl -n postgres port-forward "${PG_MASTER_POD}" 5432:5432
 ```
 
