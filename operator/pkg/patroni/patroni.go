@@ -608,7 +608,7 @@ func Switchover(patroniURL, leader, candidate string) error {
 		return err
 	}
 
-	resp, err := http.Post(patroniURL+"switchover", "application/json", bytes.NewBuffer(data))
+	resp, err := patroniPost(http.DefaultClient, patroniURL+"switchover", bytes.NewBuffer(data))
 	if err != nil {
 		return err
 	}

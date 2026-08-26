@@ -1209,33 +1209,6 @@ func (rm *ResourceManager) WaitForPvcResizeState(pvcName string, namespace strin
 	return restartRequired, err
 }
 
-func (rm *ResourceManager) WaitForPodDeletion(podName string, timeout time.Duration) error {
-	return wait.PollUntilContextTimeout(context.Background(), time.Second, timeout, true,
-		func(ctx context.Context) (bool, error) {
-			pod := &corev1.Pod{}
-
-			err := rm.kubeClient.Get(
-				ctx,
-				types.NamespacedName{
-					Name:      podName,
-					Namespace: util.GetNameSpace(),
-				},
-				pod,
-			)
-
-			if errors.IsNotFound(err) {
-				return true, nil
-			}
-
-			if err != nil {
-				return false, err
-			}
-
-			return false, nil
-		},
-	)
-}
-
 func (rm *ResourceManager) WaitForPvcCapacity(pvcName string, namespace string, desiredSize resource.Quantity, timeout time.Duration) (bool, error) {
 	resized := false
 
@@ -1303,5 +1276,26 @@ func (rm *ResourceManager) ScaleStatefulSet(name string, replicas int32) error {
 		sts.Spec.Replicas = &replicas
 
 		return rm.kubeClient.Update(context.TODO(), sts)
+	})
+}
+
+func (rm *ResourceManager) ScaleDeployment(name string, replicas int32) error {
+	return retry.RetryOnConflict(retry.DefaultRetry, func() error {
+		deployment := &appsv1.Deployment{}
+
+		if err := rm.kubeClient.Get(
+			context.TODO(),
+			types.NamespacedName{
+				Name:      name,
+				Namespace: namespace,
+			},
+			deployment,
+		); err != nil {
+			return err
+		}
+
+		deployment.Spec.Replicas = &replicas
+
+		return rm.kubeClient.Update(context.TODO(), deployment)
 	})
 }

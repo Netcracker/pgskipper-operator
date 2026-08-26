@@ -157,9 +157,6 @@ func (r *PatroniReconciler) Reconcile() error {
 		}
 
 	}
-	if err := r.processPgBackRestPvc(cr); err != nil {
-		return err
-	}
 	// find possible deployments by pods
 	// try to get master pod
 	masterPod, err = r.helper.GetPodsByLabel(r.cluster.PatroniMasterSelectors)
@@ -537,117 +534,6 @@ func (r *PatroniReconciler) processPatroniStatefulset(cr *v1.PatroniCore, deploy
 	return nil
 }
 
-func (r *PatroniReconciler) processPgBackRestPvc(cr *v1.PatroniCore) error {
-	if cr.Spec.PgBackRest == nil || strings.ToLower(cr.Spec.PgBackRest.RepoType) != "rwx" {
-		return nil
-	}
-
-	pgBackrestStorage := cr.Spec.PgBackRest.Rwx
-	pgBackrestStorage.AccessModes = []string{"ReadWriteMany"}
-
-	pvc := storage.NewPvc("pgbackrest-backups", pgBackrestStorage, 1)
-
-	resizeInProgress, err := r.helper.CreateOrResizePvc(pvc)
-	if err != nil {
-		logger.Error(fmt.Sprintf("Cannot create or resize pvc %s", pvc.Name), zap.Error(err))
-		return err
-	}
-
-	if !resizeInProgress {
-		return nil
-	}
-
-	logger.Info(fmt.Sprintf("Waiting for PVC %s resize state", pvc.Name))
-
-	restartRequired, err := r.helper.WaitForPvcResizeState(
-		pvc.Name,
-		pvc.Namespace,
-		pvc.Spec.Resources.Requests[corev1.ResourceStorage],
-	)
-	if err != nil {
-		return err
-	}
-
-	if !restartRequired {
-		return nil
-	}
-
-	desiredSize := pvc.Spec.Resources.Requests[corev1.ResourceStorage]
-
-	replicaPods, err := r.helper.GetPodsByLabel(r.cluster.PatroniReplicasSelector)
-	if err != nil && !errors.IsNotFound(err) {
-		return err
-	}
-
-	var podName string
-
-	if len(replicaPods.Items) > 0 {
-		podName = replicaPods.Items[0].Name
-		logger.Info(fmt.Sprintf("Restarting Patroni replica %s to complete pgBackRest PVC resize", podName))
-	} else {
-		masterPods, err := r.helper.GetPodsByLabel(r.cluster.PatroniMasterSelectors)
-		if err != nil {
-			return err
-		}
-
-		if len(masterPods.Items) != 1 {
-			return fmt.Errorf("expected exactly one Patroni master, found %d", len(masterPods.Items))
-		}
-
-		podName = masterPods.Items[0].Name
-
-		logger.Warn(fmt.Sprintf("No Patroni replica available, restarting master %s to complete pgBackRest PVC resize", podName))
-	}
-
-	statefulSetName := strings.TrimSuffix(podName, "-0")
-
-	const maxResizeAttempts = 3
-
-	for attempt := 1; attempt <= maxResizeAttempts; attempt++ {
-		logger.Info(fmt.Sprintf("Restarting StatefulSet %s to complete pgBackRest PVC resize, attempt %d/%d", statefulSetName, attempt, maxResizeAttempts))
-
-		if err := r.helper.ScaleStatefulSet(statefulSetName, 0); err != nil {
-			return err
-		}
-
-		if err := r.helper.WaitForPodDeletion(
-			podName,
-			2*time.Minute,
-		); err != nil {
-			return err
-		}
-
-		time.Sleep(10 * time.Second)
-
-		if err := r.helper.ScaleStatefulSet(statefulSetName, 1); err != nil {
-			return err
-		}
-
-		resized, err := r.helper.WaitForPvcCapacity(
-			pvc.Name,
-			pvc.Namespace,
-			desiredSize,
-			30*time.Second,
-		)
-		if err != nil {
-			return err
-		}
-
-		if resized {
-			logger.Info(fmt.Sprintf("pgBackRest PVC %s successfully resized to %s", pvc.Name, desiredSize.String()))
-			return nil
-		}
-
-		if attempt == maxResizeAttempts {
-			return fmt.Errorf("pgBackRest PVC %s filesystem resize is still pending after %d restart attempts", pvc.Name, maxResizeAttempts)
-		}
-
-		logger.Warn(fmt.Sprintf("pgBackRest PVC %s resize is still pending, retrying StatefulSet restart", pvc.Name))
-	}
-
-	return nil
-}
-
 func (r *PatroniReconciler) processPatroniPvcResize(pvcs []*corev1.PersistentVolumeClaim, deploymentIdx int) error {
 	var resizingPvcs []*corev1.PersistentVolumeClaim
 	restartRequired := false
@@ -704,10 +590,12 @@ func (r *PatroniReconciler) processPatroniPvcResize(pvcs []*corev1.PersistentVol
 			return err
 		}
 
-		if err := r.helper.WaitForPodDeletion(
-			podName,
-			2*time.Minute,
-		); err != nil {
+		if err := opUtil.WaitDeletePod(&corev1.Pod{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      podName,
+				Namespace: r.cr.Namespace,
+			},
+		}); err != nil {
 			return err
 		}
 
@@ -725,12 +613,7 @@ func (r *PatroniReconciler) processPatroniPvcResize(pvcs []*corev1.PersistentVol
 		for _, pvc := range resizingPvcs {
 			desiredSize := pvc.Spec.Resources.Requests[corev1.ResourceStorage]
 
-			resized, err := r.helper.WaitForPvcCapacity(
-				pvc.Name,
-				pvc.Namespace,
-				desiredSize,
-				30*time.Second,
-			)
+			resized, err := r.helper.WaitForPvcCapacity(pvc.Name, pvc.Namespace, desiredSize, 30*time.Second)
 			if err != nil {
 				return err
 			}
@@ -740,11 +623,7 @@ func (r *PatroniReconciler) processPatroniPvcResize(pvcs []*corev1.PersistentVol
 				continue
 			}
 
-			logger.Info(fmt.Sprintf(
-				"PVC %s successfully resized to %s",
-				pvc.Name,
-				desiredSize.String(),
-			))
+			logger.Info(fmt.Sprintf("PVC %s successfully resized to %s", pvc.Name, desiredSize.String()))
 		}
 
 		if allResized {
@@ -805,11 +684,7 @@ func (r *PatroniReconciler) switchoverIfMaster(podName string) error {
 	}
 
 	// Wait specifically until our selected replica becomes master.
-	if err := wait.PollUntilContextTimeout(
-		context.Background(),
-		time.Second,
-		2*time.Minute,
-		true,
+	if err := wait.PollUntilContextTimeout(context.Background(), time.Second, 2*time.Minute, true,
 		func(ctx context.Context) (bool, error) {
 			masters, err := r.helper.GetPodsByLabel(
 				r.cluster.PatroniMasterSelectors,
