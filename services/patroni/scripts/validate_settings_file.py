@@ -49,7 +49,7 @@ def main(conf_file, restart_pg=False):
     from requests.auth import HTTPBasicAuth
     basic_auth = HTTPBasicAuth(user, password)
 
-    if patroni_restart_state(basic_auth):
+    if patroni_restart_state():
         logger.info("Schedule restart because some settings requires restart and restart_pg is true")
         schedule_restart()
         sys.exit(1)

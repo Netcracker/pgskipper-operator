@@ -42,7 +42,7 @@ import (
 var (
 	namespace     = opUtil.GetNameSpace()
 	logger        = opUtil.GetLogger()
-	MasterLabel   = map[string]string{"pgtype": "master"}
+	MasterLabel   = map[string]string{opUtil.PatroniPgTypeLabelKey: opUtil.PatroniRolePrimary}
 	UpgradeLabels = map[string]string{"app": "pg-major-upgrade", "app.kubernetes.io/name": "pg-major-upgrade"}
 	powaUILabels  = map[string]string{"name": "powa"}
 	//noConnectionDatabases = []string{"template0", "template1"}
@@ -290,6 +290,9 @@ func (u *Upgrade) pgUpgradeCheckFailed(upgradePod *corev1.Pod, cluster *v1.Patro
 		if err = opUtil.WaitForPatroni(cr, cluster.PatroniMasterSelectors, cluster.PatroniReplicasSelector); err != nil {
 			return false, err
 		}
+		if err = u.RestoreRODatabases(cluster.PgHost, cluster.ClusterName); err != nil {
+			return false, err
+		}
 		return true, nil
 	}
 	return false, nil
@@ -385,6 +388,10 @@ func (u *Upgrade) ProceedUpgrade(cr *v1.PatroniCore, cluster *v1.PatroniClusterS
 		return err
 	}
 
+	if err := u.HandleReplicationSlotsBeforeUpgrade(cluster.PgHost, cluster.ClusterName); err != nil {
+		return err
+	}
+
 	config, _ := u.helper.GetPatroniClusterConfig(cluster.PatroniUrl)
 	if !u.helper.IsPatroniClusterHealthy(config) {
 		return errors.New("patroni cluster is not healthy enough for upgrade procedure. Exiting")
@@ -470,6 +477,10 @@ func (u *Upgrade) ProceedUpgrade(cr *v1.PatroniCore, cluster *v1.PatroniClusterS
 		return err
 	}
 
+	if err := u.RestoreRODatabases(cluster.PgHost, cluster.ClusterName); err != nil {
+		return err
+	}
+
 	if err := u.applyCleanerInitContainer(leaderName, patroniSpec, cluster); err != nil {
 		return err
 	}
@@ -535,7 +546,7 @@ func (u *Upgrade) getUpgradePod(cr *v1.PatroniCore, leaderName string, initDbArg
 						},
 						{
 							Name:  "TYPE",
-							Value: "master",
+							Value: opUtil.PatroniRolePrimary,
 						},
 						{
 							Name:  "OPERATOR",

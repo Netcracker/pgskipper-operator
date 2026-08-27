@@ -81,6 +81,11 @@ spec:
             - name: replicator-credentials
               mountPath: /var/run/secrets/postgresql/replicator-credentials
               readOnly: true
+          {{- if not .Values.externalDataBase }}
+            - name: patroni-rest-api-credentials
+              mountPath: /var/run/secrets/postgresql/patroni-rest-api-credentials
+              readOnly: true
+          {{- end }}
           env:
             - name: WATCH_NAMESPACE
               valueFrom:
@@ -179,6 +184,12 @@ spec:
           secret:
             secretName: replicator-credentials
             defaultMode: 420
+        {{- if not .Values.externalDataBase }}
+        - name: patroni-rest-api-credentials
+          secret:
+            secretName: patroni-rest-api-credentials
+            defaultMode: 420
+        {{- end }}
         - name: postgres-credentials
           secret:
             secretName: postgres-credentials

@@ -47,6 +47,28 @@ type ClusterResponse struct {
 
 type Members map[string]interface{}
 
+func AddPatroniBasicAuth(req *http.Request) {
+	switch req.Method {
+	case http.MethodPost, http.MethodPut, http.MethodDelete, http.MethodPatch:
+	default:
+		return
+	}
+	username := util.ReadSecretFile(util.PatroniRestApiCredsPath+"username", "")
+	password := util.ReadSecretFile(util.PatroniRestApiCredsPath+"password", "")
+	if username != "" && password != "" {
+		req.SetBasicAuth(username, password)
+	}
+}
+
+func patroniPost(client *http.Client, url string, body io.Reader) (*http.Response, error) {
+	req, err := http.NewRequest(http.MethodPost, url, body)
+	if err != nil {
+		return nil, err
+	}
+	AddPatroniBasicAuth(req)
+	return client.Do(req)
+}
+
 func SetWalArchiving(spec qubershipv1.PatroniServicesSpec, patroniUrl string) error {
 	postgreSQLParams := map[string]interface{}{}
 	recoveryParams := map[string]string{}
@@ -440,6 +462,7 @@ func UpdatePatroniConfig(values map[string]interface{}, patroniUrl string) error
 			logger.Error("Cannot prepare request for updating patroni", zap.Error(err))
 			return false, nil
 		}
+		AddPatroniBasicAuth(req)
 		resp, err := client.Do(req)
 		if err != nil {
 			logger.Error(fmt.Sprintf("Failed to patch postgresql params via patroni, %v, Retrying", resp), zap.Error(err))
@@ -524,7 +547,7 @@ func restartIfPending(patroniUrl string) error {
 			pendingRestart, ok := responseAsJson["pending_restart"]
 			if ok && pendingRestart.(bool) {
 				logger.Info("restartPending, will schedule restart of patroni")
-				resp, err = http.Post(patroniUrl+"restart", "", nil)
+				resp, err = patroniPost(&http.Client{}, patroniUrl+"restart", nil)
 				defer func() {
 					_ = resp.Body.Close()
 				}()
@@ -623,6 +646,30 @@ func Switchover(patroniURL, leader, candidate string) error {
 	}
 
 	logger.Info(fmt.Sprintf("Patroni switchover from %s to %s requested successfully", leader, candidate))
+  
+  return nil
+}
 
+func ReloadPatroniConfig(patroniUrl string) error {
+	hosts, err := getPatroniHosts(patroniUrl)
+	if err != nil {
+		return err
+	}
+	client := &http.Client{}
+	for _, host := range hosts {
+		resp, err := patroniPost(client, host+"reload", nil)
+		if err != nil {
+			return fmt.Errorf("patroni reload failed for %s: %w", host, err)
+		}
+		defer func() {
+			if resp != nil && resp.Body != nil {
+				_ = resp.Body.Close()
+			}
+		}()
+		if resp.StatusCode != http.StatusOK && resp.StatusCode != http.StatusAccepted {
+			return fmt.Errorf("patroni reload failed for %s: status %s", host, resp.Status)
+		}
+		logger.Info(fmt.Sprintf("Patroni config reloaded on %s", host))
+	}
 	return nil
 }

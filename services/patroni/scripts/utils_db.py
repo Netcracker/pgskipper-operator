@@ -115,11 +115,10 @@ def is_values_diff(value, db_value):
     return value != db_value
 
 
-def patroni_restart_state(basic_auth, iterations=5, sleep=3):
+def patroni_restart_state(iterations=5, sleep=3):
     for i in range(iterations):
         time.sleep(sleep)
-        r = requests.get("http://{}:8008".format(get_host_ip()),
-                         auth=basic_auth)
+        r = requests.get("http://{}:8008".format(get_host_ip()))
         logger.info("Checking restart state... It is {}".format(r.json().get('pending_restart', False)))
         restart_required = r.json().get('pending_restart', False)
         if restart_required:

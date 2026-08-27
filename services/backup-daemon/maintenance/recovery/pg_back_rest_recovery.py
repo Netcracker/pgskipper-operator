@@ -68,9 +68,8 @@ class PgBackRestRecovery():
 
 
     def get_patroni_replicas_ip(self, statefulsets):
-        r = requests.get("pg-patroni:8008")
+        r = requests.get("http://pg-patroni:8008")
         return r.json()['replication']
-
 
     def get_patroni_statefulsets(self):
         stateful_sets = self.apps_api.list_namespaced_stateful_set(self.project).items
@@ -313,7 +312,7 @@ class PgBackRestRecovery():
         
         # Check for master pod
         try:
-            self.find_cluster_pods("master", 1)
+            self.find_cluster_pods("primary", 1)
         except Exception as e:
             log.error(f"Failed to find master pod after retries: {e}")
             raise
@@ -332,7 +331,7 @@ class PgBackRestRecovery():
 
     def restore_replicas_only(self, stateful_sets):
         log.info("Restoring replicas only")
-        master_pods = self.find_cluster_pods("master", 1)
+        master_pods = self.find_cluster_pods("primary", 1)
         # Extract stateful set name from master pod name (remove "-0" suffix)
         master_statefulset_name = master_pods[0].metadata.name.rsplit("-", 1)[0]
         log.info(f"Master stateful set name: {master_statefulset_name}")

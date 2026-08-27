@@ -33,6 +33,7 @@ log = logging.getLogger()
 log.setLevel(logging.DEBUG)
 
 POSTGRES_CREDS_PATH = "/var/run/secrets/postgresql/postgres-credentials"
+PATRONI_REST_API_CREDS_PATH = "/var/run/secrets/postgresql/patroni-rest-api-credentials"
 
 class pgsLibrary(object):
     def __init__(self, namespace, ssl_mode, internal_tls):
@@ -96,7 +97,7 @@ class pgsLibrary(object):
     def get_master_pod(self):
         for pod in self.pl_lib.get_pods(self._namespace):
             if "pgtype" in pod.metadata.labels and pod.metadata.labels[
-                'pgtype'] == 'master' and pod.status.phase == 'Running':
+                'pgtype'] == 'primary' and pod.status.phase == 'Running':
                 return pod
         BuiltIn().run_keyword('Fail', "Master pod not found")
         return None
@@ -173,6 +174,20 @@ class pgsLibrary(object):
     def get_master_service(self):
         master_service = "pg-" + os.getenv("PG_CLUSTER_NAME", "patroni")
         return master_service
+
+    def _read_patroni_rest_api_credentials(self):
+        user = self.read_secret_file(os.path.join(PATRONI_REST_API_CREDS_PATH, 'username'), "")
+        password = self.read_secret_file(os.path.join(PATRONI_REST_API_CREDS_PATH, 'password'), "")
+        if user and password:
+            return user, password
+        return None, None
+
+    def _get_patroni_rest_api_auth(self):
+        user, password = self._read_patroni_rest_api_credentials()
+        if user and password:
+            from requests.auth import HTTPBasicAuth
+            return HTTPBasicAuth(user, password)
+        return None
 
     @keyword('Execute Auth Check')
     def execute_auth_check(self):
@@ -364,10 +379,9 @@ class pgsLibrary(object):
             "leader": master,
             "candidate": replica
         }
-        user = os.getenv('PATRONI_REST_API_USER')
-        password = os.getenv('PATRONI_REST_API_PASSWORD')
+        user, password = self._read_patroni_rest_api_credentials()
         from requests.auth import HTTPBasicAuth
-        basic_auth = HTTPBasicAuth(user, password)
+        basic_auth = HTTPBasicAuth(user, password) if user and password else None
         req = requests.post("http://{0}:8008/switchover".format(master_service),
                             data=json.dumps(data),
                             auth=basic_auth)

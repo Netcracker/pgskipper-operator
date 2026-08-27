@@ -142,6 +142,11 @@ func (r *PatroniReconciler) Reconcile() error {
 		return err
 	}
 
+	if err := r.helper.ReloadPatroniIfLegacyMasterLabel(r.cluster.ClusterName, r.cluster.PatroniUrl); err != nil {
+		logger.Error("Patroni reload for primary label migration failed", zap.Error(err))
+		return err
+	}
+
 	pgParamsConfigMap := deployment.ConfigMapForPostgreSQL(r.cluster.ClusterName, r.cluster.PatroniPropertiesCM)
 	if _, err := r.helper.CreateOrUpdateConfigMap(pgParamsConfigMap); err != nil {
 		logger.Error(fmt.Sprintf("Cannot create config map %s", pgParamsConfigMap.Name), zap.Error(err))
