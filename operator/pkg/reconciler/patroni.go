@@ -507,6 +507,17 @@ func (r *PatroniReconciler) processPatroniStatefulset(cr *v1.PatroniCore, deploy
 		patroniPvcs = append(patroniPvcs, storage.NewPvc(fmt.Sprintf("%s-wals-data-%v", opUtil.GetPatroniClusterName(cr.Spec.Patroni.ClusterName), deploymentIdx), patroniSpec.PgWalStorage, deploymentIdx))
 	}
 
+	if cr.Spec.PgBackRest != nil && strings.ToLower(cr.Spec.PgBackRest.RepoType) == "rwx" {
+		pgBackrestStorage := cr.Spec.PgBackRest.Rwx
+		pgBackrestStorage.AccessModes = []string{"ReadWriteMany"}
+
+		pgBackrestPvc := storage.NewPvc("pgbackrest-backups", pgBackrestStorage, 1)
+		if err := r.helper.CreatePvcIfNotExists(pgBackrestPvc); err != nil {
+			logger.Error(fmt.Sprintf("Cannot create pvc %s", pgBackrestPvc.Name), zap.Error(err))
+			return err
+		}
+	}
+
 	if err := r.processPatroniPvcResize(patroniPvcs, deploymentIdx); err != nil {
 		return err
 	}

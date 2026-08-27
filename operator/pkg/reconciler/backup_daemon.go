@@ -297,7 +297,7 @@ func (r *BackupDaemonReconciler) Reconcile() error {
 			logger.Info(fmt.Sprintf("Restarting Backup Daemon deployment %s to complete PVC resize, attempt %d, waiting %s", backupDaemonDeployment.Name, attempt, delay))
 
 			backupPods, err := r.helper.GetNamespacePodListBySelectors(
-				map[string]string{"app": "postgres-backup-daemon"},
+				deployment.BackupDaemonLabels,
 			)
 			if err != nil {
 				return err
