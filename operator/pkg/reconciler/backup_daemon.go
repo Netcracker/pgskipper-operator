@@ -15,6 +15,7 @@
 package reconciler
 
 import (
+	"context"
 	"fmt"
 	"strconv"
 	"strings"
@@ -276,44 +277,72 @@ func (r *BackupDaemonReconciler) Reconcile() error {
 	}
 
 	if backupPvcRestartRequired {
-		logger.Info(fmt.Sprintf("Restarting Backup Daemon deployment %s to complete PVC resize", backupDaemonDeployment.Name))
+		ctx, cancel := context.WithTimeout(context.Background(), 10*time.Minute)
+		defer cancel()
 
-		backupPods, err := r.helper.GetNamespacePodListBySelectors(
-			map[string]string{"app": "postgres-backup-daemon"},
-		)
-		if err != nil {
-			return err
-		}
-		if err := r.helper.ScaleDeployment(backupDaemonDeployment.Name, 0); err != nil {
-			return err
-		}
+		attempt := 1
 
-		for _, pod := range backupPods.Items {
-			if err := opUtil.WaitDeletePod(&pod); err != nil {
+		for {
+			select {
+			case <-ctx.Done():
+				return fmt.Errorf("timeout waiting for Backup Daemon PVC resize")
+			default:
+			}
+
+			delay := 10 * time.Second * time.Duration(1<<(attempt-1))
+			if delay > time.Minute {
+				delay = time.Minute
+			}
+
+			logger.Info(fmt.Sprintf("Restarting Backup Daemon deployment %s to complete PVC resize, attempt %d, waiting %s", backupDaemonDeployment.Name, attempt, delay))
+
+			backupPods, err := r.helper.GetNamespacePodListBySelectors(
+				map[string]string{"app": "postgres-backup-daemon"},
+			)
+			if err != nil {
 				return err
 			}
+
+			if err := r.helper.ScaleDeployment(backupDaemonDeployment.Name, 0); err != nil {
+				return err
+			}
+
+			for _, pod := range backupPods.Items {
+				if err := opUtil.WaitDeletePod(&pod); err != nil {
+					return err
+				}
+			}
+
+			select {
+			case <-time.After(delay):
+			case <-ctx.Done():
+				return fmt.Errorf("timeout waiting for Backup Daemon PVC resize")
+			}
+
+			if err := r.helper.CreateOrUpdateDeploymentForce(backupDaemonDeployment, true); err != nil {
+				logger.Error(fmt.Sprintf("Cannot create or update deployment %s", backupDaemonDeployment.Name), zap.Error(err))
+				return err
+			}
+
+			desiredSize := backupPvc.Spec.Resources.Requests[corev1.ResourceStorage]
+
+			resized, err := r.helper.WaitForPvcCapacity(backupPvc.Name, backupPvc.Namespace, desiredSize, 30*time.Second)
+			if err != nil {
+				return err
+			}
+
+			if resized {
+				logger.Info(fmt.Sprintf("Backup Daemon PVC %s successfully resized to %s", backupPvc.Name, desiredSize.String()))
+				break
+			}
+
+			attempt++
 		}
-
-		time.Sleep(10 * time.Second)
-	}
-
-	if err := r.helper.CreateOrUpdateDeploymentForce(backupDaemonDeployment, true); err != nil {
-		logger.Error(fmt.Sprintf("Cannot create or update deployment %s", backupDaemonDeployment.Name), zap.Error(err))
-		return err
-	}
-	if backupPvcRestartRequired {
-		desiredSize := backupPvc.Spec.Resources.Requests[corev1.ResourceStorage]
-
-		resized, err := r.helper.WaitForPvcCapacity(backupPvc.Name, backupPvc.Namespace, desiredSize, 2*time.Minute)
-		if err != nil {
+	} else {
+		if err := r.helper.CreateOrUpdateDeploymentForce(backupDaemonDeployment, true); err != nil {
+			logger.Error(fmt.Sprintf("Cannot create or update deployment %s", backupDaemonDeployment.Name), zap.Error(err))
 			return err
 		}
-
-		if !resized {
-			return fmt.Errorf("Backup Daemon PVC %s filesystem resize is still pending", backupPvc.Name)
-		}
-
-		logger.Info(fmt.Sprintf("Backup Daemon PVC %s successfully resized to %s", backupPvc.Name, desiredSize.String()))
 	}
 	if err := util.WaitForBackupDaemon(); err != nil {
 		logger.Error("Failed to wait for backup daemon, exiting", zap.Error(err))

@@ -583,15 +583,23 @@ func (r *PatroniReconciler) processPatroniPvcResize(pvcs []*corev1.PersistentVol
 		return err
 	}
 
-	const maxResizeAttempts = 3
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Minute)
+	defer cancel()
 
-	for attempt := 1; attempt <= maxResizeAttempts; attempt++ {
-		logger.Info(fmt.Sprintf("Restarting StatefulSet %s to complete PVC resize, attempt %d/%d", statefulSetName, attempt, maxResizeAttempts))
+	attempt := 1
 
-		if err := r.helper.ScaleStatefulSet(
-			statefulSetName,
-			0,
-		); err != nil {
+	for {
+		select {
+		case <-ctx.Done():
+			return fmt.Errorf("timeout waiting for Patroni PVC resize")
+		default:
+		}
+
+		delay := 10 * time.Second * time.Duration(1<<(attempt-1))
+
+		logger.Info(fmt.Sprintf("Restarting StatefulSet %s to complete PVC resize, attempt %d, waiting %s", statefulSetName, attempt, delay))
+
+		if err := r.helper.ScaleStatefulSet(statefulSetName, 0); err != nil {
 			return err
 		}
 
@@ -604,12 +612,9 @@ func (r *PatroniReconciler) processPatroniPvcResize(pvcs []*corev1.PersistentVol
 			return err
 		}
 
-		time.Sleep(10 * time.Second)
+		time.Sleep(delay)
 
-		if err := r.helper.ScaleStatefulSet(
-			statefulSetName,
-			1,
-		); err != nil {
+		if err := r.helper.ScaleStatefulSet(statefulSetName, 1); err != nil {
 			return err
 		}
 
@@ -625,24 +630,15 @@ func (r *PatroniReconciler) processPatroniPvcResize(pvcs []*corev1.PersistentVol
 
 			if !resized {
 				allResized = false
-				continue
 			}
-
-			logger.Info(fmt.Sprintf("PVC %s successfully resized to %s", pvc.Name, desiredSize.String()))
 		}
 
 		if allResized {
 			return nil
 		}
 
-		if attempt == maxResizeAttempts {
-			return fmt.Errorf("Patroni PVC filesystem resize is still pending after %d restart attempts for StatefulSet %s", maxResizeAttempts, statefulSetName)
-		}
-
-		logger.Warn(fmt.Sprintf("Patroni PVC resize is still pending for StatefulSet %s, retrying restart", statefulSetName))
+		attempt++
 	}
-
-	return nil
 }
 
 func (r *PatroniReconciler) switchoverIfMaster(podName string) error {
