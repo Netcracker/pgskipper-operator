@@ -41,6 +41,7 @@ import (
 	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
+	"k8s.io/apimachinery/pkg/util/wait"
 )
 
 var wg sync.WaitGroup
@@ -161,7 +162,6 @@ func (r *PatroniReconciler) Reconcile() error {
 		}
 
 	}
-
 	// find possible deployments by pods
 	// try to get master pod
 	masterPod, err = r.helper.GetPodsByLabel(r.cluster.PatroniMasterSelectors)
@@ -498,26 +498,28 @@ func (r *PatroniReconciler) processPatroniStatefulset(cr *v1.PatroniCore, deploy
 	}
 
 	patroniSpec := cr.Spec.Patroni
-	pvc := storage.NewPvc(fmt.Sprintf("%s-data-%v", opUtil.GetPatroniClusterName(cr.Spec.Patroni.ClusterName), deploymentIdx), patroniSpec.Storage, deploymentIdx)
-	if err := r.helper.CreatePvcIfNotExists(pvc); err != nil {
-		logger.Error(fmt.Sprintf("Cannot create pvc %s", pvc.Name), zap.Error(err))
-		return err
+
+	patroniPvcs := []*corev1.PersistentVolumeClaim{
+		storage.NewPvc(fmt.Sprintf("%s-data-%v", opUtil.GetPatroniClusterName(cr.Spec.Patroni.ClusterName), deploymentIdx), patroniSpec.Storage, deploymentIdx),
 	}
+
 	if patroniSpec.PgWalStorage != nil {
-		pvc := storage.NewPvc(fmt.Sprintf("%s-wals-data-%v", opUtil.GetPatroniClusterName(cr.Spec.Patroni.ClusterName), deploymentIdx), patroniSpec.PgWalStorage, deploymentIdx)
-		if err := r.helper.CreatePvcIfNotExists(pvc); err != nil {
-			logger.Error(fmt.Sprintf("Cannot create pvc %s", pvc.Name), zap.Error(err))
-			return err
-		}
+		patroniPvcs = append(patroniPvcs, storage.NewPvc(fmt.Sprintf("%s-wals-data-%v", opUtil.GetPatroniClusterName(cr.Spec.Patroni.ClusterName), deploymentIdx), patroniSpec.PgWalStorage, deploymentIdx))
 	}
+
 	if cr.Spec.PgBackRest != nil && strings.ToLower(cr.Spec.PgBackRest.RepoType) == "rwx" {
 		pgBackrestStorage := cr.Spec.PgBackRest.Rwx
 		pgBackrestStorage.AccessModes = []string{"ReadWriteMany"}
-		pvc = storage.NewPvc("pgbackrest-backups", pgBackrestStorage, 1)
-		if err := r.helper.CreatePvcIfNotExists(pvc); err != nil {
-			logger.Error(fmt.Sprintf("Cannot create pvc %s", pvc.Name), zap.Error(err))
+
+		pgBackrestPvc := storage.NewPvc("pgbackrest-backups", pgBackrestStorage, 1)
+		if err := r.helper.CreatePvcIfNotExists(pgBackrestPvc); err != nil {
+			logger.Error(fmt.Sprintf("Cannot create pvc %s", pgBackrestPvc.Name), zap.Error(err))
 			return err
 		}
+	}
+
+	if err := r.processPatroniPvcResize(patroniPvcs, deploymentIdx); err != nil {
+		return err
 	}
 
 	// check deployments
@@ -545,6 +547,176 @@ func (r *PatroniReconciler) processPatroniStatefulset(cr *v1.PatroniCore, deploy
 		logger.Error(fmt.Sprintf("Cannot create or update deployment %s", patroniSfs.Name), zap.Error(err))
 		return err
 	}
+	return nil
+}
+
+func (r *PatroniReconciler) processPatroniPvcResize(pvcs []*corev1.PersistentVolumeClaim, deploymentIdx int) error {
+	var resizingPvcs []*corev1.PersistentVolumeClaim
+	restartRequired := false
+
+	for _, pvc := range pvcs {
+		resizeInProgress, err := r.helper.CreateOrResizePvc(pvc)
+		if err != nil {
+			return err
+		}
+
+		if resizeInProgress {
+			resizingPvcs = append(resizingPvcs, pvc)
+		}
+	}
+
+	for _, pvc := range resizingPvcs {
+		logger.Info(fmt.Sprintf("Waiting for PVC %s resize state", pvc.Name))
+
+		pvcRestartRequired, err := r.helper.WaitForPvcResizeState(
+			pvc.Name,
+			pvc.Namespace,
+			pvc.Spec.Resources.Requests[corev1.ResourceStorage],
+		)
+		if err != nil {
+			return err
+		}
+
+		if pvcRestartRequired {
+			restartRequired = true
+		}
+	}
+
+	if !restartRequired {
+		return nil
+	}
+
+	statefulSetName := fmt.Sprintf("pg-%s-node%d", r.cluster.ClusterName, deploymentIdx)
+
+	podName := fmt.Sprintf("%s-0", statefulSetName)
+
+	if err := r.switchoverIfMaster(podName); err != nil {
+		return err
+	}
+
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Minute)
+	defer cancel()
+
+	attempt := 1
+
+	for {
+		select {
+		case <-ctx.Done():
+			return fmt.Errorf("timeout waiting for Patroni PVC resize")
+		default:
+		}
+
+		delay := 10 * time.Second * time.Duration(1<<(attempt-1))
+
+		logger.Info(fmt.Sprintf("Restarting StatefulSet %s to complete PVC resize, attempt %d, waiting %s", statefulSetName, attempt, delay))
+
+		if err := r.helper.ScaleStatefulSet(statefulSetName, 0); err != nil {
+			return err
+		}
+
+		if err := opUtil.WaitDeletePod(&corev1.Pod{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      podName,
+				Namespace: r.cr.Namespace,
+			},
+		}); err != nil {
+			return err
+		}
+
+		time.Sleep(delay)
+
+		if err := r.helper.ScaleStatefulSet(statefulSetName, 1); err != nil {
+			return err
+		}
+
+		allResized := true
+
+		for _, pvc := range resizingPvcs {
+			desiredSize := pvc.Spec.Resources.Requests[corev1.ResourceStorage]
+
+			resized, err := r.helper.WaitForPvcCapacity(pvc.Name, pvc.Namespace, desiredSize, 30*time.Second)
+			if err != nil {
+				return err
+			}
+
+			if !resized {
+				allResized = false
+			}
+		}
+
+		if allResized {
+			return nil
+		}
+
+		attempt++
+	}
+}
+
+func (r *PatroniReconciler) switchoverIfMaster(podName string) error {
+	masterPods, err := r.helper.GetPodsByLabel(r.cluster.PatroniMasterSelectors)
+	if err != nil {
+		return err
+	}
+
+	if len(masterPods.Items) != 1 {
+		return fmt.Errorf("expected exactly one Patroni master, found %d", len(masterPods.Items))
+	}
+
+	currentMaster := masterPods.Items[0].Name
+
+	// Target node is already replica.
+	// Nothing to do.
+	if currentMaster != podName {
+		return nil
+	}
+
+	logger.Info(fmt.Sprintf("Patroni node %s is master, switchover is required before restart", podName))
+
+	replicaPods, err := r.helper.GetPodsByLabel(
+		r.cluster.PatroniReplicasSelector,
+	)
+	if err != nil {
+		return err
+	}
+
+	if len(replicaPods.Items) == 0 {
+		return fmt.Errorf("cannot restart Patroni master %s: no replica available for switchover", podName)
+	}
+
+	logger.Info(fmt.Sprintf("Switching Patroni master from %s", currentMaster))
+
+	if err := patroni.Switchover(r.cluster.PatroniUrl, currentMaster); err != nil {
+		return err
+	}
+
+	var newMaster string
+
+	if err := wait.PollUntilContextTimeout(context.Background(), time.Second, 2*time.Minute, true,
+		func(ctx context.Context) (bool, error) {
+			masters, err := r.helper.GetPodsByLabel(
+				r.cluster.PatroniMasterSelectors,
+			)
+			if err != nil {
+				return false, nil
+			}
+
+			if len(masters.Items) != 1 {
+				return false, nil
+			}
+
+			if masters.Items[0].Name == currentMaster {
+				return false, nil
+			}
+
+			newMaster = masters.Items[0].Name
+			return true, nil
+		},
+	); err != nil {
+		return fmt.Errorf("timeout waiting for new Patroni master after switchover from %s: %w", currentMaster, err)
+	}
+
+	logger.Info(fmt.Sprintf("Patroni switchover completed, new master is %s", newMaster))
+
 	return nil
 }
 

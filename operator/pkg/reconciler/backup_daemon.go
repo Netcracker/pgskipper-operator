@@ -15,9 +15,11 @@
 package reconciler
 
 import (
+	"context"
 	"fmt"
 	"strconv"
 	"strings"
+	"time"
 
 	qubershipv1 "github.com/Netcracker/pgskipper-operator/api/apps/v1"
 	commonv1 "github.com/Netcracker/pgskipper-operator/api/common/v1"
@@ -28,6 +30,7 @@ import (
 	"github.com/Netcracker/pgskipper-operator/pkg/patroni"
 	"github.com/Netcracker/pgskipper-operator/pkg/storage"
 	"github.com/Netcracker/pgskipper-operator/pkg/util"
+	opUtil "github.com/Netcracker/pgskipper-operator/pkg/util"
 	"github.com/Netcracker/pgskipper-operator/pkg/util/constants"
 	"github.com/Netcracker/qubership-credential-manager/pkg/manager"
 	"go.uber.org/zap"
@@ -61,11 +64,28 @@ func NewBackupDaemonReconciler(cr *qubershipv1.PatroniServices, helper *helper.H
 func (r *BackupDaemonReconciler) Reconcile() error {
 	cr := r.cr
 	bdSpec := cr.Spec.BackupDaemon
+	var backupPvc *corev1.PersistentVolumeClaim
+	backupPvcRestartRequired := false
+
 	if bdSpec.Storage.Type != "ephemeral" && bdSpec.Storage.Type != "s3" {
-		backupPvc := storage.NewPvc("postgres-backup-pvc", &bdSpec.Storage, 1)
-		if err := r.helper.CreatePvcIfNotExists(backupPvc); err != nil {
-			logger.Error(fmt.Sprintf("Cannot create pvc %s", backupPvc.Name), zap.Error(err))
+		backupPvc = storage.NewPvc("postgres-backup-pvc", &bdSpec.Storage, 1)
+		resizeInProgress, err := r.helper.CreateOrResizePvc(backupPvc)
+		if err != nil {
+			logger.Error(fmt.Sprintf("Cannot create or resize pvc %s", backupPvc.Name), zap.Error(err))
 			return err
+		}
+
+		if resizeInProgress {
+			logger.Info(fmt.Sprintf("Waiting for PVC %s resize state", backupPvc.Name))
+
+			backupPvcRestartRequired, err = r.helper.WaitForPvcResizeState(
+				backupPvc.Name,
+				backupPvc.Namespace,
+				backupPvc.Spec.Resources.Requests[corev1.ResourceStorage],
+			)
+			if err != nil {
+				return err
+			}
 		}
 	}
 	if bdSpec.ExternalPv != nil {
@@ -256,9 +276,70 @@ func (r *BackupDaemonReconciler) Reconcile() error {
 		backupDaemonDeployment.Spec.Template.Spec.Containers[0].Env = append(backupDaemonDeployment.Spec.Template.Spec.Containers[0].Env, envValue...)
 	}
 
-	if err := r.helper.CreateOrUpdateDeploymentForce(backupDaemonDeployment, true); err != nil {
-		logger.Error(fmt.Sprintf("Cannot create or update deployment %s", backupDaemonDeployment.Name), zap.Error(err))
-		return err
+	if backupPvcRestartRequired {
+		ctx, cancel := context.WithTimeout(context.Background(), 10*time.Minute)
+		defer cancel()
+
+		attempt := 1
+
+		for {
+			select {
+			case <-ctx.Done():
+				return fmt.Errorf("timeout waiting for Backup Daemon PVC resize")
+			default:
+			}
+
+			delay := 10 * time.Second * time.Duration(1<<(attempt-1))
+
+			logger.Info(fmt.Sprintf("Restarting Backup Daemon deployment %s to complete PVC resize, attempt %d, waiting %s", backupDaemonDeployment.Name, attempt, delay))
+
+			backupPods, err := r.helper.GetNamespacePodListBySelectors(
+				deployment.BackupDaemonLabels,
+			)
+			if err != nil {
+				return err
+			}
+
+			if err := r.helper.ScaleDeployment(backupDaemonDeployment.Name, 0); err != nil {
+				return err
+			}
+
+			for _, pod := range backupPods.Items {
+				if err := opUtil.WaitDeletePod(&pod); err != nil {
+					return err
+				}
+			}
+
+			select {
+			case <-time.After(delay):
+			case <-ctx.Done():
+				return fmt.Errorf("timeout waiting for Backup Daemon PVC resize")
+			}
+
+			if err := r.helper.CreateOrUpdateDeploymentForce(backupDaemonDeployment, false); err != nil {
+				logger.Error(fmt.Sprintf("Cannot create or update deployment %s", backupDaemonDeployment.Name), zap.Error(err))
+				return err
+			}
+
+			desiredSize := backupPvc.Spec.Resources.Requests[corev1.ResourceStorage]
+
+			resized, err := r.helper.WaitForPvcCapacity(backupPvc.Name, backupPvc.Namespace, desiredSize, 30*time.Second)
+			if err != nil {
+				return err
+			}
+
+			if resized {
+				logger.Info(fmt.Sprintf("Backup Daemon PVC %s successfully resized to %s", backupPvc.Name, desiredSize.String()))
+				break
+			}
+
+			attempt++
+		}
+	} else {
+		if err := r.helper.CreateOrUpdateDeploymentForce(backupDaemonDeployment, true); err != nil {
+			logger.Error(fmt.Sprintf("Cannot create or update deployment %s", backupDaemonDeployment.Name), zap.Error(err))
+			return err
+		}
 	}
 	if err := util.WaitForBackupDaemon(); err != nil {
 		logger.Error("Failed to wait for backup daemon, exiting", zap.Error(err))

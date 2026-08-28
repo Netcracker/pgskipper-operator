@@ -38,6 +38,7 @@ import (
 	"k8s.io/apimachinery/pkg/api/equality"
 	"k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/api/meta"
+	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/apimachinery/pkg/util/wait"
@@ -344,7 +345,7 @@ func (rm *ResourceManager) CreateOrUpdateService(service *corev1.Service) error 
 
 // This method performs delete and re-create deployment in case update was failed
 func (rm *ResourceManager) CreateOrUpdateDeploymentForce(deployment *appsv1.Deployment, waitStability bool) error {
-	if err := rm.CreateOrUpdateDeployment(deployment, true); err != nil {
+	if err := rm.CreateOrUpdateDeployment(deployment, waitStability); err != nil {
 		logger.Error(fmt.Sprintf("Cannot create deployment %s", deployment.Name), zap.Error(err))
 
 		if err = rm.DeleteDeployment(deployment.Name); err != nil {
@@ -353,7 +354,7 @@ func (rm *ResourceManager) CreateOrUpdateDeploymentForce(deployment *appsv1.Depl
 			if err = rm.WaitTillDeploymentDeleted(deployment); err != nil {
 				logger.Error(fmt.Sprintf("Deployment: %s was not deleted in time", deployment.Name), zap.Error(err))
 			}
-			if err = rm.CreateOrUpdateDeployment(deployment, true); err != nil {
+			if err = rm.CreateOrUpdateDeployment(deployment, waitStability); err != nil {
 				logger.Error(fmt.Sprintf("Cannot create deployment after delete %s", deployment.Name), zap.Error(err))
 			}
 		}
@@ -534,6 +535,98 @@ func (rm *ResourceManager) CreatePvcIfNotExists(pvc *corev1.PersistentVolumeClai
 		}
 	}
 	return nil
+}
+
+func (rm *ResourceManager) CreateOrResizePvc(pvc *corev1.PersistentVolumeClaim) (bool, error) {
+	foundPvc := &corev1.PersistentVolumeClaim{}
+
+	err := rm.kubeClient.Get(
+		context.TODO(),
+		types.NamespacedName{
+			Name:      pvc.Name,
+			Namespace: pvc.Namespace,
+		},
+		foundPvc,
+	)
+
+	if errors.IsNotFound(err) {
+		logger.Info(fmt.Sprintf("Creating %s PVC", pvc.Name))
+
+		if err := rm.kubeClient.Create(context.TODO(), pvc); err != nil {
+			return false, err
+		}
+
+		return false, nil
+	}
+
+	if err != nil {
+		return false, err
+	}
+
+	currentSize := foundPvc.Spec.Resources.Requests[corev1.ResourceStorage]
+	desiredSize := pvc.Spec.Resources.Requests[corev1.ResourceStorage]
+
+	resizeInProgress := false
+	changed := false
+
+	switch desiredSize.Cmp(currentSize) {
+	case 1:
+		logger.Info(fmt.Sprintf("Expanding PVC %s from %s to %s", pvc.Name, currentSize.String(), desiredSize.String()))
+
+		foundPvc.Spec.Resources.Requests[corev1.ResourceStorage] = desiredSize
+
+		resizeInProgress = true
+		changed = true
+
+	case 0:
+		capacity := foundPvc.Status.Capacity[corev1.ResourceStorage]
+
+		if !capacity.IsZero() && capacity.Cmp(desiredSize) < 0 {
+			logger.Info(fmt.Sprintf("PVC %s resize is still in progress: requested=%s capacity=%s", pvc.Name, desiredSize.String(), capacity.String()))
+
+			resizeInProgress = true
+		}
+
+	case -1:
+		return false, fmt.Errorf(
+			"PVC %s shrinking from %s to %s is not supported",
+			pvc.Name,
+			currentSize.String(),
+			desiredSize.String(),
+		)
+	}
+
+	// Preserve existing PVC behavior.
+	if len(foundPvc.OwnerReferences) > 0 {
+		foundPvc.OwnerReferences = nil
+		changed = true
+	}
+
+	// Apply desired annotations only when they differ.
+	if pvc.Annotations != nil {
+		if foundPvc.Annotations == nil {
+			foundPvc.Annotations = make(map[string]string)
+		}
+
+		for key, value := range pvc.Annotations {
+			if foundPvc.Annotations[key] != value {
+				foundPvc.Annotations[key] = value
+				changed = true
+			}
+		}
+	}
+
+	// Nothing in PVC spec/metadata changed.
+	// Do not perform unnecessary Kubernetes Update().
+	if !changed {
+		return resizeInProgress, nil
+	}
+
+	if err := rm.kubeClient.Update(context.TODO(), foundPvc); err != nil {
+		return false, err
+	}
+
+	return resizeInProgress, nil
 }
 
 func (rm *ResourceManager) CreateSecretIfNotExists(secret *corev1.Secret) error {
@@ -1074,4 +1167,135 @@ func (rm *ResourceManager) commonLabels(name string) map[string]string {
 	}
 
 	return labels
+}
+
+func (rm *ResourceManager) WaitForPvcResizeState(pvcName string, namespace string, desiredSize resource.Quantity) (bool, error) {
+	restartRequired := false
+
+	err := wait.PollUntilContextTimeout(context.Background(), time.Second, 2*time.Minute, true,
+		func(ctx context.Context) (bool, error) {
+			currentPvc := &corev1.PersistentVolumeClaim{}
+
+			if err := rm.kubeClient.Get(
+				ctx,
+				types.NamespacedName{
+					Name:      pvcName,
+					Namespace: namespace,
+				},
+				currentPvc,
+			); err != nil {
+				return false, err
+			}
+
+			capacity := currentPvc.Status.Capacity[corev1.ResourceStorage]
+
+			if capacity.Cmp(desiredSize) >= 0 {
+				return true, nil
+			}
+
+			for _, condition := range currentPvc.Status.Conditions {
+				if condition.Type == corev1.PersistentVolumeClaimFileSystemResizePending &&
+					condition.Status == corev1.ConditionTrue {
+
+					restartRequired = true
+					return true, nil
+				}
+			}
+
+			return false, nil
+		},
+	)
+
+	return restartRequired, err
+}
+
+func (rm *ResourceManager) WaitForPvcCapacity(pvcName string, namespace string, desiredSize resource.Quantity, timeout time.Duration) (bool, error) {
+	resized := false
+
+	err := wait.PollUntilContextTimeout(context.Background(), time.Second, timeout, true,
+		func(ctx context.Context) (bool, error) {
+			pvc := &corev1.PersistentVolumeClaim{}
+
+			if err := rm.kubeClient.Get(
+				ctx,
+				types.NamespacedName{
+					Name:      pvcName,
+					Namespace: namespace,
+				},
+				pvc,
+			); err != nil {
+				logger.Warn(
+					fmt.Sprintf("Failed to get PVC %s while waiting for resize, retrying", pvcName),
+					zap.Error(err),
+				)
+
+				return false, nil
+			}
+
+			capacity := pvc.Status.Capacity[corev1.ResourceStorage]
+
+			if capacity.Cmp(desiredSize) >= 0 {
+				logger.Info(fmt.Sprintf("PVC %s resize completed: capacity=%s", pvcName, capacity.String()))
+
+				resized = true
+				return true, nil
+			}
+
+			logger.Info(fmt.Sprintf("Waiting for PVC %s capacity: current=%s desired=%s", pvcName, capacity.String(), desiredSize.String()))
+
+			return false, nil
+		},
+	)
+
+	if err == context.DeadlineExceeded {
+		return false, nil
+	}
+
+	if err != nil {
+		return false, err
+	}
+
+	return resized, nil
+}
+
+func (rm *ResourceManager) ScaleStatefulSet(name string, replicas int32) error {
+	return retry.RetryOnConflict(retry.DefaultRetry, func() error {
+		sts := &appsv1.StatefulSet{}
+
+		if err := rm.kubeClient.Get(
+			context.TODO(),
+			types.NamespacedName{
+				Name:      name,
+				Namespace: namespace,
+			},
+			sts,
+		); err != nil {
+			return err
+		}
+
+		sts.Spec.Replicas = &replicas
+
+		return rm.kubeClient.Update(context.TODO(), sts)
+	})
+}
+
+func (rm *ResourceManager) ScaleDeployment(name string, replicas int32) error {
+	return retry.RetryOnConflict(retry.DefaultRetry, func() error {
+		deployment := &appsv1.Deployment{}
+
+		if err := rm.kubeClient.Get(
+			context.TODO(),
+			types.NamespacedName{
+				Name:      name,
+				Namespace: namespace,
+			},
+			deployment,
+		); err != nil {
+			return err
+		}
+
+		deployment.Spec.Replicas = &replicas
+
+		return rm.kubeClient.Update(context.TODO(), deployment)
+	})
 }

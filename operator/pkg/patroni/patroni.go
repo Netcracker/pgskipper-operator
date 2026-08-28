@@ -623,6 +623,33 @@ func GenerateLDAPConfig(cr *patroniv1.PatroniCore) []string {
 	}
 }
 
+func Switchover(patroniURL, leader string) error {
+	body := map[string]string{"leader": leader}
+
+	data, err := json.Marshal(body)
+	if err != nil {
+		return err
+	}
+
+	resp, err := patroniPost(http.DefaultClient, patroniURL+"switchover", bytes.NewBuffer(data))
+	if err != nil {
+		return err
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode < http.StatusOK ||
+		resp.StatusCode >= http.StatusMultipleChoices {
+
+		responseBody, _ := io.ReadAll(resp.Body)
+
+		return fmt.Errorf("Patroni switchover failed: %s, response: %s", resp.Status, string(responseBody))
+	}
+
+	logger.Info(fmt.Sprintf("Patroni switchover from %s requested successfully", leader))
+
+	return nil
+}
+
 func ReloadPatroniConfig(patroniUrl string) error {
 	hosts, err := getPatroniHosts(patroniUrl)
 	if err != nil {
