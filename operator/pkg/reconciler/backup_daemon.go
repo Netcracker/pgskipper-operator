@@ -290,9 +290,6 @@ func (r *BackupDaemonReconciler) Reconcile() error {
 			}
 
 			delay := 10 * time.Second * time.Duration(1<<(attempt-1))
-			if delay > time.Minute {
-				delay = time.Minute
-			}
 
 			logger.Info(fmt.Sprintf("Restarting Backup Daemon deployment %s to complete PVC resize, attempt %d, waiting %s", backupDaemonDeployment.Name, attempt, delay))
 
