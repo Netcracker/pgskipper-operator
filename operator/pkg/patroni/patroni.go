@@ -623,8 +623,8 @@ func GenerateLDAPConfig(cr *patroniv1.PatroniCore) []string {
 	}
 }
 
-func Switchover(patroniURL, leader, candidate string) error {
-	body := map[string]string{"leader": leader, "candidate": candidate}
+func Switchover(patroniURL, leader string) error {
+	body := map[string]string{"leader": leader}
 
 	data, err := json.Marshal(body)
 	if err != nil {
@@ -645,9 +645,9 @@ func Switchover(patroniURL, leader, candidate string) error {
 		return fmt.Errorf("Patroni switchover failed: %s, response: %s", resp.Status, string(responseBody))
 	}
 
-	logger.Info(fmt.Sprintf("Patroni switchover from %s to %s requested successfully", leader, candidate))
-  
-  return nil
+	logger.Info(fmt.Sprintf("Patroni switchover from %s requested successfully", leader))
+
+	return nil
 }
 
 func ReloadPatroniConfig(patroniUrl string) error {

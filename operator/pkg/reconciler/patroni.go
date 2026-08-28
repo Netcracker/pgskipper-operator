@@ -683,19 +683,14 @@ func (r *PatroniReconciler) switchoverIfMaster(podName string) error {
 		return fmt.Errorf("cannot restart Patroni master %s: no replica available for switchover", podName)
 	}
 
-	candidate := replicaPods.Items[0].Name
+	logger.Info(fmt.Sprintf("Switching Patroni master from %s", currentMaster))
 
-	logger.Info(fmt.Sprintf("Switching Patroni master from %s to %s", currentMaster, candidate))
-
-	if err := patroni.Switchover(
-		r.cluster.PatroniUrl,
-		currentMaster,
-		candidate,
-	); err != nil {
+	if err := patroni.Switchover(r.cluster.PatroniUrl, currentMaster); err != nil {
 		return err
 	}
 
-	// Wait specifically until our selected replica becomes master.
+	var newMaster string
+
 	if err := wait.PollUntilContextTimeout(context.Background(), time.Second, 2*time.Minute, true,
 		func(ctx context.Context) (bool, error) {
 			masters, err := r.helper.GetPodsByLabel(
@@ -709,13 +704,18 @@ func (r *PatroniReconciler) switchoverIfMaster(podName string) error {
 				return false, nil
 			}
 
-			return masters.Items[0].Name == candidate, nil
+			if masters.Items[0].Name == currentMaster {
+				return false, nil
+			}
+
+			newMaster = masters.Items[0].Name
+			return true, nil
 		},
 	); err != nil {
-		return fmt.Errorf("timeout waiting for %s to become Patroni master: %w", candidate, err)
+		return fmt.Errorf("timeout waiting for new Patroni master after switchover from %s: %w", currentMaster, err)
 	}
 
-	logger.Info(fmt.Sprintf("Patroni switchover completed, new master is %s", candidate))
+	logger.Info(fmt.Sprintf("Patroni switchover completed, new master is %s", newMaster))
 
 	return nil
 }
