@@ -345,7 +345,7 @@ func (rm *ResourceManager) CreateOrUpdateService(service *corev1.Service) error 
 
 // This method performs delete and re-create deployment in case update was failed
 func (rm *ResourceManager) CreateOrUpdateDeploymentForce(deployment *appsv1.Deployment, waitStability bool) error {
-	if err := rm.CreateOrUpdateDeployment(deployment, true); err != nil {
+	if err := rm.CreateOrUpdateDeployment(deployment, waitStability); err != nil {
 		logger.Error(fmt.Sprintf("Cannot create deployment %s", deployment.Name), zap.Error(err))
 
 		if err = rm.DeleteDeployment(deployment.Name); err != nil {
@@ -354,7 +354,7 @@ func (rm *ResourceManager) CreateOrUpdateDeploymentForce(deployment *appsv1.Depl
 			if err = rm.WaitTillDeploymentDeleted(deployment); err != nil {
 				logger.Error(fmt.Sprintf("Deployment: %s was not deleted in time", deployment.Name), zap.Error(err))
 			}
-			if err = rm.CreateOrUpdateDeployment(deployment, true); err != nil {
+			if err = rm.CreateOrUpdateDeployment(deployment, waitStability); err != nil {
 				logger.Error(fmt.Sprintf("Cannot create deployment after delete %s", deployment.Name), zap.Error(err))
 			}
 		}

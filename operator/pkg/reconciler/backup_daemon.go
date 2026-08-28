@@ -319,7 +319,7 @@ func (r *BackupDaemonReconciler) Reconcile() error {
 				return fmt.Errorf("timeout waiting for Backup Daemon PVC resize")
 			}
 
-			if err := r.helper.CreateOrUpdateDeploymentForce(backupDaemonDeployment, true); err != nil {
+			if err := r.helper.CreateOrUpdateDeploymentForce(backupDaemonDeployment, false); err != nil {
 				logger.Error(fmt.Sprintf("Cannot create or update deployment %s", backupDaemonDeployment.Name), zap.Error(err))
 				return err
 			}
