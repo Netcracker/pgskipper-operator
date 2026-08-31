@@ -49,6 +49,8 @@ import (
 
 const kubeSysAnnotations = "kubernetes.io"
 
+const pvcChangedByJobFromAnnotation = "pvc-changed-by-job-from"
+
 var (
 	pythonServices        = []string{"postgres-backup-daemon"}
 	chartDeployedServices = []string{"postgres-exporter", "dbaas-postgres-adapter"}
@@ -503,6 +505,46 @@ func (rm *ResourceManager) FindStatefulSet(statefulset *appsv1.StatefulSet) (*ap
 	return foundStSet, err
 }
 
+func pvcStorageSize(pvc *corev1.PersistentVolumeClaim) (resource.Quantity, bool) {
+	if pvc.Spec.Resources.Requests == nil {
+		return resource.Quantity{}, false
+	}
+	qty, ok := pvc.Spec.Resources.Requests[corev1.ResourceStorage]
+	return qty, ok
+}
+
+func checkPvcChangedByJobAnnotation(foundPvc, desiredPvc *corev1.PersistentVolumeClaim) (bool, error) {
+	if foundPvc.Annotations == nil {
+		return false, nil
+	}
+
+	previousSize, ok := foundPvc.Annotations[pvcChangedByJobFromAnnotation]
+	if !ok {
+		return false, nil
+	}
+
+	previousQty, err := resource.ParseQuantity(previousSize)
+	if err != nil {
+		return false, fmt.Errorf("failed to parse previous size: %w", err)
+	}
+
+	desiredQty, desiredOk := pvcStorageSize(desiredPvc)
+	foundQty, foundOk := pvcStorageSize(foundPvc)
+	if desiredOk && foundOk &&
+		previousQty.Cmp(desiredQty) == 0 && foundQty.Cmp(desiredQty) != 0 {
+		return false, fmt.Errorf(
+			"PVC %s was resized by shrink job from %s to %s but desired size is still %s",
+			foundPvc.Name, previousSize, foundQty.String(), desiredQty.String(),
+		)
+	}
+
+	delete(foundPvc.Annotations, pvcChangedByJobFromAnnotation)
+	if len(foundPvc.Annotations) == 0 {
+		foundPvc.Annotations = nil
+	}
+	return true, nil
+}
+
 func (rm *ResourceManager) CreatePvcIfNotExists(pvc *corev1.PersistentVolumeClaim) error {
 	foundPvc := &corev1.PersistentVolumeClaim{}
 	err := rm.kubeClient.Get(context.TODO(), types.NamespacedName{
@@ -563,11 +605,16 @@ func (rm *ResourceManager) CreateOrResizePvc(pvc *corev1.PersistentVolumeClaim) 
 		return false, err
 	}
 
+	annotationChanged, err := checkPvcChangedByJobAnnotation(foundPvc, pvc)
+	if err != nil {
+		return false, err
+	}
+
 	currentSize := foundPvc.Spec.Resources.Requests[corev1.ResourceStorage]
 	desiredSize := pvc.Spec.Resources.Requests[corev1.ResourceStorage]
 
 	resizeInProgress := false
-	changed := false
+	changed := annotationChanged
 
 	switch desiredSize.Cmp(currentSize) {
 	case 1:
