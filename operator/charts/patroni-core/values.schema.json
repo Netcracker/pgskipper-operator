@@ -348,6 +348,11 @@
           "type": "string",
           "default": "ghcr.io/netcracker/pgskipper-docker-patroni-16:main"
         },
+        "patroniLogLevel": {
+          "type": "string",
+          "default": "WARNING",
+          "enum": ["DEBUG", "INFO", "WARNING", "ERROR", "CRITICAL"]
+        },        
         "podLabels": {
           "type": "object",
           "additionalProperties": {
