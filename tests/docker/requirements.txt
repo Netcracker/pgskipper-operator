@@ -3,7 +3,7 @@ aniso8601==10.0.1
 cachetools==4.2.4
 certifi==2026.7.22
 charset-normalizer==3.4.7
-click==8.4.2
+click==8.5.0
 Flask==2.2.5
 Flask-RESTful==0.3.10
 google-auth==2.57.0
