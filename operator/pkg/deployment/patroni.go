@@ -362,15 +362,6 @@ func NewPatroniStatefulset(cr *patroniv1.PatroniCore, deploymentIdx int, cluster
 			},
 		})
 	}
-
-	patroniLogLevel := patroniSpec.PatroniLogLevel
-	if patroniLogLevel == "" {
-		patroniLogLevel = "WARNING"
-	}
-	stSet.Spec.Template.Spec.Containers[0].Env = append(stSet.Spec.Template.Spec.Containers[0].Env, corev1.EnvVar{
-		Name:  "PATRONI_LOG_LEVEL",
-		Value: patroniLogLevel,
-	})
 	
 	// TLS Section
 	if cr.Spec.Tls != nil && cr.Spec.Tls.Enabled {
