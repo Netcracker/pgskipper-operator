@@ -10,9 +10,9 @@ require (
 	github.com/twmb/franz-go v1.17.1
 	github.com/twmb/franz-go/pkg/kmsg v1.12.0
 	go.uber.org/zap v1.28.0
-	k8s.io/api v0.35.3
+	k8s.io/api v0.37.0
 	k8s.io/apimachinery v0.37.0
-	k8s.io/client-go v0.35.3
+	k8s.io/client-go v0.37.0
 	k8s.io/utils v0.0.0-20260626114624-be93311217bd
 	sigs.k8s.io/controller-runtime v0.23.3
 )
@@ -62,7 +62,7 @@ require (
 	github.com/spf13/pflag v1.0.10 // indirect
 	go.uber.org/multierr v1.11.0 // indirect
 	golang.org/x/net v0.57.0 // indirect
-	golang.org/x/oauth2 v0.34.0 // indirect
+	golang.org/x/oauth2 v0.36.0 // indirect
 	golang.org/x/sync v0.22.0 // indirect
 	golang.org/x/sys v0.47.0 // indirect
 	golang.org/x/term v0.45.0 // indirect
