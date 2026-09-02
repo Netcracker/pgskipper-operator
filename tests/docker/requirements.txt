@@ -8,7 +8,7 @@ Flask==2.2.5
 Flask-RESTful==0.3.10
 google-auth==2.57.0
 idna==3.18
-importlib-metadata==9.0.0
+importlib-metadata==9.0.1
 ipaddress==1.0.23
 itsdangerous==2.2.0
 Jinja2==3.1.6
