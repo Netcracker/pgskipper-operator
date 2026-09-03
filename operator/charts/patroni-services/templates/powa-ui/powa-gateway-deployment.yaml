@@ -10,7 +10,9 @@ metadata:
     {{ include "ingress.labels" . | nindent 4 }}
 spec:
   parentRefs:
-  - name: {{ include "gateway.name" . }}
+  - group: gateway.networking.k8s.io
+    kind: Gateway
+    name: {{ include "gateway.name" . }}
     namespace: {{ include "gateway.namespace" . }}
   hostnames: [{{ .Values.powaUI.ingress.host  | quote }}]
   rules:
@@ -19,8 +21,10 @@ spec:
         type: PathPrefix
         value: /
     backendRefs:
-    - name: powa-ui
+    - kind: Service
+      name: powa-ui
       port: 8080
+      weight: 1
 {{- end }}
 {{- end }}
 {{- end }}
