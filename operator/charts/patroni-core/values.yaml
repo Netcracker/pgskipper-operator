@@ -113,6 +113,8 @@ patroni:
   replicas: 2
   # Docker Image that will be used for Patroni container
   dockerImage: ghcr.io/netcracker/pgskipper-docker-patroni-16:main
+  # Log level for patroni. One of: DEBUG, INFO, WARNING, ERROR, CRITICAL.
+  patroniLogLevel: WARNING
   podLabels: {}
   podAnnotations: {}
   configMapAnnotations: {}

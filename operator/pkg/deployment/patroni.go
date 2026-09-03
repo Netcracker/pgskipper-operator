@@ -281,6 +281,10 @@ func NewPatroniStatefulset(cr *patroniv1.PatroniCore, deploymentIdx int, cluster
 									Name:  "RUN_PROPAGATE_SCRIPT",
 									Value: "False",
 								},
+								{
+									Name:  "PATRONI_LOG_LEVEL",
+									Value: patroniSpec.PatroniLogLevel,
+								},
 							},
 							Ports: []corev1.ContainerPort{
 								{ContainerPort: 8008, Name: "patroni", Protocol: corev1.ProtocolTCP},
@@ -358,7 +362,7 @@ func NewPatroniStatefulset(cr *patroniv1.PatroniCore, deploymentIdx int, cluster
 			},
 		})
 	}
-
+	
 	// TLS Section
 	if cr.Spec.Tls != nil && cr.Spec.Tls.Enabled {
 		logger.Info("Mount TLS secret volume")

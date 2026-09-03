@@ -2096,6 +2096,15 @@ spec:
                     type: string
                   image:
                     type: string
+                  patroniLogLevel:
+                    default: WARNING
+                    enum:
+                    - DEBUG
+                    - INFO
+                    - WARNING
+                    - ERROR
+                    - CRITICAL
+                    type: string
                   patroniParams:
                     items:
                       type: string

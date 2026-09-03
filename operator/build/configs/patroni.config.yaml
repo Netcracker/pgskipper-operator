@@ -86,4 +86,4 @@ tags:
   noloadbalance: false
   nosync: false
 log:
-  level: WARNING
+  level: ${PATRONI_LOG_LEVEL}

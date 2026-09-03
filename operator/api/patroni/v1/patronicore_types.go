@@ -111,6 +111,9 @@ type Patroni struct {
 	PodAnnotations               map[string]string        `json:"podAnnotations,omitempty"`
 	ConfigMapAnnotations         map[string]string        `json:"configMapAnnotations,omitempty"`
 	PatroniResourcesLimitMemory  string                   `json:"patroniResourcesLimitMemory,omitempty"`
+	// +kubebuilder:validation:Enum=DEBUG;INFO;WARNING;ERROR;CRITICAL
+	// +kubebuilder:default=WARNING
+	PatroniLogLevel              string                   `json:"patroniLogLevel,omitempty"`
 }
 
 type External struct {

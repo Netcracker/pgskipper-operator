@@ -63,6 +63,7 @@ spec:
     configMapAnnotations:
       {{- toYaml .Values.patroni.configMapAnnotations | nindent 6 }}
     {{ end }}
+    patroniLogLevel: {{ .Values.patroni.patroniLogLevel }}
     replicas: {{ ( include "postgres.replicasCount" . ) }}
     image: {{ template "find_image" (dict "deployName" "pg_patroni" "SERVICE_NAME" "pg_patroni" "vals" .Values "default" .Values.patroni.dockerImage) }}
     patroniParams:
