@@ -723,7 +723,7 @@ func (ph *PatroniHelper) GetStatefulSetIds(statefulsets []*appsv1.StatefulSet) (
 	return ids, nil
 }
 
-func (ph *PatroniHelper) ReloadPatroniIfLegacyMaster(clusterName, patroniConfigMapName, configMapKey string) error {
+func (ph *PatroniHelper) ReloadPatroniIfLegacyLeader(clusterName, patroniConfigMapName, configMapKey string) error {
 	formerLeaderLabels := map[string]string{
 		util.PatroniPgTypeLabelKey: util.PatroniRoleMaster,
 	}

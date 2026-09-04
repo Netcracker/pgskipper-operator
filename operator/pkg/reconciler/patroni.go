@@ -79,7 +79,7 @@ func (r *PatroniReconciler) Reconcile() error {
 	patroniSpec := cr.Spec.Patroni
 	patroniConfigMap := deployment.ConfigMapForPatroni(r.cluster.ClusterName, r.cluster.PatroniCM, r.cluster.ConfigMapKey)
 
-	if err := r.helper.ReloadPatroniIfLegacyMaster(r.cluster.ClusterName, patroniConfigMap.Name, r.cluster.ConfigMapKey); err != nil {
+	if err := r.helper.ReloadPatroniIfLegacyLeader(r.cluster.ClusterName, patroniConfigMap.Name, r.cluster.ConfigMapKey); err != nil {
 		logger.Error("Patroni restart for primary label migration failed", zap.Error(err))
 		return err
 	}
