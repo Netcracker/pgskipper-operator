@@ -78,6 +78,12 @@ func (r *PatroniReconciler) Reconcile() error {
 	cr := r.cr
 	patroniSpec := cr.Spec.Patroni
 	patroniConfigMap := deployment.ConfigMapForPatroni(r.cluster.ClusterName, r.cluster.PatroniCM, r.cluster.ConfigMapKey)
+
+	if err := r.helper.ReloadPatroniIfLegacyMaster(r.cluster.ClusterName, patroniConfigMap.Name, r.cluster.ConfigMapKey); err != nil {
+		logger.Error("Patroni restart for primary label migration failed", zap.Error(err))
+		return err
+	}
+
 	isStandbyClusterPresent := patroni.IsStandbyClusterConfigurationExist(cr)
 	isPgbackrestUsed := cr.Spec.PgBackRest != nil
 
@@ -139,11 +145,6 @@ func (r *PatroniReconciler) Reconcile() error {
 
 	if _, err := r.helper.CreateOrUpdateConfigMap(patroniConfigMap); err != nil {
 		logger.Error(fmt.Sprintf("Cannot create or update config map %s", patroniConfigMap.Name), zap.Error(err))
-		return err
-	}
-
-	if err := r.helper.ReloadPatroniIfLegacyMasterLabel(r.cluster.ClusterName, r.cluster.PatroniUrl); err != nil {
-		logger.Error("Patroni reload for primary label migration failed", zap.Error(err))
 		return err
 	}
 
@@ -610,22 +611,7 @@ func (r *PatroniReconciler) processPatroniPvcResize(pvcs []*corev1.PersistentVol
 
 		logger.Info(fmt.Sprintf("Restarting StatefulSet %s to complete PVC resize, attempt %d, waiting %s", statefulSetName, attempt, delay))
 
-		if err := r.helper.ScaleStatefulSet(statefulSetName, 0); err != nil {
-			return err
-		}
-
-		if err := opUtil.WaitDeletePod(&corev1.Pod{
-			ObjectMeta: metav1.ObjectMeta{
-				Name:      podName,
-				Namespace: r.cr.Namespace,
-			},
-		}); err != nil {
-			return err
-		}
-
-		time.Sleep(delay)
-
-		if err := r.helper.ScaleStatefulSet(statefulSetName, 1); err != nil {
+		if err := r.helper.RestartPatroniPodWithWait(podName, delay); err != nil {
 			return err
 		}
 

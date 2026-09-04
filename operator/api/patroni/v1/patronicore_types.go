@@ -113,7 +113,7 @@ type Patroni struct {
 	PatroniResourcesLimitMemory  string                   `json:"patroniResourcesLimitMemory,omitempty"`
 	// +kubebuilder:validation:Enum=DEBUG;INFO;WARNING;ERROR;CRITICAL
 	// +kubebuilder:default=WARNING
-	PatroniLogLevel              string                   `json:"patroniLogLevel,omitempty"`
+	PatroniLogLevel string `json:"patroniLogLevel,omitempty"`
 }
 
 type External struct {

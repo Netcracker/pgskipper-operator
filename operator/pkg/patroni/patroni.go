@@ -650,26 +650,28 @@ func Switchover(patroniURL, leader string) error {
 	return nil
 }
 
-func ReloadPatroniConfig(patroniUrl string) error {
-	hosts, err := getPatroniHosts(patroniUrl)
+func UpdateKubernetesSettings(configMap *corev1.ConfigMap, labelValue string, configMapKey string) (*corev1.ConfigMap, error) {
+	var config map[string]interface{}
+	if err := yaml.Unmarshal([]byte(configMap.Data[configMapKey]), &config); err != nil {
+		logger.Error("Could not unmarshal patroni config map", zap.Error(err))
+		return configMap, err
+	}
+
+	kubernetes, ok := config["kubernetes"].(map[interface{}]interface{})
+	if !ok {
+		err := fmt.Errorf("invalid kubernetes configuration")
+		logger.Error(err.Error())
+		return configMap, err
+	}
+
+	kubernetes["leader_label_value"] = labelValue
+
+	result, err := yaml.Marshal(config)
 	if err != nil {
-		return err
+		logger.Error("Could not marshal patroni config map", zap.Error(err))
+		return configMap, err
 	}
-	client := &http.Client{}
-	for _, host := range hosts {
-		resp, err := patroniPost(client, host+"reload", nil)
-		if err != nil {
-			return fmt.Errorf("patroni reload failed for %s: %w", host, err)
-		}
-		defer func() {
-			if resp != nil && resp.Body != nil {
-				_ = resp.Body.Close()
-			}
-		}()
-		if resp.StatusCode != http.StatusOK && resp.StatusCode != http.StatusAccepted {
-			return fmt.Errorf("patroni reload failed for %s: status %s", host, resp.Status)
-		}
-		logger.Info(fmt.Sprintf("Patroni config reloaded on %s", host))
-	}
-	return nil
+
+	configMap.Data[configMapKey] = string(result)
+	return configMap, nil
 }
