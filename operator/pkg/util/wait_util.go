@@ -245,7 +245,11 @@ func WaitForLeader(patroniMasterSelector map[string]string) error {
 }
 
 func WaitForReplicas(patroniReplicasSelector map[string]string, numberOfReplicas int) error {
-	return wait.PollUntilContextTimeout(context.Background(), time.Second, getWaitTimeout(), true, func(ctx context.Context) (done bool, err error) {
+	return waitForReplicasWithTimeout(patroniReplicasSelector, numberOfReplicas, getWaitTimeout())
+}
+
+func waitForReplicasWithTimeout(patroniReplicasSelector map[string]string, numberOfReplicas int, timeout time.Duration) error {
+	return wait.PollUntilContextTimeout(context.Background(), time.Second, timeout, true, func(ctx context.Context) (done bool, err error) {
 		return checkPodsByLabel(patroniReplicasSelector, numberOfReplicas)
 	})
 }
@@ -279,7 +283,7 @@ func WaitForPatroniWithReplicaTimeout(cr *v1.PatroniCore, patroniMasterSelector 
 			timeout = operatorTimeout
 		}
 
-		if err := WaitForReplicas(patroniReplicasSelector, cr.Spec.Patroni.Replicas-1); err != nil {
+		if err := waitForReplicasWithTimeout(patroniReplicasSelector, cr.Spec.Patroni.Replicas-1, timeout); err != nil {
 			uLog.Error("Failed to wait for replicas, exiting", zap.Error(err))
 			return err
 		}
