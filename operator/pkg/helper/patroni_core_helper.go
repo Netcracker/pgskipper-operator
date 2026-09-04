@@ -724,7 +724,10 @@ func (ph *PatroniHelper) GetStatefulSetIds(statefulsets []*appsv1.StatefulSet) (
 }
 
 func (ph *PatroniHelper) ReloadPatroniIfLegacyMaster(clusterName, patroniConfigMapName, configMapKey string) error {
-	leaderPodList, err := ph.GetPodsByLabel(MasterLabel)
+	formerLeaderLabels := map[string]string{
+		util.PatroniPgTypeLabelKey: util.PatroniRoleMaster,
+	}
+	leaderPodList, err := ph.GetPodsByLabel(formerLeaderLabels)
 	if err != nil {
 		return err
 	}
