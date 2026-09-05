@@ -129,10 +129,10 @@ function stream_backup_to_aws_s3() {
 
   log_info "expected backup size is approximately ${expected_backup_size} bytes."
 
-  local validation_pipe="pg-backup-${BACKUP_ID}.pipe"
-  local pg_basebackup_stderr_file="pg-backup-${BACKUP_ID}.error.log"
-  local validation_stderr_file="pg-backup-validation-${BACKUP_ID}.error.log"
-  local storage_client_stdout_file="storage-client-${BACKUP_ID}.log"
+  local validation_pipe="/tmp/pg-backup-${BACKUP_ID}.pipe"
+  local pg_basebackup_stderr_file="/tmp/pg-backup-${BACKUP_ID}.error.log"
+  local validation_stderr_file="/tmp/pg-backup-validation-${BACKUP_ID}.error.log"
+  local storage_client_stdout_file="/tmp/storage-client-${BACKUP_ID}.log"
 
   register_delete_on_exit "${validation_pipe}" "${storage_client_stdout_file}" "${validation_stderr_file}" "${pg_basebackup_stderr_file}"
 

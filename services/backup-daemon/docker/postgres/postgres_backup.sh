@@ -45,9 +45,9 @@ function do_backup() {
   fi
   log BACKUP_ID
   log "${BACKUP_ID}"
-  local validation_pipe="${BACKUP_DESTINATION_DIRECTORY}/pg-backup-${BACKUP_ID}.pipe"
-  local pg_basebackup_stderr_file="${BACKUP_DESTINATION_DIRECTORY}/pg-backup-${BACKUP_ID}.error.log"
-  local validation_stderr_file="${BACKUP_DESTINATION_DIRECTORY}/pg-backup-validation-${BACKUP_ID}.error.log"
+  local validation_pipe="/tmp/pg-backup-${BACKUP_ID}.pipe"
+  local pg_basebackup_stderr_file="/tmp/pg-backup-${BACKUP_ID}.error.log"
+  local validation_stderr_file="/tmp/pg-backup-validation-${BACKUP_ID}.error.log"
 
   register_delete_on_exit "${validation_pipe}" "${validation_stderr_file}" "${pg_basebackup_stderr_file}"
 
