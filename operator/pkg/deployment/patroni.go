@@ -362,7 +362,7 @@ func NewPatroniStatefulset(cr *patroniv1.PatroniCore, deploymentIdx int, cluster
 			},
 		})
 	}
-	
+
 	// TLS Section
 	if cr.Spec.Tls != nil && cr.Spec.Tls.Enabled {
 		logger.Info("Mount TLS secret volume")

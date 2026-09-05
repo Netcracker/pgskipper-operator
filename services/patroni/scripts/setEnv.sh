@@ -15,6 +15,7 @@
 
 
 LOG_LEVEL=${LOG_LEVEL:-info}
+export PATRONI_LOG_LEVEL=${PATRONI_LOG_LEVEL:-WARNING}
 
 if [[ -z "${POD_IDENTITY}" ]];
 then

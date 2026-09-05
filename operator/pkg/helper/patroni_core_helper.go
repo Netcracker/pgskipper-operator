@@ -33,6 +33,7 @@ import (
 	"github.com/Netcracker/pgskipper-operator/pkg/util"
 	"github.com/pkg/errors"
 	appsv1 "k8s.io/api/apps/v1"
+	corev1 "k8s.io/api/core/v1"
 	v1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/apimachinery/pkg/util/wait"
@@ -722,17 +723,89 @@ func (ph *PatroniHelper) GetStatefulSetIds(statefulsets []*appsv1.StatefulSet) (
 	return ids, nil
 }
 
-func (ph *PatroniHelper) ReloadPatroniIfLegacyMasterLabel(clusterName, patroniUrl string) error {
-	pods, err := ph.GetPodsByLabel(map[string]string{
-		util.PatroniPgTypeLabelKey:  util.PatroniRoleMaster,
-		util.PatroniClusterLabelKey: clusterName,
-	})
+func (ph *PatroniHelper) ReloadPatroniIfLegacyLeader(clusterName, patroniConfigMapName, configMapKey string) error {
+	formerLeaderLabels := map[string]string{
+		util.PatroniPgTypeLabelKey: util.PatroniRoleMaster,
+	}
+	leaderPodList, err := ph.GetPodsByLabel(formerLeaderLabels)
 	if err != nil {
 		return err
 	}
-	if len(pods.Items) == 0 {
+	if len(leaderPodList.Items) == 0 {
 		return nil
 	}
-	logger.Info("Legacy pgtype=master label detected, reloading patroni config")
-	return patroni.ReloadPatroniConfig(patroniUrl)
+	logger.Info("Legacy pgtype=master label detected, modifying and restarting patroni pods")
+
+	patroniConfigMap, err := ph.GetConfigMap(patroniConfigMapName)
+	if err != nil {
+		logger.Error("Failed to find patroni config map", zap.Error(err))
+		return err
+	}
+
+	patroniConfigMap, err = patroni.UpdateKubernetesSettings(patroniConfigMap, util.PatroniRolePrimary, configMapKey)
+	if err != nil {
+		logger.Error("Failed to update patroni config map", zap.Error(err))
+		return err
+	}
+
+	_, err = ph.CreateOrUpdateConfigMap(patroniConfigMap)
+	if err != nil {
+		logger.Error("Failed to update patroni config map", zap.Error(err))
+		return err
+	}
+
+	followerPods, err := ph.GetPodsByLabel(ReplicasLabel)
+	if err != nil {
+		return err
+	}
+
+	for _, pod := range followerPods.Items {
+		logger.Info(fmt.Sprintf("Restarting Patroni pod %s", pod.Name))
+		if err := ph.RestartPatroniPod(pod.Name); err != nil {
+			return err
+		}
+	}
+
+	if err := util.WaitForReplicas(ReplicasLabel, ph.cr.Spec.Patroni.Replicas-1); err != nil {
+		return err
+	}
+
+	for _, leaderPod := range leaderPodList.Items {
+		if err := ph.RestartPatroniPod(leaderPod.Name); err != nil {
+			return err
+		}
+	}
+
+	if err := util.WaitForPatroni(&ph.cr, MasterLabel, ReplicasLabel); err != nil {
+		return err
+	}
+	return nil
+}
+
+func (ph *PatroniHelper) RestartPatroniPod(podName string) error {
+	return ph.RestartPatroniPodWithWait(podName, 0)
+}
+
+func (ph *PatroniHelper) RestartPatroniPodWithWait(podName string, waitTimeout time.Duration) error {
+	pod := &corev1.Pod{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      podName,
+			Namespace: util.GetNameSpace(),
+		},
+	}
+	stsName := strings.TrimSuffix(pod.Name, "-0")
+	if err := ph.ScaleStatefulSet(stsName, 0); err != nil {
+		return err
+	}
+
+	if err := util.WaitDeletePod(pod); err != nil {
+		return err
+	}
+
+	time.Sleep(waitTimeout)
+
+	if err := ph.ScaleStatefulSet(stsName, 1); err != nil {
+		return err
+	}
+	return nil
 }
