@@ -112,24 +112,22 @@ class BackupsScheduler:
                 backup_timeout = None
                 timeout_from_options = self.__backup_options.get('timeout')
                 if timeout_from_options:
-                    backup_timeout = timeout_from_options
-                    self.__log.info("Using configured timeout for backup: %ss", backup_timeout)
-                    worker.join(backup_timeout)
-                else:
-                    if oldest_backup:
-                        self.__log.info("Id of latest backup: {}".format(oldest_backup.get_id()))
-                        spent_time = oldest_backup.load_metrics().get('spent_time')
+                    backup_timeout = timeout_from_options                    
 
-                        if spent_time:
-                            # time stored as milliseconds converting to seconds and double the value
-                            backup_timeout = spent_time / 1000 * 2
-                            self.__log.info("Setting timeout for backup process: {}".format(backup_timeout))
-                            worker.join(backup_timeout)
+                if oldest_backup:
+                    self.__log.info("Id of latest backup: {}".format(oldest_backup.get_id()))
+                    spent_time = oldest_backup.load_metrics().get('spent_time')
 
-                        else:
-                            worker.join()
-                    else:
-                        worker.join()
+                    if spent_time:
+                        # time stored as milliseconds converting to seconds and double the value
+                        calculated_timeout = spent_time / 1000 * 2
+                        if backup_timeout is None or calculated_timeout > backup_timeout:
+                            backup_timeout = calculated_timeout
+                            self.__log.info("Setting calculated timeout for backup process: %ss", backup_timeout)
+                        elif backup_timeout is not None:
+                            self.__log.info("Setting configured timeout for backup process: %ss", backup_timeout)
+
+                worker.join(backup_timeout)
 
                 self.__log.info("Worker completed: {}".format(not worker.is_alive()))
 
