@@ -1,0 +1,12 @@
+name: troubleshooting-postgres
+version: 1.0.0
+description: Troubleshooting skill for pgskipper-operator PostgreSQL/Patroni clusters
+type: skill
+targets:
+  - claude
+  - cursor
+dependencies:
+  apm: []
+  mcp: []
+includes: auto
+scripts: {}
