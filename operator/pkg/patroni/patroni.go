@@ -21,6 +21,7 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"slices"
 	"strings"
 	"time"
 
@@ -38,7 +39,11 @@ import (
 )
 
 var (
-	logger = util.GetLogger()
+	logger               = util.GetLogger()
+	outputPluginsDefault = []string{"pgoutput", "test_decoding", "decoderbufs"}
+	outputPluginMap      = map[string]string{
+		"pglogical": "pglogical_output",
+	}
 )
 
 type ClusterResponse struct {
@@ -410,9 +415,9 @@ func UpdatePostgreSQLParams(patroni *patroniv1.Patroni, patroniUrl string) error
 
 	postgreSQL := map[string]interface{}{}
 
-	if len(postgreSQLParams) > 0 {
-		postgreSQL["parameters"] = postgreSQLParams
-	}
+	updateOutputPluginLibraries(postgreSQLParams)
+
+	postgreSQL["parameters"] = postgreSQLParams
 	postgreSQL["pg_hba"] = getPgHba(patroni.PgHba)
 
 	patchData := map[string]interface{}{
@@ -423,6 +428,24 @@ func UpdatePostgreSQLParams(patroni *patroniv1.Patroni, patroniUrl string) error
 		logger.Error("Failed to patch postgresql params via patroni", zap.Error(err))
 		return err
 	}
+	return nil
+}
+
+func updateOutputPluginLibraries(postgreSQLParams map[string]interface{}) error {
+	outputPlugins := slices.Clone(outputPluginsDefault)
+	for key, value := range postgreSQLParams {
+		if key == "shared_preload_libraries" {
+			sharedPreloadLibraries := strings.Split(value.(string), ",")
+			for _, library := range sharedPreloadLibraries {
+				library = strings.TrimSpace(library)
+				if outputPlugin, ok := outputPluginMap[library]; ok {
+					outputPlugins = append(outputPlugins, outputPlugin)
+				}
+			}
+			break
+		}
+	}
+	postgreSQLParams["output_plugin_libraries"] = strings.Join(outputPlugins, ", ")
 	return nil
 }
 
