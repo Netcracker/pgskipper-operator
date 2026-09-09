@@ -109,10 +109,12 @@ class BackupsScheduler:
                                                      backup_id=backup.get_backup_id()
                                                      )
 
-                timeout_seconds = self.__backup_options.get('timeout')
-                if timeout_seconds:
-                    self.__log.info("Using configured timeout for backup: %ss", timeout_seconds)
-                    worker.join(timeout_seconds)
+                backup_timeout = None
+                timeout_from_options = self.__backup_options.get('timeout')
+                if timeout_from_options:
+                    backup_timeout = timeout_from_options
+                    self.__log.info("Using configured timeout for backup: %ss", backup_timeout)
+                    worker.join(backup_timeout)
                 else:
                     if oldest_backup:
                         self.__log.info("Id of latest backup: {}".format(oldest_backup.get_id()))
@@ -120,9 +122,9 @@ class BackupsScheduler:
 
                         if spent_time:
                             # time stored as milliseconds converting to seconds and double the value
-                            time_out = spent_time / 1000 * 2
-                            self.__log.info("Setting timeout for backup process: {}".format(time_out))
-                            worker.join(time_out)
+                            backup_timeout = spent_time / 1000 * 2
+                            self.__log.info("Setting timeout for backup process: {}".format(backup_timeout))
+                            worker.join(backup_timeout)
 
                         else:
                             worker.join()
@@ -132,7 +134,11 @@ class BackupsScheduler:
                 self.__log.info("Worker completed: {}".format(not worker.is_alive()))
 
                 if worker.is_alive():
-                    self.__log.error("Backup worker for {} is not completed after timeout: {}".format(backup.get_backup_id(), time_out))
+                    self.__log.error(
+                        "Backup worker for %s did not complete within the %ss timeout",
+                        backup.get_backup_id(),
+                        backup_timeout,
+                    )
                     worker.fail()
                     worker.kill()
                     raise Exception("Backup worker timeout exceeded")
