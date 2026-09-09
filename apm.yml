@@ -1,0 +1,11 @@
+name: pgskipper-operator
+version: 1.0.0
+description: APM project for PostgreSQL operator
+dependencies:
+  apm: []
+  mcp: []
+includes: auto
+scripts: {}
+devDependencies:
+  apm:
+    - ./agent-packages/troubleshooting-postgres/
