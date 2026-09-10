@@ -594,7 +594,7 @@
         },
         "backupTimeout": {
           "type": "integer",
-          "default": 300
+          "default": 600
         },
         "granularEviction": {
           "type": "string",
