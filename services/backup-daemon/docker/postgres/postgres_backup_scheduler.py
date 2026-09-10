@@ -109,16 +109,15 @@ class BackupsScheduler:
                                                      backup_id=backup.get_backup_id()
                                                      )
 
-                backup_timeout = None
-                timeout_from_options = self.__backup_options.get('timeout')
-                if timeout_from_options:
-                    backup_timeout = timeout_from_options                    
-
+                backup_timeout = None               
                 if oldest_backup:
                     self.__log.info("Id of latest backup: {}".format(oldest_backup.get_id()))
                     spent_time = oldest_backup.load_metrics().get('spent_time')
 
                     if spent_time:
+                        timeout_from_options = self.__backup_options.get('timeout')
+                        if timeout_from_options:
+                            backup_timeout = timeout_from_options
                         # time stored as milliseconds converting to seconds and double the value
                         calculated_timeout = spent_time / 1000 * 2
                         if backup_timeout is None or calculated_timeout > backup_timeout:
