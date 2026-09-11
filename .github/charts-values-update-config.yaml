@@ -13,9 +13,9 @@ charts:
       - ghcr.io/netcracker/pgskipper-operator:${release}
       - ghcr.io/netcracker/pgskipper-operator-transfer:${release}
       - ghcr.io/netcracker/pgskipper-docker-upgrade:${release}
-      - ghcr.io/netcracker/pgskipper-patroni-16:${release}
-      - ghcr.io/netcracker/pgskipper-patroni-17:${release}
-      - ghcr.io/netcracker/pgskipper-patroni-18:${release}
+      - ghcr.io/netcracker/pgskipper-docker-patroni-16:${release}
+      - ghcr.io/netcracker/pgskipper-docker-patroni-17:${release}
+      - ghcr.io/netcracker/pgskipper-docker-patroni-18:${release}
       - ghcr.io/netcracker/pgskipper-operator-tests:${release}
   - name: patroni-services
     chart_file: operator/charts/patroni-services/Chart.yaml
