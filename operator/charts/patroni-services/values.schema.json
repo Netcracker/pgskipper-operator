@@ -488,6 +488,10 @@
               "type": "integer",
               "default": 104857600
             },
+	    "defaultPartitionSizePercentThreshold": {
+              "type": "integer",
+              "default": 50
+            },
             "maxConnectionExceedPercentageThreshold": {
               "type": "integer",
               "default": 90
