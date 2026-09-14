@@ -118,6 +118,7 @@ patroni:
   podLabels: {}
   podAnnotations: {}
   configMapAnnotations: {}
+  ignoreSlots: true
   # patroni.fsGroup. Specifies fsGroup that will be used in Patroni Pod Spec.
   # Useful in case of k8s installation and provisioned storage
   #  fsGroup: 26
