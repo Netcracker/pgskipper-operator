@@ -105,6 +105,8 @@ var (
 	(SELECT setting::int max_connections FROM pg_settings
 	WHERE name=$$max_connections$$) t3;
 `
+	defaultPartitionQuery = `SELECT n.nspname AS schemaname, c.relname AS relname, p.relname AS parent_relname, pg_total_relation_size(c.oid) AS size_bytes, COALESCE(s.n_live_tup, 0) AS row_count FROM pg_class c JOIN pg_namespace n ON n.oid = c.relnamespace JOIN pg_inherits i ON i.inhrelid = c.oid JOIN pg_class p ON p.oid = i.inhparent LEFT JOIN pg_stat_user_tables s ON s.relid = c.oid WHERE c.relispartition = true AND pg_get_expr(c.relpartbound, c.oid) = 'DEFAULT'`
+
 )
 
 func (s *Scraper) CollectPerformanceMetrics() {
@@ -325,6 +327,26 @@ func (s *Scraper) collectTableMetrics(ctx context.Context, pg *postgres.Postgres
 		s.metrics = append(s.metrics, NewMetric("ma_pg_tuples_by_db").withLabels(labels).setValue(liveTuplesValue))
 		s.metrics = append(s.metrics, NewMetric("ma_pg_tot_size_by_db").withLabels(labels).setValue(totSizeValue))
 		s.metrics = append(s.metrics, NewMetric("ma_pg_idx_size_by_db").withLabels(labels).setValue(idxSizeValue))
+	}
+
+	columns, rows = getData(ctx, pg, defaultPartitionQuery)
+	for _, row := range rows {
+		labels := gauges.DefaultLabels()
+		labels["datname"] = pg.GetDatabase()
+		var sizeValue, rowCountValue string
+		for _, column := range columns {
+			rValue := fmt.Sprintf("%v", row[column])
+			switch column {
+			case "size_bytes":
+				sizeValue = rValue
+			case "row_count":
+				rowCountValue = rValue
+			default:
+				labels[column] = rValue
+			}
+		}
+		s.metrics = append(s.metrics, NewMetric("ma_pg_default_partition_size_bytes").withLabels(labels).setValue(sizeValue))
+		s.metrics = append(s.metrics, NewMetric("ma_pg_default_partition_row_count").withLabels(labels).setValue(rowCountValue))
 	}
 }
 
