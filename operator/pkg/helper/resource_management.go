@@ -649,18 +649,29 @@ func (rm *ResourceManager) CreateOrResizePvc(pvc *corev1.PersistentVolumeClaim) 
 		changed = true
 	}
 
-	// Apply desired annotations only when they differ.
-	if pvc.Annotations != nil {
-		if foundPvc.Annotations == nil {
-			foundPvc.Annotations = make(map[string]string)
-		}
+	// Apply desired annotations.
+	if len(pvc.Annotations) > 0 && foundPvc.Annotations == nil {
+		foundPvc.Annotations = make(map[string]string)
+	}
 
-		for key, value := range pvc.Annotations {
-			if foundPvc.Annotations[key] != value {
-				foundPvc.Annotations[key] = value
-				changed = true
-			}
+	for key, value := range pvc.Annotations {
+		if foundPvc.Annotations[key] != value {
+			foundPvc.Annotations[key] = value
+			changed = true
 		}
+	}
+
+	const argocdSyncOptions = "argocd.argoproj.io/sync-options"
+
+	if _, desired := pvc.Annotations[argocdSyncOptions]; !desired {
+		if _, exists := foundPvc.Annotations[argocdSyncOptions]; exists {
+			delete(foundPvc.Annotations, argocdSyncOptions)
+			changed = true
+		}
+	}
+
+	if len(foundPvc.Annotations) == 0 {
+		foundPvc.Annotations = nil
 	}
 
 	// Nothing in PVC spec/metadata changed.
