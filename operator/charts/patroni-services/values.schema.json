@@ -139,6 +139,56 @@
     "CLOUD_PUBLIC_HOST": {
       "type": "string",
       "default": "k8s.default"
+    },
+    "API_DBAAS_ADDRESS": {
+      "type": "string"
+    },
+    "CLOUD_BACKUP_STORAGE_LOCATION": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/s3Alias"
+      }
+    },
+    "DBAAS_CLUSTER_DBA_CREDENTIALS_USERNAME": {
+      "type": "string"
+    },
+    "DBAAS_CLUSTER_DBA_CREDENTIALS_PASSWORD": {
+      "type": "string"
+    },
+    "INFRA_POSTGRES_ADMIN_PASSWORD": {
+      "type": "string"
+    },
+    "INFRA_POSTGRES_ADMIN_USER": {
+      "type": "string"
+    },
+    "INFRA_POSTGRES_FS_GROUP": {
+      "type": "integer"
+    },
+    "KUBE_FEATURE_WatchListClient": {
+      "type": "boolean",
+      "default": false
+    },
+    "MONITORING_ENABLED": {
+      "type": "boolean"
+    },
+    "NAMESPACE": {
+      "type": "string",
+      "default": "postgres-service"
+    },
+    "PAAS_PLATFORM": {
+      "type": "string"
+    },
+    "STORAGE_RWO_CLASS": {
+      "type": "string"
+    },
+    "affinity": {
+      "$ref": "#/$defs/affinity"
+    },
+    "nameOverride": {
+      "type": "string"
+    },
+    "fullnameOverride": {
+      "type": "string"
     }
   },
   "$defs": {
@@ -396,6 +446,12 @@
         "clusterName": {
           "type": "string",
           "default": "patroni"
+        },
+        "install": {
+          "type": "boolean"
+        },
+        "replicas": {
+          "type": "integer"
         }
       }
     },
@@ -507,6 +563,14 @@
             "warnpctUsedThreshold": {
               "type": "integer",
               "default": 50
+            },
+            "standbyLagInBytesThreshold": {
+              "type": "integer",
+              "default": 1073741824
+            },
+            "standbyLagInMsThreshold": {
+              "type": "integer",
+              "default": 600000
             }
           }
         },
@@ -693,61 +757,7 @@
           "type": "array",
           "default": [],
           "items": {
-            "type": "object",
-            "additionalProperties": false,
-            "required": [
-              "name",
-              "spec",
-              "secretContent"
-            ],
-            "properties": {
-              "name": {
-                "type": "string"
-              },
-              "spec": {
-                "type": "object",
-                "additionalProperties": false,
-                "required": [
-                  "storageBucket",
-                  "storageServerUrl",
-                  "storageUsername"
-                ],
-                "properties": {
-                  "storageBucket": {
-                    "type": "string"
-                  },
-                  "storageProvider": {
-                    "type": "string"
-                  },
-                  "storageRegion": {
-                    "type": "string",
-                    "default": "us-east-1"
-                  },
-                  "storageServerUrl": {
-                    "type": "string"
-                  },
-                  "storageUsername": {
-                    "type": "string"
-                  },
-                  "default": {
-                    "type": "boolean",
-                    "default": false
-                  }
-                }
-              },
-              "secretContent": {
-                "type": "object",
-                "additionalProperties": false,
-                "required": [
-                  "storagePassword"
-                ],
-                "properties": {
-                  "storagePassword": {
-                    "type": "string"
-                  }
-                }
-              }
-            }
+            "$ref": "#/$defs/s3Alias"
           }
         },
         "granularBackupSchedule": {
@@ -834,6 +844,28 @@
         },
         "authSecretName": {
           "type": "string"
+        },
+        "connectionName": {
+          "type": "string"
+        },
+        "applyGrafanaDashboard": {
+          "type": "boolean",
+          "default": false
+        },
+        "secret": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "create": {
+              "type": "boolean"
+            },
+            "secretContents": {
+              "type": "object",
+              "additionalProperties": {
+                "type": "string"
+              }
+            }
+          }
         },
         "accessKeyId": {
           "type": "string"
@@ -1053,9 +1085,49 @@
         "resources": {
           "$ref": "#/$defs/resourceRequirements"
         },
+        "affinity": {
+          "$ref": "#/$defs/affinity"
+        },
+        "securityContext": {
+          "type": "object",
+          "additionalProperties": true
+        },
+        "podLabels": {
+          "type": "object",
+          "additionalProperties": {
+            "type": "string"
+          }
+        },
+        "pgHost": {
+          "type": "string"
+        },
+        "pgPort": {
+          "type": "integer",
+          "default": 5432
+        },
+        "pgUser": {
+          "type": "string",
+          "default": "query-exporter"
+        },
+        "pgPassword": {
+          "type": "string",
+          "default": "PaSsw0rDfoRExporT3r?"
+        },
         "queryTimeout": {
           "type": "integer",
           "default": 30
+        },
+        "scrapeTimeout": {
+          "type": "integer",
+          "default": 10
+        },
+        "collectionInterval": {
+          "type": "integer",
+          "default": 60
+        },
+        "maxFailedTimeouts": {
+          "type": "integer",
+          "default": 3
         },
         "maxMasterConnections": {
           "type": "integer",
@@ -1068,6 +1140,16 @@
         "selfMonitorDisabled": {
           "type": "boolean",
           "default": false
+        },
+        "selfMonitorBuckets": {
+          "type": "string",
+          "default": "0.1, 0.25, 0.5, 0.75, 1, 2.5, 5, 7.5, 10, 30, 60"
+        },
+        "excludeQueries": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
         },
         "customQueries": {
           "type": "object",
@@ -1105,6 +1187,13 @@
         "dockerImage": {
           "type": "string",
           "default": "docker.io/powateam/powa-web:5.0.2"
+        },
+        "affinity": {
+          "$ref": "#/$defs/affinity"
+        },
+        "cookieSecret": {
+          "type": "string",
+          "default": "powa"
         },
         "podLabels": {
           "type": "object",
@@ -1158,6 +1247,15 @@
           "type": "string",
           "default": "ghcr.io/netcracker/pgskipper-docker-replication-controller:main"
         },
+        "affinity": {
+          "$ref": "#/$defs/affinity"
+        },
+        "podLabels": {
+          "type": "object",
+          "additionalProperties": {
+            "type": "string"
+          }
+        },
         "resources": {
           "$ref": "#/$defs/resourceRequirements"
         },
@@ -1187,9 +1285,23 @@
           "type": "string",
           "default": "docker.io/edoburu/pgbouncer:v1.25.1-p0"
         },
+        "affinity": {
+          "$ref": "#/$defs/affinity"
+        },
         "replicas": {
           "type": "integer",
           "default": 1
+        },
+        "username": {
+          "type": "string",
+          "default": "pgbouncer"
+        },
+        "password": {
+          "type": "string",
+          "default": "Pgboun1(#"
+        },
+        "resources": {
+          "$ref": "#/$defs/resourceRequirements"
         },
         "config": {
           "type": "object",
@@ -1231,6 +1343,15 @@
         "dockerImage": {
           "type": "string",
           "default": "ghcr.io/netcracker/pgskipper-operator-tests:main"
+        },
+        "affinity": {
+          "$ref": "#/$defs/affinity"
+        },
+        "resources": {
+          "$ref": "#/$defs/resourceRequirements"
+        },
+        "ddImages": {
+          "type": "string"
         },
         "podLabels": {
           "type": "object",
@@ -1451,6 +1572,63 @@
                 "type": "object",
                 "additionalProperties": true
               }
+            }
+          }
+        }
+      }
+    },
+    "s3Alias": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "name",
+        "spec",
+        "secretContent"
+      ],
+      "properties": {
+        "name": {
+          "type": "string"
+        },
+        "spec": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "storageBucket",
+            "storageServerUrl",
+            "storageUsername"
+          ],
+          "properties": {
+            "storageBucket": {
+              "type": "string"
+            },
+            "storageProvider": {
+              "type": "string"
+            },
+            "storageRegion": {
+              "type": "string",
+              "default": "us-east-1"
+            },
+            "storageServerUrl": {
+              "type": "string"
+            },
+            "storageUsername": {
+              "type": "string"
+            },
+            "default": {
+              "type": "boolean",
+              "default": false
+            }
+          }
+        },
+        "secretContent": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "storagePassword"
+          ],
+          "properties": {
+            "storagePassword": {
+              "type": "string"
             }
           }
         }
