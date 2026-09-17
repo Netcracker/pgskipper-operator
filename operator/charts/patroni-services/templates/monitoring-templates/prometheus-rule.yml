@@ -522,4 +522,14 @@ spec:
         namespace: {{ .Release.Namespace }}
         service: {{ .Release.Name }}
 {{- end }}
+    - alert: PostgreSQL default partition size high
+      annotations:
+        description: "Default partition \{\{ \$labels.relname \}\} of table \{\{ \$labels.parent_relname \}\} has exceeded the size threshold in namespace {{ .Release.Namespace }}."
+        summary: PostgreSQL default partition size high
+      expr: ma_pg_default_partition_size_bytes{namespace="{{ .Release.Namespace }}"} / ma_pg_default_partition_parent_size_bytes{namespace="{{ .Release.Namespace }}"} * 100 > {{ default "50" .Values.metricCollector.prometheusRules.defaultPartitionSizePercentThreshold }}
+      for: {{ default "3m" .Values.metricCollector.prometheusRules.alertDelay }}
+      labels:
+        severity: average
+        namespace: {{ .Release.Namespace }}
+        service: {{ .Release.Name }}
 {{ end }}
