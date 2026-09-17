@@ -48,7 +48,7 @@ import (
 )
 
 const kubeSysAnnotations = "kubernetes.io"
-
+const customAnnotationsKey = "deployment.netcracker.com/custom-annotations"
 const pvcChangedByJobFromAnnotation = "pvc-changed-by-job-from"
 
 var (
@@ -581,7 +581,14 @@ func (rm *ResourceManager) CreatePvcIfNotExists(pvc *corev1.PersistentVolumeClai
 
 func (rm *ResourceManager) CreateOrResizePvc(pvc *corev1.PersistentVolumeClaim) (bool, error) {
 	foundPvc := &corev1.PersistentVolumeClaim{}
+	customAnnotationKeys := getCustomAnnotationKeys(pvc.Annotations)
 
+	if len(customAnnotationKeys) > 0 {
+		if pvc.Annotations == nil {
+			pvc.Annotations = make(map[string]string)
+		}
+		pvc.Annotations[customAnnotationsKey] = strings.Join(customAnnotationKeys, ",")
+	}
 	err := rm.kubeClient.Get(
 		context.TODO(),
 		types.NamespacedName{
@@ -649,23 +656,55 @@ func (rm *ResourceManager) CreateOrResizePvc(pvc *corev1.PersistentVolumeClaim) 
 		changed = true
 	}
 
-	// Apply desired annotations.
+	// Read annotations previously managed by the operator.
+	var previousCustomAnnotations []string
+
+	if foundPvc.Annotations != nil {
+		if value, exists := foundPvc.Annotations[customAnnotationsKey]; exists {
+			for _, key := range strings.Split(value, ",") {
+				key = strings.TrimSpace(key)
+				if key != "" {
+					previousCustomAnnotations = append(previousCustomAnnotations, key)
+				}
+			}
+		}
+	}
+
+	// Remove previously managed annotations which are no longer desired.
+	for _, key := range previousCustomAnnotations {
+		if _, exists := pvc.Annotations[key]; !exists {
+			delete(foundPvc.Annotations, key)
+			changed = true
+		}
+	}
+
+	// Add/update desired custom annotations.
 	if len(pvc.Annotations) > 0 && foundPvc.Annotations == nil {
 		foundPvc.Annotations = make(map[string]string)
 	}
 
 	for key, value := range pvc.Annotations {
+		if key == customAnnotationsKey {
+			continue
+		}
+
 		if foundPvc.Annotations[key] != value {
 			foundPvc.Annotations[key] = value
 			changed = true
 		}
 	}
 
-	const argocdSyncOptions = "argocd.argoproj.io/sync-options"
+	// Update the list of currently managed custom annotations.
+	if len(customAnnotationKeys) > 0 {
+		value := strings.Join(customAnnotationKeys, ",")
 
-	if _, desired := pvc.Annotations[argocdSyncOptions]; !desired {
-		if _, exists := foundPvc.Annotations[argocdSyncOptions]; exists {
-			delete(foundPvc.Annotations, argocdSyncOptions)
+		if foundPvc.Annotations[customAnnotationsKey] != value {
+			foundPvc.Annotations[customAnnotationsKey] = value
+			changed = true
+		}
+	} else {
+		if _, exists := foundPvc.Annotations[customAnnotationsKey]; exists {
+			delete(foundPvc.Annotations, customAnnotationsKey)
 			changed = true
 		}
 	}
@@ -1188,6 +1227,17 @@ func (rm *ResourceManager) getLabels(meta metav1.ObjectMeta) map[string]string {
 	}
 
 	return mergedLabels
+}
+
+func getCustomAnnotationKeys(annotations map[string]string) []string {
+	var keys []string
+	for key := range annotations {
+		if key != customAnnotationsKey {
+			keys = append(keys, key)
+		}
+	}
+	slices.Sort(keys)
+	return keys
 }
 
 func (rm *ResourceManager) commonLabels(name string) map[string]string {
