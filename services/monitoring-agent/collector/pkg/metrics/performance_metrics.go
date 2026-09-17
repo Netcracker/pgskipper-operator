@@ -105,7 +105,7 @@ var (
 	(SELECT setting::int max_connections FROM pg_settings
 	WHERE name=$$max_connections$$) t3;
 `
-	defaultPartitionQuery = `SELECT n.nspname AS schemaname, c.relname AS relname, p.relname AS parent_relname, pg_total_relation_size(c.oid) AS size_bytes, COALESCE(s.n_live_tup, 0) AS row_count FROM pg_class c JOIN pg_namespace n ON n.oid = c.relnamespace JOIN pg_inherits i ON i.inhrelid = c.oid JOIN pg_class p ON p.oid = i.inhparent LEFT JOIN pg_stat_user_tables s ON s.relid = c.oid WHERE c.relispartition = true AND pg_get_expr(c.relpartbound, c.oid) = 'DEFAULT'`
+	defaultPartitionQuery = `SELECT n.nspname AS schemaname, c.relname AS relname, p.relname AS parent_relname, pg_total_relation_size(c.oid) AS size_bytes, (SELECT COALESCE(sum(pg_total_relation_size(inhrelid)), 0) FROM pg_inherits WHERE inhparent = p.oid) AS parent_size_bytes, COALESCE(s.n_live_tup, 0) AS row_count FROM pg_class c JOIN pg_namespace n ON n.oid = c.relnamespace JOIN pg_inherits i ON i.inhrelid = c.oid JOIN pg_class p ON p.oid = i.inhparent LEFT JOIN pg_stat_user_tables s ON s.relid = c.oid WHERE c.relispartition = true AND pg_get_expr(c.relpartbound, c.oid) = 'DEFAULT'`
 
 )
 
@@ -333,7 +333,7 @@ func (s *Scraper) collectTableMetrics(ctx context.Context, pg *postgres.Postgres
 	for _, row := range rows {
 		labels := gauges.DefaultLabels()
 		labels["datname"] = pg.GetDatabase()
-		var sizeValue, rowCountValue string
+		var sizeValue, rowCountValue, parentSizeValue string
 		for _, column := range columns {
 			rValue := fmt.Sprintf("%v", row[column])
 			switch column {
@@ -341,12 +341,15 @@ func (s *Scraper) collectTableMetrics(ctx context.Context, pg *postgres.Postgres
 				sizeValue = rValue
 			case "row_count":
 				rowCountValue = rValue
+			case "parent_size_bytes":
+				parentSizeValue = rValue
 			default:
 				labels[column] = rValue
 			}
 		}
 		s.metrics = append(s.metrics, NewMetric("ma_pg_default_partition_size_bytes").withLabels(labels).setValue(sizeValue))
 		s.metrics = append(s.metrics, NewMetric("ma_pg_default_partition_row_count").withLabels(labels).setValue(rowCountValue))
+		s.metrics = append(s.metrics, NewMetric("ma_pg_default_partition_parent_size_bytes").withLabels(labels).setValue(parentSizeValue))
 	}
 }
 
