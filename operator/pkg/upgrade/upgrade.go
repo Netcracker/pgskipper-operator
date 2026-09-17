@@ -27,11 +27,13 @@ import (
 	pgClient "github.com/Netcracker/pgskipper-operator/pkg/client"
 	"github.com/Netcracker/pgskipper-operator/pkg/deployment"
 	"github.com/Netcracker/pgskipper-operator/pkg/helper"
+	"github.com/Netcracker/pgskipper-operator/pkg/storage"
 	opUtil "github.com/Netcracker/pgskipper-operator/pkg/util"
 	"go.uber.org/zap"
 	"gopkg.in/yaml.v2"
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
+	k8serrors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/util/wait"
@@ -357,9 +359,11 @@ func (u *Upgrade) ProceedUpgrade(cr *v1.PatroniCore, cluster *v1.PatroniClusterS
 	}
 
 	patroniSpec := cr.Spec.Patroni
-	if err := u.CheckPVCSizeBeforeUpgrade(masterPodName, namespace, patroniSpec.Storage.Size); err != nil {
-		logger.Error("PVC space precheck failed, major upgrade will not be started", zap.Error(err))
-		return err
+	if !cr.Upgrade.UseMigrationPvc {
+		if err := u.CheckPVCSizeBeforeUpgrade(masterPodName, namespace, patroniSpec.Storage.Size); err != nil {
+			logger.Error("PVC space precheck failed, major upgrade will not be started", zap.Error(err))
+			return err
+		}
 	}
 
 	command = "pg_dumpall -v -U postgres -w --file=/tmp/test_db_dumpall.custom --schema-only"
@@ -434,8 +438,15 @@ func (u *Upgrade) ProceedUpgrade(cr *v1.PatroniCore, cluster *v1.PatroniClusterS
 		return err
 	}
 
+	var migrationPvc *corev1.PersistentVolumeClaim
 	logger.Info(fmt.Sprintf("Leader name is %s", leaderName))
 	deploymentIdx, _ := strconv.Atoi(leaderName[len(leaderName)-1:])
+	if cr.Upgrade.UseMigrationPvc {
+		migrationPvc, err = u.createMigrationPvc(cr, cluster.ClusterName, deploymentIdx)
+		if err != nil {
+			return err
+		}
+	}
 	patroniSfs := deployment.NewPatroniStatefulset(cr, deploymentIdx, cluster.ClusterName,
 		cluster.PatroniTemplate, cluster.PostgreSQLUserConf, cluster.PatroniLabels)
 	upgradePod := u.getUpgradePod(cr, leaderName, initDbArgs, cr.Upgrade.DockerUpgradeImage)
@@ -445,6 +456,15 @@ func (u *Upgrade) ProceedUpgrade(cr *v1.PatroniCore, cluster *v1.PatroniClusterS
 	upgradePod.Spec.Volumes = patroniSfs.Spec.Template.Spec.Volumes
 	upgradePod.Spec.Containers[0].VolumeMounts = patroniSfs.Spec.Template.Spec.Containers[0].VolumeMounts
 	upgradePod.Spec.SecurityContext = patroniSfs.Spec.Template.Spec.SecurityContext
+
+	if migrationPvc != nil {
+		upgradePod.Spec.Volumes = append(upgradePod.Spec.Volumes, deployment.GetVolume(migrationPvc.Name))
+		upgradePod.Spec.Containers[0].VolumeMounts = append(
+			upgradePod.Spec.Containers[0].VolumeMounts,
+			deployment.GetVolumeMount(migrationPvc.Name, "/var/lib/pgsql/tmp_data"),
+		)
+		logger.Info(fmt.Sprintf("Migration PVC %s mounted to upgrade pod at /var/lib/pgsql/tmp_data", migrationPvc.Name))
+	}
 
 	// create pod and wait till completed
 	state, err := u.createAndWaitTillPodIsReady(upgradePod)
@@ -479,6 +499,12 @@ func (u *Upgrade) ProceedUpgrade(cr *v1.PatroniCore, cluster *v1.PatroniClusterS
 
 	if err := u.RestoreRODatabases(cluster.PgHost, cluster.ClusterName); err != nil {
 		return err
+	}
+
+	if cr.Upgrade.UseMigrationPvc {
+		if err := u.deleteMigratinPvc(cluster.ClusterName); err != nil {
+			return err
+		}
 	}
 
 	if err := u.applyCleanerInitContainer(leaderName, patroniSpec, cluster); err != nil {
@@ -517,6 +543,10 @@ func (u *Upgrade) ProceedUpgrade(cr *v1.PatroniCore, cluster *v1.PatroniClusterS
 func (u *Upgrade) getUpgradePod(cr *v1.PatroniCore, leaderName string, initDbArgs string, upgradeImage string) *corev1.Pod {
 	patroniSpec := cr.Spec.Patroni
 	patroniIdx := leaderName[len(leaderName)-1:]
+	migrationPath := "/var/lib/pgsql/data"
+	if cr.Upgrade.UseMigrationPvc {
+		migrationPath = "/var/lib/pgsql/tmp_data"
+	}
 	upgradePod := &corev1.Pod{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      "pg-major-upgrade-" + strconv.Itoa(int(time.Now().Unix())),
@@ -576,11 +606,19 @@ func (u *Upgrade) getUpgradePod(cr *v1.PatroniCore, leaderName string, initDbArg
 						},
 						{
 							Name:  "MIGRATION_PATH",
-							Value: "/var/lib/pgsql/data",
+							Value: migrationPath,
 						},
 						{
 							Name:  "PV_SIZE",
 							Value: patroniSpec.Storage.Size,
+						},
+						{
+							Name:  "MIGRATION_PV_USED",
+							Value: strconv.FormatBool(cr.Upgrade.UseMigrationPvc),
+						},
+						{
+							Name:  "CLEAN_MIGRATION_PV",
+							Value: strconv.FormatBool(cr.Upgrade.UseMigrationPvc),
 						},
 					},
 				},
@@ -763,6 +801,41 @@ func (u *Upgrade) CheckUpgrade(cr *v1.PatroniCore, cluster *v1.PatroniClusterSet
 	}
 
 	return currentVersion != targetVersion
+}
+
+func (u *Upgrade) createMigrationPvc(cr *v1.PatroniCore, clusterName string, deploymentIdx int) (*corev1.PersistentVolumeClaim, error) {
+	if cr.Spec.Patroni == nil || cr.Spec.Patroni.Storage == nil {
+		return nil, errors.New("patroni storage configuration is not defined")
+	}
+	patroniStorage := cr.Spec.Patroni.Storage
+	if patroniStorage.Type != "provisioned" {
+		return nil, fmt.Errorf("migration PVC is supported only for provisioned storage, current storage type is %q", patroniStorage.Type)
+	}
+	pvcName := fmt.Sprintf("%s-upgrade-migration", clusterName)
+	migrationPvc := storage.NewPvc(pvcName, patroniStorage, deploymentIdx)
+	if err := u.helper.CreatePvcIfNotExists(migrationPvc); err != nil {
+		return nil, fmt.Errorf("failed to create migration PVC %q: %w", pvcName, err)
+	}
+	logger.Info(fmt.Sprintf("Migration PVC %q created or already exists", pvcName))
+	return migrationPvc, nil
+}
+
+func (u *Upgrade) deleteMigratinPvc(clusterName string) error {
+	pvcName := fmt.Sprintf("%s-upgrade-migration", clusterName)
+	pvc := &corev1.PersistentVolumeClaim{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      pvcName,
+			Namespace: namespace,
+		},
+	}
+	if err := u.client.Delete(context.TODO(), pvc); err != nil {
+		if k8serrors.IsNotFound(err) {
+			return nil
+		}
+		return fmt.Errorf("failed to delete migration PVC %q: %w", pvcName, err)
+	}
+	logger.Info(fmt.Sprintf("Migration PVC %q deleted", pvcName))
+	return nil
 }
 
 func (u *Upgrade) CheckPVCSizeBeforeUpgrade(masterPodName string, namespace string, pvcSize string) error {
