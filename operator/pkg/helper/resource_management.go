@@ -581,14 +581,7 @@ func (rm *ResourceManager) CreatePvcIfNotExists(pvc *corev1.PersistentVolumeClai
 
 func (rm *ResourceManager) CreateOrResizePvc(pvc *corev1.PersistentVolumeClaim) (bool, error) {
 	foundPvc := &corev1.PersistentVolumeClaim{}
-	customAnnotationKeys := getCustomAnnotationKeys(pvc.Annotations)
-
-	if len(customAnnotationKeys) > 0 {
-		if pvc.Annotations == nil {
-			pvc.Annotations = make(map[string]string)
-		}
-		pvc.Annotations[customAnnotationsKey] = strings.Join(customAnnotationKeys, ",")
-	}
+	preparePvcCustomAnnotations(pvc)
 	err := rm.kubeClient.Get(
 		context.TODO(),
 		types.NamespacedName{
@@ -656,61 +649,8 @@ func (rm *ResourceManager) CreateOrResizePvc(pvc *corev1.PersistentVolumeClaim) 
 		changed = true
 	}
 
-	// Read annotations previously managed by the operator.
-	var previousCustomAnnotations []string
-
-	if foundPvc.Annotations != nil {
-		if value, exists := foundPvc.Annotations[customAnnotationsKey]; exists {
-			for _, key := range strings.Split(value, ",") {
-				key = strings.TrimSpace(key)
-				if key != "" {
-					previousCustomAnnotations = append(previousCustomAnnotations, key)
-				}
-			}
-		}
-	}
-
-	// Remove previously managed annotations which are no longer desired.
-	for _, key := range previousCustomAnnotations {
-		if _, exists := pvc.Annotations[key]; !exists {
-			delete(foundPvc.Annotations, key)
-			changed = true
-		}
-	}
-
-	// Add/update desired custom annotations.
-	if len(pvc.Annotations) > 0 && foundPvc.Annotations == nil {
-		foundPvc.Annotations = make(map[string]string)
-	}
-
-	for key, value := range pvc.Annotations {
-		if key == customAnnotationsKey {
-			continue
-		}
-
-		if foundPvc.Annotations[key] != value {
-			foundPvc.Annotations[key] = value
-			changed = true
-		}
-	}
-
-	// Update the list of currently managed custom annotations.
-	if len(customAnnotationKeys) > 0 {
-		value := strings.Join(customAnnotationKeys, ",")
-
-		if foundPvc.Annotations[customAnnotationsKey] != value {
-			foundPvc.Annotations[customAnnotationsKey] = value
-			changed = true
-		}
-	} else {
-		if _, exists := foundPvc.Annotations[customAnnotationsKey]; exists {
-			delete(foundPvc.Annotations, customAnnotationsKey)
-			changed = true
-		}
-	}
-
-	if len(foundPvc.Annotations) == 0 {
-		foundPvc.Annotations = nil
+	if reconcilePvcCustomAnnotations(foundPvc, pvc) {
+		changed = true
 	}
 
 	// Nothing in PVC spec/metadata changed.
@@ -1238,6 +1178,76 @@ func getCustomAnnotationKeys(annotations map[string]string) []string {
 	}
 	slices.Sort(keys)
 	return keys
+}
+
+func preparePvcCustomAnnotations(pvc *corev1.PersistentVolumeClaim) {
+	customAnnotationKeys := getCustomAnnotationKeys(pvc.Annotations)
+	if len(customAnnotationKeys) == 0 {
+		return
+	}
+	if pvc.Annotations == nil {
+		pvc.Annotations = make(map[string]string)
+	}
+	pvc.Annotations[customAnnotationsKey] = strings.Join(customAnnotationKeys, ",")
+}
+
+func reconcilePvcCustomAnnotations(foundPvc, desiredPvc *corev1.PersistentVolumeClaim) bool {
+	changed := false
+	customAnnotationKeys := getCustomAnnotationKeys(desiredPvc.Annotations)
+	var previousCustomAnnotations []string
+	if foundPvc.Annotations != nil {
+		if value, exists := foundPvc.Annotations[customAnnotationsKey]; exists {
+			for _, key := range strings.Split(value, ",") {
+				key = strings.TrimSpace(key)
+				if key != "" {
+					previousCustomAnnotations = append(previousCustomAnnotations, key)
+				}
+			}
+		}
+	}
+	// Remove custom annotations which are no longer desired
+	for _, key := range previousCustomAnnotations {
+		if _, exists := desiredPvc.Annotations[key]; !exists {
+			delete(foundPvc.Annotations, key)
+			changed = true
+		}
+	}
+	// Add/update desired annotations.
+	if len(desiredPvc.Annotations) > 0 && foundPvc.Annotations == nil {
+		foundPvc.Annotations = make(map[string]string)
+	}
+
+	for key, value := range desiredPvc.Annotations {
+		if key == customAnnotationsKey {
+			continue
+		}
+
+		if foundPvc.Annotations[key] != value {
+			foundPvc.Annotations[key] = value
+			changed = true
+		}
+	}
+
+	// Update tracking annotation.
+	if len(customAnnotationKeys) > 0 {
+		value := strings.Join(customAnnotationKeys, ",")
+
+		if foundPvc.Annotations[customAnnotationsKey] != value {
+			foundPvc.Annotations[customAnnotationsKey] = value
+			changed = true
+		}
+	} else {
+		if _, exists := foundPvc.Annotations[customAnnotationsKey]; exists {
+			delete(foundPvc.Annotations, customAnnotationsKey)
+			changed = true
+		}
+	}
+
+	if len(foundPvc.Annotations) == 0 {
+		foundPvc.Annotations = nil
+	}
+
+	return changed
 }
 
 func (rm *ResourceManager) commonLabels(name string) map[string]string {
