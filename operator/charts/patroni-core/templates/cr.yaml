@@ -314,6 +314,7 @@ majorUpgrade:
   initDbParams: {{ .Values.majorUpgrade.initDbParams }}
   {{- end }}
   dockerUpgradeImage: {{ template "find_image" (dict "deployName" "pg_upgrade" "SERVICE_NAME" "pg_upgrade" "vals" .Values "default" .Values.majorUpgrade.dockerUpgradeImage) }}
+  useMigrationPvc: {{ .Values.majorUpgrade.useMigrationPvc | default false }}
   {{- else if .Values.patroni.majorUpgrade }}
 majorUpgrade:
   enabled: {{ .Values.patroni.majorUpgrade.enabled | default false }}
@@ -321,4 +322,5 @@ majorUpgrade:
   initDbParams: {{ .Values.patroni.majorUpgrade.initDbParams }}
   {{- end }}
   dockerUpgradeImage: {{ template "find_image" (dict "deployName" "pg_upgrade" "SERVICE_NAME" "pg_upgrade" "vals" .Values "default" .Values.patroni.majorUpgrade.dockerUpgradeImage) }}
+  useMigrationPvc: {{ .Values.patroni.majorUpgrade.useMigrationPvc | default false }}
 {{- end }}
