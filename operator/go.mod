@@ -1,6 +1,6 @@
 module github.com/Netcracker/pgskipper-operator
 
-go 1.26.5
+go 1.27.0
 
 require (
 	github.com/Netcracker/qubership-credential-manager v0.0.17
@@ -14,7 +14,7 @@ require (
 	github.com/operator-framework/operator-lib v0.19.0
 	github.com/pkg/errors v0.9.1
 	go.uber.org/zap v1.28.0
-	golang.org/x/crypto v0.55.0
+	golang.org/x/crypto v0.56.0
 	google.golang.org/api v0.295.0
 	gopkg.in/yaml.v2 v2.4.0
 	k8s.io/api v0.35.3
