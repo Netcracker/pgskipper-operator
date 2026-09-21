@@ -1,5 +1,5 @@
 # checkov:skip=CKV_DOCKER_3: Backward compatibility
-FROM --platform=$BUILDPLATFORM golang:1.26-alpine3.23 AS builder
+FROM --platform=$BUILDPLATFORM golang:1.27-alpine3.23 AS builder
 
 ENV GO111MODULE=on
 
