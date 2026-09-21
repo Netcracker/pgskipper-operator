@@ -105,7 +105,9 @@ var (
 	(SELECT setting::int max_connections FROM pg_settings
 	WHERE name=$$max_connections$$) t3;
 `
-	defaultPartitionQuery = `SELECT n.nspname AS schemaname, c.relname AS relname, p.relname AS parent_relname, pg_total_relation_size(c.oid) AS size_bytes, (SELECT COALESCE(sum(pg_total_relation_size(inhrelid)), 0) FROM pg_inherits WHERE inhparent = p.oid) AS parent_size_bytes, COALESCE(s.n_live_tup, 0) AS row_count FROM pg_class c JOIN pg_namespace n ON n.oid = c.relnamespace JOIN pg_inherits i ON i.inhrelid = c.oid JOIN pg_class p ON p.oid = i.inhparent LEFT JOIN pg_stat_user_tables s ON s.relid = c.oid WHERE c.relispartition = true AND pg_get_expr(c.relpartbound, c.oid) = 'DEFAULT'`
+	defaultPartitionQuery = `SELECT n.nspname AS schemaname, c.relname AS relname, p.relname AS parent_relname, pg_total_relation_size(c.oid) AS size_bytes, COALESCE(s.n_live_tup, 0) AS row_count FROM pg_class c JOIN pg_namespace n ON n.oid = c.relnamespace JOIN pg_inherits i ON i.inhrelid = c.oid JOIN pg_class p ON p.oid = i.inhparent LEFT JOIN pg_stat_user_tables s ON s.relid = c.oid WHERE c.relispartition = true AND pg_get_expr(c.relpartbound, c.oid) = 'DEFAULT'`
+
+	parentTableQuery = `SELECT n.nspname AS schemaname, p.relname AS parent_relname, COALESCE(sum(pg_total_relation_size(i.inhrelid)), 0) AS parent_size_bytes FROM pg_inherits i JOIN pg_class p ON p.oid = i.inhparent JOIN pg_namespace n ON n.oid = p.relnamespace WHERE p.relkind = 'p' GROUP BY n.nspname, p.relname`
 
 )
 
@@ -328,29 +330,6 @@ func (s *Scraper) collectTableMetrics(ctx context.Context, pg *postgres.Postgres
 		s.metrics = append(s.metrics, NewMetric("ma_pg_tot_size_by_db").withLabels(labels).setValue(totSizeValue))
 		s.metrics = append(s.metrics, NewMetric("ma_pg_idx_size_by_db").withLabels(labels).setValue(idxSizeValue))
 	}
-
-	columns, rows = getData(ctx, pg, defaultPartitionQuery)
-	for _, row := range rows {
-		labels := gauges.DefaultLabels()
-		labels["datname"] = pg.GetDatabase()
-		var sizeValue, rowCountValue, parentSizeValue string
-		for _, column := range columns {
-			rValue := fmt.Sprintf("%v", row[column])
-			switch column {
-			case "size_bytes":
-				sizeValue = rValue
-			case "row_count":
-				rowCountValue = rValue
-			case "parent_size_bytes":
-				parentSizeValue = rValue
-			default:
-				labels[column] = rValue
-			}
-		}
-		s.metrics = append(s.metrics, NewMetric("ma_pg_default_partition_size_bytes").withLabels(labels).setValue(sizeValue))
-		s.metrics = append(s.metrics, NewMetric("ma_pg_default_partition_row_count").withLabels(labels).setValue(rowCountValue))
-		s.metrics = append(s.metrics, NewMetric("ma_pg_default_partition_parent_size_bytes").withLabels(labels).setValue(parentSizeValue))
-	}
 }
 
 func (s *Scraper) collectCommonPerfMetrics(ctx context.Context, pg *postgres.PostgresConnector) {
@@ -381,6 +360,37 @@ func (s *Scraper) collectCountStatMetrics(ctx context.Context, pc *postgres.Post
 			mValue := row[metric]
 			s.metrics = append(s.metrics, NewMetric(fmt.Sprintf("ma_pg_connection_count_stat_%s", metric)).withLabels(gauges.DefaultLabels()).setValue(mValue))
 		}
+	}
+}
+
+func (s *Scraper) collectPartitionMetrics(ctx context.Context, pg *postgres.PostgresConnector) {
+	_, parentRows := getData(ctx, pg, parentTableQuery)
+    parentSizes := map[string]string{}
+    for _, row := range parentRows {
+        key := fmt.Sprintf("%v|%v", row["schemaname"], row["parent_relname"])
+        parentSizes[key] = fmt.Sprintf("%v", row["parent_size_bytes"])
+    }
+	
+    partColumns, partRows := getData(ctx, pg, defaultPartitionQuery)
+        for _, row := range partRows {
+            labels := gauges.DefaultLabels()
+            labels["datname"] = pg.GetDatabase()
+            var sizeValue, rowCountValue string
+            for _, column := range partColumns {
+                rValue := fmt.Sprintf("%v", row[column])
+                switch column {
+                case "size_bytes":
+                    sizeValue = rValue
+                case "row_count":
+                    rowCountValue = rValue
+                default:
+                    labels[column] = rValue
+                }
+            }
+            key := fmt.Sprintf("%v|%v", row["schemaname"], row["parent_relname"])
+            s.metrics = append(s.metrics, NewMetric("ma_pg_default_partition_size_bytes").withLabels(labels).setValue(sizeValue))
+            s.metrics = append(s.metrics, NewMetric("ma_pg_default_partition_row_count").withLabels(labels).setValue(rowCountValue))
+            s.metrics = append(s.metrics, NewMetric("ma_pg_default_partition_parent_size_bytes").withLabels(labels).setValue(parentSizes[key]))
 	}
 }
 
