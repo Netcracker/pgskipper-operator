@@ -1,6 +1,6 @@
 module github.com/Netcracker/pgskipper-pgbackrest-sidecar
 
-go 1.26.2
+go 1.27.0
 
 require (
 	github.com/gofiber/fiber/v2 v2.52.14
@@ -18,5 +18,5 @@ require (
 	github.com/valyala/bytebufferpool v1.0.0 // indirect
 	github.com/valyala/fasthttp v1.72.0 // indirect
 	go.uber.org/multierr v1.11.0 // indirect
-	golang.org/x/sys v0.46.0 // indirect
+	golang.org/x/sys v0.47.0 // indirect
 )
