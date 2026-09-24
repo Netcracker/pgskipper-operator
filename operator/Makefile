@@ -79,6 +79,9 @@ generate: controller-gen
 					object:headerFile="generator/boilerplate.go.txt" \
 					paths="./api/patroni/v1" \
 					output:crd:artifacts:config=charts/patroni-core/crds/
+# renovate: datasource=go depName=sigs.k8s.io/controller-tools versioning=semver
+CONTROLLER_GEN_VERSION ?= v0.19.0
+
 # Find or download controller-gen
 # download controller-gen if necessary
 controller-gen:
@@ -88,7 +91,7 @@ ifeq (, $(shell which controller-gen))
 	CONTROLLER_GEN_TMP_DIR=$$(mktemp -d) ;\
 	cd $$CONTROLLER_GEN_TMP_DIR ;\
 	go mod init tmp ;\
-	go install sigs.k8s.io/controller-tools/cmd/controller-gen@v0.19.0 ;\
+	go install sigs.k8s.io/controller-tools/cmd/controller-gen@$(CONTROLLER_GEN_VERSION) ;\
 	rm -rf $$CONTROLLER_GEN_TMP_DIR ;\
 	}
 CONTROLLER_GEN=$(GOBIN)/controller-gen
