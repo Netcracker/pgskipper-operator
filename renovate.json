@@ -1,0 +1,19 @@
+{
+  "$schema": "https://docs.renovatebot.com/renovate-schema.json",
+  "extends": [
+    "github>Netcracker/renovate-config:base",
+    "github>Netcracker/renovate-config:github-actions",
+    "github>Netcracker/renovate-config:go",
+    "github>Netcracker/renovate-config:netcracker-dependencies",
+    "github>Netcracker/renovate-config:annotated-versions",
+    "github>Netcracker/renovate-config:test-pipelines",
+    "schedule:monthly"
+  ],
+  "packageRules": [
+    {
+      "description": ["Update the test pipeline workflow reference and pipeline_branch in one PR"],
+      "matchDepNames": ["Netcracker/qubership-test-pipelines"],
+      "groupName": "qubership-test-pipelines"
+    }
+  ]
+}
