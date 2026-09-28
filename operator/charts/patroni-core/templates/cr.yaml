@@ -36,6 +36,7 @@ spec:
     tags:
 {{ toYaml .Values.patroni.tags | indent 6 }}
     {{ end }}
+    useSlots: {{ default "false" .Values.patroni.useSlots }}
     {{ if .Values.patroni.createEndpoint }}
     synchronousMode: {{ default "false" .Values.patroni.synchronousMode }}
     createEndpoint: {{ default "false" .Values.patroni.createEndpoint }}

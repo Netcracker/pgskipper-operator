@@ -155,6 +155,8 @@ patroni:
   # patroni.affinity parameter. Configures a `podAffinityTerm`. Possible values are required and preferred
 
   #  synchronousMode: true
+  # When true, Patroni creates and uses physical replication slots (use_slots).
+  #  useSlots: false
   #  createEndpoint: true
   #  scope: patroni
   dcs:

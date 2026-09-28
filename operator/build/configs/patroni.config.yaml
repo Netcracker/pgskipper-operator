@@ -37,7 +37,7 @@ bootstrap:
       recovery_conf:
         restore_command: ''
       use_pg_rewind: true
-      use_slots: false
+      use_slots: ${PATRONI_USE_SLOTS}
     retry_timeout: ${PATRONI_RETRY_TIMEOUT}
     synchronous_mode: ${PATRONI_SYNCHRONOUS_MODE}
     ttl: ${PATRONI_TTL}

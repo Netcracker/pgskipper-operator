@@ -93,6 +93,7 @@ type Patroni struct {
 	PriorityClassName            string                   `json:"priorityClassName,omitempty"`
 	CreateEndpoint               bool                     `json:"createEndpoint,omitempty"`
 	SynchronousMode              bool                     `json:"synchronousMode,omitempty"`
+	UseSlots                     bool                     `json:"useSlots,omitempty"`
 	Dcs                          Dcs                      `json:"dcs,omitempty"`
 	Scope                        string                   `json:"scope,omitempty"`
 	Tags                         map[string]string        `json:"tags,omitempty"`

@@ -351,6 +351,9 @@ func (r *PatroniReconciler) Reconcile() error {
 	// We decide to update preload libraries for exporter by default. In case of supplementary service separation
 	queryexporter.UpdatePreloadLibraries(cr)
 
+	// Validate and apply additional settings for use slots
+	r.applyUseSlotsAdditionalSettings(cr)
+
 	if err := patroni.UpdatePatroniParams(patroniSpec, r.cluster.PatroniUrl); err != nil {
 		logger.Error("Failed to update Patroni Params, exiting", zap.Error(err))
 		return err
@@ -1091,4 +1094,61 @@ func (r *PatroniReconciler) preparePgbackRest(cr *v1.PatroniCore, patroniConfigM
 		}
 	}
 	return nil
+}
+
+func (r *PatroniReconciler) applyUseSlotsAdditionalSettings(cr *v1.PatroniCore) {
+	if cr.Spec == nil || cr.Spec.Patroni == nil || !cr.Spec.Patroni.UseSlots {
+		return
+	}
+
+	masterPods, err := r.helper.GetPodsByLabel(r.cluster.PatroniMasterSelectors)
+	if err != nil || len(masterPods.Items) == 0 {
+		logger.Warn("Cannot determine PostgreSQL version for useSlots companion settings; skipping")
+		return
+	}
+
+	versionStr := r.helper.GetPGVersion(masterPods.Items[0].Name)
+	if versionStr == "" {
+		logger.Warn("PostgreSQL version is empty; skipping useSlots companion settings")
+		return
+	}
+
+	pgVersion, err := strconv.ParseInt(versionStr, 10, 64)
+	if err != nil {
+		logger.Warn(fmt.Sprintf("Cannot parse PostgreSQL version %q; skipping useSlots companion settings", versionStr), zap.Error(err))
+		return
+	}
+	if pgVersion >= 17 {
+		return
+	}
+
+	logger.Info(fmt.Sprintf("useSlots is enabled on PostgreSQL %d; ensuring pg_failover_slots and hot_standby_feedback=on", pgVersion))
+	helper.UpdatePreloadLibraries(cr, []string{"pg_failover_slots"})
+	ensureSharedPreloadLibrary(cr, "pg_failover_slots")
+	ensurePostgreSQLParam(cr, "hot_standby_feedback", "on")
+}
+
+func ensureSharedPreloadLibrary(cr *v1.PatroniCore, library string) {
+	for _, param := range cr.Spec.Patroni.PostgreSQLParams {
+		normalized := strings.Replace(param, "=", ":", 1)
+		parts := strings.SplitN(normalized, ":", 2)
+		if strings.TrimSpace(parts[0]) == "shared_preload_libraries" {
+			return
+		}
+	}
+	logger.Warn("Parameter shared_preload_libraries was not found, adding only library: " + library)
+	cr.Spec.Patroni.PostgreSQLParams = append(cr.Spec.Patroni.PostgreSQLParams, "shared_preload_libraries: "+library)
+}
+
+func ensurePostgreSQLParam(cr *v1.PatroniCore, key, value string) {
+	for i, param := range cr.Spec.Patroni.PostgreSQLParams {
+		normalized := strings.Replace(param, "=", ":", 1)
+		parts := strings.SplitN(normalized, ":", 2)
+		if strings.TrimSpace(parts[0]) != key {
+			continue
+		}
+		cr.Spec.Patroni.PostgreSQLParams[i] = key + ": " + value
+		return
+	}
+	cr.Spec.Patroni.PostgreSQLParams = append(cr.Spec.Patroni.PostgreSQLParams, key+": "+value)
 }

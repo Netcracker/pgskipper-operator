@@ -235,6 +235,10 @@ func NewPatroniStatefulset(cr *patroniv1.PatroniCore, deploymentIdx int, cluster
 									Value: strconv.FormatBool(cr.Spec.Patroni.SynchronousMode),
 								},
 								{
+									Name:  "PATRONI_USE_SLOTS",
+									Value: strconv.FormatBool(cr.Spec.Patroni.UseSlots),
+								},
+								{
 									Name: "POD_NAMESPACE",
 									ValueFrom: &corev1.EnvVarSource{
 										FieldRef: &corev1.ObjectFieldSelector{
