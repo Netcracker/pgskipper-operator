@@ -1121,7 +1121,11 @@ func (r *PatroniReconciler) applyUseSlotsAdditionalSettings(cr *v1.PatroniCore) 
 		logger.Warn(fmt.Sprintf("Cannot parse PostgreSQL version %q; skipping useSlots companion settings", versionStr), zap.Error(err))
 		return
 	}
+
 	if pgVersion >= 17 {
+		logger.Info(fmt.Sprintf("useSlots is enabled on PostgreSQL %d; ensuring hot_standby_feedback=on and sync_replication_slots=on", pgVersion))
+		ensurePostgreSQLParam(cr, "hot_standby_feedback", "on")
+		ensurePostgreSQLParam(cr, "sync_replication_slots", "on")
 		return
 	}
 
@@ -1153,14 +1157,14 @@ func ensureMaxSlotWalKeepSize(cr *v1.PatroniCore) {
 		return
 	}
 
-	tenPercentBytes := qty.Value() / 10
-	if tenPercentBytes <= 0 {
+	twentyPercentBytes := qty.Value() / 5
+	if twentyPercentBytes <= 0 {
 		logger.Warn("Computed max_slot_wal_keep_size from storage size is non-positive; skipping")
 		return
 	}
 
-	pgSize := formatBytesAsPgSize(tenPercentBytes)
-	logger.Info(fmt.Sprintf("Setting max_slot_wal_keep_size to 10%% of storage size (%s) = %s", cr.Spec.Patroni.Storage.Size, pgSize))
+	pgSize := formatBytesAsPgSize(twentyPercentBytes)
+	logger.Info(fmt.Sprintf("Setting max_slot_wal_keep_size to 20%% of storage size (%s) = %s", cr.Spec.Patroni.Storage.Size, pgSize))
 	ensurePostgreSQLParam(cr, "max_slot_wal_keep_size", pgSize)
 }
 
