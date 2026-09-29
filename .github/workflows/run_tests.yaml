@@ -26,7 +26,6 @@ jobs:
           token: ${{ secrets.GITHUB_TOKEN }}
           poll-interval: 20
   Pgskipper-Pipeline:
-    if: ${{ github.actor != 'dependabot[bot]' && github.event.pull_request.user.login != 'dependabot[bot]' }}
     needs: Wait-for-images
     uses: Netcracker/qubership-test-pipelines/.github/workflows/pgskipper.yaml@3e4193378da5730d7b96d3a625d22a158d5e8372 # v1.12.0
     with:
@@ -48,4 +47,9 @@ jobs:
             exit 1
           fi
           echo "All tests completed successfully or not required"
-
+  Renovate-Approve:
+    needs: Pgskipper-Pipeline
+    permissions:
+      contents: read
+      pull-requests: write
+    uses: ./.github/workflows/renovate-approve.yaml

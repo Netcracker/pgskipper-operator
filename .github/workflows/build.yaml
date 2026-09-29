@@ -40,7 +40,7 @@ concurrency:
 
 env:
   TAG_NAME: ${{ github.event.release.tag_name || github.head_ref || github.ref_name }}
-  PUSH: ${{ (github.event_name != 'workflow_dispatch' || inputs.publish_docker) && github.actor != 'dependabot[bot]' }}
+  PUSH: ${{ github.event_name != 'workflow_dispatch' || inputs.publish_docker }}
 
 jobs:
   prepare:
