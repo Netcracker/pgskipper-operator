@@ -6,14 +6,21 @@
     "github>Netcracker/renovate-config:go",
     "github>Netcracker/renovate-config:netcracker-dependencies",
     "github>Netcracker/renovate-config:annotated-versions",
-    "github>Netcracker/renovate-config:test-pipelines",
-    "schedule:monthly"
+    "github>Netcracker/renovate-config:test-pipelines"
   ],
+  "automergeType": "pr",
+  "automergeStrategy": "squash",
+  "platformAutomerge": false,
   "packageRules": [
     {
       "description": ["Update the test pipeline workflow reference and pipeline_branch in one PR"],
       "matchDepNames": ["Netcracker/qubership-test-pipelines"],
       "groupName": "qubership-test-pipelines"
+    },
+    {
+      "description": ["Automerge non-major updates after all checks pass; major updates still need a manual review"],
+      "matchUpdateTypes": ["minor", "patch", "pin", "digest", "pinDigest"],
+      "automerge": true
     }
   ]
 }
