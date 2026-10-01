@@ -11,6 +11,7 @@
   "automergeType": "pr",
   "automergeStrategy": "squash",
   "platformAutomerge": false,
+  "rebaseWhen": "conflicted",
   "packageRules": [
     {
       "description": ["Update the test pipeline workflow reference and pipeline_branch in one PR"],
