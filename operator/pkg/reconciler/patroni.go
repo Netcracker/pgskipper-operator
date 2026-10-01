@@ -1140,12 +1140,6 @@ func ensureMaxSlotWalKeepSize(cr *v1.PatroniCore) {
 		return
 	}
 
-	if walKeepSize, ok := getPostgreSQLParam(cr, "wal_keep_size"); ok {
-		logger.Info(fmt.Sprintf("Setting max_slot_wal_keep_size from wal_keep_size=%s", walKeepSize))
-		ensurePostgreSQLParam(cr, "max_slot_wal_keep_size", walKeepSize)
-		return
-	}
-
 	if cr.Spec.Patroni.Storage == nil || cr.Spec.Patroni.Storage.Size == "" {
 		logger.Warn("Cannot set max_slot_wal_keep_size: storage size is not configured")
 		return

@@ -166,7 +166,7 @@ spec:
 {{ toYaml $walStorage | indent 6 }}
 {{ end }}
     forceCollationVersionUpgrade: {{ default "false" .Values.patroni.forceCollationVersionUpgrade }}
-{{- if .Values.patroni.ignoreSlots }}
+{{- if or .Values.patroni.ignoreSlots .Values.patroni.useSlots }}
     ignoreSlots: true
     ignoreSlotsPrefix: {{ default "cdc_rs_" .Values.patroni.ignoreSlotsPrefix }}
 {{- end }}
