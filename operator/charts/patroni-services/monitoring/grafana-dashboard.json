@@ -9431,6 +9431,33 @@
         "type": "query"
       },
       {
+        "allValue": ".*",
+        "current": {
+          "text": "All",
+          "value": [
+            "$__all"
+          ]
+        },
+        "datasource": {
+          "type": "prometheus",
+          "uid": "${datasource}"
+        },
+        "definition": "label_values(ma_pg_default_partition_size_bytes{namespace=~\"$namespace\", datname=~\"$datname\", cluster=~\"$cluster\"}, relname)",
+        "includeAll": true,
+        "label": "Partition Name",
+        "multi": true,
+        "name": "relname",
+        "options": [],
+        "query": {
+          "query": "label_values(ma_pg_default_partition_size_bytes{namespace=~\"$namespace\", datname=~\"$datname\", cluster=~\"$cluster\"}, relname)",
+          "refId": "PrometheusVariableQueryEditor-VariableQuery"
+        },
+        "refresh": 2,
+        "regex": "",
+        "sort": 1,
+        "type": "query"
+      },
+      {
         "current": {
           "text": "10",
           "value": "10"
