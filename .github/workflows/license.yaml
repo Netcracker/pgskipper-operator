@@ -13,7 +13,7 @@ jobs:
       pull-requests: write
     runs-on: ubuntu-24.04
     steps:
-      - uses: actions/checkout@692973e3d937129bcbf40652eb9f2f61becf3332 # v4.1.7
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
           token: ${{ secrets.GITHUB_TOKEN }}
@@ -22,7 +22,7 @@ jobs:
           xargs -0 docker run -v "${PWD}:/src" -i ghcr.io/google/addlicense \
           -v -c "${{ env.COPYRIGHT_COMPANY }}" -y "${{ env.COPYRIGHT_YEAR }}"
       - name: Create Pull Request
-        uses: peter-evans/create-pull-request@5e914681df9dc83aa4e4905692ca88beb2f9e91f # v7.0.5
+        uses: peter-evans/create-pull-request@5f6978faf089d4d20b00c7766989d076bb2fc7f1 # v8.1.1
         with:
           commit-message: Auto-update license header
           branch: license-update
