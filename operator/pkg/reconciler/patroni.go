@@ -39,6 +39,7 @@ import (
 	"go.uber.org/zap"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
+	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/util/wait"
@@ -350,6 +351,9 @@ func (r *PatroniReconciler) Reconcile() error {
 	}
 	// We decide to update preload libraries for exporter by default. In case of supplementary service separation
 	queryexporter.UpdatePreloadLibraries(cr)
+
+	// Validate and apply additional settings for use slots
+	r.applyUseSlotsAdditionalSettings(cr)
 
 	if err := patroni.UpdatePatroniParams(patroniSpec, r.cluster.PatroniUrl); err != nil {
 		logger.Error("Failed to update Patroni Params, exiting", zap.Error(err))
@@ -1091,4 +1095,127 @@ func (r *PatroniReconciler) preparePgbackRest(cr *v1.PatroniCore, patroniConfigM
 		}
 	}
 	return nil
+}
+
+func (r *PatroniReconciler) applyUseSlotsAdditionalSettings(cr *v1.PatroniCore) {
+	if cr.Spec == nil || cr.Spec.Patroni == nil || !cr.Spec.Patroni.UseSlots {
+		return
+	}
+
+	ensureMaxSlotWalKeepSize(cr)
+
+	masterPods, err := r.helper.GetPodsByLabel(r.cluster.PatroniMasterSelectors)
+	if err != nil || len(masterPods.Items) == 0 {
+		logger.Warn("Cannot determine PostgreSQL version for useSlots companion settings; skipping")
+		return
+	}
+
+	versionStr := r.helper.GetPGVersion(masterPods.Items[0].Name)
+	if versionStr == "" {
+		logger.Warn("PostgreSQL version is empty; skipping useSlots companion settings")
+		return
+	}
+
+	pgVersion, err := strconv.ParseInt(versionStr, 10, 64)
+	if err != nil {
+		logger.Warn(fmt.Sprintf("Cannot parse PostgreSQL version %q; skipping useSlots companion settings", versionStr), zap.Error(err))
+		return
+	}
+
+	if pgVersion >= 17 {
+		logger.Info(fmt.Sprintf("useSlots is enabled on PostgreSQL %d; ensuring hot_standby_feedback=on and sync_replication_slots=on", pgVersion))
+		ensurePostgreSQLParam(cr, "hot_standby_feedback", "on")
+		ensurePostgreSQLParam(cr, "sync_replication_slots", "on")
+		return
+	}
+
+	logger.Info(fmt.Sprintf("useSlots is enabled on PostgreSQL %d; ensuring pg_failover_slots and hot_standby_feedback=on", pgVersion))
+	helper.UpdatePreloadLibraries(cr, []string{"pg_failover_slots"})
+	ensureSharedPreloadLibrary(cr, "pg_failover_slots")
+	ensurePostgreSQLParam(cr, "hot_standby_feedback", "on")
+}
+
+func ensureMaxSlotWalKeepSize(cr *v1.PatroniCore) {
+	if _, ok := getPostgreSQLParam(cr, "max_slot_wal_keep_size"); ok {
+		return
+	}
+
+	if cr.Spec.Patroni.Storage == nil || cr.Spec.Patroni.Storage.Size == "" {
+		logger.Warn("Cannot set max_slot_wal_keep_size: storage size is not configured")
+		return
+	}
+
+	qty, err := resource.ParseQuantity(cr.Spec.Patroni.Storage.Size)
+	if err != nil {
+		logger.Warn(fmt.Sprintf("Cannot parse storage size %q for max_slot_wal_keep_size", cr.Spec.Patroni.Storage.Size), zap.Error(err))
+		return
+	}
+
+	twentyPercentBytes := qty.Value() / 5
+	if twentyPercentBytes <= 0 {
+		logger.Warn("Computed max_slot_wal_keep_size from storage size is non-positive; skipping")
+		return
+	}
+
+	pgSize := formatBytesAsPgSize(twentyPercentBytes)
+	logger.Info(fmt.Sprintf("Setting max_slot_wal_keep_size to 20%% of storage size (%s) = %s", cr.Spec.Patroni.Storage.Size, pgSize))
+	ensurePostgreSQLParam(cr, "max_slot_wal_keep_size", pgSize)
+}
+
+func formatBytesAsPgSize(bytes int64) string {
+	const (
+		kb = 1024
+		mb = 1024 * kb
+		gb = 1024 * mb
+	)
+	switch {
+	case bytes >= gb && bytes%gb == 0:
+		return fmt.Sprintf("%dGB", bytes/gb)
+	case bytes >= mb:
+		return fmt.Sprintf("%dMB", bytes/mb)
+	case bytes >= kb:
+		return fmt.Sprintf("%dkB", bytes/kb)
+	default:
+		return fmt.Sprintf("%dB", bytes)
+	}
+}
+
+func getPostgreSQLParam(cr *v1.PatroniCore, key string) (string, bool) {
+	for _, param := range cr.Spec.Patroni.PostgreSQLParams {
+		normalized := strings.Replace(param, "=", ":", 1)
+		parts := strings.SplitN(normalized, ":", 2)
+		if strings.TrimSpace(parts[0]) != key {
+			continue
+		}
+		if len(parts) < 2 {
+			return "", true
+		}
+		return strings.TrimSpace(parts[1]), true
+	}
+	return "", false
+}
+
+func ensureSharedPreloadLibrary(cr *v1.PatroniCore, library string) {
+	for _, param := range cr.Spec.Patroni.PostgreSQLParams {
+		normalized := strings.Replace(param, "=", ":", 1)
+		parts := strings.SplitN(normalized, ":", 2)
+		if strings.TrimSpace(parts[0]) == "shared_preload_libraries" {
+			return
+		}
+	}
+	logger.Warn("Parameter shared_preload_libraries was not found, adding only library: " + library)
+	cr.Spec.Patroni.PostgreSQLParams = append(cr.Spec.Patroni.PostgreSQLParams, "shared_preload_libraries: "+library)
+}
+
+func ensurePostgreSQLParam(cr *v1.PatroniCore, key, value string) {
+	for i, param := range cr.Spec.Patroni.PostgreSQLParams {
+		normalized := strings.Replace(param, "=", ":", 1)
+		parts := strings.SplitN(normalized, ":", 2)
+		if strings.TrimSpace(parts[0]) != key {
+			continue
+		}
+		cr.Spec.Patroni.PostgreSQLParams[i] = key + ": " + value
+		return
+	}
+	cr.Spec.Patroni.PostgreSQLParams = append(cr.Spec.Patroni.PostgreSQLParams, key+": "+value)
 }

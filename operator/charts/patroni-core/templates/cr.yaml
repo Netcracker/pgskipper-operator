@@ -36,6 +36,7 @@ spec:
     tags:
 {{ toYaml .Values.patroni.tags | indent 6 }}
     {{ end }}
+    useSlots: {{ default "false" .Values.patroni.useSlots }}
     {{ if .Values.patroni.createEndpoint }}
     synchronousMode: {{ default "false" .Values.patroni.synchronousMode }}
     createEndpoint: {{ default "false" .Values.patroni.createEndpoint }}
@@ -165,7 +166,7 @@ spec:
 {{ toYaml $walStorage | indent 6 }}
 {{ end }}
     forceCollationVersionUpgrade: {{ default "false" .Values.patroni.forceCollationVersionUpgrade }}
-{{- if .Values.patroni.ignoreSlots }}
+{{- if or .Values.patroni.ignoreSlots .Values.patroni.useSlots }}
     ignoreSlots: true
     ignoreSlotsPrefix: {{ default "cdc_rs_" .Values.patroni.ignoreSlotsPrefix }}
 {{- end }}

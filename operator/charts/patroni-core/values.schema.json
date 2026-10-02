@@ -383,6 +383,10 @@
         "synchronousMode": {
           "type": "boolean"
         },
+        "useSlots": {
+          "type": "boolean",
+          "default": true
+        },
         "createEndpoint": {
           "type": "boolean"
         },
