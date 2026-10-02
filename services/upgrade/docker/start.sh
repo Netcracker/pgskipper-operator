@@ -87,7 +87,7 @@ function handle_master_upgrade() {
 
     echo "[$(date +%Y-%m-%dT%H:%M:%S)] making chmod 750 to datadir"
 
-    chmod 750 "${MIGRATION_PATH}/${DATA_DIR}"
+    chmod 750 "${MIGRATION_PATH}/tmp/pg"
 
     SHARED_PRELOAD_LIBRARIES=$(grep "shared_preload_libraries" "/var/lib/pgsql/data/${DATA_DIR}/postgresql.conf")
 
@@ -130,20 +130,27 @@ function handle_master_upgrade() {
         exit 13
     fi
 
-    if [[ "$OPERATOR" =~ ^[Tt]rue$ ]]; then
-      echo "[$(date +%Y-%m-%dT%H:%M:%S)] using link parameter"
-      /usr/lib/postgresql/"${PG_VERSION_TARGET}"/bin/pg_upgrade \
-      --link \
-      --old-datadir "/var/lib/pgsql/data/${DATA_DIR}" \
-      --new-datadir "$MIGRATION_PATH/tmp/pg" \
-      --old-bindir  "/usr/lib/postgresql/${PG_VERSION}/bin" \
-      --new-bindir  "/usr/lib/postgresql/${PG_VERSION_TARGET}/bin"
+    if [[ "${MIGRATION_PV_USED}" =~ ^[Tt]rue$ ]]; then
+        echo "[$(date +%Y-%m-%dT%H:%M:%S)] Migration PVC is used, using copy mode"
+        /usr/lib/postgresql/"${PG_VERSION_TARGET}"/bin/pg_upgrade \
+        --old-datadir "/var/lib/pgsql/data/${DATA_DIR}" \
+        --new-datadir "$MIGRATION_PATH/tmp/pg" \
+        --old-bindir  "/usr/lib/postgresql/${PG_VERSION}/bin" \
+        --new-bindir  "/usr/lib/postgresql/${PG_VERSION_TARGET}/bin"
+    elif [[ "$OPERATOR" =~ ^[Tt]rue$ ]]; then
+        echo "[$(date +%Y-%m-%dT%H:%M:%S)] using link parameter"
+        /usr/lib/postgresql/"${PG_VERSION_TARGET}"/bin/pg_upgrade \
+        --link \
+        --old-datadir "/var/lib/pgsql/data/${DATA_DIR}" \
+        --new-datadir "$MIGRATION_PATH/tmp/pg" \
+        --old-bindir  "/usr/lib/postgresql/${PG_VERSION}/bin" \
+        --new-bindir  "/usr/lib/postgresql/${PG_VERSION_TARGET}/bin"
     else
-      /usr/lib/postgresql/"${PG_VERSION_TARGET}"/bin/pg_upgrade \
-      --old-datadir "/var/lib/pgsql/data/${DATA_DIR}" \
-      --new-datadir "$MIGRATION_PATH/tmp/pg" \
-      --old-bindir  "/usr/lib/postgresql/${PG_VERSION}/bin" \
-      --new-bindir  "/usr/lib/postgresql/${PG_VERSION_TARGET}/bin"
+        /usr/lib/postgresql/"${PG_VERSION_TARGET}"/bin/pg_upgrade \
+        --old-datadir "/var/lib/pgsql/data/${DATA_DIR}" \
+        --new-datadir "$MIGRATION_PATH/tmp/pg" \
+        --old-bindir  "/usr/lib/postgresql/${PG_VERSION}/bin" \
+        --new-bindir  "/usr/lib/postgresql/${PG_VERSION_TARGET}/bin"
     fi
 
     EXIT_CODE=$?
@@ -160,12 +167,19 @@ function handle_master_upgrade() {
     echo "[$(date +%Y-%m-%dT%H:%M:%S)] Sizing After Upgrade"
     du -sh /var/lib/pgsql/data/
 
-    rm -rf "/var/lib/pgsql/data/${DATA_DIR}"
-
-    echo "[$(date +%Y-%m-%dT%H:%M:%S)] moving new data to directory"
-    echo "[$(date +%Y-%m-%dT%H:%M:%S)] from -> $MIGRATION_PATH/tmp/pg"
-    echo "[$(date +%Y-%m-%dT%H:%M:%S)] to -> /var/lib/pgsql/data/${DATA_DIR}"
-    mv "$MIGRATION_PATH/tmp/pg" "/var/lib/pgsql/data/${DATA_DIR}"
+    if [[ "${MIGRATION_PV_USED}" =~ ^[Tt]rue$ ]]; then
+        echo "[$(date +%Y-%m-%dT%H:%M:%S)] copying new data to directory"
+        echo "[$(date +%Y-%m-%dT%H:%M:%S)] from -> $MIGRATION_PATH/tmp/pg"
+        echo "[$(date +%Y-%m-%dT%H:%M:%S)] to -> /var/lib/pgsql/data/${DATA_DIR}"
+        rm -rf "/var/lib/pgsql/data/${DATA_DIR}"
+        cp -a  "$MIGRATION_PATH/tmp/pg" "/var/lib/pgsql/data/${DATA_DIR}"
+    else
+        echo "[$(date +%Y-%m-%dT%H:%M:%S)] moving new data to directory"
+        echo "[$(date +%Y-%m-%dT%H:%M:%S)] from -> $MIGRATION_PATH/tmp/pg"
+        echo "[$(date +%Y-%m-%dT%H:%M:%S)] to -> /var/lib/pgsql/data/${DATA_DIR}"
+        rm -rf "/var/lib/pgsql/data/${DATA_DIR}"
+        mv "$MIGRATION_PATH/tmp/pg" "/var/lib/pgsql/data/${DATA_DIR}"
+    fi
 
     /usr/lib/postgresql/"${PG_VERSION_TARGET}"/bin/pg_ctl start -D "/var/lib/pgsql/data/${DATA_DIR}"
 
