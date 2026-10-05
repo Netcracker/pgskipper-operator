@@ -263,7 +263,7 @@ backupDaemon:
 
 pgBackRestExporter:
   install: false
-  image: ghcr.io/woblerr/pgbackrest_exporter:v0.21.0-alpine
+  image: ghcr.io/woblerr/pgbackrest_exporter:v0.21.0-alpine@sha256:c07b01a1a278781a0027e8027ff961f3a5a2585dc8a7723f40b4df9c4d9acde4
   resources:
     requests:
       cpu: 100m
@@ -388,7 +388,7 @@ queryExporter:
 
 powaUI:
   install: false
-  dockerImage: docker.io/powateam/powa-web:5.0.2
+  dockerImage: docker.io/powateam/powa-web:5.0.2@sha256:c65ee09043337c26d3ff80d04becaf8be5728253b79445e527f5b840524becf8
   #  podLabels: {}
 
   ingress:
@@ -423,7 +423,7 @@ replicationController:
 
 connectionPooler:
   install: false
-  dockerImage: docker.io/edoburu/pgbouncer:v1.25.1-p0
+  dockerImage: docker.io/edoburu/pgbouncer:v1.25.1-p0@sha256:4a8371e79d6627e74f553d0aaa8e4c5ace20e30034fb296e569b71c89c99e108
   replicas: 1
   config:
     databases:
