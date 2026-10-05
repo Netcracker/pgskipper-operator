@@ -12,7 +12,7 @@ RUN go mod tidy
 # Build
 RUN CGO_ENABLED=0 GOOS=$TARGETOS GOARCH=$TARGETARCH go build -o ./_output/bin/metrics ./collector/main.go
 
-FROM alpine:3.24 AS base
+FROM alpine:3.24@sha256:294b683cb724975bec92580e1e685676bd4b50bda910ddb8c51d4cabeaec77e6 AS base
 COPY --from=builder /workspace/_output/bin/metrics /monitor/
 
 RUN apk add --upgrade --no-cache curl
