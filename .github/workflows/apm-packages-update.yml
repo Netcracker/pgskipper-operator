@@ -30,7 +30,7 @@ jobs:
           persist-credentials: false
 
       - name: Update APM packages
-        uses: netcracker/qubership-workflow-hub/actions/apm-packages-update@v2.6.0
+        uses: netcracker/qubership-workflow-hub/actions/apm-packages-update@0eefd4976131d113c986281eed8bc642b6da303d # v2.8.1
         with:
           dry-run: ${{ inputs.dry-run || 'false' }}
           auto-merge: ${{ inputs.auto-merge || 'true' }}
