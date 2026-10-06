@@ -16,7 +16,7 @@ Flask-RESTful==0.3.10
 google-api-core==2.30.0
 google-api-python-client==2.200.0
 google-auth==2.16.1
-google-auth-httplib2==0.2.0
+google-auth-httplib2==0.4.2
 googleapis-common-protos==1.70.0
 gunicorn==23.0.0
 httplib2==0.32.0
