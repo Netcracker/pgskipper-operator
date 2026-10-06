@@ -3,7 +3,7 @@ module github.com/Netcracker/qubership-query-exporter
 go 1.27.0
 
 require (
-	github.com/godror/godror v0.49.2
+	github.com/godror/godror v0.51.5
 	github.com/jackc/pgx/v5 v5.9.2
 	github.com/prometheus/client_golang v1.23.2
 	github.com/robfig/cron/v3 v3.0.1
