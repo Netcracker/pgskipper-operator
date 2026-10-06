@@ -33,7 +33,7 @@ protobuf==6.33.6
 psycopg2-binary==2.9.13
 pyasn1==0.6.4
 pyasn1-modules==0.4.2
-pycryptodome==3.19.1
+pycryptodome==3.23.0
 pyhocon==0.3.63
 pyparsing==3.1.0
 python-dateutil==2.9.0.post0
