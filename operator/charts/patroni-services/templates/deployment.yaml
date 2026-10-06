@@ -2,6 +2,8 @@ apiVersion: apps/v1
 kind: Deployment
 metadata:
   name: postgres-operator
+  annotations:
+    argocd.argoproj.io/sync-options: Replace=true
   labels:
     name: patroni-core-operator
 {{ if .Values.operator.podLabels }}
