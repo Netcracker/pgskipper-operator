@@ -35,7 +35,7 @@ pyasn1==0.6.4
 pyasn1-modules==0.4.2
 pycryptodome==3.23.0
 pyhocon==0.3.63
-pyparsing==3.1.0
+pyparsing==3.3.3
 python-dateutil==2.9.0.post0
 python-string-utils==1.0.0
 pytz==2022.7.1
