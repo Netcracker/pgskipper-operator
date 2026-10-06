@@ -43,12 +43,12 @@ serviceAccount:
   name: "postgres-sa"
 
 operatorInit:
-  image: ghcr.io/netcracker/qubership-credential-manager:main
+  image: ghcr.io/netcracker/qubership-credential-manager:main@sha256:2b5cd225caba35f8ec1219c5081e5c1ec8e516ef09219185677cbe945e5fcc99
 
 ##  This section describes values for patroni-services deployment
 operator:
   # Docker Image that will be used to Postgres Operator deployment
-  image: ghcr.io/netcracker/pgskipper-operator:main
+  image: ghcr.io/netcracker/pgskipper-operator:main@sha256:278ce4ee03cb1a92ebb09113203b23a3cd1b5cfe24d9d0a36cd9282803af8e80
   podLabels: {}
   securityContext: {}
   waitTimeout: 10
@@ -113,7 +113,7 @@ metricCollector:
   # Optional flag for Monitoring Agent deployment
   install: true
   # Docker Image that will be used for PostgreSQL Monitoring Agent container
-  dockerImage: ghcr.io/netcracker/pgskipper-docker-monitoring-agent:main
+  dockerImage: ghcr.io/netcracker/pgskipper-docker-monitoring-agent:main@sha256:cc213e6e6ba4b5271ada1c606a4e9f07684a6e7828b037ee14f168c730838b11
   podLabels: {}
   databaseConnectionLimits: 250
   securityContext: {}
@@ -181,7 +181,7 @@ backupDaemon:
   # Optional flag for PostgreSQL Backup Daemon deployment
   install: true
   # Docker Image that will be used for PostgreSQL Backup Daemon container
-  dockerImage: ghcr.io/netcracker/pgskipper-docker-backup-daemon:main
+  dockerImage: ghcr.io/netcracker/pgskipper-docker-backup-daemon:main@sha256:f0b267683b139cb7afdca5ade641a5c632f0e75bce70055b3cc96193a727dfbf
   podLabels: {}
   compressionLevel: 9
   # If the flag is set as true, the installation procedure will configure Postgres to use the WAL archive and use the backup daemon as storage.
@@ -308,7 +308,7 @@ dbaas:
   install: false
   multiUsers: true
   # Docker Image that will be used for PostgreSQL DBaaS Adapter container
-  dockerImage: ghcr.io/netcracker/pgskipper-docker-dbaas-adapter:main
+  dockerImage: ghcr.io/netcracker/pgskipper-docker-dbaas-adapter:main@sha256:4e31814e7363a10642f2ca6d0aeba9a20f8db648d1370f59e975eea5a877ebd4
   podLabels: {}
   securityContext: {}
   # PostgreSQL cluster entry point.
@@ -365,7 +365,7 @@ siteManager:
 
 # This section describes Query Exporter parameters.
 queryExporter:
-  dockerImage: ghcr.io/netcracker/qubership-docker-query-exporter:main
+  dockerImage: ghcr.io/netcracker/qubership-docker-query-exporter:main@sha256:952a3732488d710d84838e2bf21abff22f379ac3deea71c8e843be496408a04a
   install: false
   resources:
     requests:
@@ -407,7 +407,7 @@ powaUI:
 
 replicationController:
   install: false
-  dockerImage: ghcr.io/netcracker/pgskipper-docker-replication-controller:main
+  dockerImage: ghcr.io/netcracker/pgskipper-docker-replication-controller:main@sha256:6889d6470000c9ac90215aa3427ba5b05ef2c501f6f6853a7ab1d4e3e7e9c47a
   resources:
     limits:
       cpu: 200m
@@ -445,7 +445,7 @@ tracing:
 
 tests:
   install: true
-  dockerImage: ghcr.io/netcracker/pgskipper-operator-tests:main
+  dockerImage: ghcr.io/netcracker/pgskipper-operator-tests:main@sha256:bafaf657ede16661e874486f31ba0f6ff8cbcaf32c12545ee07fd3836d59025a
   podLabels: {}
   # One of "full", "basic", "custom" or one from testScenarios
   runTestScenarios: "basic"

@@ -45,7 +45,7 @@ serviceAccount:
   name: "patroni-sa"
 
 operatorInit:
-  image: ghcr.io/netcracker/qubership-credential-manager:main
+  image: ghcr.io/netcracker/qubership-credential-manager:main@sha256:2b5cd225caba35f8ec1219c5081e5c1ec8e516ef09219185677cbe945e5fcc99
   resources:
     limits:
       cpu: 50m
@@ -57,7 +57,7 @@ operatorInit:
 ##  This section describes values for postgres-operator deployment
 operator:
   # Docker Image that will be used to Postgres Operator deployment
-  image: ghcr.io/netcracker/pgskipper-operator:main
+  image: ghcr.io/netcracker/pgskipper-operator:main@sha256:278ce4ee03cb1a92ebb09113203b23a3cd1b5cfe24d9d0a36cd9282803af8e80
   podLabels: {}
   securityContext: {}
   waitTimeout: 10
@@ -112,7 +112,7 @@ patroni:
   # The number of Patroni (Postgres) nodes. One of these nodes is a master, and the others are replicas.
   replicas: 2
   # Docker Image that will be used for Patroni container
-  dockerImage: ghcr.io/netcracker/pgskipper-docker-patroni-16:main
+  dockerImage: ghcr.io/netcracker/pgskipper-docker-patroni-16:main@sha256:b3e33d0d6d171d0e4f68a76777b76b17a30b45df2353b7d660e89032af1825e2
   # Log level for patroni. One of: DEBUG, INFO, WARNING, ERROR, CRITICAL.
   patroniLogLevel: WARNING
   podLabels: {}
@@ -238,7 +238,7 @@ patroni:
   majorUpgrade:
     enabled: false
     #    initDbParams: "--encoding=UTF8 --data-checksums --lc-collate=C --lc-ctype=C"
-    dockerUpgradeImage: ghcr.io/netcracker/pgskipper-docker-upgrade:main
+    dockerUpgradeImage: ghcr.io/netcracker/pgskipper-docker-upgrade:main@sha256:5dd84d1bd4133949505b7d0a64623c08d38c6441597d389704acff88be29354e
   securityContext: {}
     #    fsGroupChangePolicy: OnRootMismatch
     #  pgWalStorageAutoManage: false
@@ -291,7 +291,7 @@ patroni:
 
 tests:
   install: true
-  dockerImage: ghcr.io/netcracker/pgskipper-operator-tests:main
+  dockerImage: ghcr.io/netcracker/pgskipper-operator-tests:main@sha256:bafaf657ede16661e874486f31ba0f6ff8cbcaf32c12545ee07fd3836d59025a
   podLabels: {}
   # One of "full", "basic","custom" or one from testScenarios
   runTestScenarios: "basic"
