@@ -130,5 +130,5 @@ require (
 
 replace (
 	github.com/operator-framework/operator-lib => github.com/operator-framework/operator-lib v0.1.0
-	github.com/operator-framework/operator-sdk => github.com/operator-framework/operator-sdk v1.15.0
+	github.com/operator-framework/operator-sdk => github.com/operator-framework/operator-sdk v1.42.3
 )
