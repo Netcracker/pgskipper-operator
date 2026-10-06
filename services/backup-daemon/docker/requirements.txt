@@ -4,7 +4,7 @@ boto3==1.43.104
 cachetools==4.2.4
 certifi==2024.12.14
 chardet==3.0.4
-charset-normalizer==2.0.12
+charset-normalizer==2.1.1
 colorama==0.4.6
 croniter==1.3.8
 dictdiffer==0.10.0
