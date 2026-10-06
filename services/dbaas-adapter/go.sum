@@ -1,7 +1,7 @@
 github.com/KyleBanks/depth v1.2.1 h1:5h8fQADFrWtarTdtDudMmGsC7GPbOAu6RVB3ffsVFHc=
 github.com/KyleBanks/depth v1.2.1/go.mod h1:jzSb9d0L43HxTQfT+oSA1EEp2q+ne2uh6XgeJcm8brE=
-github.com/Netcracker/qubership-dbaas-adapter-core v0.11.1 h1:h8/lbtIKWuvQCiWMz3MuWDpoJ3rdJQaVAgzPaT3M+j4=
-github.com/Netcracker/qubership-dbaas-adapter-core v0.11.1/go.mod h1:WwqayO1puRMdzoB6EbIpHWqhkYi4JT7v4pCVM6h15D8=
+github.com/Netcracker/qubership-dbaas-adapter-core v0.12.0 h1:dD5D+HXkSjQKpTsCOioiNHo2kXM4csATLLbJOHXC3l8=
+github.com/Netcracker/qubership-dbaas-adapter-core v0.12.0/go.mod h1:23N2B/J5pl0qP1lRFaEwoRC+0VW0g/NsMJ47xGx7RgQ=
 github.com/PuerkitoBio/purell v1.1.1/go.mod h1:c11w/QuzBsJSee3cPx9rAFu61PvFxuPbtSwDGJws/X0=
 github.com/PuerkitoBio/urlesc v0.0.0-20170810143723-de5bf2ad4578/go.mod h1:uGdkoq3SwY9Y+13GIhn11/XLaGBb4BfwItxLd5jeuXE=
 github.com/andybalholm/brotli v1.2.1 h1:R+f5xP285VArJDRgowrfb9DqL18yVK0gKAW/F+eTWro=
