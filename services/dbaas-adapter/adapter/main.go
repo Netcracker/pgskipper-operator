@@ -34,6 +34,7 @@ import (
 	"github.com/Netcracker/qubership-dbaas-adapter-core/pkg/service"
 	coreUtils "github.com/Netcracker/qubership-dbaas-adapter-core/pkg/utils"
 	fiber "github.com/gofiber/fiber/v2"
+	"github.com/gofiber/fiber/v2/middleware/basicauth"
 	"go.uber.org/zap"
 )
 
@@ -247,6 +248,7 @@ func main() {
 		logger.Info(fmt.Sprintf("replacing self address with https, %s", *selfAddress))
 	}
 	logger.Info(fmt.Sprintf("self address set for registering in aggregator, %s", *selfAddress))
+	labels := ReadLabelsFile()
 	log.Fatal(fiber2.RunFiberServer(*servePort, func(app *fiber.App, ctx context.Context) error {
 		fiber2.BuildFiberDBaaSAdapterHandlers(
 			app,
@@ -263,7 +265,7 @@ func main() {
 					Username: *serveUser,
 					Password: *servePass,
 				},
-				ReadLabelsFile(), //labels
+				labels,
 				dbaasClient,
 				*registrationFixedDelay,
 				*registrationRetryTime,
@@ -277,10 +279,18 @@ func main() {
 			false,
 			"")
 
+		operatorAuth := basicauth.New(basicauth.Config{
+			Users: map[string]string{
+				*serveUser: *servePass,
+			},
+		})
+
 		prefix := fmt.Sprintf("/api/%s/dbaas/adapter/postgresql/databases/", apiVersion)
 		app.Get(prefix+":dbName/info", dbAdminImpl.(*basic.ServiceAdapter).GetDatabaseOwnerHandler())
 		app.Put(prefix+":dbName/settings", dbAdminImpl.(*basic.ServiceAdapter).UpdatePostgreSQLSettingsHandler())
 
+		app.Get("/api/v2/adapter/physical_database", operatorAuth,
+			dbAdminImpl.(*basic.ServiceAdapter).GetPhysicalDatabaseHandler(*phydbid, labels, *readOnlyHost))
 		app.Get("/api/version", func(c *fiber.Ctx) error {
 			return c.SendString(apiVersion)
 		})
