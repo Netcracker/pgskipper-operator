@@ -4,8 +4,7 @@ go 1.27.0
 
 require (
 	github.com/Netcracker/qubership-dbaas-adapter-core v0.12.0
-	github.com/gofiber/fiber/v2 v2.52.5
-	github.com/gofiber/fiber/v3 v3.5.0
+	github.com/gofiber/fiber/v2 v2.52.14
 	github.com/google/uuid v1.6.0
 	github.com/jackc/pgx/v5 v5.10.0
 	github.com/stretchr/testify v1.12.1
@@ -84,6 +83,7 @@ require (
 	github.com/stretchr/objx v0.5.3 // indirect
 	github.com/swaggo/files/v2 v2.0.0 // indirect
 	github.com/swaggo/swag v1.16.3 // indirect
+	github.com/tinylib/msgp v1.6.4 // indirect
 	github.com/valyala/bytebufferpool v1.0.0 // indirect
 	github.com/x448/float16 v0.8.4 // indirect
 	go.uber.org/multierr v1.10.0 // indirect
