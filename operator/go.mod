@@ -6,6 +6,7 @@ require (
 	github.com/Netcracker/qubership-credential-manager v0.0.18
 	github.com/avast/retry-go/v4 v4.7.0
 	github.com/go-co-op/gocron v1.37.0
+	github.com/go-co-op/gocron/v2 v2.22.0
 	github.com/google/go-cmp v0.7.0
 	github.com/google/uuid v1.6.0
 	github.com/hashicorp/consul/api v1.34.5
