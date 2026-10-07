@@ -9,6 +9,7 @@ require (
 	github.com/google/go-cmp v0.7.0
 	github.com/google/uuid v1.6.0
 	github.com/hashicorp/consul/api v1.34.5
+	github.com/hashicorp/consul/api/v2 v2.0.0
 	github.com/jackc/pgtype v1.14.4
 	github.com/jackc/pgx/v5 v5.10.0
 	github.com/operator-framework/operator-lib v0.19.0
