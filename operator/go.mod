@@ -13,7 +13,7 @@ require (
 	github.com/hashicorp/consul/api v1.34.5
 	github.com/hashicorp/consul/api/v2 v2.0.0
 	github.com/jackc/pgtype v1.14.4
-	github.com/jackc/pgx/v5 v5.10.0
+	github.com/jackc/pgx/v5 v5.11.0
 	github.com/operator-framework/operator-lib v0.19.0
 	github.com/pkg/errors v0.9.1
 	go.uber.org/zap v1.28.0
