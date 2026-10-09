@@ -307,6 +307,9 @@ dbaas:
   # Optional flag for PostgreSQL DBaaS Adapter deployment
   install: false
   multiUsers: true
+  declarativeRegistration:
+    enabled: false
+    operatorNamespace: dbaas
   # Docker Image that will be used for PostgreSQL DBaaS Adapter container
   dockerImage: ghcr.io/netcracker/pgskipper-docker-dbaas-adapter:main
   podLabels: {}
