@@ -1,0 +1,12 @@
+{{- if and .Values.dbaas.install .Values.dbaas.declarativeRegistration.enabled }}
+apiVersion: dbaas.netcracker.com/v1
+kind: PhysicalDatabase
+metadata:
+  name: {{ .Release.Name }}-physical-db
+  namespace: {{ .Release.Namespace }}
+spec:
+  operatorNamespace: {{ required "DBaaS operator namespace is required" .Values.dbaas.declarativeRegistration.operatorNamespace | quote }}
+  adapterAddress: {{ printf "http://dbaas-postgres-adapter.%s:8080" .Release.Namespace | quote }}
+  credentialsSecretRef:
+    name: dbaas-adapter-credentials
+{{- end }}

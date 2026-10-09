@@ -904,6 +904,23 @@
           "type": "string",
           "default": "ghcr.io/netcracker/pgskipper-docker-dbaas-adapter:main"
         },
+        "declarativeRegistration": {
+          "type": "object",
+          "additionalProperties": false,
+          "description": "Declarative physical database registration managed by the DBaaS Operator",
+          "properties": {
+            "enabled": {
+              "type": "boolean",
+              "default": false,
+              "description": "Create a PhysicalDatabase CR when the DBaaS CRD is available"
+            },
+            "operatorNamespace": {
+              "type": "string",
+              "minLength": 1,
+              "description": "Namespace of the DBaaS Operator responsible for reconciliation"
+            }
+          }
+        },
         "podLabels": {
           "type": "object",
           "additionalProperties": {
