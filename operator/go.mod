@@ -5,13 +5,10 @@ go 1.27.1
 require (
 	github.com/Netcracker/qubership-credential-manager v0.0.18
 	github.com/avast/retry-go/v4 v4.7.0
-	github.com/avast/retry-go/v5 v5.0.0
 	github.com/go-co-op/gocron v1.37.0
-	github.com/go-co-op/gocron/v2 v2.22.0
 	github.com/google/go-cmp v0.7.0
 	github.com/google/uuid v1.6.0
 	github.com/hashicorp/consul/api v1.34.5
-	github.com/hashicorp/consul/api/v2 v2.0.0
 	github.com/jackc/pgtype v1.14.4
 	github.com/jackc/pgx/v5 v5.10.0
 	github.com/operator-framework/operator-lib v0.19.0
@@ -20,7 +17,6 @@ require (
 	golang.org/x/crypto v0.57.0
 	google.golang.org/api v0.299.0
 	gopkg.in/yaml.v2 v2.2.8
-	gopkg.in/yaml.v3 v3.0.1
 	k8s.io/api v0.37.1
 	k8s.io/apimachinery v0.37.1
 	k8s.io/client-go v0.37.1
@@ -108,7 +104,7 @@ require (
 	go.yaml.in/yaml/v3 v3.0.4 // indirect
 	golang.org/x/exp v0.0.0-20260410095643-746e56fc9e2f // indirect
 	golang.org/x/mod v0.41.0 // indirect
-	golang.org/x/net v0.59.0 // indirect
+	golang.org/x/net v0.60.0 // indirect
 	golang.org/x/oauth2 v0.37.0 // indirect
 	golang.org/x/sync v0.23.0 // indirect
 	golang.org/x/sys v0.48.0 // indirect
