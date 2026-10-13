@@ -175,6 +175,8 @@ spec:
               value: {{ default "false" .Values.dbaas.multiUsers | quote }}
             - name: LOG_DEBUG
               value: {{ default "false" .Values.dbaas.debug | quote }}
+            - name: DBAAS_DECLARATIVE_REGISTRATION_ENABLED
+              value: {{ .Values.dbaas.declarativeRegistration.enabled | quote }}
             - name: INTERNAL_TLS_ENABLED
               value: {{ default "false" .Values.INTERNAL_TLS_ENABLED | quote }}
           resources:
