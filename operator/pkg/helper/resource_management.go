@@ -1312,8 +1312,8 @@ func (rm *ResourceManager) WaitForPvcResizeState(pvcName string, namespace strin
 			}
 
 			for _, condition := range currentPvc.Status.Conditions {
-				if condition.Type == corev1.PersistentVolumeClaimFileSystemResizePending &&
-					condition.Status == corev1.ConditionTrue {
+				if condition.Type == corev1.PersistentVolumeClaimResizing ||
+					condition.Type == corev1.PersistentVolumeClaimFileSystemResizePending {
 
 					restartRequired = true
 					return true, nil
