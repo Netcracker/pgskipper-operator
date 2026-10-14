@@ -176,7 +176,7 @@ spec:
             - name: LOG_DEBUG
               value: {{ default "false" .Values.dbaas.debug | quote }}
             - name: DBAAS_DECLARATIVE_REGISTRATION_ENABLED
-              value: {{ .Values.dbaas.declarativeRegistration.enabled | quote }}
+              value: {{ and .Values.dbaas.install (.Capabilities.APIVersions.Has "dbaas.netcracker.com/v1/PhysicalDatabase") | quote }}
             - name: INTERNAL_TLS_ENABLED
               value: {{ default "false" .Values.INTERNAL_TLS_ENABLED | quote }}
           resources:

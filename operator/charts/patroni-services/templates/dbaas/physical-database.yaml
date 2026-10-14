@@ -1,4 +1,4 @@
-{{- if and .Values.dbaas.install .Values.dbaas.declarativeRegistration.enabled }}
+{{- if and .Values.dbaas.install (.Capabilities.APIVersions.Has "dbaas.netcracker.com/v1/PhysicalDatabase") }}
 apiVersion: dbaas.netcracker.com/v1
 kind: PhysicalDatabase
 metadata:

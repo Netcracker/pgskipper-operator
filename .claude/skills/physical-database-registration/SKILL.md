@@ -2,16 +2,20 @@
 
 ## Purpose
 
-Implement declarative physical database registration for a DBaaS adapter following **Declarative Physical Database Registration Design (Draft)**.
+Implement **declarative physical database registration** for **any database adapter** integrated with the Netcracker DBaaS platform (for example, PostgreSQL, MongoDB, or another supported engine).
 
-The DBaaS Operator manages registration with Aggregator instead of relying on the Adapter's legacy self-registration mechanism.
+Follow the **Declarative Physical Database Registration Design** and the current DBaaS API contract. The **DBaaS Operator** reconciles registrations in Aggregator; the database-specific Adapter exposes its descriptor and no longer self-registers when declarative mode is active.
+
+This skill is **database-agnostic**: discover actual repository structure, frameworks, names, capabilities, credentials, namespace, and Helm values. Do **not** assume PostgreSQL, Go, Fiber, Patroni, port 8080, or any specific repository layout.
 
 ## When to use
 
-- Adding declarative registration support to a database adapter.
-- Implementing the `PhysicalDatabase` descriptor endpoint.
-- Creating a `PhysicalDatabase` CR through an adapter's Helm chart.
-- Migrating from Adapter self-registration to Operator-managed registration.
+- Adding declarative registration to a database Adapter.
+- Implementing an authenticated physical-database descriptor endpoint.
+- Creating a `PhysicalDatabase` custom resource (CR) through Helm.
+- Granting DBaaS Operator access to a namespaced Adapter credentials Secret.
+- Migrating from Adapter self-registration to DBaaS Operator-managed registration.
+- Testing Helm CRD discovery, backwards compatibility, RBAC, and registration lifecycle.
 
 ## Usage
 
@@ -19,107 +23,91 @@ The DBaaS Operator manages registration with Aggregator instead of relying on th
 /physical-database-registration <database-type>
 ```
 
-Example:
+Example: `/physical-database-registration mongodb`
 
-```text
-/physical-database-registration postgresql
-```
+**First inspect the target project** and identify:
 
-If repository structure is unknown, first identify the Adapter implementation, Helm chart, existing Adapter credentials Secret, Adapter Service, and configuration values.
+1. Adapter implementation and HTTP framework.
+2. Existing descriptor / registration code and any shared registration library.
+3. Helm chart, chart installation condition, values and `values.schema.json`.
+4. Adapter Kubernetes Service, port, TLS settings, and reachable address.
+5. Adapter Basic Auth credentials Secret, its namespace, and keys.
+6. DBaaS Operator namespace and actual ServiceAccount.
+7. Actual database type, supported API versions, roles, features, and read-only host semantics.
 
-## 1. Architecture and ownership
+Never blindly copy implementation-specific file paths or example capabilities.
 
-### DBaaS team responsibilities
+## 1. Ownership and architecture
 
-The DBaaS team owns:
+### DBaaS platform team
 
-- `PhysicalDatabase` CRD (`dbaas.netcracker.com/v1`).
-- CRD schema and Kubernetes validation rules.
-- DBaaS Operator controller and reconciliation.
-- Reading the `PhysicalDatabase` CR and credentials Secret.
-- Calling the Adapter information endpoint.
-- Registering physical databases in Aggregator.
-- Handling registration conflicts, errors, retries, and role migration.
-- Updating `PhysicalDatabase.status`.
+- Owns and installs the shared `PhysicalDatabase` **CRD** (`dbaas.netcracker.com/v1`).
+- Defines and validates `PhysicalDatabase.spec` and `status`.
+- Implements the **DBaaS Operator** controller for `PhysicalDatabase` CRs.
+- Maintains its own RBAC for CR `get/list/watch` and status updates.
+- Reads the CR and referenced credentials Secret (subject to namespace RBAC).
+- Calls the Adapter descriptor endpoint using the referenced credentials.
+- Registers or updates the physical database in **DBaaS Aggregator**.
+- Handles retries, conflicts, additional-role migration, and status.
 
-**Do not implement these responsibilities inside the database-specific operator.**
+### Database Adapter / integration team
 
-### Database Adapter team responsibilities
+- Exposes the authenticated descriptor endpoint and returns accurate Adapter information.
+- Creates a **CR instance**, not a CRD, in its Helm release.
+- References its existing Adapter Service URL and Basic Auth Secret.
+- Grants only the necessary Secret access to the DBaaS Operator, if that access is not already provided.
+- Disables legacy Adapter self-registration while declarative mode is active.
+- Keeps legacy registration working when declarative mode is unavailable.
 
-The database-specific team owns:
-
-1. Implementing the physical database information endpoint.
-2. Protecting that endpoint using existing Adapter Basic Auth credentials.
-3. Returning a descriptor matching the contract.
-4. Adding a Helm template that creates a `PhysicalDatabase` CR.
-5. Adding the corresponding Helm values and JSON schema.
-6. Ensuring the CR uses the correct Adapter Service address and credentials Secret.
-7. Maintaining backward compatibility with legacy self-registration.
-
-**Do not generate or install a duplicate `PhysicalDatabase` CRD.**
-
-The CRD must be installed by the DBaaS component responsible for owning the shared API.
+**Do not** implement another `PhysicalDatabase` controller or duplicate the shared CRD in a database-specific operator.
 
 ## 2. Registration flow
 
 ```text
-Database Helm Chart
-        |
-        | Creates PhysicalDatabase CR
-        v
-DBaaS Operator
-        |
-        | Reads spec.adapterAddress
-        | Reads spec.credentialsSecretRef
-        |
-        | GET /api/v2/adapter/physical_database
-        | Basic Auth
-        v
-Database Adapter
-        |
-        | 200 OK + PhysicalDatabaseInformation
-        v
-DBaaS Operator
-        |
-        | PUT /api/v3/dbaas/{type}/physical_databases/{phydbid}
-        | ?internalMigration=true
-        v
-DBaaS Aggregator
-        |
-        | Registration result
-        v
-DBaaS Operator
-        |
-        | Updates PhysicalDatabase.status
+DBaaS team installs PhysicalDatabase CRD
+                  |
+                  v
+Helm checks CRD API capability at render time
+           /                     \
+    API available             API unavailable
+         |                          |
+    Create CR and RBAC          No declarative CR
+    Disable legacy             Keep legacy mode
+         |
+         v
+DBaaS Operator reads CR and Secret
+         |
+         | GET /api/v2/adapter/physical_database + Basic Auth
+         v
+Database Adapter returns descriptor JSON
+         |
+         v
+DBaaS Operator registers with Aggregator
+         |
+         v
+DBaaS Operator updates CR status
 ```
 
-The Adapter does not perform Aggregator registration as part of the new endpoint.
+The descriptor GET handler **must not call Aggregator or perform registration**. The DBaaS Operator owns that work.
 
-## 3. Adapter GET endpoint
+## 3. Adapter descriptor endpoint
 
-### Contract
+### Shared contract
 
-**Method:** `GET`
+- **Method:** `GET`
+- **Path:** `/api/v2/adapter/physical_database`
+- **Authentication:** HTTP Basic Auth using the Adapter's **existing** credentials.
+- **Success:** `200 OK` with valid JSON.
+- **Missing or incorrect credentials:** `401 Unauthorized`.
+- **Required data unavailable:** report an appropriate non-2xx response (for example, `503`); do not return a success descriptor with invalid mandatory fields.
 
-**Path:**
-
-```text
-/api/v2/adapter/physical_database
-```
-
-**Authentication:** HTTP Basic Auth, using the Adapter's existing credentials.
-
-**Successful response:** `200 OK`, `Content-Type: application/json`.
-
-Example:
+**Illustrative descriptor** (replace all example data with real Adapter data):
 
 ```json
 {
-  "physicalDatabaseId": "postgres-nuye:postgres",
-  "type": "postgresql",
-  "labels": {
-    "clusterName": "patroni"
-  },
+  "physicalDatabaseId": "<namespace>:<physical-db-id>",
+  "type": "<database-type>",
+  "labels": { "<label-key>": "<label-value>" },
   "apiVersions": {
     "specs": [
       {
@@ -135,301 +123,277 @@ Example:
     "tls": false,
     "tlsNotStrict": false
   },
-  "supportedRoles": [
-    "admin",
-    "streaming",
-    "rw",
-    "ro"
-  ],
-  "readOnlyHost": "pg-patroni-ro.postgres-nuye"
+  "supportedRoles": ["<role-1>", "<role-2>"],
+  "readOnlyHost": "<read-only-host>"
 }
 ```
 
-### Response fields
-
-| Field | Required | Description |
-|---|---|---|
-| `physicalDatabaseId` | Yes | Adapter-assigned physical database identifier |
-| `type` | Yes | Database type, e.g. `postgresql` |
-| `labels` | Optional | Physical database metadata |
-| `apiVersions` | Yes | Supported Adapter API version information |
-| `features` | Yes | Adapter capabilities, including `multiusers` |
-| `supportedRoles` | Yes | Roles supported by the Adapter |
-| `readOnlyHost` | Yes | Read-only connection host |
-
-The field `readOnlyHost` maps to the Aggregator registration metadata field `roHost`. Do not rename the JSON field exposed by this endpoint.
-
-The version numbers, features, and supported roles must accurately describe the running Adapter. Do not copy example values if the Adapter supports different versions or capabilities.
-
-### Response codes
-
-| HTTP code | Meaning |
+| Field | Source / requirement |
 |---|---|
-| `200 OK` | Descriptor successfully returned |
-| `401 Unauthorized` | Credentials missing or invalid |
-| `404 Not Found` | Endpoint not implemented or unavailable on this Adapter version |
-| `503 Service Unavailable` | Adapter temporarily cannot provide a valid descriptor |
+| `physicalDatabaseId` | Adapter's configured physical DB identifier |
+| `type` | Actual database engine type |
+| `labels` | Existing registration metadata; may be empty |
+| `apiVersions` | **Actual** supported Adapter API versions |
+| `features` | **Actual** feature support, not defaults copied from an example |
+| `supportedRoles` | **Actual** supported roles |
+| `readOnlyHost` | Contract field; populate according to the engine and agreed schema |
 
-A missing or invalid required descriptor field must not be presented as a successful, valid registration descriptor.
+The response field is **`readOnlyHost`**, not the legacy Aggregator field `roHost`. Consult the authoritative contract for field optionality and engine-specific semantics, especially when there is no read-only endpoint.
 
-### Implementation requirements
+### Implementation guidance
 
-- Add response types that match the JSON contract.
-- Register the GET endpoint in the existing Adapter HTTP server.
-- Use the existing Adapter Basic Auth mechanism and credentials.
-- Reuse the Adapter's configured physical database ID, labels, features, roles, and read-only host.
-- Prefer building the immutable descriptor once during Adapter startup and reusing it for requests.
-- Validate required data before returning `200`.
-- Return `503` when required information is temporarily unavailable.
-- Do not add Aggregator calls to this endpoint.
+- Reuse the Adapter's existing server, authentication and configuration facilities.
+- Expose the endpoint independently of the legacy registration service.
+- Prefer preparing stable descriptor data once at startup, if consistent with runtime behavior.
+- Validate required information before returning `200`.
+- Avoid hardcoding API versions, hostnames, ports, database roles, or features.
+- Add tests for `401`, valid authenticated `200`, response schema, and unavailable fields.
 
-For the PostgreSQL implementation, the existing Fiber HTTP server and `ServiceAdapter` should be reused.
+## 4. Helm CRD detection and resource creation
 
-## 4. PhysicalDatabase CR — Helm side
+### Capability-driven mode selection
 
-The database-specific team creates a **CR instance**, not the CRD.
+Use Helm's **render-time API discovery** to determine whether the CRD API is available:
 
-The required resource API is:
-
-```yaml
-apiVersion: dbaas.netcracker.com/v1
-kind: PhysicalDatabase
+```gotemplate
+.Capabilities.APIVersions.Has "dbaas.netcracker.com/v1/PhysicalDatabase"
 ```
 
-### Required CR fields
+Use the existing chart's **Adapter installation** condition as an additional guard. For charts that use `.Values.dbaas.install`, the condition is:
 
-| Field | Description |
-|---|---|
-| `spec.operatorNamespace` | Namespace of the responsible DBaaS Operator; must match its `CLOUD_NAMESPACE` |
-| `spec.adapterAddress` | Reachable HTTP(S) base URL of the Adapter |
-| `spec.credentialsSecretRef.name` | Name of the Adapter Basic Auth Secret, in the CR's namespace |
+```gotemplate
+{{- if and .Values.dbaas.install (.Capabilities.APIVersions.Has "dbaas.netcracker.com/v1/PhysicalDatabase") }}
+```
 
-`operatorNamespace` is immutable according to the CRD contract. The DBaaS team's CRD is responsible for enforcing its validation.
+**Adapt `.Values.dbaas.install` to the target chart** rather than assuming this exact value exists.
 
-### Example CR
+- **`.Values`** controls user-specified chart configuration, such as whether the Adapter is installed and which DBaaS Operator namespace to use.
+- **`.Capabilities`** reports APIs available to Helm during rendering; it is **not** a continuously updated runtime check.
+- Do not retain a redundant `declarativeRegistration.enabled` toggle as the mode selector when adopting capability-driven detection, unless project requirements explicitly call for an override.
+- Check the CRD with `kubectl get crd physicaldatabases.dbaas.netcracker.com` for actual cluster deployments.
+- CRD availability **does not mean** the DBaaS Operator is running, healthy, or ready for migration. Coordinate rollout.
+- If the CRD becomes available **after** Helm install, rerun Helm upgrade to select declarative mode.
+- If capabilities change or API discovery is temporarily unavailable on a later Helm upgrade, gated resources may be removed from the rendered release. Evaluate this lifecycle risk before depending solely on discovery.
+
+### CR template (adapt values and names)
+
+Create one namespaced CR in the target chart, for example `templates/dbaas/physical-database.yaml`:
 
 ```yaml
+{{- if and .Values.dbaas.install (.Capabilities.APIVersions.Has "dbaas.netcracker.com/v1/PhysicalDatabase") }}
 apiVersion: dbaas.netcracker.com/v1
 kind: PhysicalDatabase
 metadata:
-  name: postgres-core
-  namespace: postgres-nuye
+  name: {{ .Release.Name }}-physical-db
+  namespace: {{ .Release.Namespace }}
 spec:
-  operatorNamespace: dbaas
-  adapterAddress: http://dbaas-postgres-adapter.postgres-nuye:8080
+  operatorNamespace: {{ required "DBaaS Operator namespace is required" .Values.dbaas.declarativeRegistration.operatorNamespace | quote }}
+  adapterAddress: {{ required "Adapter address is required" .Values.dbaas.declarativeRegistration.adapterAddress | quote }}
   credentialsSecretRef:
-    name: dbaas-adapter-credentials
+    name: {{ required "Adapter credentials Secret name is required" .Values.dbaas.declarativeRegistration.credentialsSecretName | quote }}
+{{- end }}
 ```
 
-The namespace and address above are examples, not universal defaults.
+This is a **generic reference**: prefer deriving `adapterAddress` and `credentialsSecretRef.name` from the chart's **existing Service and Secret settings** rather than introducing duplicate values. The address must be reachable by the DBaaS Operator and must match the actual HTTP(S) scheme and port. Use release-scoped resource names to avoid collisions. Avoid duplicate CR definitions.
 
-### Helm implementation
+`spec.operatorNamespace` is the DBaaS Operator's namespace (according to the CRD contract, matching its `CLOUD_NAMESPACE`), **not necessarily the Adapter namespace**. The Secret reference is resolved in the CR's own namespace. Respect the CRD's immutability constraints.
 
-Create the CR template alongside the existing Adapter Helm templates.
+### Values and schema
 
-For PostgreSQL:
-
-```text
-charts/patroni-services/templates/dbaas/physical-database.yaml
-```
-
-Recommended Helm configuration:
+Declare only settings that the target chart needs and validate them in `values.schema.json`, for example:
 
 ```yaml
 dbaas:
+  install: false
   declarativeRegistration:
-    enabled: false
     operatorNamespace: ""
+    operatorServiceAccount: ""
+    # Optional: use existing Service/Secret settings instead when possible.
     adapterAddress: ""
+    credentialsSecretName: ""
 ```
 
-Use `enabled: false` by default so existing environments without the new CRD continue installing successfully.
+These are **example chart values**, not required global field names. Their mandatory/non-empty validation should apply when declarative mode is selected. Helm's `required` works for conditional templates. Remove stale values/schema fields only after verifying no consumers depend on them.
 
-The Helm template should:
+## 5. Cross-namespace Secret RBAC
 
-- Render only when the Adapter is installed and declarative registration is enabled.
-- Generate a unique, release-specific resource name.
-- Use `.Release.Namespace` for the CR namespace.
-- Obtain `operatorNamespace` from Helm values.
-- Use the actual deployed Adapter Service URL.
-- Reuse the existing Adapter credentials Secret.
-- Support HTTP and HTTPS, including the correct Service port.
-- Avoid hardcoded namespaces and environment-specific hostnames.
-- Avoid rendering duplicate `PhysicalDatabase` resources.
+A `credentialsSecretRef` **does not grant permissions**. If the DBaaS Operator lacks access to the Adapter namespace, the Adapter's Helm chart should add a namespaced `Role` and `RoleBinding`.
 
-Prefer reusing the existing Adapter address configuration. If that value is unsuitable, expose an explicit registration address setting and validate that it is provided when enabled.
+Use the **same capability and installation guard** as the CR. Generic template example:
 
-### JSON schema
-
-Update the chart's `values.schema.json` to define any added settings.
-
-For example, under `$defs.dbaas.properties`:
-
-```json
-"declarativeRegistration": {
-  "type": "object",
-  "additionalProperties": false,
-  "properties": {
-    "enabled": {
-      "type": "boolean",
-      "default": false
-    },
-    "operatorNamespace": {
-      "type": "string"
-    },
-    "adapterAddress": {
-      "type": "string"
-    }
-  }
-}
+```yaml
+{{- if and .Values.dbaas.install (.Capabilities.APIVersions.Has "dbaas.netcracker.com/v1/PhysicalDatabase") }}
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: {{ .Release.Name }}-dbaas-credentials-reader
+  namespace: {{ .Release.Namespace }}
+rules:
+  - apiGroups: [""]
+    resources: ["secrets"]
+    resourceNames:
+      - {{ required "Adapter credentials Secret name is required" .Values.dbaas.declarativeRegistration.credentialsSecretName | quote }}
+    verbs: ["get"]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: {{ .Release.Name }}-dbaas-credentials-reader
+  namespace: {{ .Release.Namespace }}
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: Role
+  name: {{ .Release.Name }}-dbaas-credentials-reader
+subjects:
+  - kind: ServiceAccount
+    name: {{ required "DBaaS Operator ServiceAccount is required" .Values.dbaas.declarativeRegistration.operatorServiceAccount | quote }}
+    namespace: {{ required "DBaaS Operator namespace is required" .Values.dbaas.declarativeRegistration.operatorNamespace | quote }}
+{{- end }}
 ```
 
-Use Helm `required` or equivalent validation for fields that must be non-empty when declarative registration is enabled.
+- `Role` and `RoleBinding` live in the **Adapter/CR namespace**.
+- The ServiceAccount may live in another namespace; reference its real name and namespace.
+- Grant the least privilege required: `get` for the specific Secret if the controller reads it by name. Add permissions only when implementation actually needs them.
+- The DBaaS Operator's own `PhysicalDatabase` CR/status permissions remain the **DBaaS team's responsibility**.
+- Do not hardcode a universally assumed ServiceAccount name.
 
-## 5. Backward compatibility
+## 6. Disable legacy self-registration in declarative mode
 
-Legacy adapters may already register themselves directly:
+**Only one component should own registration** at a time:
 
-```text
-Adapter -> Aggregator
-```
-
-Declarative registration introduces:
-
-```text
-DBaaS Operator -> Aggregator
-```
-
-Do not blindly remove legacy self-registration because older installations may still require it.
-
-Implement or coordinate an explicit mechanism to disable legacy registration when declarative registration is active.
-
-Recommended behavior:
-
-| Mode | Adapter self-registration | PhysicalDatabase CR |
+| Mode | Adapter registers with Aggregator | DBaaS Operator registers via CR |
 |---|---|---|
-| Legacy | Enabled | Not created |
-| Declarative | Disabled | Created |
+| Legacy (CRD unavailable) | Yes | No |
+| Declarative (CRD available, Operator ready) | No | Yes |
 
-Avoid two components repeatedly updating the same registration in Aggregator.
+Drive Adapter behavior from **the same Helm capability condition** used for the CR and RBAC. If the Adapter uses an environment flag, a possible generic Deployment fragment is:
 
-Do not remove existing self-registration until the migration and compatibility strategy is agreed with the DBaaS team.
-
-## 6. Testing
-
-### Adapter endpoint
-
-Verify unauthenticated access:
-
-```bash
-curl -i http://localhost:8080/api/v2/adapter/physical_database
+```yaml
+- name: DBAAS_DECLARATIVE_REGISTRATION_ENABLED
+  value: {{ and .Values.dbaas.install (.Capabilities.APIVersions.Has "dbaas.netcracker.com/v1/PhysicalDatabase") | quote }}
 ```
 
-Expected: `401 Unauthorized`.
+The variable name above is an **example integration convention**; adapt it to the Adapter's configuration system.
 
-Verify authenticated access:
+In declarative mode:
+
+1. Do **not** create or start periodic/forced self-registration workers.
+2. Do **not** construct an Aggregator registration client solely for the legacy registration path.
+3. Keep the Adapter HTTP service, descriptor endpoint, and database-administration routes running.
+4. Make shared framework code nil-safe or explicitly conditional: never expose legacy handlers that dereference an absent registration service.
+5. Do not arbitrarily force a specific API version or feature set; detect or configure the engine's genuinely supported capabilities.
+
+In legacy mode, preserve existing initialization and registration behavior. Verify the **deployed binary/image includes updated shared-library code**, not just changes in a checkout.
+
+## 7. Lifecycle and failure handling
+
+### Deleting the CR
+
+Deleting a `PhysicalDatabase` CR should stop declarative reconciliation of that resource; it must **not** be interpreted as permission to delete the underlying database or its logical databases. Aggregator registration may remain and become unmanaged; confirm actual deletion, finalizer, and unregister semantics with the DBaaS team instead of assuming automatic cleanup. The Adapter does not automatically resume legacy registration just because an individual CR was deleted. Helm/GitOps can recreate a still-templated CR.
+
+### Legacy HTTP `202` and non-JSON responses
+
+Some legacy registration clients treat **all HTTP 2xx** responses as successful JSON; an Aggregator response such as `202` with plain text `Operation 'internalMigration' is already in progress` can then cause parse errors and crashes through panic/repanic paths.
+
+A safe fix **in the legacy registration client** should:
+
+- Distinguish real registration success from an in-progress/migration response by both status and response content/contract.
+- Avoid treating plain text as the expected JSON registration descriptor.
+- Record a temporary registration failure or pending state without crashing the Adapter.
+- Retry according to a bounded or scheduled policy.
+- Preserve error reporting for unrelated failures.
+
+This is **separate from** disabling legacy self-registration in declarative mode. Do not assume that a proposed legacy error-handling fix has already shipped.
+
+## 8. Testing
+
+### Endpoint
 
 ```bash
-curl -s -u "$USER:$PASS" \
-  http://localhost:8080/api/v2/adapter/physical_database | jq
+curl -i http://localhost:<port>/api/v2/adapter/physical_database
+# Expect 401 if authentication is required and credentials are missing.
+
+curl -i -u "$USER:$PASS" \
+  http://localhost:<port>/api/v2/adapter/physical_database
+# Expect 200 with valid, engine-accurate JSON.
 ```
 
-Expected: `200 OK` with a valid descriptor.
+Use the **actual** host, port, TLS scheme and credentials for the target Adapter.
 
-Also test invalid credentials and temporary unavailability where applicable.
+### Helm: capability present
 
-### Helm chart
-
-Run:
+From the target chart's parent directory:
 
 ```bash
-helm lint ./charts/patroni-services
+helm lint ./<chart-path>
+
+helm template test ./<chart-path> \
+  --namespace <adapter-namespace> \
+  --set <adapter-install-value>=true \
+  --api-versions dbaas.netcracker.com/v1/PhysicalDatabase
 ```
 
-Enable rendering:
+Add values needed for the DBaaS Operator namespace, ServiceAccount and Adapter URL/Secret name. Verify **one CR**, correct `spec`, namespaced Secret RBAC, and the Adapter's **declarative mode enabled**.
 
-```bash
-helm template test ./charts/patroni-services \
-  --namespace postgres-nuye \
-  --set dbaas.install=true \
-  --set dbaas.declarativeRegistration.enabled=true \
-  --set dbaas.declarativeRegistration.operatorNamespace=dbaas \
-  --set dbaas.declarativeRegistration.adapterAddress=http://dbaas-postgres-adapter.postgres-nuye:8080
-```
+### Helm: capability absent
 
-Adapt the commands to the target repository's actual Helm values.
+Repeat without `--api-versions` in a local offline render. Verify **no declarative CR or dedicated RBAC** and **legacy registration enabled**. A local `helm template` does not necessarily query the live cluster. `--api-versions` simulates capability; it does **not** install a CRD.
 
-Verify:
-
-- Exactly one CR is rendered when enabled.
-- No CR is rendered when disabled.
-- The CR contains `apiVersion: dbaas.netcracker.com/v1`.
-- The Secret reference, namespace, and Adapter address are correct.
-- Invalid Helm value types fail JSON schema validation.
-- HTTP and HTTPS configurations render correctly.
-
-### Kubernetes integration
-
-Check whether the DBaaS team's CRD exists:
+### Real cluster
 
 ```bash
 kubectl get crd physicaldatabases.dbaas.netcracker.com
+kubectl get physicaldatabases -n <adapter-namespace>
+
+kubectl auth can-i get secrets \
+  --resource-name=<adapter-credentials-secret> \
+  -n <adapter-namespace> \
+  --as=system:serviceaccount:<dbaas-operator-namespace>:<dbaas-operator-sa>
 ```
 
-If it is absent, do not enable CR creation during a real Helm installation.
+The impersonation check requires suitable permission to impersonate the ServiceAccount. Verify that the DBaaS Operator can watch the CR, read the Secret, call the descriptor endpoint, register with Aggregator, and update CR status. **Helm rendering alone is not end-to-end validation.**
 
-Once the CRD and DBaaS Operator are available:
+Test deployment readiness, TLS, duplicate registrations, CR deletion/recreation, retries, and backwards compatibility.
 
-1. Install the PostgreSQL Helm chart with declarative registration enabled.
-2. Verify that the `PhysicalDatabase` CR was created.
-3. Verify that the DBaaS Operator calls the Adapter endpoint with Basic Auth.
-4. Verify that Aggregator registration succeeds.
-5. Verify that the DBaaS Operator updates CR status.
-
-Do not treat successful Helm rendering as proof of end-to-end registration.
-
-## 7. Implementation checklist
+## 9. Implementation checklist
 
 ### Adapter
 
-- [ ] Response structs match the contract.
-- [ ] Descriptor is prepared using real Adapter configuration.
-- [ ] GET route is registered.
-- [ ] Basic Auth uses existing Adapter credentials.
-- [ ] Valid request returns `200` and correct JSON.
-- [ ] Invalid credentials return `401`.
-- [ ] Unavailable required information is handled.
-- [ ] Legacy self-registration compatibility is addressed.
+- [ ] Locate the real Adapter configuration, server, and existing registration logic.
+- [ ] Implement the authenticated descriptor GET endpoint.
+- [ ] Return accurate engine-specific descriptor fields and error codes.
+- [ ] Disable legacy registration without disabling normal Adapter routes.
+- [ ] Keep shared registration-framework integration nil-safe.
+- [ ] Confirm the deployed image includes the changes.
 
-### Helm
+### Helm / RBAC
 
-- [ ] `PhysicalDatabase` CR template added.
-- [ ] Correct API group: `dbaas.netcracker.com/v1`.
-- [ ] Helm values added.
-- [ ] `values.schema.json` updated.
-- [ ] CR creation disabled by default.
-- [ ] Adapter address works with HTTP and HTTPS.
-- [ ] Credentials Secret is referenced correctly.
-- [ ] `helm lint` succeeds.
-- [ ] Enabled and disabled rendering tested.
-- [ ] Exactly one CR is generated per intended physical DB.
+- [ ] Detect `dbaas.netcracker.com/v1/PhysicalDatabase` using `.Capabilities.APIVersions.Has`.
+- [ ] Apply the same selection logic to the CR, Secret RBAC, and Adapter mode.
+- [ ] Render exactly one appropriately named `PhysicalDatabase` CR.
+- [ ] Reference the real Adapter Service address (HTTP/TLS) and Secret.
+- [ ] Read the real DBaaS Operator namespace and ServiceAccount from configuration.
+- [ ] Restrict Secret RBAC to least privilege.
+- [ ] Update values and JSON schema; remove unused manual mode flags.
+- [ ] Verify CRD-present and CRD-absent Helm renders.
 
-### DBaaS team dependencies
+### DBaaS integration
 
-- [ ] DBaaS team provides and installs the CRD.
-- [ ] DBaaS Operator watches the correct API group.
-- [ ] `operatorNamespace` value is confirmed.
-- [ ] Adapter descriptor contract is agreed.
-- [ ] Migration from legacy self-registration is coordinated.
-- [ ] End-to-end integration test succeeds.
+- [ ] DBaaS team installed CRD and configured Operator CR/status RBAC.
+- [ ] DBaaS Operator is ready before relying on declarative registration.
+- [ ] Credentials read, descriptor GET, Aggregator registration, status updates work.
+- [ ] Confirm CR deletion/finalizer and migration semantics.
+- [ ] Confirm legacy mode remains functional where the CRD is unavailable.
 
-## 8. Important design rules
+## 10. Non-negotiable design rules
 
-- **CRD ownership:** DBaaS team.
-- **CR creation:** Database Adapter team, through Helm.
-- **Adapter descriptor endpoint:** Database Adapter team.
-- **Registration reconciliation:** DBaaS Operator team.
-- **Aggregator behavior and role migration:** DBaaS components.
-- **Deleting the CR does not delete the registered physical database**; it stops declarative management.
-- **The design document is the source of truth** for CR fields, API contracts, and registration behavior.
-- Do not introduce an additional `PhysicalDatabase` controller into the database-specific operator.
+1. **DBaaS owns CRD and reconciliation; the database-specific integration owns its CR and Adapter endpoint.**
+2. **Do not assume database type, language, framework, Helm chart layout, port, TLS, or ServiceAccount.**
+3. **Use one coherent mode selector** for CR, Secret access, and legacy registration.
+4. **CRD availability is not Operator readiness**; coordinate rollout.
+5. **A Secret reference does not grant Kubernetes permissions**; provide/verify namespace RBAC.
+6. **Never have Operator-managed and Adapter-managed registration competing for the same physical database.**
+7. **Descriptor GET must not perform Aggregator registration.**
+8. **Deleting a CR must not delete the underlying databases.** Confirm actual Aggregator cleanup semantics.
+9. **Successful rendering is not proof of correct runtime behavior.**
+10. **Use the latest agreed DBaaS design for exact field validation, API versions, deletion, and role migration semantics.**
