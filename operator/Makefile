@@ -80,7 +80,7 @@ generate: controller-gen
 					paths="./api/patroni/v1" \
 					output:crd:artifacts:config=charts/patroni-core/crds/
 # renovate: datasource=go depName=sigs.k8s.io/controller-tools versioning=semver
-CONTROLLER_GEN_VERSION ?= v0.19.0
+CONTROLLER_GEN_VERSION ?= v0.22.0
 
 # Find or download controller-gen
 # download controller-gen if necessary

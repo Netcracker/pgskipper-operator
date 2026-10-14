@@ -21,7 +21,7 @@ jobs:
     steps:
       - name: Check if tag exists
         id: check_tag
-        uses: netcracker/qubership-workflow-hub/actions/tag-action@8c6dbeb901920bae9f40d7d7b646d8d9127e1ce7 # v2.4.0
+        uses: netcracker/qubership-workflow-hub/actions/tag-action@0eefd4976131d113c986281eed8bc642b6da303d # v2.8.1
         with:
           tag-name: '${{ inputs.release }}'
           ref: ${{ github.ref }}
@@ -81,7 +81,7 @@ jobs:
         run: |
           echo "IMAGE=${{ matrix.component.name }}" >> $GITHUB_ENV
       - name: Docker build
-        uses: netcracker/qubership-workflow-hub/actions/docker-action@8c6dbeb901920bae9f40d7d7b646d8d9127e1ce7 # v2.4.0
+        uses: netcracker/qubership-workflow-hub/actions/docker-action@0eefd4976131d113c986281eed8bc642b6da303d # v2.8.1
         with:
           ref: ${{ github.ref }}
           download-artifact: false
@@ -117,7 +117,7 @@ jobs:
 
       - name: "Chart release"
         id: update-versions
-        uses: netcracker/qubership-workflow-hub/actions/charts-values-update-action@8c6dbeb901920bae9f40d7d7b646d8d9127e1ce7 # v2.4.0
+        uses: netcracker/qubership-workflow-hub/actions/charts-values-update-action@0eefd4976131d113c986281eed8bc642b6da303d # v2.8.1
         with:
           release-version: ${{ inputs.release }}
           config-file: .github/charts-values-update-config.yaml
@@ -152,7 +152,7 @@ jobs:
           echo "IMAGE_VERSION=${IMAGE_VER}" >> $GITHUB_ENV
 
       - name: Docker build
-        uses: netcracker/qubership-workflow-hub/actions/docker-action@8c6dbeb901920bae9f40d7d7b646d8d9127e1ce7 # v2.4.0
+        uses: netcracker/qubership-workflow-hub/actions/docker-action@0eefd4976131d113c986281eed8bc642b6da303d # v2.8.1
         with:
           ref: release-${{ inputs.release }}
           download-artifact: false
@@ -183,7 +183,7 @@ jobs:
         run: sleep 10
 
       - name: "Release-drafter"
-        uses: netcracker/release-drafter@v1.0.1
+        uses: netcracker/release-drafter@130c08399304912ffe90e9604e4328f2fdcd7619 # v1.0.1
         with:
           config-name: release-drafter-config.yml
           publish: true
@@ -200,7 +200,7 @@ jobs:
           artifact-ids: ${{ needs.chart-release.outputs.charts-artifact }}
 
       - name: "Upload Assets"
-        uses: netcracker/qubership-workflow-hub/actions/assets-action@8c6dbeb901920bae9f40d7d7b646d8d9127e1ce7 # v2.4.0
+        uses: netcracker/qubership-workflow-hub/actions/assets-action@0eefd4976131d113c986281eed8bc642b6da303d # v2.8.1
         with:
           tag: ${{ inputs.release }}
           item-path: "./*.tgz"

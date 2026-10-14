@@ -83,7 +83,7 @@ jobs:
           echo "platforms=$(jq -c '.platforms' .github/build-config.cfg)" >> "$GITHUB_OUTPUT"
 
       - name: Create tags for images
-        uses: netcracker/qubership-workflow-hub/actions/metadata-action@8d542a426ce561c7dce745f6b9cee068d1d7e101 # v2.0.10
+        uses: netcracker/qubership-workflow-hub/actions/metadata-action@0eefd4976131d113c986281eed8bc642b6da303d # v2.8.1
         id: meta
         with:
           default-template: "{{ref-name}}"

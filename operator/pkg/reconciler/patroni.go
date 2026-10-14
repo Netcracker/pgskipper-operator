@@ -286,23 +286,11 @@ func (r *PatroniReconciler) Reconcile() error {
 				return err
 			}
 
-			// compare locale versions and run fix for collation in postres
-			updatedMasterPod, _ := r.helper.GetPodsByLabel(r.cluster.PatroniMasterSelectors)
-			newLocaleVersion := r.helper.GetLocaleVersionFromPod(updatedMasterPod.Items[0].Name)
-			pgVersion, err := strconv.ParseInt(r.helper.GetPGVersionFromPod(updatedMasterPod.Items[0].Name), 10, 64)
-			if err != nil {
-				logger.Error("cannot parse pg version")
-				return err
-			}
-			if localeVersion != newLocaleVersion || cr.Spec.Patroni.ForceCollationVersionUpgrade {
-				logger.Warn(fmt.Sprintf("New os locale version is %s, but previous was %s. A collation version mismatch occurred in databases. Run locale fix script", newLocaleVersion, localeVersion))
-				err = r.runLocaleFixScript(pgVersion, newLocaleVersion, cr.Spec.Patroni.ForceCollationVersionUpgrade)
-				if err != nil {
+			if !isStandbyClusterPresent {
+				if err := r.performLocaleUpgrade(cr, localeVersion); err != nil {
 					return err
 				}
-				r.helper.StoreDataToCM("locale-version", newLocaleVersion)
 			}
-
 		} else {
 			logger.Error("Patroni cluster is not healthy. Skip Patroni update")
 			return err
@@ -1093,6 +1081,26 @@ func (r *PatroniReconciler) preparePgbackRest(cr *v1.PatroniCore, patroniConfigM
 				return err
 			}
 		}
+	}
+	return nil
+}
+
+func (r *PatroniReconciler) performLocaleUpgrade(cr *v1.PatroniCore, localeVersion string) error {
+	// compare locale versions and run fix for collation in postres
+	updatedMasterPod, _ := r.helper.GetPodsByLabel(r.cluster.PatroniMasterSelectors)
+	newLocaleVersion := r.helper.GetLocaleVersionFromPod(updatedMasterPod.Items[0].Name)
+	pgVersion, err := strconv.ParseInt(r.helper.GetPGVersionFromPod(updatedMasterPod.Items[0].Name), 10, 64)
+	if err != nil {
+		logger.Error("cannot parse pg version")
+		return err
+	}
+	if localeVersion != newLocaleVersion || cr.Spec.Patroni.ForceCollationVersionUpgrade {
+		logger.Warn(fmt.Sprintf("New os locale version is %s, but previous was %s. A collation version mismatch occurred in databases. Run locale fix script", newLocaleVersion, localeVersion))
+		err = r.runLocaleFixScript(pgVersion, newLocaleVersion, cr.Spec.Patroni.ForceCollationVersionUpgrade)
+		if err != nil {
+			return err
+		}
+		r.helper.StoreDataToCM("locale-version", newLocaleVersion)
 	}
 	return nil
 }

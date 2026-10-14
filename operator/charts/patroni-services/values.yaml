@@ -390,7 +390,7 @@ queryExporter:
 
 powaUI:
   install: false
-  dockerImage: docker.io/powateam/powa-web:5.0.2@sha256:c65ee09043337c26d3ff80d04becaf8be5728253b79445e527f5b840524becf8
+  dockerImage: docker.io/powateam/powa-web:5.3.0@sha256:b001210bf21d838ff4865cf9e7f8be0eadeb23aa87a274a9e6285ab653718e66
   #  podLabels: {}
 
   ingress:
@@ -425,7 +425,7 @@ replicationController:
 
 connectionPooler:
   install: false
-  dockerImage: docker.io/edoburu/pgbouncer:v1.25.1-p0@sha256:4a8371e79d6627e74f553d0aaa8e4c5ace20e30034fb296e569b71c89c99e108
+  dockerImage: docker.io/edoburu/pgbouncer:v1.25.2-p0@sha256:7d7a27d9e90985cab5cf42256f5c13a3120baa4b055b69df37beb272b89b2340
   replicas: 1
   config:
     databases:

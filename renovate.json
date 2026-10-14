@@ -19,6 +19,12 @@
       "groupName": "qubership-test-pipelines"
     },
     {
+      "description": ["Skip our own images in Helm chart values: the release and test pipelines rewrite their tags and cannot handle pinned digests"],
+      "matchManagers": ["helm-values"],
+      "matchPackageNames": ["ghcr.io/netcracker/**"],
+      "enabled": false
+    },
+    {
       "description": ["Automerge non-major updates after all checks pass; major updates still need a manual review"],
       "matchUpdateTypes": ["minor", "patch", "pin", "digest", "pinDigest"],
       "automerge": true
