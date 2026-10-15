@@ -34,6 +34,7 @@ import (
 	"github.com/Netcracker/qubership-dbaas-adapter-core/pkg/service"
 	coreUtils "github.com/Netcracker/qubership-dbaas-adapter-core/pkg/utils"
 	fiber "github.com/gofiber/fiber/v2"
+	"github.com/gofiber/fiber/v2/middleware/basicauth"
 	"go.uber.org/zap"
 )
 
@@ -143,6 +144,12 @@ var (
 		util.GetEnvInt("DBAAS_AGGREGATOR_REGISTRATION_RETRY_DELAY_MS", 5000), // default 5 sec
 		"Force physical database registration retry delay between attempts in milliseconds")
 
+	declarativeRegistrationEnabled = flag.Bool(
+		"declarative_registration_enabled",
+		util.GetEnvBool("DBAAS_DECLARATIVE_REGISTRATION_ENABLED", false),
+		"Enable operator-managed physical database registration",
+	)
+
 	supports = dao.SupportsBase{
 		Users:             true,
 		Settings:          true,
@@ -165,27 +172,34 @@ func main() {
 	logger.Debug("Adapter started")
 	clusterAdapter := cluster.NewAdapter(*pgHost, *pgPort, *pgUser, *pgPass, *pgDatabase, *pgSsl)
 
-	basicRegistrationAuth := dao.BasicAuth{
-		Username: *dbaasAggregatorRegistrationUsername,
-		Password: *dbaasAggregatorRegistrationPassword,
-	}
+	var dbaasClient *dbaas.Client
 
-	dbaasClient, err := dbaas.NewDbaasClient(*dbaasAggregatorRegistrationAddress, &basicRegistrationAuth, nil)
-
-	if dbaasClient == nil {
-		panic(fmt.Errorf("failed to establish connection to DBaaS aggregator, err: %v", err))
-	}
-
-	if err != nil {
-		logger.Error(fmt.Sprintf("Failed to get DBaaS aggregator version, err %v. Setting default API version", err))
-	}
-
-	//Getting dbaas-adpater api version
-	version, _ := dbaasClient.GetVersion()
-	if version == "v3" {
+	if *declarativeRegistrationEnabled {
 		apiVersion = "v2"
+		logger.Info("Declarative registration enabled, skipping Aggregator initialization")
 	} else {
-		apiVersion = "v1"
+		basicRegistrationAuth := dao.BasicAuth{
+			Username: *dbaasAggregatorRegistrationUsername,
+			Password: *dbaasAggregatorRegistrationPassword,
+		}
+		var err error
+		dbaasClient, err = dbaas.NewDbaasClient(*dbaasAggregatorRegistrationAddress, &basicRegistrationAuth, nil)
+
+		if dbaasClient == nil {
+			panic(fmt.Errorf("failed to establish connection to DBaaS aggregator, err: %v", err))
+		}
+
+		if err != nil {
+			logger.Error(fmt.Sprintf("Failed to get DBaaS aggregator version, err %v. Setting default API version", err))
+		}
+
+		//Getting dbaas-adpater api version
+		version, _ := dbaasClient.GetVersion()
+		if version == "v3" {
+			apiVersion = "v2"
+		} else {
+			apiVersion = "v1"
+		}
 	}
 	logger.Info(fmt.Sprintf("API version obtained: %s", apiVersion))
 
@@ -247,14 +261,12 @@ func main() {
 		logger.Info(fmt.Sprintf("replacing self address with https, %s", *selfAddress))
 	}
 	logger.Info(fmt.Sprintf("self address set for registering in aggregator, %s", *selfAddress))
+	labels := ReadLabelsFile()
 	log.Fatal(fiber2.RunFiberServer(*servePort, func(app *fiber.App, ctx context.Context) error {
-		fiber2.BuildFiberDBaaSAdapterHandlers(
-			app,
-			*serveUser,
-			*servePass,
-			appPath,
-			administrationService,
-			service.NewPhysicalRegistrationService(
+		var physicalService *service.PhysicalDatabaseRegistrationService
+
+		if !*declarativeRegistrationEnabled {
+			physicalService = service.NewPhysicalRegistrationService(
 				appName,
 				logger,
 				*phydbid,
@@ -263,24 +275,41 @@ func main() {
 					Username: *serveUser,
 					Password: *servePass,
 				},
-				ReadLabelsFile(), //labels
+				labels,
 				dbaasClient,
 				*registrationFixedDelay,
 				*registrationRetryTime,
 				*registrationRetryDelay,
 				administrationService,
 				ctx,
-			),
+			)
+		}
+		fiber2.BuildFiberDBaaSAdapterHandlers(
+			app,
+			*serveUser,
+			*servePass,
+			appPath,
+			administrationService,
+			physicalService,
 			backupAdminServiceImpl,
 			supports.ToMap(),
 			logger,
 			false,
-			"")
+			"",
+		)
+
+		operatorAuth := basicauth.New(basicauth.Config{
+			Users: map[string]string{
+				*serveUser: *servePass,
+			},
+		})
 
 		prefix := fmt.Sprintf("/api/%s/dbaas/adapter/postgresql/databases/", apiVersion)
 		app.Get(prefix+":dbName/info", dbAdminImpl.(*basic.ServiceAdapter).GetDatabaseOwnerHandler())
 		app.Put(prefix+":dbName/settings", dbAdminImpl.(*basic.ServiceAdapter).UpdatePostgreSQLSettingsHandler())
 
+		app.Get("/api/v2/adapter/physical_database", operatorAuth,
+			dbAdminImpl.(*basic.ServiceAdapter).GetPhysicalDatabaseHandler(*phydbid, labels, *readOnlyHost))
 		app.Get("/api/version", func(c *fiber.Ctx) error {
 			return c.SendString(apiVersion)
 		})

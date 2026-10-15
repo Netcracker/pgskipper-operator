@@ -74,6 +74,33 @@ func (sa ServiceAdapter) GetDatabaseOwnerHandler() func(c *fiber.Ctx) error {
 	}
 }
 
+func (sa ServiceAdapter) GetPhysicalDatabaseHandler(physicalDatabaseID string, labels map[string]string, roHost string) func(c *fiber.Ctx) error {
+	// Pre-build the response at startup since all values are immutable
+	response := PhysicalDatabaseInfo{
+		PhysicalDatabaseID: physicalDatabaseID,
+		Type:               "postgresql",
+		Labels:             labels,
+		APIVersions: APIVersionsInfo{
+			Specs: []APIVersionSpec{
+				{
+					SpecRootURL:     "/api",
+					Major:           2,
+					Minor:           1,
+					SupportedMajors: []int{2},
+				},
+			},
+		},
+		Features:       sa.features,
+		SupportedRoles: sa.roles,
+		ReadOnlyHost:   roHost,
+	}
+
+	return func(c *fiber.Ctx) error {
+		sa.log.Info("Received request to get physical database info")
+		return c.JSON(response)
+	}
+}
+
 func sendInvalidParameterResponse(c *fiber.Ctx, paramName string, paramValue string, pattern string) error {
 	return c.Status(400).SendString(fmt.Sprintf("Invalid '%s' param provided: %s. '%s' param must comply to the pattern %s", paramName, paramValue, paramName, pattern))
 }

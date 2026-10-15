@@ -1,0 +1,26 @@
+{{- if and .Values.dbaas.install (.Capabilities.APIVersions.Has "dbaas.netcracker.com/v1/PhysicalDatabase") }}
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: dbaas-operator-credentials-reader
+  namespace: {{ .Release.Namespace }}
+rules:
+  - apiGroups: [""]
+    resources: ["secrets"]
+    resourceNames: ["dbaas-adapter-credentials"]
+    verbs: ["get"]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: dbaas-operator-credentials-reader
+  namespace: {{ .Release.Namespace }}
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: Role
+  name: dbaas-operator-credentials-reader
+subjects:
+  - kind: ServiceAccount
+    name: dbaas-operator
+    namespace: {{ required "DBaaS operator namespace is required" .Values.dbaas.declarativeRegistration.operatorNamespace }}
+{{- end }}
