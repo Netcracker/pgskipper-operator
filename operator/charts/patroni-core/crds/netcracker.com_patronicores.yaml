@@ -42,6 +42,8 @@ spec:
                 type: boolean
               initDbParams:
                 type: string
+              useMigrationPvc:
+                type: boolean
             type: object
           metadata:
             type: object
