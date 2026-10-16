@@ -190,14 +190,6 @@ func (r *PostgresServiceReconciler) Reconcile(ctx context.Context, request ctrl.
 		return reconcile.Result{}, nil
 	}
 
-	// Update secret annotations
-	if cr.Spec.ExternalDataBase == nil {
-		err = credentials.UpdateHelmDeployments(&r.helper.ResourceManager)
-		if err != nil {
-			return reconcile.Result{}, nil
-		}
-	}
-
 	if len(cr.RunTestsTime) > 0 {
 		r.logger.Info("runTestsOnly : true")
 		if err := r.createTestsPods(cr); err != nil {
@@ -337,9 +329,16 @@ func (r *PostgresServiceReconciler) reconcilePostgresServiceCluster(cr *qubershi
 		}
 	}
 
-	// reconcile SiteManager
+	// reconcile SiteManager before the DBaaS adapter stability wait: the adapter may connect through the external service
 	if cr.Spec.SiteManager != nil {
 		if err := r.reconcileSiteManager(cr); err != nil {
+			return err
+		}
+	}
+
+	// Update secret annotations after the external service exists, so the DBaaS adapter can become Ready
+	if cr.Spec.ExternalDataBase == nil {
+		if err := credentials.UpdateHelmDeployments(&r.helper.ResourceManager); err != nil {
 			return err
 		}
 	}
