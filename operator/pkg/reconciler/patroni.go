@@ -1159,7 +1159,8 @@ func ensureMaxSlotWalKeepSize(cr *v1.PatroniCore) {
 		return
 	}
 
-	twentyPercentBytes := qty.Value() / 5
+	twentyPercent := opUtil.PercentOf(qty, 20)
+	twentyPercentBytes := twentyPercent.Value()
 	if twentyPercentBytes <= 0 {
 		logger.Warn("Computed max_slot_wal_keep_size from storage size is non-positive; skipping")
 		return

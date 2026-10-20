@@ -362,7 +362,7 @@ func (u *Upgrade) ProceedUpgrade(cr *v1.PatroniCore, cluster *v1.PatroniClusterS
 		return err
 	}
 
-	command = "pg_dumpall -v -U postgres -w --file=/tmp/test_db_dumpall.custom --schema-only"
+	command = "set -o pipefail; pg_dumpall -v -U postgres -w --file=/tmp/test_db_dumpall.custom --schema-only 2>&1 | tail -n 100 >&2"
 	_, _, err = u.helper.ExecCmdOnPatroniPod(masterPodName, namespace, command)
 	if err != nil {
 		logger.Error("Can't execute pg_dumpall command, failing major upgrade", zap.Error(err))

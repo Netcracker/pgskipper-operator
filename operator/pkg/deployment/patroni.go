@@ -163,7 +163,7 @@ func NewPatroniStatefulset(cr *patroniv1.PatroniCore, deploymentIdx int, cluster
 								},
 							},
 						},
-						util.GetTmpVolume(),
+						postgresTmpVolume(patroniSpec.Resources),
 						{
 							Name: "patroni-runtime",
 							VolumeSource: corev1.VolumeSource{
@@ -412,6 +412,23 @@ func NewPatroniStatefulset(cr *patroniv1.PatroniCore, deploymentIdx int, cluster
 		}
 	}
 	return stSet
+}
+
+func postgresTmpVolume(resources *corev1.ResourceRequirements) corev1.Volume {
+	volume := util.GetTmpVolume()
+	volume.EmptyDir.Medium = corev1.StorageMediumMemory
+	if resources == nil {
+		return volume
+	}
+	mem, ok := resources.Limits[corev1.ResourceMemory]
+	if !ok || mem.IsZero() {
+		return volume
+	}
+	limit := util.PercentOf(mem, 5)
+	if volume.EmptyDir.SizeLimit == nil || limit.Cmp(*volume.EmptyDir.SizeLimit) > 0 {
+		volume.EmptyDir.SizeLimit = &limit
+	}
+	return volume
 }
 
 func GetVolume(pvcName string) corev1.Volume {

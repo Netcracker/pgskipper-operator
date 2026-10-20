@@ -426,6 +426,11 @@ func GetTmpVolume() corev1.Volume {
 	}
 }
 
+// PercentOf returns the given percentage of q, rounded down to a whole byte.
+func PercentOf(q resource.Quantity, percent int64) resource.Quantity {
+	return *resource.NewQuantity(q.Value()*percent/100, q.Format)
+}
+
 func GetTmpVolumeMount() corev1.VolumeMount {
 	return corev1.VolumeMount{
 		Name:      "tmp",
