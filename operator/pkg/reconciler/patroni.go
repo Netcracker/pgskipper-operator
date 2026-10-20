@@ -286,10 +286,8 @@ func (r *PatroniReconciler) Reconcile() error {
 				return err
 			}
 
-			if !isStandbyClusterPresent {
-				if err := r.performLocaleUpgrade(cr, localeVersion); err != nil {
-					return err
-				}
+			if err := r.performLocaleUpgrade(cr, localeVersion); err != nil {
+				return err
 			}
 		} else {
 			logger.Error("Patroni cluster is not healthy. Skip Patroni update")
@@ -1086,10 +1084,26 @@ func (r *PatroniReconciler) preparePgbackRest(cr *v1.PatroniCore, patroniConfigM
 }
 
 func (r *PatroniReconciler) performLocaleUpgrade(cr *v1.PatroniCore, localeVersion string) error {
-	// compare locale versions and run fix for collation in postres
-	updatedMasterPod, _ := r.helper.GetPodsByLabel(r.cluster.PatroniMasterSelectors)
-	newLocaleVersion := r.helper.GetLocaleVersionFromPod(updatedMasterPod.Items[0].Name)
-	pgVersion, err := strconv.ParseInt(r.helper.GetPGVersionFromPod(updatedMasterPod.Items[0].Name), 10, 64)
+	// Compare locale versions and run the collation fix. Standby clusters only record the current version.
+	updatedMasterPod, err := r.helper.GetPodsByLabel(r.cluster.PatroniMasterSelectors)
+	if err != nil || len(updatedMasterPod.Items) == 0 {
+		logger.Error("Cannot read master pod for locale version update", zap.Error(err))
+		if err != nil {
+			return err
+		}
+		return fmt.Errorf("master pod is not available, cannot update locale version")
+	}
+	podName := updatedMasterPod.Items[0].Name
+	newLocaleVersion := r.helper.GetLocaleVersionFromPod(podName)
+	if patroni.IsStandbyClusterConfigurationExist(cr) {
+		if newLocaleVersion != localeVersion {
+			logger.Info(fmt.Sprintf("Updating locale version in deployment-info from %s to %s", localeVersion, newLocaleVersion))
+			r.helper.StoreDataToCM("locale-version", newLocaleVersion)
+		}
+		return nil
+	}
+
+	pgVersion, err := strconv.ParseInt(r.helper.GetPGVersionFromPod(podName), 10, 64)
 	if err != nil {
 		logger.Error("cannot parse pg version")
 		return err
