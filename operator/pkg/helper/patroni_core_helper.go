@@ -388,7 +388,7 @@ func UpdatePreloadLibraries(cr *qubershipv1.PatroniCore, preloadLibraries []stri
 }
 
 // Execute a command in a Patroni pod's specific container
-func (ph *PatroniHelper) ExecCmdOnPatroniPod(podName string, namespace string, command string) (string, string, error) {
+func (ph *PatroniHelper) ExecCmdOnPatroniPod(podName string, namespace string, command string, shell ...string) (string, string, error) {
 	var container string
 	if strings.Contains(podName, "pg-major-upgrade-check") {
 		container = "pg-upgrade-check"
@@ -402,13 +402,17 @@ func (ph *PatroniHelper) ExecCmdOnPatroniPod(podName string, namespace string, c
 		}
 		container = util.GetContainerNameForPatroniPod(podName, clusterName)
 	}
-	return ph.ExecCmdOnPod(podName, namespace, container, command)
+	return ph.ExecCmdOnPod(podName, namespace, container, command, shell...)
 }
 
-// Execute a command in any pod's container
-func (ph *PatroniHelper) ExecCmdOnPod(podName string, namespace string, container string, command string) (string, string, error) {
+// Execute a command in any pod's container. Uses /bin/sh unless shell is provided.
+func (ph *PatroniHelper) ExecCmdOnPod(podName string, namespace string, container string, command string, shell ...string) (string, string, error) {
 	client := ph.kubeClientSet
-	logger.Debug(fmt.Sprintf("Executing shell command: %s on pod %s, container %s", command, podName, container))
+	interpreter := "/bin/sh"
+	if len(shell) > 0 && shell[0] != "" {
+		interpreter = shell[0]
+	}
+	logger.Debug(fmt.Sprintf("Executing shell command: %s on pod %s with shell %s, container %s", command, podName, interpreter, container))
 
 	config, err := rest.InClusterConfig()
 	if err != nil {
@@ -416,7 +420,7 @@ func (ph *PatroniHelper) ExecCmdOnPod(podName string, namespace string, containe
 	}
 
 	execParams := &v1.PodExecOptions{
-		Command:   []string{"/bin/sh", "-c", command},
+		Command:   []string{interpreter, "-c", command},
 		Container: container,
 		Stdin:     false,
 		Stdout:    true,
