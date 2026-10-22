@@ -480,6 +480,7 @@ This sections describes all possible deploy parameters for PostgreSQL DBaaS Adap
 | Parameter                                   | Type              | Mandatory | Default value                           | Description                                                                                                                                                          |
 |---------------------------------------------|-------------------|-----------|-----------------------------------------|----------------------------------------------------------------------------------------------------------------------------------------------------------------------|
 | dbaas.install                               | bool              | no        | true                                    | Indicates whether to install PostgreSQL DBaaS Adapter component or not.                                                                                              |
+| dbaas.declarativeRegistration.operatorNamespace | string | no | dbaas | Namespace where the DBaaS Operator runs (must match its configured namespace). Used when the `PhysicalDatabase` CRD is available. |
 | dbaas.resources.requests.memory             | string            | no        | 64Mi                                    | Specifies memory requests.                                                                                                                                           |
 | dbaas.resources.requests.cpu                | string            | no        | 200m                                    | Specifies cpu requests.                                                                                                                                              |
 | dbaas.resources.limits.memory               | string            | no        | 64Mi                                    | Specifies memory limits.                                                                                                                                             |
@@ -814,6 +815,33 @@ In restricted environments where the deployment user does **not** have cluster-w
 
 For pure installation, please, follow [Quick Start Guide](quickstart.md).
 
+### Declarative DBaaS physical database registration
+
+When the DBaaS team has installed the `PhysicalDatabase` CRD (`physicaldatabases.dbaas.netcracker.com`), the `patroni-services` Helm chart automatically enables declarative registration at render time. The chart creates a `PhysicalDatabase` custom resource and grants the DBaaS Operator access to the Adapter credentials Secret. The DBaaS Operator then registers the database with Aggregator; the Adapter's legacy self-registration is disabled.
+
+To configure it, set the DBaaS Operator namespace in the **patroni-services** Helm values:
+
+```yaml
+dbaas:
+  install: true
+  declarativeRegistration:
+    operatorNamespace: dbaas
+```
+
+`operatorNamespace` must match the actual DBaaS Operator namespace. The chart assumes the DBaaS Operator ServiceAccount is named `dbaas-operator`; if your environment uses another name, update the chart's RoleBinding accordingly.
+
+**No `declarativeRegistration.enabled` parameter is needed.** If Helm does not detect the CRD during rendering, no `PhysicalDatabase` CR is created and the Adapter continues using legacy self-registration. If the CRD is installed after the release, upgrade/re-render the chart to switch modes. Ensure the DBaaS Operator is deployed and ready before relying on declarative registration: the existence of a CRD alone does not mean registration will complete.
+
+Verify after installation:
+
+```bash
+kubectl get crd physicaldatabases.dbaas.netcracker.com
+kubectl get physicaldatabases -A
+kubectl get physicaldatabase <cr-name> -n <postgres-namespace> -o yaml
+```
+
+Check the CR `status` to confirm that the DBaaS Operator has reconciled it; CR creation alone does not confirm registration in Aggregator.
+
 ## On-prem
 
 ### HA scheme
@@ -915,4 +943,3 @@ For more information on how to do the Major Upgrade of PostgreSQL, please, follo
       auth_query: 'SELECT p_user, p_password FROM public.lookup($1)'
       ignore_startup_parameters: 'options,extra_float_digits'
 ```
-

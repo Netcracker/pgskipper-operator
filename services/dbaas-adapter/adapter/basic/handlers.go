@@ -90,8 +90,8 @@ func (sa ServiceAdapter) GetPhysicalDatabaseHandler(physicalDatabaseID string, l
 				},
 			},
 		},
-		Features:       sa.features,
-		SupportedRoles: sa.roles,
+		Features:       sa.GetFeatures(),
+		SupportedRoles: sa.GetSupportedRoles(),
 		ReadOnlyHost:   roHost,
 	}
 
