@@ -3,7 +3,7 @@ APScheduler==3.11.3
 boto3==1.43.115
 cachetools==7.2.4
 certifi==2026.10.19
-chardet==7.6.0
+chardet==7.7.0
 charset-normalizer==2.1.1
 colorama==0.4.6
 croniter==6.2.4
