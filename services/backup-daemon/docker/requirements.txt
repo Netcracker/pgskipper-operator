@@ -1,7 +1,7 @@
 aniso8601==10.0.1
 APScheduler==3.11.3
 boto3==1.43.115
-cachetools==7.2.3
+cachetools==7.2.4
 certifi==2026.10.19
 chardet==7.6.0
 charset-normalizer==2.1.1
