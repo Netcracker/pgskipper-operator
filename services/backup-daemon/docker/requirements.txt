@@ -1,6 +1,6 @@
 aniso8601==10.0.1
 APScheduler==3.11.3
-boto3==1.43.114
+boto3==1.43.115
 cachetools==7.2.3
 certifi==2026.10.19
 chardet==7.6.0
