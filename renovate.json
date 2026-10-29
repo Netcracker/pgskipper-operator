@@ -25,6 +25,13 @@
       "enabled": false
     },
     {
+      "description": ["Skip standalone digest updates of k8s.io/kube-openapi: k8s.io/apimachinery pins a matching revision, and a newer one can switch to an incompatible structured-merge-diff major version and break the build. The revision still moves when the Kubernetes modules are bumped."],
+      "matchManagers": ["gomod"],
+      "matchPackageNames": ["k8s.io/kube-openapi"],
+      "matchUpdateTypes": ["digest"],
+      "enabled": false
+    },
+    {
       "description": ["Automerge non-major updates after all checks pass; major updates still need a manual review"],
       "matchUpdateTypes": ["minor", "patch", "pin", "digest", "pinDigest"],
       "automerge": true
