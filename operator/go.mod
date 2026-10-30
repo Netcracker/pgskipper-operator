@@ -23,7 +23,7 @@ require (
 	k8s.io/code-generator v0.37.1
 	k8s.io/gengo v0.0.0-20260408192533-25e2208e0dc3
 	k8s.io/kube-openapi v0.0.0-20260721132016-d427ff9ee9ad
-	k8s.io/utils v0.0.0-20260707023825-cf1189d6abe3
+	k8s.io/utils v0.0.0-20261023123148-ca04ba58ecab
 	sigs.k8s.io/controller-runtime v0.25.2
 )
 
