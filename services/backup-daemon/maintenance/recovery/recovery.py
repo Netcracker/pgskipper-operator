@@ -329,14 +329,14 @@ def perform_bootstrap_recovery(oc_client, oc_orch, pg, dcs_storage,
     cleanup_pg_pod_data_directory(oc_client, recovery_pod_id, preserve_old_files)
 
     # wait while database will complete bootstrap and exit from recovery mode
-    log.info("Wait while patroni pod: {} will complete bootstrap from backup.".format(recovery_pod_id))
-    oc_orch.wait_for_one_of_records_in_logs_since(
-        recovery_pod_id,
-        ["no action. I am ({}), the leader with the lock".format(recovery_pod_id)],  # prefix can be "INFO:" or  "[INFO][source=patroni]"
-        time.time(),
-        "Bootstrap from backup daemon is in progress.",
-        [" bootstrap in progress", " waiting for end of recovery after bootstrap"]
-    )
+    # log.info("Wait while patroni pod: {} will complete bootstrap from backup.".format(recovery_pod_id))
+    # oc_orch.wait_for_one_of_records_in_logs_since(
+    #     recovery_pod_id,
+    #     ["no action. I am ({}), the leader with the lock".format(recovery_pod_id)],  # prefix can be "INFO:" or  "[INFO][source=patroni]"
+    #     time.time(),
+    #     "Bootstrap from backup daemon is in progress.",
+    #     [" bootstrap in progress", " waiting for end of recovery after bootstrap"]
+    # )
     log.info("Wait while postgres will exit from recovery mode.")
     pg.wait_pg_recovery_complete(recovery_pod_id)
 
