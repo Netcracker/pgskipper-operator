@@ -385,7 +385,7 @@
         },
         "useSlots": {
           "type": "boolean",
-          "default": true
+          "default": false
         },
         "createEndpoint": {
           "type": "boolean"
