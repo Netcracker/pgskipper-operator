@@ -270,7 +270,53 @@ func (u *Upgrade) applyCleanerInitContainer(leaderName string, patroniSpec *v1.P
 	return nil
 }
 
-func (u *Upgrade) pgUpgradeCheckFailed(upgradePod *corev1.Pod, cluster *v1.PatroniClusterSettings, cr *v1.PatroniCore) (bool, error) {
+func (u *Upgrade) restoreOldPatroniImage(cr *v1.PatroniCore, cluster *v1.PatroniClusterSettings, oldImage string) error {
+	if oldImage == "" {
+		return fmt.Errorf("previous PostgreSQL image is unknown")
+	}
+
+	ctx := context.Background()
+
+	current := &v1.PatroniCore{}
+	if err := u.client.Get(ctx, client.ObjectKeyFromObject(cr), current); err != nil {
+		return err
+	}
+
+	before := current.DeepCopy()
+	current.Spec.Patroni.DockerImage = oldImage
+
+	if err := u.client.Patch(ctx, current, client.MergeFrom(before)); err != nil {
+		return fmt.Errorf("cannot restore PostgreSQL image in CR: %w", err)
+	}
+
+	cr.Spec.Patroni.DockerImage = oldImage
+
+	statefulsets, err := u.helper.GetStatefulsetByNameRegExp(
+		fmt.Sprintf("pg-%s-node", cluster.ClusterName),
+	)
+	if err != nil {
+		return err
+	}
+	if len(statefulsets) == 0 {
+		return fmt.Errorf("no Patroni StatefulSets found")
+	}
+
+	for _, sts := range statefulsets {
+		if len(sts.Spec.Template.Spec.Containers) == 0 {
+			return fmt.Errorf("StatefulSet %s has no containers", sts.Name)
+		}
+
+		sts.Spec.Template.Spec.Containers[0].Image = oldImage
+
+		if err := u.client.Update(ctx, sts); err != nil {
+			return fmt.Errorf("cannot restore StatefulSet %s: %w", sts.Name, err)
+		}
+	}
+
+	return nil
+}
+
+func (u *Upgrade) pgUpgradeCheckFailed(upgradePod *corev1.Pod, cluster *v1.PatroniClusterSettings, cr *v1.PatroniCore, oldImage string) (bool, error) {
 	exitCodes, err := opUtil.GetPodExitCodes(upgradePod)
 	if err != nil {
 		return false, err
@@ -279,23 +325,37 @@ func (u *Upgrade) pgUpgradeCheckFailed(upgradePod *corev1.Pod, cluster *v1.Patro
 	if !ok {
 		return false, nil
 	}
-	if code == 13 {
-		logger.Error("Can't upgrade Patroni cluster. Rollback.")
-		if err = u.helper.UpdatePatroniReplicas(1, cluster.ClusterName); err != nil {
-			return false, err
-		}
-		if err = u.ScalePowaDeployment(1); err != nil {
-			return false, err
-		}
-		if err = opUtil.WaitForPatroni(cr, cluster.PatroniMasterSelectors, cluster.PatroniReplicasSelector); err != nil {
-			return false, err
-		}
-		if err = u.RestoreRODatabases(cluster.PgHost, cluster.ClusterName); err != nil {
-			return false, err
-		}
-		return true, nil
+	if code != 13 && code != 14 {
+		return false, fmt.Errorf(
+			"upgrade failed with exit code %d; automatic rollback is unsafe",
+			code,
+		)
 	}
-	return false, nil
+
+	logger.Warn("Upgrade failed before linking. Rolling back PostgreSQL")
+
+	// Disable further upgrade attempts.
+	if err := u.UpdateUpgradeToDone(); err != nil {
+		return false, err
+	}
+	// Restore the previous PostgreSQL image first.
+	if err := u.restoreOldPatroniImage(cr, cluster, oldImage); err != nil {
+		return false, err
+	}
+	if err := u.helper.UpdatePatroniReplicas(1, cluster.ClusterName); err != nil {
+		return false, err
+	}
+	if err := u.ScalePowaDeployment(1); err != nil {
+		return false, err
+	}
+	if err := opUtil.WaitForPatroni(cr, cluster.PatroniMasterSelectors, cluster.PatroniReplicasSelector); err != nil {
+		return false, err
+	}
+	if err := u.RestoreRODatabases(cluster.PgHost, cluster.ClusterName); err != nil {
+		return false, err
+	}
+
+	return true, nil
 }
 
 func (u *Upgrade) CheckForPreparedTransactions(pgHost string) error {
@@ -451,8 +511,12 @@ func (u *Upgrade) ProceedUpgrade(cr *v1.PatroniCore, cluster *v1.PatroniClusterS
 	if err != nil {
 		return err
 	}
+	if len(masterPod.Items[0].Spec.Containers) == 0 {
+		return fmt.Errorf("Patroni pod has no containers")
+	}
+	oldImage := masterPod.Items[0].Spec.Containers[0].Image
 	if state != "Succeeded" {
-		failed, checkErr := u.pgUpgradeCheckFailed(upgradePod, cluster, cr)
+		failed, checkErr := u.pgUpgradeCheckFailed(upgradePod, cluster, cr, oldImage)
 		if failed {
 			return errors.New("postgresql major upgrade failed, please, check logs of upgrade pod")
 		}

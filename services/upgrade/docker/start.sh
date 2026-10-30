@@ -148,13 +148,22 @@ function handle_master_upgrade() {
 
     EXIT_CODE=$?
     if [[ "$EXIT_CODE" -ne 0 ]]; then
-        echo "[$(date +%Y-%m-%dT%H:%M:%S)] Error! Can not proceed, because upgrade failed, exiting"
-        ls -al /var/lib/pgsql/data
-        echo "[$(date +%Y-%m-%dT%H:%M:%S)] Printing all of the logs:"
-        awk '{print}' /var/lib/pgsql/data/*.log
-#        cat pg_upgrade_server.log
-        exit 1
-    fi
+        echo "[$(date +%Y-%m-%dT%H:%M:%S)] Upgrade failed"
+
+        LOG_DIR="$MIGRATION_PATH/tmp/pg/pg_upgrade_output.d"
+        find "$LOG_DIR" -type f -name 'pg_upgrade_dump_*.log' -exec tail -n 100 {} \;
+
+        OLD_CONTROL="/var/lib/pgsql/data/${DATA_DIR}/global/pg_control"
+
+        if [[ "$OPERATOR" =~ ^[Tt]rue$ ]] &&
+        [[ -f "$OLD_CONTROL" && ! -e "${OLD_CONTROL}.old" ]]; then
+            echo "Upgrade failed before linking. Old PostgreSQL cluster can be recovered."
+            exit 14
+        fi
+
+        echo "Upgrade failed. Automatic rollback is not allowed."
+    exit 1
+fi
 
     echo "[$(date +%Y-%m-%dT%H:%M:%S)] Upgrade Successful"
     echo "[$(date +%Y-%m-%dT%H:%M:%S)] Sizing After Upgrade"
