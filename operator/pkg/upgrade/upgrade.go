@@ -323,7 +323,7 @@ func (u *Upgrade) pgUpgradeCheckFailed(upgradePod *corev1.Pod, cluster *v1.Patro
 	}
 	code, ok := exitCodes["pg-upgrade"]
 	if !ok {
-		return false, nil
+		return false, fmt.Errorf("pg-upgrade exit code not found")
 	}
 	if code != 13 && code != 14 {
 		return false, fmt.Errorf(
@@ -516,6 +516,11 @@ func (u *Upgrade) ProceedUpgrade(cr *v1.PatroniCore, cluster *v1.PatroniClusterS
 	}
 	oldImage := masterPod.Items[0].Spec.Containers[0].Image
 	if state != "Succeeded" {
+		if err := u.client.Get(context.Background(),
+			client.ObjectKeyFromObject(upgradePod), upgradePod); err != nil {
+			return err
+		}
+
 		failed, checkErr := u.pgUpgradeCheckFailed(upgradePod, cluster, cr, oldImage)
 		if failed {
 			return errors.New("postgresql major upgrade failed, please, check logs of upgrade pod")
