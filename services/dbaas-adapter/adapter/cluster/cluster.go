@@ -146,10 +146,11 @@ func (ca ClusterAdapterImpl) getConnectionToDbWithUser(ctx context.Context, data
 }
 
 func (ca ClusterAdapterImpl) getConnectionUrl(username string, password string, database string) string {
+	userInfo := url.UserPassword(username, password).String()
 	if ca.SSl == "on" {
-		return fmt.Sprintf("postgres://%s:%s@%s:%d/%s?%s", username, password, ca.Host, ca.GetPort(), database, "sslmode=require")
+		return fmt.Sprintf("postgres://%s@%s:%d/%s?%s", userInfo, ca.Host, ca.GetPort(), database, "sslmode=require")
 	} else {
-		return fmt.Sprintf("postgres://%s:%s@%s:%d/%s", username, password, ca.Host, ca.GetPort(), database)
+		return fmt.Sprintf("postgres://%s@%s:%d/%s", userInfo, ca.Host, ca.GetPort(), database)
 	}
 }
 

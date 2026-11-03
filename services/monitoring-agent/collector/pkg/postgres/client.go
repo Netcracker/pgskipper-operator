@@ -120,12 +120,11 @@ func (pc *PostgresConnector) getConnectionToDb(ctx context.Context) (*pgxpool.Po
 }
 
 func (pc *PostgresConnector) getConnectionUrl() string {
-	username := url.PathEscape(pc.user)
-	password := url.PathEscape(pc.password)
+	userInfo := url.UserPassword(pc.user, pc.password).String()
 	if pc.ssl {
-		return fmt.Sprintf("postgres://%s:%s@%s:%d/%s?%s", username, password, pc.host, pc.port, pc.database, "sslmode=require")
+		return fmt.Sprintf("postgres://%s@%s:%d/%s?%s", userInfo, pc.host, pc.port, pc.database, "sslmode=require")
 	} else {
-		return fmt.Sprintf("postgres://%s:%s@%s:%d/%s", username, password, pc.host, pc.port, pc.database)
+		return fmt.Sprintf("postgres://%s@%s:%d/%s", userInfo, pc.host, pc.port, pc.database)
 	}
 }
 

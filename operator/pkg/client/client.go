@@ -207,13 +207,12 @@ func (adapter postgresAdapter) GetConnectionToDbWithUser(database string, userna
 }
 
 func getConnectionUrl(username string, password string, database string, host string, port int, ssl string) string {
-	username = url.PathEscape(username)
-	password = url.PathEscape(password)
+	userInfo := url.UserPassword(username, password).String()
 	database = url.PathEscape(database)
 	if ssl == "on" {
-		return fmt.Sprintf("postgres://%s:%s@%s:%d/%s?%s", username, password, host, port, database, "sslmode=require")
+		return fmt.Sprintf("postgres://%s@%s:%d/%s?%s", userInfo, host, port, database, "sslmode=require")
 	} else {
-		return fmt.Sprintf("postgres://%s:%s@%s:%d/%s", username, password, host, port, database)
+		return fmt.Sprintf("postgres://%s@%s:%d/%s", userInfo, host, port, database)
 	}
 }
 
