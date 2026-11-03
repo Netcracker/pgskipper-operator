@@ -22,5 +22,5 @@ roleRef:
 subjects:
   - kind: ServiceAccount
     name: dbaas-operator
-    namespace: {{ required "DBaaS operator namespace is required" .Values.dbaas.declarativeRegistration.operatorNamespace }}
+    namespace: {{ include "postgres.dbaasOperatorNamespace" . | quote }}
 {{- end }}

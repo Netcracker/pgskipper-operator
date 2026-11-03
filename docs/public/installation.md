@@ -480,7 +480,7 @@ This sections describes all possible deploy parameters for PostgreSQL DBaaS Adap
 | Parameter                                   | Type              | Mandatory | Default value                           | Description                                                                                                                                                          |
 |---------------------------------------------|-------------------|-----------|-----------------------------------------|----------------------------------------------------------------------------------------------------------------------------------------------------------------------|
 | dbaas.install                               | bool              | no        | true                                    | Indicates whether to install PostgreSQL DBaaS Adapter component or not.                                                                                              |
-| dbaas.declarativeRegistration.operatorNamespace | string | no | dbaas | Namespace where the DBaaS Operator runs (must match its configured namespace). Used when the `PhysicalDatabase` CRD is available. |
+| dbaas.declarativeRegistration.operatorNamespace | string | no | "" | Namespace where the DBaaS Operator runs (must match its configured namespace). If empty, the chart extracts the namespace from the DBaaS aggregator address (`API_DBAAS_ADDRESS` or `dbaas.aggregator.registrationAddress`). Used when the `PhysicalDatabase` CRD is available. |
 | dbaas.resources.requests.memory             | string            | no        | 64Mi                                    | Specifies memory requests.                                                                                                                                           |
 | dbaas.resources.requests.cpu                | string            | no        | 200m                                    | Specifies cpu requests.                                                                                                                                              |
 | dbaas.resources.limits.memory               | string            | no        | 64Mi                                    | Specifies memory limits.                                                                                                                                             |
@@ -819,7 +819,7 @@ For pure installation, please, follow [Quick Start Guide](quickstart.md).
 
 When the DBaaS team has installed the `PhysicalDatabase` CRD (`physicaldatabases.dbaas.netcracker.com`), the `patroni-services` Helm chart automatically enables declarative registration at render time. The chart creates a `PhysicalDatabase` custom resource and grants the DBaaS Operator access to the Adapter credentials Secret. The DBaaS Operator then registers the database with Aggregator; the Adapter's legacy self-registration is disabled.
 
-To configure it, set the DBaaS Operator namespace in the **patroni-services** Helm values:
+By default, the chart takes the DBaaS Operator namespace from the aggregator address. For example, `http://dbaas-aggregator.dbaas:8080` gives `dbaas`. If the address has no namespace part, or the DBaaS Operator runs in another namespace, set it in the **patroni-services** Helm values:
 
 ```yaml
 dbaas:

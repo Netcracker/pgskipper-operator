@@ -308,7 +308,8 @@ dbaas:
   install: false
   multiUsers: true
   declarativeRegistration:
-    operatorNamespace: dbaas
+    # Namespace (CLOUD_NAMESPACE) of the DBaaS Operator. Defaults to the namespace extracted from API_DBAAS_ADDRESS.
+    operatorNamespace: ""
   # Docker Image that will be used for PostgreSQL DBaaS Adapter container
   dockerImage: ghcr.io/netcracker/pgskipper-docker-dbaas-adapter:main
   podLabels: {}
