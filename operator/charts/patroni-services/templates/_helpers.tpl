@@ -336,6 +336,30 @@ ReadOnly Postgres host for DBaaS adapter
   {{- end -}}
 {{- end -}}
 
+{{/*
+DBaaS Operator namespace for declarative registration.
+Uses explicitly configured dbaas.declarativeRegistration.operatorNamespace if set,
+otherwise extracts the namespace from the DBaaS aggregator address.
+*/}}
+{{- define "postgres.dbaasOperatorNamespace" -}}
+  {{- $explicit := dig "declarativeRegistration" "operatorNamespace" "" .Values.dbaas -}}
+  {{- if and (ne ($explicit | toString) "<nil>") (ne ($explicit | toString) "") -}}
+    {{- $explicit -}}
+  {{- else -}}
+    {{- $address := include "postgres.API_DBAAS_ADDRESS" . -}}
+    {{- $host := first (splitList ":" (last (splitList "://" $address))) -}}
+    {{- $parts := splitList "." $host -}}
+    {{- $namespace := "" -}}
+    {{- if ge (len $parts) 2 -}}
+      {{- $namespace = index $parts 1 -}}
+    {{- end -}}
+    {{- if or (eq $namespace "") (regexMatch "^[0-9]+$" $namespace) -}}
+      {{- fail (printf "DBaaS aggregator address %q names no namespace. Set API_DBAAS_ADDRESS (or dbaas.aggregator.registrationAddress) to http://<aggregator>.<namespace>:<port> or set dbaas.declarativeRegistration.operatorNamespace." $address) -}}
+    {{- end -}}
+    {{- $namespace -}}
+  {{- end -}}
+{{- end -}}
+
 {{- define "postgres.DBAAS_CLUSTER_DBA_CREDENTIALS_USERNAME" -}}
   {{- if and .Values.DBAAS_CLUSTER_DBA_CREDENTIALS_USERNAME .Values.global.cloudIntegrationEnabled -}}
     {{- .Values.DBAAS_CLUSTER_DBA_CREDENTIALS_USERNAME | toString }}
