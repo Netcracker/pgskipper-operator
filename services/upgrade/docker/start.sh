@@ -148,22 +148,21 @@ function handle_master_upgrade() {
 
     EXIT_CODE=$?
     if [[ "$EXIT_CODE" -ne 0 ]]; then
-        echo "[$(date +%Y-%m-%dT%H:%M:%S)] Upgrade failed"
+        echo "[$(date +%Y-%m-%dT%H:%M:%S)] Upgrade failed with exit code $EXIT_CODE"
 
         LOG_DIR="$MIGRATION_PATH/tmp/pg/pg_upgrade_output.d"
-        find "$LOG_DIR" -type f -name 'pg_upgrade_dump_*.log' -exec tail -n 100 {} \;
 
-        OLD_CONTROL="/var/lib/pgsql/data/${DATA_DIR}/global/pg_control"
+        if [[ -d "$LOG_DIR" ]]; then
+            echo "Printing last 100 lines of pg_upgrade dump logs:"
 
-        if [[ "$OPERATOR" =~ ^[Tt]rue$ ]] &&
-        [[ -f "$OLD_CONTROL" && ! -e "${OLD_CONTROL}.old" ]]; then
-            echo "Upgrade failed before linking. Old PostgreSQL cluster can be recovered."
-            exit 14
+            find "$LOG_DIR" -type f -name 'pg_upgrade_dump_*.log' \
+                -exec sh -c 'echo "=== $1 ==="; tail -n 100 "$1"' _ {} \;
+        else
+            echo "pg_upgrade log directory not found: $LOG_DIR"
         fi
 
-        echo "Upgrade failed. Automatic rollback is not allowed."
-    exit 1
-fi
+        exit 1
+    fi
 
     echo "[$(date +%Y-%m-%dT%H:%M:%S)] Upgrade Successful"
     echo "[$(date +%Y-%m-%dT%H:%M:%S)] Sizing After Upgrade"
