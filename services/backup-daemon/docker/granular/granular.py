@@ -41,11 +41,6 @@ from flask_httpauth import HTTPBasicAuth
 
 from flask import request, abort, Response, stream_with_context
 
-from opentelemetry.instrumentation.flask import FlaskInstrumentor
-from opentelemetry.sdk.trace import TracerProvider
-from opentelemetry.sdk.trace.export import BatchSpanProcessor
-from opentelemetry.exporter.otlp.proto.grpc.trace_exporter import OTLPSpanExporter
-from opentelemetry.sdk.resources import SERVICE_NAME, Resource
 
 
 auth = HTTPBasicAuth()
@@ -1791,6 +1786,13 @@ def get_pgbackrest_service():
 app = Flask("GranularREST")
 collector_endpoint = os.getenv("OTEL_EXPORTER_OTLP_TRACES_ENDPOINT", "")
 if collector_endpoint != "":
+    # Imported here: without a collector they would only cost memory.
+    from opentelemetry.instrumentation.flask import FlaskInstrumentor
+    from opentelemetry.sdk.trace import TracerProvider
+    from opentelemetry.sdk.trace.export import BatchSpanProcessor
+    from opentelemetry.exporter.otlp.proto.grpc.trace_exporter import OTLPSpanExporter
+    from opentelemetry.sdk.resources import SERVICE_NAME, Resource
+
     collector_endpoint = "http://" + collector_endpoint
     NAMESPACE_PATH = '/var/run/secrets/kubernetes.io/serviceaccount/namespace'
     ns = open(NAMESPACE_PATH).read()
