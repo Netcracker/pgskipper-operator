@@ -13,7 +13,7 @@ RUN go mod tidy
 # Build
 RUN CGO_ENABLED=0 GOOS=$TARGETOS GOARCH=$TARGETARCH go build -o ./_output/bin/azure_restore ./cmd/main.go
 
-FROM ubuntu:22.04@sha256:5ec03bb3441e8b0bf3b4f9cd4629a1ae763010dc3035bb8da3ae6cf026486401
+FROM ubuntu:22.04@sha256:076e7bf82319619f28dd0aa9c02ab34b055ad37100395b4f49a2ffba04fb5e11
 
 ENV PG_CLUSTER_NAME=common STORAGE_ROOT=/backup-storage EXTERNAL_STORAGE_ROOT=/external \
     LC_ALL=en_US.UTF-8 \
