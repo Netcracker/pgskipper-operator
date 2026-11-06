@@ -17,7 +17,6 @@ import os
 import io
 import json
 import logging
-from kubernetes.client.rest import ApiException
 
 
 class FileWrapper(object):
@@ -203,6 +202,7 @@ class KubernetesPassword(object):
     def get_password(self):
         from kubernetes import config
         from kubernetes.client.apis import core_v1_api
+        from kubernetes.client.rest import ApiException
         config.load_incluster_config()
         api = core_v1_api.CoreV1Api()
         # https://github.com/kubernetes-client/python/issues/363

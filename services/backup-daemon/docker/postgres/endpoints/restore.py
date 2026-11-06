@@ -25,10 +25,7 @@ import logging
 import os
 import subprocess
 from threading import Thread
-import boto3
 from dateutil import parser
-
-from kubernetes import client as k8s_client, config as k8s_config
 
 import utils
 import fcntl
@@ -203,6 +200,9 @@ class RDSRestore(Thread):
             self.client = self.get_rds_client()
             self.pg_service_name = 'pg-patroni'
             self.namespace = open(self.NAMESPACE_PATH).read()
+            # Imported here: most daemons never restore from RDS, and these
+            # libraries would stay in every worker's memory.
+            from kubernetes import client as k8s_client, config as k8s_config
             k8s_config.load_incluster_config()
             self.k8s_core_api = k8s_client.CoreV1Api()
             self.status = {
@@ -245,6 +245,7 @@ class RDSRestore(Thread):
 
     def get_rds_client(self):
         self.__log.info("RDS: Init RDS Client")
+        import boto3
         return boto3.client("rds")
 
     def restore_cluster(self, cluster_name):
@@ -380,7 +381,8 @@ class RDSRestore(Thread):
         self.__log.info("RDS: Current service external name: %s" % external_name)
         return external_name
 
-    def create_service(self, external_name) -> k8s_client.V1Service:
+    def create_service(self, external_name):
+        from kubernetes import client as k8s_client
         return k8s_client.V1Service(
             spec=k8s_client.V1ServiceSpec(
                 external_name=external_name

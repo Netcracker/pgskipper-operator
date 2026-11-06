@@ -22,15 +22,17 @@ import endpoints.status
 import storage
 from flask import Flask
 from flask_restful import Api
-from opentelemetry.exporter.otlp.proto.grpc.trace_exporter import OTLPSpanExporter
-from opentelemetry.instrumentation.flask import FlaskInstrumentor
-from opentelemetry.sdk.resources import SERVICE_NAME, Resource
-from opentelemetry.sdk.trace import TracerProvider
-from opentelemetry.sdk.trace.export import BatchSpanProcessor
 
 app = Flask("PublicEndpoints")
 collector_endpoint = os.getenv("OTEL_EXPORTER_OTLP_TRACES_ENDPOINT", "")
 if collector_endpoint != "":
+    # Imported here: without a collector they would only cost memory.
+    from opentelemetry.exporter.otlp.proto.grpc.trace_exporter import OTLPSpanExporter
+    from opentelemetry.instrumentation.flask import FlaskInstrumentor
+    from opentelemetry.sdk.resources import SERVICE_NAME, Resource
+    from opentelemetry.sdk.trace import TracerProvider
+    from opentelemetry.sdk.trace.export import BatchSpanProcessor
+
     collector_endpoint = "http://" + collector_endpoint
     NAMESPACE_PATH = "/var/run/secrets/kubernetes.io/serviceaccount/namespace"
     ns = open(NAMESPACE_PATH).read()
