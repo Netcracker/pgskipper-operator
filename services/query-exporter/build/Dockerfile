@@ -1,4 +1,4 @@
-FROM golang:1.27-alpine3.24@sha256:8a5910f31396cd4d89662f56c68b3ae31d374308270a1c3bd96672ee5ed43414
+FROM golang:1.27-alpine3.24@sha256:eb61c3873c97416fff0116553fff65d67a3549f72e11d9758849a689cdd8b523
 
 ENV EXPORTER_FILE=/usr/local/bin/query-exporter \
     USER_UID=1001
