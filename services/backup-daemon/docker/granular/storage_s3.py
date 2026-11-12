@@ -14,19 +14,12 @@
 
 import boto3
 
-import botocore
-import botocore.exceptions
 import urllib3
 import os
 import logging
 import configs
 import json
 from retrying import retry
-
-try:
-    from io import StringIO
-except ImportError:
-    from io import StringIO
 
 bucket = os.getenv("CONTAINER") or os.getenv("AWS_S3_BUCKET") or os.getenv("S3_BUCKET")
 CONTAINER_SEG = "{}_segments".format(bucket) if bucket else None
@@ -36,6 +29,8 @@ RETRY_COUNT = 10
 RETRY_WAIT = 1000
 
 urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
+
+
 class AwsS3Vault:
     __log = logging.getLogger("AwsS3Granular")
     __s3_aliases_cache = None
@@ -51,7 +46,6 @@ class AwsS3Vault:
 
             if not aliases:
                 raise Exception("S3 aliases are enabled, but /aliases/s3_aliases.json is empty")
-
 
             cls.__s3_aliases_cache = aliases
 
@@ -70,7 +64,7 @@ class AwsS3Vault:
 
         alias = aliases.get(storage_name)
         if not alias:
-            available = ', '.join(aliases.keys())
+            available = ", ".join(aliases.keys())
             raise Exception(f"S3 alias '{storage_name}' not found. Available: {available}")
 
         return alias
@@ -81,8 +75,15 @@ class AwsS3Vault:
             return alias.get("bucketName")
         return os.getenv("CONTAINER") or os.getenv("AWS_S3_BUCKET") or os.getenv("S3_BUCKET")
 
-    def __init__(self, storage_name=None, cluster_name=None, cache_enabled=False,
-                 aws_s3_bucket_listing=None, prefix=None, use_s3_alias=False):
+    def __init__(
+        self,
+        storage_name=None,
+        cluster_name=None,
+        cache_enabled=False,
+        aws_s3_bucket_listing=None,
+        prefix=None,
+        use_s3_alias=False,
+    ):
 
         self.storage_name = storage_name
         self.alias = None
@@ -111,18 +112,22 @@ class AwsS3Vault:
         alias = self.alias
         return boto3.client(
             "s3",
-            region_name=alias.get("region") if alias else (os.getenv("AWS_DEFAULT_REGION") if os.getenv("AWS_DEFAULT_REGION") else None),
-            endpoint_url=alias.get("s3Url") if alias else os.getenv("AWS_S3_ENDPOINT_URL"),
-            aws_access_key_id=alias.get("accessKeyId") if alias else configs.aws_access_key_id(),
-            aws_secret_access_key=alias.get("accessKeySecret") if alias else configs.aws_secret_access_key(),
+            region_name=(
+                alias.get("region")
+                if alias
+                else (os.getenv("AWS_DEFAULT_REGION") if os.getenv("AWS_DEFAULT_REGION") else None)
+            ),
+            endpoint_url=(alias.get("s3Url") if alias else os.getenv("AWS_S3_ENDPOINT_URL")),
+            aws_access_key_id=(alias.get("accessKeyId") if alias else configs.aws_access_key_id()),
+            aws_secret_access_key=(alias.get("accessKeySecret") if alias else configs.aws_secret_access_key()),
             verify=(False if os.getenv("AWS_S3_UNTRUSTED_CERT", "false").lower() == "true" else None),
         )
 
     @retry(stop_max_attempt_number=RETRY_COUNT, wait_fixed=RETRY_WAIT)
     def upload_file(self, file_path, blob_path=None, backup_id=None):
         if blob_path:
-            file_name = file_path.rsplit('/',1)[1]
-            s3FilePath = self.get_prefixed_path(f'{blob_path}/{backup_id}/{file_name}')
+            file_name = file_path.rsplit("/", 1)[1]
+            s3FilePath = self.get_prefixed_path(f"{blob_path}/{backup_id}/{file_name}")
             return self.get_s3_client().upload_file(file_path, self.bucket, s3FilePath)
         else:
             return self.get_s3_client().upload_file(file_path, self.bucket, self.get_prefixed_path(file_path))
@@ -133,21 +138,23 @@ class AwsS3Vault:
 
     @retry(stop_max_attempt_number=RETRY_COUNT, wait_fixed=RETRY_WAIT)
     def delete_objects(self, filename):
-        objects_to_delete = self.get_s3_client().list_objects(Bucket=self.bucket, Prefix=self.get_prefixed_path(filename))
-        for obj in objects_to_delete.get('Contents', []):
-            self.get_s3_client().delete_object(Bucket=self.bucket, Key=obj['Key'])
+        objects_to_delete = self.get_s3_client().list_objects(
+            Bucket=self.bucket, Prefix=self.get_prefixed_path(filename)
+        )
+        for obj in objects_to_delete.get("Contents", []):
+            self.get_s3_client().delete_object(Bucket=self.bucket, Key=obj["Key"])
 
     @retry(stop_max_attempt_number=RETRY_COUNT, wait_fixed=RETRY_WAIT)
     def read_object(self, file_path):
         self.__log.info("Reading object %s" % self.get_prefixed_path(file_path))
         obj = self.get_s3_client().get_object(Bucket=self.bucket, Key=self.get_prefixed_path(file_path))
         # self.__log.info(obj['Body'].read().decode('utf8'))
-        return obj['Body'].read().decode('utf8')
+        return obj["Body"].read().decode("utf8")
 
     @retry(stop_max_attempt_number=RETRY_COUNT, wait_fixed=RETRY_WAIT)
     def get_file_size(self, file_path):
         obj = self.get_s3_client().list_objects_v2(Bucket=self.bucket, Prefix=self.get_prefixed_path(file_path))
-        if 'Contents' in obj:
+        if "Contents" in obj:
             for field in obj["Contents"]:
                 return field["Size"]
         else:
@@ -156,39 +163,38 @@ class AwsS3Vault:
     @retry(stop_max_attempt_number=RETRY_COUNT, wait_fixed=RETRY_WAIT)
     def download_file(self, filename, backup_id, blob_path=None):
         try:
-          if blob_path:
-              only_file_name = filename.rsplit('/',1)[1]
-              file_path = f'{blob_path}/{backup_id}/{only_file_name}'
-              logging.info(f'Downloading file {file_path} to {filename}')
+            if blob_path:
+                only_file_name = filename.rsplit("/", 1)[1]
+                file_path = f"{blob_path}/{backup_id}/{only_file_name}"
+                logging.info(f"Downloading file {file_path} to {filename}")
 
-              self.get_s3_client().download_file(self.bucket, self.get_prefixed_path(file_path), filename)
-          else:
-              logging.info("Downloading file {}" .format(self.get_prefixed_path(filename)))
-              self.get_s3_client().download_file(self.bucket, self.get_prefixed_path(filename), filename)
-        except Exception as e:
-            raise e
-        return
+                self.get_s3_client().download_file(self.bucket, self.get_prefixed_path(file_path), filename)
+            else:
+                logging.info("Downloading file {}".format(self.get_prefixed_path(filename)))
+                self.get_s3_client().download_file(self.bucket, self.get_prefixed_path(filename), filename)
+        except Exception:
+            raise
 
     @retry(stop_max_attempt_number=RETRY_COUNT, wait_fixed=RETRY_WAIT)
     def is_file_exists(self, file):
         exists = True
         try:
             self.get_s3_client().head_object(Bucket=self.bucket, Key=self.get_prefixed_path(file))
-        except botocore.exceptions.ClientError as e:
+        except Exception:
             exists = False
         return exists
 
     def is_s3_storage_path_exist(self, storage):
         bucket = self.get_s3_client().list_objects_v2(Bucket=self.bucket, Prefix=self.get_prefixed_path(storage))
-        if 'Contents' in bucket:
-            s3_storage_path = bucket['Contents'][0]["Key"]
+        if "Contents" in bucket:
+            s3_storage_path = bucket["Contents"][0]["Key"]
             return True if storage in s3_storage_path else False
         return False
 
     def get_granular_namespaces(self, storage):
         bucket = self.get_s3_client().list_objects_v2(Bucket=self.bucket, Prefix=self.get_prefixed_path(storage))
         namespaces = []
-        if 'Contents' in bucket:
+        if "Contents" in bucket:
             for obj in bucket["Contents"]:
                 vault = obj["Key"].split(storage, 1)[1]
                 namespace = vault.split("/", 2)[1]
@@ -200,7 +206,7 @@ class AwsS3Vault:
         namespaced_path = self.get_prefixed_path(storage + "/" + namespace)
         bucket = self.get_s3_client().list_objects_v2(Bucket=self.bucket, Prefix=namespaced_path)
         backup_ids = []
-        if 'Contents' in bucket:
+        if "Contents" in bucket:
             for obj in bucket["Contents"]:
                 vault = obj["Key"].split(storage, 2)[1]
                 backup_id = vault.split("/", 3)[2]

@@ -68,12 +68,12 @@ func Metrics(w http.ResponseWriter, r *http.Request) {
 	log.Printf("metrics gets requested")
 	metricsMutex.RLock()
 	defer metricsMutex.RUnlock()
-	fmt.Fprintf(w, "%s", strings.Join(metrics, "\n"))
+	_, _ = fmt.Fprintf(w, "%s", strings.Join(metrics, "\n"))
 }
 
 func LivenessProbe(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(http.StatusOK)
-	fmt.Fprintf(w, "OK")
+	_, _ = fmt.Fprintf(w, "OK")
 }
 
 func ReadinessProbe(w http.ResponseWriter, r *http.Request) {
@@ -83,10 +83,10 @@ func ReadinessProbe(w http.ResponseWriter, r *http.Request) {
 
 	if ready {
 		w.WriteHeader(http.StatusOK)
-		fmt.Fprintf(w, "OK")
+		_, _ = fmt.Fprintf(w, "OK")
 	} else {
 		w.WriteHeader(http.StatusServiceUnavailable)
-		fmt.Fprintf(w, "Not ready")
+		_, _ = fmt.Fprintf(w, "Not ready")
 	}
 }
 

@@ -12,27 +12,18 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import hashlib
-import io
-import json
 import logging
 import time
 from datetime import datetime
-from traceback import format_exception
+from io import StringIO
 
 import os
 
 import storage
-from storage import VAULT_NAME_FORMAT, StorageLocationAlreadyExistsException, VAULT_DIRNAME_MATCHER
+from storage import VAULT_NAME_FORMAT, StorageLocationAlreadyExistsException
 import fsutil
 import requests
 
-try:
-    from io import StringIO
-except ImportError:
-    from io import StringIO
-
-import subprocess
 
 class BackRestStorage(storage.Storage):
     __log = logging.getLogger("PgBackRestFS")
@@ -47,23 +38,19 @@ class BackRestStorage(storage.Storage):
         print(response)
         vault = []
         for backup in response:
-            annotation = backup.get('annotation') or {}
-            if annotation.get('timestamp'):
-                vault.append(BackRestVault(annotation['timestamp'], backup.get('error')))
+            annotation = backup.get("annotation") or {}
+            if annotation.get("timestamp"):
+                vault.append(BackRestVault(annotation["timestamp"], backup.get("error")))
             else:
                 self.__log.warning("Found backup without timestamp in annotation: %s", backup)
         return vault
 
-    def size(self):
-        """ Returns whole storage size in bytes """
-        return 0
-
     def archive_size(self):
-        """ Returns whole storage size in bytes """
+        """Returns whole storage size in bytes"""
         return 0
 
     def fs_space(self):
-        """ Returns tuple (free, total) space on mount point where is root folder located """
+        """Returns tuple (free, total) space on mount point where is root folder located"""
         return (1, 1)
 
     def get_type(self):
@@ -79,7 +66,7 @@ class BackRestStorage(storage.Storage):
         :rtype: (str, dict, StringIO)
         """
         vault = BackRestVault("%s/%s" % (self.root, backup_id))
-        print(f'RETURNING VAULT {vault}')
+        print(f"RETURNING VAULT {vault}")
         return vault
 
     def prot_get_as_stream(self, filename):
@@ -125,6 +112,7 @@ class BackRestStorage(storage.Storage):
     def prot_delete(self, filename):
         pass
 
+
 class BackRestVault(storage.Vault):
     __log = logging.getLogger("BackRestVault")
 
@@ -136,7 +124,7 @@ class BackRestVault(storage.Vault):
         self.console = StringIO()
         self._failed = bool(is_failed)
 
-        print(f'INIT VAULT {self.folder, self.metrics_filepath, self.console, self._failed}')
+        print(f"INIT VAULT {self.folder, self.metrics_filepath, self.console, self._failed}")
 
     def get_id(self):
         return os.path.basename(self.folder)
@@ -148,6 +136,7 @@ class BackRestVault(storage.Vault):
     #
     def __lock_filepath(self):
         return self.folder + ".lock"
+
     #
     # def __failed_filepath(self):
     #     return self.folder + ".failed"
@@ -171,12 +160,17 @@ class BackRestVault(storage.Vault):
     #         return self.cached_state["is_locked"]
     #     return self.__is_file_exists("{}/{}".format(CONTAINER, self.__lock_filepath()))
     #
+
     def is_failed(self):
         return self._failed
+
     #
+
     def is_done(self):
         return not self._failed
+
     #
+
     def is_back_up_archive_exists(self):
         return True
 
@@ -201,7 +195,6 @@ class BackRestVault(storage.Vault):
 
         return self.folder, self.metrics, self.console
 
-    
     def create_time(self):
         foldername = self.get_id()
 
@@ -213,48 +206,9 @@ class BackRestVault(storage.Vault):
             d = datetime.strptime(foldername, VAULT_NAME_FORMAT)
             return time.mktime(d.timetuple())
         except ValueError as e:
-            self.__log.error("Failed to parse datetime from foldername: %s, error: %s", foldername, str(e))
+            self.__log.error(
+                "Failed to parse datetime from foldername: %s, error: %s",
+                foldername,
+                str(e),
+            )
             return time.time()  # Returning the current timestamp as a fallback
-    
-    #
-    # def __exit__(self, tpe, exception, tb):
-    #     self.__log.info("Close vault")
-    #     self.__log.info("Save metrics to: %s" % self.__metrics_filepath())
-    #
-    #     super(PgBackRestVault, self).__exit__(tpe, exception, tb)
-    #
-    #     backup_name = "{}/pg_{}_backup_{}.tar.gz".format(self.get_folder(), PG_CLUSTER_NAME, self.get_id())
-    #     size_str = subprocess.check_output(
-    #         ["/opt/backup/scli ls -l {} | grep {} | awk '{{A+=$2}} END{{print A}}'".format(CONTAINER_SEG, backup_name)]
-    #         , shell=True
-    #         , env=scli_env)
-    #     try:
-    #         self.metrics["size"] = int(size_str)
-    #     except Exception as e:
-    #         self.__log.error(e)
-    #         self.metrics["size"] = -1
-    #
-    #     if exception:
-    #         subprocess.call("echo .failed > /tmp/.failed", shell=True)
-    #         subprocess.check_call(["/opt/backup/scli", "put", "/tmp/.failed", "{}/{}".format(CONTAINER, self.__failed_filepath())], env=scli_env)
-    #
-    #         e = "\n".join(format_exception(tpe, exception, tb))
-    #         self.__log.info("Don't remove vault .lock due exception in nested code")
-    #         self.__log.debug("Something wrong happened inside block uses vault: " + e)
-    #         self.metrics["exception"] = e
-    #
-    #     with open("/tmp/.metrics", "w") as f:
-    #         json.dump(self.metrics, f)
-    #     subprocess.check_call(["/opt/backup/scli", "put", "/tmp/.metrics", "{}/{}".format(CONTAINER, self.__metrics_filepath())], env=scli_env)
-    #
-    #     console_logs = self.console.getvalue()
-    #     self.console.close()
-    #     with open("/tmp/.console", "w") as f:
-    #         f.write(console_logs)
-    #     subprocess.check_call(["/opt/backup/scli", "put", "/tmp/.console", "{}/{}".format(CONTAINER, self.__console_filepath())], env=scli_env)
-    #
-    #     self.__log.info("Remove lock for %s" % self.get_id())
-    #     subprocess.check_call(["/opt/backup/scli", "delete", "{}/{}".format(CONTAINER, self.__lock_filepath())], env=scli_env)
-    #
-    # def __repr__(self):
-    #     return "Vault(%s)" % self.get_id()

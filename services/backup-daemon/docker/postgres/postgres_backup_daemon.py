@@ -17,7 +17,6 @@ import logging
 import configs
 import postgres_backup_scheduler
 
-
 if __name__ == "__main__":
     configs.load_logging_configs()
     conf = configs.load_configs()
@@ -26,16 +25,16 @@ if __name__ == "__main__":
     log.info("Backup daemon raised again.")
 
     backups_params = {
-        'backup_command': conf.get_string("command"),
-        'storage_root': conf.get_string("storage"),  # TODO (vladislav.kaverin): Actually almost nobody needs storage root, only file-system storage.
-        'eviction_rule': conf.get_string("eviction"),
-        'timeout': conf.get_int("timeout")
+        "backup_command": conf.get_string("command"),
+        # TODO (vladislav.kaverin): Actually almost nobody needs storage root, only file-system storage.
+        "storage_root": conf.get_string("storage"),
+        "eviction_rule": conf.get_string("eviction"),
+        "timeout": conf.get_int("timeout"),
     }
     backups_schedule = conf.get_string("schedule")
 
     # Start scheduler and activate `/backup` endpoint.
     backup_scheduler = postgres_backup_scheduler.start(backups_schedule, backups_params)
-
 
     # scheduler <- backup_executor <- storage
     # http_api <- storage

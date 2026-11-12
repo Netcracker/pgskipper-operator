@@ -415,7 +415,9 @@ func UpdatePostgreSQLParams(patroni *patroniv1.Patroni, patroniUrl string) error
 
 	postgreSQL := map[string]interface{}{}
 
-	updateOutputPluginLibraries(postgreSQLParams)
+	if err := updateOutputPluginLibraries(postgreSQLParams); err != nil {
+		logger.Error("Failed to update output plugin libraries", zap.Error(err))
+	}
 
 	postgreSQL["parameters"] = postgreSQLParams
 	postgreSQL["pg_hba"] = getPgHba(patroni.PgHba)
@@ -658,14 +660,14 @@ func Switchover(patroniURL, leader string) error {
 	if err != nil {
 		return err
 	}
-	defer resp.Body.Close()
+	defer func() { _ = resp.Body.Close() }()
 
 	if resp.StatusCode < http.StatusOK ||
 		resp.StatusCode >= http.StatusMultipleChoices {
 
 		responseBody, _ := io.ReadAll(resp.Body)
 
-		return fmt.Errorf("Patroni switchover failed: %s, response: %s", resp.Status, string(responseBody))
+		return fmt.Errorf("patroni switchover failed: %s, response: %s", resp.Status, string(responseBody))
 	}
 
 	logger.Info(fmt.Sprintf("Patroni switchover from %s requested successfully", leader))

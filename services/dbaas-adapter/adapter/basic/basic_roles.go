@@ -234,6 +234,7 @@ func (sa ServiceAdapter) GrantUsersAccordingRoles(ctx context.Context, dbName st
 		}
 
 		// grant user if not metadata owner and owner is not postgres
+		//nolint:staticcheck
 		if metadataOwner != "" && adminUserName != metadataOwner && metadataOwner != sa.ClusterAdapter.GetUser() {
 			queries = append(queries, setGrantAsForRole(metadataOwner, adminUserName))
 		}

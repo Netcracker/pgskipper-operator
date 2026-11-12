@@ -30,7 +30,7 @@ var defaultInterval = flag.String("collection-interval", utils.GetEnv("COLLECTIO
 
 func Schedule(croniter *cron.Cron, appConfig *config.Config, executeQueryAndUpdateMetrics func(string), updateDatabases func()) []string {
 	if utils.IsAutodiscoveryEnabled() {
-		croniter.AddFunc("@every "+*autodiscoveryInterval, func() { updateDatabases() })
+		_, _ = croniter.AddFunc("@every "+*autodiscoveryInterval, func() { updateDatabases() })
 	}
 	nonScheduledQueries := addQueriesExecutionsToCron(croniter, appConfig, executeQueryAndUpdateMetrics)
 	croniter.Start()
@@ -50,7 +50,7 @@ func addQueriesExecutionsToCron(croniter *cron.Cron, appConfig *config.Config, e
 				log.Errorf("Query %v is not scheduled, because it has invalid croniter expression: %v ; %+v", qName, qCfg.Croniter, parseErr)
 			} else {
 				go executeQueryAndUpdateMetrics(qName)
-				croniter.AddFunc(qCfg.Croniter, func() { executeQueryAndUpdateMetrics(qName) })
+				_, _ = croniter.AddFunc(qCfg.Croniter, func() { executeQueryAndUpdateMetrics(qName) })
 				log.Infof("Croniter %v registered for query %v", qCfg.Croniter, qName)
 			}
 		} else if qCfg.Interval != "" {
@@ -71,7 +71,7 @@ func scheduleWithInterval(qName string, croniter *cron.Cron, parser cron.Parser,
 		log.Errorf("Query %v is not scheduled, because it has invalid interval expression: %v ; %+v", qName, interval, parseErr)
 	} else {
 		go executeQueryAndUpdateMetrics(qName)
-		croniter.AddFunc("@every "+interval, func() { executeQueryAndUpdateMetrics(qName) })
+		_, _ = croniter.AddFunc("@every "+interval, func() { executeQueryAndUpdateMetrics(qName) })
 		log.Infof("Interval @every %v registered for query %v", interval, qName)
 	}
 }

@@ -34,7 +34,6 @@ import (
 	"github.com/pkg/errors"
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
-	v1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/apimachinery/pkg/util/wait"
 	"k8s.io/client-go/kubernetes/scheme"
@@ -420,7 +419,7 @@ func (ph *PatroniHelper) ExecCmdOnPod(podName string, namespace string, containe
 		panic(err.Error())
 	}
 
-	execParams := &v1.PodExecOptions{
+	execParams := &corev1.PodExecOptions{
 		Command:   []string{interpreter, "-c", command},
 		Container: container,
 		Stdin:     false,
@@ -646,7 +645,7 @@ func (ph *PatroniHelper) StoreDataToCM(key string, value string) {
 		deploymentInfoCM.Data[key] = strings.TrimSpace(value)
 	} else {
 		logger.Warn("Can't to find config map deployment-info for update. Creating new one", zap.Error(err))
-		deploymentInfoCM = &v1.ConfigMap{
+		deploymentInfoCM = &corev1.ConfigMap{
 			ObjectMeta: metav1.ObjectMeta{
 				Name:      "deployment-info",
 				Namespace: namespace,

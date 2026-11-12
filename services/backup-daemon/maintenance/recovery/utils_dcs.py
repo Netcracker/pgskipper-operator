@@ -49,8 +49,12 @@ class PatroniDCS(metaclass=ABCMeta):
 class PatroniDCSEtcd(PatroniDCS):
 
     def get_dcs_config(self, oc_client, recovery_pod_id, pg_cluster_name):
-        patroni_dsc_data = json.loads(oc_client.oc_exec(recovery_pod_id, "curl etcd:2379/v2/keys/patroni/{}/config"
-                                                        .format(pg_cluster_name)))["node"]["value"]
+        patroni_dsc_data = json.loads(
+            oc_client.oc_exec(
+                recovery_pod_id,
+                "curl etcd:2379/v2/keys/patroni/{}/config".format(pg_cluster_name),
+            )
+        )["node"]["value"]
         log.debug("Patroni dcd: {}".format(patroni_dsc_data))
         patroni_dsc = json.loads(patroni_dsc_data)
         log.debug("Patroni dcd (parsed): {}".format(patroni_dsc))
@@ -63,16 +67,23 @@ class PatroniDCSEtcd(PatroniDCS):
         with open("dsc.config.tmp", mode="w") as fd:
             json.dump(patroni_dsc, fd)
         oc_client.rsync("./", "{}:/tmp".format(recovery_pod_id))
-        log.debug(oc_client.oc_exec(recovery_pod_id,
-                                    'python -c \'import etcd, os; '
-                                    'fd=open("/tmp/dsc.config.tmp"); data=fd.read(); fd.close(); '
-                                    'client = etcd.Client(host="etcd", protocol="http", port=2379); '
-                                    'client.write("patroni/{}/config".format(os.getenv("PG_CLUST_NAME")), data)\''))
+        log.debug(
+            oc_client.oc_exec(
+                recovery_pod_id,
+                "python -c 'import etcd, os; "
+                'fd=open("/tmp/dsc.config.tmp"); data=fd.read(); fd.close(); '
+                'client = etcd.Client(host="etcd", protocol="http", port=2379); '
+                'client.write("patroni/{}/config".format(os.getenv("PG_CLUST_NAME")), data)\'',
+            )
+        )
 
     def cleanup_initialization_key(self, oc_client, pg_cluster_name, pod_id):
-        oc_client.oc_exec(pod_id, "sh -c '"
-                                  "curl -XDELETE -s etcd:2379/v2/keys/patroni/${PG_CLUST_NAME}/initialize; "
-                                  "curl -XDELETE etcd:2379/v2/keys/patroni/${PG_CLUST_NAME}/optime?recursive=true'")
+        oc_client.oc_exec(
+            pod_id,
+            "sh -c '"
+            "curl -XDELETE -s etcd:2379/v2/keys/patroni/${PG_CLUST_NAME}/initialize; "
+            "curl -XDELETE etcd:2379/v2/keys/patroni/${PG_CLUST_NAME}/optime?recursive=true'",
+        )
 
 
 class PatroniDCSKubernetes(PatroniDCS):
@@ -109,7 +120,7 @@ class PatroniDCSKubernetes(PatroniDCS):
         if oc_client.get_entity_safe("configmap", "{}-sync".format(pg_cluster_name)):
             log.debug("Try to delete configmap {}-sync".format(pg_cluster_name))
             patroni_dcs_sync_cm = oc_client.get_configmap("{}-sync".format(pg_cluster_name))
-            patroni_dcs_sync_cm["metadata"]["annotations"].pop('leader', None)
+            patroni_dcs_sync_cm["metadata"]["annotations"].pop("leader", None)
             oc_client.replace_object(patroni_dcs_sync_cm)
 
         log.debug("Try to remove initialize key from configmap {}-config".format(pg_cluster_name))

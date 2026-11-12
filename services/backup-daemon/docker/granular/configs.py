@@ -21,21 +21,34 @@ _SECRET_BASE_PATH = "/var/run/secrets/postgresql/"
 _PG_USER_CREDS_PATH = _SECRET_BASE_PATH + "postgres-credentials/"
 _AWS_CREDS_PATH = _SECRET_BASE_PATH + "s3-storage-credentials/"
 
-_PROTECTED_DATABASES = ['template0', 'template1', 'postgres',
-                        'rdsadmin',  # aws rds
-                        'cloudsqladmin',  # cloudsql
-                        'azure_maintenance', 'azure_sys', # azure postgresql
-                        'powa'] # powa
-_PROTECTED_GREENPLUM_DATABASES = ['gpadmin', 'gpperfmon']
-_PROTECTED_ROLES = ['replicator', 'postgresadmin', 'psqladmin', 'azuresu', 'azure_pg_admin', 'replication']
+_PROTECTED_DATABASES = [
+    "template0",
+    "template1",
+    "postgres",
+    "rdsadmin",  # aws rds
+    "cloudsqladmin",  # cloudsql
+    "azure_maintenance",
+    "azure_sys",  # azure postgresql
+    "powa",
+]  # powa
+_PROTECTED_GREENPLUM_DATABASES = ["gpadmin", "gpperfmon"]
+_PROTECTED_ROLES = [
+    "replicator",
+    "postgresadmin",
+    "psqladmin",
+    "azuresu",
+    "azure_pg_admin",
+    "replication",
+]
 
 log = logging.getLogger("configs")
 
+
 def backups_storage(version=None):
     if is_external_pg():
-        return '/backup-storage/external/granular'
+        return "/backup-storage/external/granular"
 
-    storageRoot = '/backup-storage'
+    storageRoot = "/backup-storage"
     if not version:
         try:
             version = utils.get_version_of_pgsql_server()
@@ -43,32 +56,33 @@ def backups_storage(version=None):
             version = get_postgres_version_by_path(storageRoot)
             log.info(f"version returned from exception block {version}")
             log.exception(e)
-    storage_path = '/backup-storage/granular'
+    storage_path = "/backup-storage/granular"
     # checking if version of pgsql server if above 10 => saving backups
     # in different folder
     if [10, 0] <= version < [11, 0]:
-        storage_path = '/backup-storage/pg10/granular'
+        storage_path = "/backup-storage/pg10/granular"
     elif [11, 0] <= version < [12, 0]:
-        storage_path = '/backup-storage/pg11/granular'
+        storage_path = "/backup-storage/pg11/granular"
     elif [12, 0] <= version < [13, 0]:
-        storage_path = '/backup-storage/pg12/granular'
+        storage_path = "/backup-storage/pg12/granular"
     elif [13, 0] <= version < [14, 0]:
-        storage_path = '/backup-storage/pg13/granular'
+        storage_path = "/backup-storage/pg13/granular"
     elif [14, 0] <= version < [15, 0]:
-        storage_path = '/backup-storage/pg14/granular'
+        storage_path = "/backup-storage/pg14/granular"
     elif [15, 0] <= version < [16, 0]:
-        storage_path = '/backup-storage/pg15/granular'
+        storage_path = "/backup-storage/pg15/granular"
     elif [16, 0] <= version < [17, 0]:
-        storage_path = '/backup-storage/pg16/granular'
+        storage_path = "/backup-storage/pg16/granular"
     elif [17, 0] <= version < [18, 0]:
-        storage_path = '/backup-storage/pg17/granular'
+        storage_path = "/backup-storage/pg17/granular"
     elif version >= [18, 0]:
-        storage_path = '/backup-storage/pg18/granular'
+        storage_path = "/backup-storage/pg18/granular"
     return storage_path
+
 
 def read_secret_file(path: str, default_val: str):
     try:
-        with open(path, 'r') as f:
+        with open(path, "r") as f:
             value = f.read().strip()
     except OSError as e:
         logging.error(f"Failed to read secret file {path}: {e}")
@@ -78,32 +92,33 @@ def read_secret_file(path: str, default_val: str):
         return default_val
     return value
 
+
 def default_namespace():
-    return 'default'
+    return "default"
 
 
 def default_backup_type():
-    return 'all'
+    return "all"
 
 
 def default_backup_expiration_period():
-    return '2 weeks'
+    return "2 weeks"
 
 
 def postgresql_user():
-    return read_secret_file(_PG_USER_CREDS_PATH + "username", 'postgres')
+    return read_secret_file(_PG_USER_CREDS_PATH + "username", "postgres")
 
 
 def postgresql_host():
-    return os.getenv('POSTGRES_HOST') or 'localhost'
+    return os.getenv("POSTGRES_HOST") or "localhost"
 
 
 def postgresql_port():
-    return os.getenv('POSTGRES_PORT') or '5432'
+    return os.getenv("POSTGRES_PORT") or "5432"
 
 
 def postgres_password():
-    return read_secret_file(_PG_USER_CREDS_PATH + "password", '')
+    return read_secret_file(_PG_USER_CREDS_PATH + "password", "")
 
 
 def aws_access_key_id():
@@ -143,11 +158,14 @@ def eviction_interval():
 def granular_cron_pattern():
     return os.getenv("GRANULAR_BACKUP_SCHEDULE", "none")
 
+
 def diff_cron_pattern():
     return os.getenv("DIFF_SCHEDULE", "none")
 
+
 def incr_cron_pattern():
     return os.getenv("INCR_SCHEDULE", "none")
+
 
 def compression_level():
     level = os.getenv("COMPRESSION_LEVEL")
@@ -155,29 +173,32 @@ def compression_level():
         return int(level)
     return None
 
+
 def get_parallel_jobs():
-    return os.getenv("JOB_FLAG" , "1")
+    return os.getenv("JOB_FLAG", "1")
+
 
 def dbs_to_granular_backup():
     databases = os.getenv("DATABASES_TO_SCHEDULE")
     if databases:
-        databases = databases.split(',')
+        databases = databases.split(",")
     return databases or []
 
-def connection_properties(username = postgresql_user(), password = postgres_password(), database = 'postgres'):
+
+def connection_properties(username=postgresql_user(), password=postgres_password(), database="postgres"):
     return {
-        'host': postgresql_host(),
-        'port': postgresql_port(),
-        'user': username,
-        'password': password,
-        'database': database,
-        'connect_timeout': int(os.getenv("CONNECT_TIMEOUT", "5"))
+        "host": postgresql_host(),
+        "port": postgresql_port(),
+        "user": username,
+        "password": password,
+        "database": database,
+        "connect_timeout": int(os.getenv("CONNECT_TIMEOUT", "5")),
     }
 
 
 def get_encryption():
-    encrypt_backups = os.getenv("KEY_SOURCE", 'false').lower()
-    return encrypt_backups != 'false'
+    encrypt_backups = os.getenv("KEY_SOURCE", "false").lower()
+    return encrypt_backups != "false"
 
 
 def get_pgsql_bin_path(version):

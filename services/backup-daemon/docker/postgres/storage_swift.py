@@ -12,23 +12,18 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import hashlib
-import io
-import json
 import logging
 import time
 from datetime import datetime
+import hashlib
+import json
+from io import StringIO
 from traceback import format_exception
 
 import os
 
 import storage
 from storage import VAULT_NAME_FORMAT, StorageLocationAlreadyExistsException
-
-try:
-    from io import StringIO
-except ImportError:
-    from io import StringIO
 
 import subprocess
 
@@ -51,29 +46,37 @@ class SwiftStorage(storage.Storage):
 
     def list(self):
         swift_vault_listing = subprocess.check_output(["/opt/backup/scli", "ls", CONTAINER], env=scli_env)
-        vaults = [SwiftVault(os.path.basename(backup_name[0:(len(backup_name) - len(os.path.basename(backup_name)) - 1)])
-                             , cache_state=True
-                             ,swift_vault_listing=swift_vault_listing)
-                  for backup_name in swift_vault_listing.split("\n")
-                  if backup_name.endswith(".tar.gz")]
+        vaults = []
+        for backup_name in swift_vault_listing.split("\n"):
+            if backup_name.endswith(".tar.gz"):
+                name_len = len(backup_name)
+                base_len = len(os.path.basename(backup_name))
+                vault_name = os.path.basename(backup_name[0:(name_len - base_len - 1)])
+                vaults.append(
+                    SwiftVault(
+                        vault_name,
+                        cache_state=True,
+                        swift_vault_listing=swift_vault_listing,
+                    )
+                )
         vaults.sort(key=lambda v: v.create_time())
         return vaults
 
     def size(self):
-        """ Returns whole storage size in bytes """
+        """Returns whole storage size in bytes"""
         return 0
 
     def archive_size(self):
-        """ Returns whole storage size in bytes """
+        """Returns whole storage size in bytes"""
         return 0
 
     def fs_space(self):
-        """ Returns tuple (free, total) space on mount point where is root folder located """
+        """Returns tuple (free, total) space on mount point where is root folder located"""
         return (1, 1)
 
     def open_vault(self):
         """
-        
+
         :return:
         :rtype: (str, dict, StringIO)
         """
@@ -82,11 +85,42 @@ class SwiftStorage(storage.Storage):
     def evict(self, vault):
         self.__log.info("Evict vault: %s" % vault)
         backup_name = "{}/pg_{}_backup_{}.tar.gz".format(vault.get_folder(), PG_CLUSTER_NAME, vault.get_id())
-        subprocess.check_call(["/opt/backup/scli", "delete", "{}/{}".format(CONTAINER, backup_name)], env=scli_env)
-        subprocess.call(["/opt/backup/scli", "delete", "{}/{}.lock".format(CONTAINER, vault.get_folder())], env=scli_env)
-        subprocess.call(["/opt/backup/scli", "delete", "{}/{}.failed".format(CONTAINER, vault.get_folder())], env=scli_env)
-        subprocess.call(["/opt/backup/scli", "delete", "{}/{}.console".format(CONTAINER, vault.get_folder())], env=scli_env)
-        subprocess.check_call(["/opt/backup/scli", "delete", "{}/{}.metrics".format(CONTAINER, vault.get_folder())], env=scli_env)
+        subprocess.check_call(
+            ["/opt/backup/scli", "delete", "{}/{}".format(CONTAINER, backup_name)],
+            env=scli_env,
+        )
+        subprocess.call(
+            [
+                "/opt/backup/scli",
+                "delete",
+                "{}/{}.lock".format(CONTAINER, vault.get_folder()),
+            ],
+            env=scli_env,
+        )
+        subprocess.call(
+            [
+                "/opt/backup/scli",
+                "delete",
+                "{}/{}.failed".format(CONTAINER, vault.get_folder()),
+            ],
+            env=scli_env,
+        )
+        subprocess.call(
+            [
+                "/opt/backup/scli",
+                "delete",
+                "{}/{}.console".format(CONTAINER, vault.get_folder()),
+            ],
+            env=scli_env,
+        )
+        subprocess.check_call(
+            [
+                "/opt/backup/scli",
+                "delete",
+                "{}/{}.metrics".format(CONTAINER, vault.get_folder()),
+            ],
+            env=scli_env,
+        )
 
     def prot_is_file_exists(self, filename):
         self.__log.info("File existence check for: %s" % filename)
@@ -95,7 +129,10 @@ class SwiftStorage(storage.Storage):
 
     def prot_delete(self, filename):
         self.__log.info("Delete file: %s" % filename)
-        subprocess.check_call(["/opt/backup/scli", "delete", "{}/{}".format(CONTAINER, filename)], env=scli_env)
+        subprocess.check_call(
+            ["/opt/backup/scli", "delete", "{}/{}".format(CONTAINER, filename)],
+            env=scli_env,
+        )
 
     def prot_get_as_stream(self, filename):
         """
@@ -105,12 +142,16 @@ class SwiftStorage(storage.Storage):
         :rtype: io.RawIOBase
         """
         self.__log.info("Get request for file: %s" % filename)
-        process = subprocess.Popen(["/opt/backup/scli", "get", "{}/{}".format(CONTAINER, filename)], env=scli_env, stdout=subprocess.PIPE)
+        process = subprocess.Popen(
+            ["/opt/backup/scli", "get", "{}/{}".format(CONTAINER, filename)],
+            env=scli_env,
+            stdout=subprocess.PIPE,
+        )
         return process.stdout
 
     def prot_put_as_stream(self, filename, stream):
         """
-        :param filename: 
+        :param filename:
         :type filename: string
         :param stream:
         :type stream: io.RawIOBase
@@ -120,14 +161,20 @@ class SwiftStorage(storage.Storage):
         self.__log.info("Put request for file: %s" % filename)
         sha256 = hashlib.sha256()
         chunk_size = 4096
-        process = subprocess.Popen(["/opt/backup/scli", "put", "{}/{}".format(CONTAINER, filename)], env=scli_env, stdout=subprocess.PIPE, stdin=subprocess.PIPE)
+        process = subprocess.Popen(
+            ["/opt/backup/scli", "put", "{}/{}".format(CONTAINER, filename)],
+            env=scli_env,
+            stdout=subprocess.PIPE,
+            stdin=subprocess.PIPE,
+        )
 
         while True:
             data = stream.read(chunk_size)
             if len(data) == 0:
                 stream.close()
-                self.__log.info("Processed stream with sha256 {}".format(sha256.hexdigest()))
-                return sha256.hexdigest()
+                sha256_hex = sha256.hexdigest()
+                self.__log.info("Processed stream with sha256 {}".format(sha256_hex))
+                return sha256_hex
             sha256.update(data)
             process.stdin.write(data)
 
@@ -152,7 +199,10 @@ class SwiftVault(storage.Vault):
 
     def __cache_current_state(self):
         if self.cache_state:
-            swift_vault_listing = self.swift_vault_listing if self.swift_vault_listing else subprocess.check_output(["/opt/backup/scli", "ls", CONTAINER], env=scli_env)
+            if self.swift_vault_listing:
+                swift_vault_listing = self.swift_vault_listing
+            else:
+                swift_vault_listing = subprocess.check_output(["/opt/backup/scli", "ls", CONTAINER], env=scli_env)
             self.cached_state["is_locked"] = self.__lock_filepath() in swift_vault_listing
             self.cached_state["is_failed"] = self.__failed_filepath() in swift_vault_listing
 
@@ -164,10 +214,12 @@ class SwiftVault(storage.Vault):
 
     def __load_metrics_from_swift(self):
         try:
-            return json.loads(subprocess.check_output([
-                "/opt/backup/scli",
-                "get",
-                "{}/{}".format(CONTAINER, self.__metrics_filepath())], env=scli_env))
+            metrics_path = self.__metrics_filepath()
+            output = subprocess.check_output(
+                ["/opt/backup/scli", "get", "{}/{}".format(CONTAINER, metrics_path)],
+                env=scli_env,
+            )
+            return json.loads(output)
         except Exception:
             self.__log.warning("Cannot load metrics from swift. Backup can be damaged")
             return {}
@@ -180,7 +232,6 @@ class SwiftVault(storage.Vault):
             return self.cached_state["metrics"]
         else:
             return self.__load_metrics_from_swift()
-
 
     def __lock_filepath(self):
         return self.folder + ".lock"
@@ -224,12 +275,23 @@ class SwiftVault(storage.Vault):
         self.__log.info("Init next vault: %s" % self.folder)
         super(SwiftVault, self).__enter__()
 
-        if self.__is_file_exists(self.__metrics_filepath()):
-            raise StorageLocationAlreadyExistsException("Destination backup folder already exists: %s" % self.folder)
+        metrics_path = self.__metrics_filepath()
+        if self.__is_file_exists(metrics_path):
+            msg = "Destination backup folder already exists: %s" % self.folder
+            raise StorageLocationAlreadyExistsException(msg)
 
         self.__log.info("Create .lock file in vault: %s" % self.folder)
         subprocess.call("echo .lock > /tmp/.lock", shell=True)
-        subprocess.check_call(["/opt/backup/scli", "put", "/tmp/.lock", "{}/{}".format(CONTAINER, self.__lock_filepath())], env=scli_env)
+        lock_path = self.__lock_filepath()
+        subprocess.check_call(
+            [
+                "/opt/backup/scli",
+                "put",
+                "/tmp/.lock",
+                "{}/{}".format(CONTAINER, lock_path),
+            ],
+            env=scli_env,
+        )
         self.console = StringIO()
         return (self.folder, self.metrics, self.console)
 
@@ -245,10 +307,10 @@ class SwiftVault(storage.Vault):
         super(SwiftVault, self).__exit__(tpe, exception, tb)
 
         backup_name = "{}/pg_{}_backup_{}.tar.gz".format(self.get_folder(), PG_CLUSTER_NAME, self.get_id())
-        size_str = subprocess.check_output(
-            ["/opt/backup/scli ls -l {} | grep {} | awk '{{A+=$2}} END{{print A}}'".format(CONTAINER_SEG, backup_name)]
-            , shell=True
-            , env=scli_env)
+        cmd = "/opt/backup/scli ls -l {} | grep {} | " "awk '{{A+=$2}} END{{print A}}'".format(
+            CONTAINER_SEG, backup_name
+        )
+        size_str = subprocess.check_output([cmd], shell=True, env=scli_env)
         try:
             self.metrics["size"] = int(size_str)
         except Exception as e:
@@ -257,7 +319,16 @@ class SwiftVault(storage.Vault):
 
         if exception:
             subprocess.call("echo .failed > /tmp/.failed", shell=True)
-            subprocess.check_call(["/opt/backup/scli", "put", "/tmp/.failed", "{}/{}".format(CONTAINER, self.__failed_filepath())], env=scli_env)
+            failed_path = self.__failed_filepath()
+            subprocess.check_call(
+                [
+                    "/opt/backup/scli",
+                    "put",
+                    "/tmp/.failed",
+                    "{}/{}".format(CONTAINER, failed_path),
+                ],
+                env=scli_env,
+            )
 
             e = "\n".join(format_exception(tpe, exception, tb))
             self.__log.info("Don't remove vault .lock due exception in nested code")
@@ -266,16 +337,38 @@ class SwiftVault(storage.Vault):
 
         with open("/tmp/.metrics", "w") as f:
             json.dump(self.metrics, f)
-        subprocess.check_call(["/opt/backup/scli", "put", "/tmp/.metrics", "{}/{}".format(CONTAINER, self.__metrics_filepath())], env=scli_env)
+        metrics_path = self.__metrics_filepath()
+        subprocess.check_call(
+            [
+                "/opt/backup/scli",
+                "put",
+                "/tmp/.metrics",
+                "{}/{}".format(CONTAINER, metrics_path),
+            ],
+            env=scli_env,
+        )
 
         console_logs = self.console.getvalue()
         self.console.close()
         with open("/tmp/.console", "w") as f:
             f.write(console_logs)
-        subprocess.check_call(["/opt/backup/scli", "put", "/tmp/.console", "{}/{}".format(CONTAINER, self.__console_filepath())], env=scli_env)
+        console_path = self.__console_filepath()
+        subprocess.check_call(
+            [
+                "/opt/backup/scli",
+                "put",
+                "/tmp/.console",
+                "{}/{}".format(CONTAINER, console_path),
+            ],
+            env=scli_env,
+        )
 
         self.__log.info("Remove lock for %s" % self.get_id())
-        subprocess.check_call(["/opt/backup/scli", "delete", "{}/{}".format(CONTAINER, self.__lock_filepath())], env=scli_env)
+        lock_path = self.__lock_filepath()
+        subprocess.check_call(
+            ["/opt/backup/scli", "delete", "{}/{}".format(CONTAINER, lock_path)],
+            env=scli_env,
+        )
 
     def __repr__(self):
         return "Vault(%s)" % self.get_id()

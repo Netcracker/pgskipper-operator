@@ -12,15 +12,9 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import json
-
 from utils_oc import OpenshiftOrchestrator, OpenshiftPyClient
-from recovery import cleanup_pg_pod_data_directory
 from kubernetes import client
-from kubernetes.client import configuration
-from kubernetes.client import rest
 from kubernetes.stream import stream
-from kubernetes.stream.ws_client import ERROR_CHANNEL, STDOUT_CHANNEL, STDERR_CHANNEL
 import kubernetes
 from utils_common import retry
 from datetime import datetime, timezone
@@ -30,8 +24,6 @@ import requests
 import logging
 import os
 import yaml
-import json
-
 
 log = logging.getLogger()
 log.setLevel(logging.DEBUG)
@@ -47,29 +39,34 @@ pg_dir = "/var/lib/pgsql/data"
 pg_data_dir = "{}/postgresql_${{POD_IDENTITY}}".format(pg_dir)
 
 
-class PgBackRestRecovery():
+class PgBackRestRecovery:
     def __init__(self):
         try:
             from kubernetes import config as k8s_config
+
             k8s_config.load_incluster_config()
             log.info("Using pyclient")
             self.oc_client = OpenshiftPyClient()
-            self.oc_client.use_token(oc_url=oc_openshift_url, oc_token="", project=oc_project, skip_tls_verify=skip_tls_verify)
+            self.oc_client.use_token(
+                oc_url=oc_openshift_url,
+                oc_token="",
+                project=oc_project,
+                skip_tls_verify=skip_tls_verify,
+            )
             self._api_client = None
             self.project = os.getenv("POD_NAMESPACE")
             self.oc_orch = OpenshiftOrchestrator(self.oc_client, retry_count)
             try:
                 self.apps_api = client.AppsV1Api(self._api_client)
-            except:
+            except BaseException:
                 self.apps_api = client.AppsV1beta1Api(self._api_client)
 
-        except Exception as e:
+        except Exception:
             log.exception("Failed to create OpenshiftPyClient")
-
 
     def get_patroni_replicas_ip(self, statefulsets):
         r = requests.get("http://pg-patroni:8008")
-        return r.json()['replication']
+        return r.json()["replication"]
 
     def get_patroni_statefulsets(self):
         stateful_sets = self.apps_api.list_namespaced_stateful_set(self.project).items
@@ -77,32 +74,36 @@ class PgBackRestRecovery():
 
     def patch_statefulset_cmd(self, stateful_set, stateful_set_name, cmd):
 
-        log.info(f'Going to set {stateful_set_name} with {cmd} command')
+        log.info(f"Going to set {stateful_set_name} with {cmd} command")
 
         stateful_set.spec.template.spec.containers[0].command = cmd
 
         self.apps_api.patch_namespaced_stateful_set(stateful_set_name, self.project, stateful_set)
 
-
     def scale_statefulset(self, stateful_set_name, replicas):
 
-        log.info(f'Going to set {stateful_set_name} with {replicas} replicas')
+        log.info(f"Going to set {stateful_set_name} with {replicas} replicas")
 
-        self.apps_api.patch_namespaced_stateful_set_scale(stateful_set_name, self.project, {"spec": {"replicas": replicas}})
+        self.apps_api.patch_namespaced_stateful_set_scale(
+            stateful_set_name, self.project, {"spec": {"replicas": replicas}}
+        )
 
     def patch_configmap(self, config_map_name, config_map):
 
-        log.info(f'Going to replace {config_map_name}')
+        log.info(f"Going to replace {config_map_name}")
         core_api = client.CoreV1Api(self._api_client)
         core_api.replace_namespaced_config_map(config_map_name, self.project, config_map)
-
 
     def delete_master_cm(self):
         try:
             log.info("Delete leader cm")
             body = client.V1DeleteOptions()
             core_api = client.CoreV1Api(self._api_client)
-            core_api.delete_namespaced_config_map(f"{pg_cluster_name}-leader", self.project, body=body,)
+            core_api.delete_namespaced_config_map(
+                f"{pg_cluster_name}-leader",
+                self.project,
+                body=body,
+            )
         except kubernetes.client.rest.ApiException as e:
             if e.reason == "Not Found":
                 return
@@ -113,7 +114,7 @@ class PgBackRestRecovery():
         log.info("Delete initialize key")
         cmaps = client.CoreV1Api(self._api_client).list_namespaced_config_map(self.project).items
         for cm in cmaps:
-            if cm.metadata.name == f'{pg_cluster_name}-config':
+            if cm.metadata.name == f"{pg_cluster_name}-config":
                 if "initialize" in cm.metadata.annotations:
                     del cm.metadata.annotations["initialize"]
                     self.patch_configmap(cm.metadata.name, cm)
@@ -128,32 +129,39 @@ class PgBackRestRecovery():
     def get_template_cm(self):
         template_cm = self.get_config_map(f"patroni-{pg_cluster_name}.config.yaml")
         if not template_cm:
-            log.info(f"Can't find patroni-{pg_cluster_name}.config.yaml, trying to find {pg_cluster_name}-patroni.config.yaml")
+            log.info(
+                f"Can't find patroni-{pg_cluster_name}.config.yaml, "
+                f"trying to find {pg_cluster_name}-patroni.config.yaml"
+            )
             template_cm = self.get_config_map(f"{pg_cluster_name}-patroni.config.yaml")
         return template_cm
 
     def create_custom_bootstrap_method(self, target, restore_type, target_timeline):
         template_cm = self.get_template_cm()
-        patroni_config_data = template_cm.data['patroni-config-template.yaml']
+        patroni_config_data = template_cm.data["patroni-config-template.yaml"]
         log.info(f"Data {patroni_config_data}")
-        dict_data = yaml.load(patroni_config_data,Loader=yaml.FullLoader)
+        dict_data = yaml.load(patroni_config_data, Loader=yaml.FullLoader)
         dict_data["bootstrap"]["pgbackrest"] = {
-            "command": f"pgbackrest --stanza=patroni --delta --type={restore_type} --target='{target}' --target-timeline={target_timeline} --target-action=promote restore",
+            "command": (
+                f"pgbackrest --stanza=patroni --delta --type={restore_type} "
+                f"--target='{target}' --target-timeline={target_timeline} "
+                f"--target-action=promote restore"
+            ),
             "keep_existing_recovery_conf": "True",
-            "no_params": "True"
+            "no_params": "True",
         }
         dict_data["bootstrap"]["method"] = "pgbackrest"
-        template_cm.data['patroni-config-template.yaml'] = yaml.dump(dict_data)
+        template_cm.data["patroni-config-template.yaml"] = yaml.dump(dict_data)
         self.patch_configmap(template_cm.metadata.name, template_cm)
 
     def clean_custom_bootstrap_method(self):
-        log.info(f"Pop custom bootstrap method from patroni-template config map")
+        log.info("Pop custom bootstrap method from patroni-template config map")
         template_cm = self.get_template_cm()
-        patroni_config_data = template_cm.data['patroni-config-template.yaml']
-        dict_data = yaml.load(patroni_config_data,Loader=yaml.FullLoader)
+        patroni_config_data = template_cm.data["patroni-config-template.yaml"]
+        dict_data = yaml.load(patroni_config_data, Loader=yaml.FullLoader)
         dict_data["bootstrap"].pop("method", None)
         dict_data["bootstrap"].pop("pgbackrest", None)
-        template_cm.data['patroni-config-template.yaml'] = yaml.dump(dict_data)
+        template_cm.data["patroni-config-template.yaml"] = yaml.dump(dict_data)
         self.patch_configmap(template_cm.metadata.name, template_cm)
 
     @retry(tries=3600, delay=1)
@@ -161,23 +169,26 @@ class PgBackRestRecovery():
         # wait for leader to upgrade stanza
         logging.basicConfig(level=logging.DEBUG)
         r = requests.post("http://backrest:3000/upgrade")
-        log.info(f'{r.status_code}, {r.text}')
-        
+        log.info(f"{r.status_code}, {r.text}")
+
         # Raise exception for status codes that should trigger retry
         if r.status_code in [502, 503, 504]:
             log.warning(f"Server error {r.status_code}: {r.text}")
             raise requests.exceptions.RequestException(f"Server error {r.status_code}: {r.text}")
-        
+
         return r
 
     @retry(tries=3600, delay=1)
     def restore_pod(self, pod_name, backup_id):
         # wait for pod to restore
-        log.info(f'Will invoke restore command for pod {pod_name}')
+        log.info(f"Will invoke restore command for pod {pod_name}")
         logging.basicConfig(level=logging.DEBUG)
-        r = requests.post(f"http://{pod_name}.backrest-headless:3000/restore", data={'backupId':backup_id})
-        log.info(f'{r.status_code}, {r.text}')
-        
+        r = requests.post(
+            f"http://{pod_name}.backrest-headless:3000/restore",
+            data={"backupId": backup_id},
+        )
+        log.info(f"{r.status_code}, {r.text}")
+
         # Raise exception for status codes that should trigger retry
         if r.status_code in [502, 503, 504]:
             raise requests.exceptions.RequestException(f"Server error {r.status_code}: {r.text}")
@@ -193,10 +204,8 @@ class PgBackRestRecovery():
             return int(dt.timestamp())
         except ValueError as e:
             raise Exception(
-                f"Invalid PITR target time format: {target}. "
-                "Expected format example: '2024-10-23 14:11:04+00'"
+                f"Invalid PITR target time format: {target}. " "Expected format example: '2024-10-23 14:11:04+00'"
             ) from e
-
 
     def get_pgbackrest_backups(self):
         try:
@@ -206,19 +215,15 @@ class PgBackRestRecovery():
         except Exception as e:
             raise Exception("Failed to get pgBackRest backups list before restore") from e
 
-
-    def validate_pitr_request(self, restore_type, target, target_timeline='current'):
+    def validate_pitr_request(self, restore_type, target, target_timeline="current"):
         if not restore_type:
             raise Exception("TYPE must be provided when TARGET is set")
 
         allowed_types = ["time", "lsn", "name", "xid"]
         if restore_type not in allowed_types:
-            raise Exception(
-                f"Unsupported restore TYPE={restore_type}. "
-                f"Allowed values: {allowed_types}"
-            )
+            raise Exception(f"Unsupported restore TYPE={restore_type}. " f"Allowed values: {allowed_types}")
 
-        if target_timeline not in ['current', 'latest']:
+        if target_timeline not in ["current", "latest"]:
             try:
                 timeline_num = int(target_timeline)
                 if timeline_num < 1:
@@ -253,24 +258,25 @@ class PgBackRestRecovery():
                 "Restore rejected before Patroni state changes."
             )
 
-        log.info(
-            f"PITR target {target} is valid. "
-            f"Found {len(suitable_backups)} suitable backup(s)."
-        )
+        log.info(f"PITR target {target} is valid. " f"Found {len(suitable_backups)} suitable backup(s).")
 
     def perform_restore(self):
-        backup_id = '' if not os.getenv("SET") else os.getenv("SET")
-        restore_type = '' if not os.getenv("TYPE") else os.getenv("TYPE")
-        target = '' if not os.getenv("TARGET") else os.getenv("TARGET")
-        target_timeline = 'current' if not os.getenv("TARGET_TIMELINE") else os.getenv("TARGET_TIMELINE")
+        backup_id = "" if not os.getenv("SET") else os.getenv("SET")
+        restore_type = "" if not os.getenv("TYPE") else os.getenv("TYPE")
+        target = "" if not os.getenv("TARGET") else os.getenv("TARGET")
+        target_timeline = "current" if not os.getenv("TARGET_TIMELINE") else os.getenv("TARGET_TIMELINE")
         replicas_only_env = False if not os.getenv("REPLICAS_ONLY") else os.getenv("REPLICAS_ONLY")
-        replicas_only = replicas_only_env and replicas_only_env.lower() in ['true', '1', 'yes']
+        replicas_only = replicas_only_env and replicas_only_env.lower() in [
+            "true",
+            "1",
+            "yes",
+        ]
 
         if target:
             self.validate_pitr_request(restore_type, target, target_timeline)
 
         http_codes = {}
-        stateful_sets =  self.get_patroni_statefulsets()
+        stateful_sets = self.get_patroni_statefulsets()
 
         if replicas_only:
             return self.restore_replicas_only(stateful_sets)
@@ -279,7 +285,7 @@ class PgBackRestRecovery():
             self.cleanup_data_for_stateful_set(stateful_set)
             time.sleep(15)
 
-        stateful_sets =  self.get_patroni_statefulsets()
+        stateful_sets = self.get_patroni_statefulsets()
 
         stateful_set = stateful_sets[0]
         stateful_set_name = stateful_sets[0].metadata.name
@@ -298,18 +304,20 @@ class PgBackRestRecovery():
             http_codes[stateful_set_name] = self.restore_pod(pod_name, backup_id)
 
         if target or http_codes[stateful_set_name] == 200:
-            log.info(f"Restore return 200 http state, so remove sleep cmd")
+            log.info("Restore return 200 http state, so remove sleep cmd")
             self.patch_statefulset_cmd(stateful_set, stateful_set_name, [])
             time.sleep(5)
-            self.scale_statefulset(stateful_set_name,0)
+            self.scale_statefulset(stateful_set_name, 0)
             time.sleep(15)
-            self.scale_statefulset(stateful_set_name,1)
+            self.scale_statefulset(stateful_set_name, 1)
         else:
-            log.error(f'Restore procedure for {stateful_set_name} ends with error. It was {http_codes[stateful_set_name]}')
+            log.error(
+                f"Restore procedure for {stateful_set_name} ends with error. It was " f"{http_codes[stateful_set_name]}"
+            )
             return
         if not self.wait_for_pod(pod_name, attempts=5):
             raise Exception("Pod {} is not ready".format(pod_name))
-        
+
         # Check for master pod
         try:
             self.find_cluster_pods("primary", 1)
@@ -335,20 +343,19 @@ class PgBackRestRecovery():
         # Extract stateful set name from master pod name (remove "-0" suffix)
         master_statefulset_name = master_pods[0].metadata.name.rsplit("-", 1)[0]
         log.info(f"Master stateful set name: {master_statefulset_name}")
-        
+
         # Clean up non-master stateful sets
         for stateful_set in stateful_sets:
             if stateful_set.metadata.name != master_statefulset_name:
                 self.cleanup_data_for_stateful_set(stateful_set)
                 time.sleep(15)
-        
+
         # Filter replicas after getting fresh state
         stateful_sets = self.get_patroni_statefulsets()
         replicas_stateful_sets = [
-            stateful_set for stateful_set in stateful_sets 
-            if stateful_set.metadata.name != master_statefulset_name
+            stateful_set for stateful_set in stateful_sets if stateful_set.metadata.name != master_statefulset_name
         ]
-        
+
         if replicas_stateful_sets:
             self.restore_replicas(replicas_stateful_sets)
             log.info("Replicas have been restored")
@@ -364,7 +371,7 @@ class PgBackRestRecovery():
         self.patch_statefulset_cmd(stateful_set, stateful_set_name, cmd)
         time.sleep(5)
         # Just in case when pods could be scaled 0
-        self.scale_statefulset(stateful_set_name,1)
+        self.scale_statefulset(stateful_set_name, 1)
         if not self.wait_for_pod(pod_name, attempts=5):
             raise Exception("Pod {} is not ready".format(pod_name))
         self.cleanup_patroni_data(pod_name, stateful_set_name, False)
@@ -375,15 +382,15 @@ class PgBackRestRecovery():
 
         # Wait for backup to appear in list
         self.wait_diff_backup(incr_backup_id)
-        
+
         for stateful_set in stateful_sets:
             stateful_set_name = stateful_set.metadata.name
             pod_name = stateful_set.metadata.name + "-0"
             self.patch_statefulset_cmd(stateful_set, stateful_set_name, [])
             time.sleep(5)
-            self.scale_statefulset(stateful_set_name,0)
+            self.scale_statefulset(stateful_set_name, 0)
             time.sleep(15)
-            self.scale_statefulset(stateful_set_name,1)
+            self.scale_statefulset(stateful_set_name, 1)
             if not self.wait_for_pod(pod_name, attempts=5):
                 raise Exception("Pod {} is not ready".format(pod_name))
 
@@ -394,12 +401,12 @@ class PgBackRestRecovery():
             raise
 
     @retry(tries=3600, delay=5)
-    def trigger_diff_backup(self):  
+    def trigger_diff_backup(self):
         log.info("Triggering differential backup")
         try:
             backup_response = requests.post("http://localhost:9000/backup/diff")
             backup_response.raise_for_status()
-            backup_id = backup_response.json()['backupId']
+            backup_id = backup_response.json()["backupId"]
             log.info(f"Differential backup triggered with ID: {backup_id}")
             return backup_id
         except requests.exceptions.RequestException as e:
@@ -413,8 +420,8 @@ class PgBackRestRecovery():
             list_response = requests.get("http://backrest-headless:3000/list")
             list_response.raise_for_status()
             backups = list_response.json()
-                
-            if any((backup.get('annotation') or {}).get('timestamp') == backup_id for backup in backups):
+
+            if any((backup.get("annotation") or {}).get("timestamp") == backup_id for backup in backups):
                 log.info(f"Backup {backup_id} found in list")
             else:
                 log.info(f"Backup {backup_id} not found in list")
@@ -422,14 +429,10 @@ class PgBackRestRecovery():
         except requests.exceptions.RequestException as e:
             log.error(f"Failed to check backup list: {e}")
 
-
     @retry(tries=3600, delay=5)
     def find_cluster_pods(self, pod_type, count):
         core_api = client.CoreV1Api(self._api_client)
-        pods = core_api.list_namespaced_pod(
-            self.project,
-            label_selector=f"pgtype={pod_type}"
-        )
+        pods = core_api.list_namespaced_pod(self.project, label_selector=f"pgtype={pod_type}")
         if len(pods.items) < count:
             log.info(f"Pods with pgtype={pod_type} count:{len(pods.items)}, required:{count}")
             raise Exception(f"Pods with pgtype={pod_type} count:{len(pods.items)}, required:{count}")
@@ -439,28 +442,41 @@ class PgBackRestRecovery():
     def cleanup_patroni_data(self, pod_name, container_name, preserve_old_files):
         log.info("Try to cleanup data directory for pod {}".format(pod_name))
         if preserve_old_files == "yes":
-            self.oc_client.oc_exec(pod_name, container_name, "sh -c 'mv {} {}_backup_$(date +%s); ls -ll {}'".format(pg_data_dir, pg_data_dir, pg_dir))
+            self.oc_client.oc_exec(
+                pod_name,
+                container_name,
+                "sh -c 'mv {} {}_backup_$(date +%s); ls -ll {}'".format(pg_data_dir, pg_data_dir, pg_dir),
+            )
             log.info("Old files were preserved on volume. Cleanup if needed.")
-        self.oc_exec(pod_name, container_name, "sh -c 'rm -rf {}; rm -rf {}/pgbackrest; mkdir {}; chmod 700 {}'; echo Done".format(pg_data_dir, pg_dir, pg_data_dir, pg_data_dir))
-
+        self.oc_exec(
+            pod_name,
+            container_name,
+            "sh -c 'rm -rf {}; rm -rf {}/pgbackrest; mkdir {}; chmod 700 {}'; echo Done".format(
+                pg_data_dir, pg_dir, pg_data_dir, pg_data_dir
+            ),
+        )
 
     @retry(tries=3600, delay=5)
     def oc_exec(self, pod_id, container_name, command):
         log.debug(f"Try to execute '{command}' on pod {pod_id}")
         core_api = client.CoreV1Api(self._api_client)
 
-        exec_command = [
-            '/bin/sh', '-c', command
-        ]
+        exec_command = ["/bin/sh", "-c", command]
 
         try:
-            resp = stream(core_api.connect_get_namespaced_pod_exec,
-                          pod_id,
-                          self.project,
-                          container=container_name,
-                          command=exec_command,
-                          stderr=True, stdin=False,
-                          stdout=True, tty=False, _preload_content=True, _request_timeout=exec_timeout)
+            resp = stream(
+                core_api.connect_get_namespaced_pod_exec,
+                pod_id,
+                self.project,
+                container=container_name,
+                command=exec_command,
+                stderr=True,
+                stdin=False,
+                stdout=True,
+                tty=False,
+                _preload_content=True,
+                _request_timeout=exec_timeout,
+            )
 
             log.info(f"Command executed. Result: {resp}")
 
@@ -476,7 +492,6 @@ class PgBackRestRecovery():
             log.error(f"Exception occurred while executing command: {e}")
             raise
 
-
     def wait_for_pod(self, pod_name, attempts=5):
         for i in range(1, attempts):
             time.sleep(15)
@@ -489,7 +504,6 @@ class PgBackRestRecovery():
         log.info("Can't get pod {} status".format(pod_name))
         return False
 
-
     def get_pod_status(self, pod_name):
         core_api = client.CoreV1Api(self._api_client)
         pods = core_api.list_namespaced_pod(self.project).items
@@ -499,12 +513,7 @@ class PgBackRestRecovery():
             else:
                 log.info("Pod {} not found".format(pod_name))
 
+
 if __name__ == "__main__":
     recovery = PgBackRestRecovery()
     recovery.perform_restore()
-
-
-
-
-
-

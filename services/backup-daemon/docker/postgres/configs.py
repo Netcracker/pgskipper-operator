@@ -17,8 +17,8 @@ import logging.config
 import os
 from pyhocon import ConfigFactory
 
-GLOBAL_CONFIG_FILE_PATH = '/etc/backup-daemon.conf'
-LOGGING_CONFIG_FILE_PATH = '/opt/backup/logging.conf'
+GLOBAL_CONFIG_FILE_PATH = "/etc/backup-daemon.conf"
+LOGGING_CONFIG_FILE_PATH = "/opt/backup/logging.conf"
 
 
 def load_logging_configs():
@@ -26,7 +26,7 @@ def load_logging_configs():
 
 
 def load_configs():
-    default_config = os.path.join(os.path.dirname(__file__), 'backup-daemon.conf')
+    default_config = os.path.join(os.path.dirname(__file__), "backup-daemon.conf")
     if os.path.exists(GLOBAL_CONFIG_FILE_PATH):
         conf = ConfigFactory.parse_file(GLOBAL_CONFIG_FILE_PATH).with_fallback(default_config)
     else:
@@ -36,6 +36,7 @@ def load_configs():
     log.info("Loaded PostgreSQL backup configuration: %s" % json.dumps(conf))
 
     return conf
+
 
 def is_external_pg():
     return os.getenv("EXTERNAL_POSTGRESQL", "") != ""

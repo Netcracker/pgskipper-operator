@@ -26,17 +26,18 @@ class Rule:
     }
 
     def __init__(self, rule):
-        (startStr, intervalStr) = rule.strip().split("/")
+        startStr, intervalStr = rule.strip().split("/")
         self.start = self.__parseTimeSpec(startStr)
         self.interval = "delete" if (intervalStr == "delete") else self.__parseTimeSpec(intervalStr)
 
     def __parseTimeSpec(self, spec):
         import re
-        if (spec == "0"):
+
+        if spec == "0":
             return 0
 
         r = re.match("^(\\d+)(%s)$" % "|".join(list(self.magnifiers.keys())), spec)
-        if (r is None):
+        if r is None:
             raise Exception("Incorrect eviction start/interval specification: %s" % spec)
 
         digit = int(r.groups()[0])
@@ -55,8 +56,8 @@ def parse(rules):
 
 def evict(items, rules, start_point_time=None, accessor=lambda x: x):
     """
-		Calculate what to evict from given list of versions (version is timestamp value, when each lbackup was created)
-	"""
+    Calculate what to evict from given list of versions (version is timestamp value, when each lbackup was created)
+    """
 
     if start_point_time is None:
         start_point_time = time.time()
@@ -65,7 +66,7 @@ def evict(items, rules, start_point_time=None, accessor=lambda x: x):
     # TODO: to cache rules
     for rule in parse(rules):
         operateVersions = [t for t in items if accessor(t) <= start_point_time - rule.start]
-        if (rule.interval == "delete"):
+        if rule.interval == "delete":
             # all versions should be evicted catched by this interval
             evictionVersions.extend(operateVersions)
         else:

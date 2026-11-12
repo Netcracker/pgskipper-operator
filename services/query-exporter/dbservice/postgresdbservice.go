@@ -152,6 +152,7 @@ func (odbs *PostgresDBService) ExecuteSelect(qName string, qRand string, qCfg *c
 	return execWithTimeout(qName, qName, qCfg, odbs.executeSelect)
 }
 
+//nolint:staticcheck
 func (pdbs *PostgresDBService) executeSelect(ctx context.Context, qName string, qRand string, qCfg *config.QueryConfig) ([]map[string]string, []string, error) {
 	timeout := getTimeout(qCfg)
 	log.Debugf("[%v] Executing query %v with timeout %+v : %+v", qRand, qName, timeout, qCfg)
@@ -163,7 +164,7 @@ func (pdbs *PostgresDBService) executeSelect(ctx context.Context, qName string, 
 
 	if err != nil {
 		pdbs.printDBStatAndUpdatePrometheusSelfMetric(qRand)
-		return nil, nil, fmt.Errorf("Error executing query %v : %+v", qName, err)
+		return nil, nil, fmt.Errorf("error executing query %v : %+v", qName, err)
 	}
 
 	defer rows.Close()
@@ -193,7 +194,7 @@ func (dbservice *PostgresDBService) getRows(ctx context.Context, qName string, q
 	query := qCfg.Sql
 
 	if query == "" {
-		return nil, fmt.Errorf("Can not find a query")
+		return nil, fmt.Errorf("cannot find a query")
 	}
 
 	var parameters = make([]interface{}, 0)
@@ -214,9 +215,9 @@ func processPostgresRowToMap(rows pgx.Rows, qRand string) (map[string]string, er
 
 	values, err := rows.Values()
 	if err != nil {
-		return nil, fmt.Errorf("Error reading rows %+v", err)
+		return nil, fmt.Errorf("error reading rows %+v", err)
 	}
-	log.Tracef("[%v] Got values %+v", values)
+	log.Tracef("[%v] Got values %+v", qRand, values)
 
 	result := make(map[string]string)
 	for i, v := range values {
@@ -410,13 +411,13 @@ func (pdbs *PostgresDBService) obtainClassifierFromMetadata(ctx context.Context)
 	for rows.Next() {
 		err = rows.Scan(&classifierStr)
 		if err != nil {
-			log.Warn("No Classifier found in metadata for database %s", pdbs.dbName)
+			log.Warnf("No Classifier found in metadata for database %s", pdbs.dbName)
 			return config.Classifier{}, nil
 		}
 
 		err = json.Unmarshal([]byte(classifierStr), &classifier)
 		if err != nil {
-			log.Error("JSON classifier parse error for database %s", pdbs.dbName)
+			log.Errorf("JSON classifier parse error for database %s", pdbs.dbName)
 			return config.Classifier{}, nil
 		}
 		log.Debug(fmt.Sprintf("Classifier %s was found for database %s", classifier, pdbs.dbName))

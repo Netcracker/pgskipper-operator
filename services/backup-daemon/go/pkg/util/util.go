@@ -48,7 +48,7 @@ func getLogger() *zap.Logger {
 		zapcore.Lock(os.Stdout),
 		atom,
 	))
-	defer logger.Sync()
+	defer func() { _ = logger.Sync() }()
 	return logger
 }
 
@@ -88,7 +88,7 @@ func WriteFile(filePath string, data interface{}) error {
 		Logger.Error(fmt.Sprintf("cannot create %s file", filePath))
 		return err
 	}
-	defer file.Close()
+	defer func() { _ = file.Close() }()
 
 	dataStr, err := json.Marshal(data)
 	if err != nil {

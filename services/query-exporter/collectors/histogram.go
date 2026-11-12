@@ -69,6 +69,7 @@ func (e *CustomHistogram) Collect(ch chan<- prometheus.Metric) {
 func (e *CustomHistogram) Observe(sum float64, cnt uint64, buckets map[float64]uint64, labels map[string]string, labelKeys []string) {
 	e.Lock()
 	defer e.Unlock()
+	//nolint:staticcheck
 	if cnt < 0 {
 		log.Errorf("Value for cnt is less than 0 : %v ; Skipping histogram update", cnt)
 		return

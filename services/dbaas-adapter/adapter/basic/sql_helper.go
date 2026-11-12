@@ -170,6 +170,7 @@ func allowConnectionsToDbExt(dbName string) string {
 }
 
 func dropOldDatabase(dbName string) string {
+	//nolint:staticcheck
 	return fmt.Sprintf("DROP DATABASE IF EXISTS \"%s\";", strings.Replace(dbName, "\"", "\\\"", -1))
 }
 

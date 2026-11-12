@@ -17,7 +17,6 @@ import os
 import random
 import requests
 import string
-import json
 import yaml
 import logging
 import time
@@ -26,7 +25,7 @@ import utils_oc
 import utils_pg
 import re
 from utils_common import RecoveryException
-from utils_dcs import PatroniDCS, PatroniDCSEtcd, PatroniDCSKubernetes
+from utils_dcs import PatroniDCSEtcd, PatroniDCSKubernetes
 
 import dateutil.parser
 import dateutil.zoneinfo
@@ -35,7 +34,6 @@ import dateutil.tz
 from multiprocessing.pool import ThreadPool
 import concurrent.futures
 import asyncio
-
 
 retry_count = 60
 pg_dir = "/var/lib/pgsql/data"
@@ -46,8 +44,9 @@ log.setLevel(logging.DEBUG)
 
 ch = logging.StreamHandler(sys.stdout)
 ch.setLevel(logging.INFO)
-formatter = logging\
-    .Formatter('%(asctime)s - %(thread)d - %(name)s:%(funcName)s#%(lineno)d - %(levelname)s - %(message)s')
+formatter = logging.Formatter(
+    "%(asctime)s - %(thread)d - %(name)s:%(funcName)s#%(lineno)d - %(levelname)s - %(message)s"
+)
 ch.setFormatter(formatter)
 log.addHandler(ch)
 
@@ -56,28 +55,33 @@ os.makedirs(recovery_log_dir, exist_ok=True)
 
 ch = logging.FileHandler(
     os.path.join(recovery_log_dir, "recovery.debug.{}.log".format(int(time.time()))),
-    mode='w',
+    mode="w",
     encoding=None,
-    delay=False
+    delay=False,
 )
 ch.setLevel(logging.DEBUG)
-formatter = logging \
-    .Formatter('%(asctime)s - %(thread)d - %(name)s:%(funcName)s#%(lineno)d - %(levelname)s - %(message)s')
+formatter = logging.Formatter(
+    "%(asctime)s - %(thread)d - %(name)s:%(funcName)s#%(lineno)d - %(levelname)s - %(message)s"
+)
 ch.setFormatter(formatter)
 log.addHandler(ch)
 
-RECOVERY_EXCEPTION_NO_RESTORE_COMMAND = """FAILURE: cannot find restore_command in dcs and in patroni config template.
-Put valid value into dcs (etcd or '{}-config' configmap) on path 'postgresql.recovery_conf.restore_command'.
-If dcs uninitialized put it into configmap 'patroni-{}.config.yaml' on path 'bootstrap.dcs.postgresql.recovery_conf.restore_command'
-Value can be '' if wal_archive is disabled and 'curl -v -S -f --connect-timeout 3 postgres-backup-daemon:8082/archive/get?filename=%f -o %p' if enabled. 
-"""
+RECOVERY_EXCEPTION_NO_RESTORE_COMMAND = (
+    "FAILURE: cannot find restore_command in dcs and in patroni config template.\n"
+    "Put valid value into dcs (etcd or '{}-config' configmap) on path 'postgresql.recovery_conf.restore_command'.\n"
+    "If dcs uninitialized put it into configmap 'patroni-{}.config.yaml' on path "
+    "'bootstrap.dcs.postgresql.recovery_conf.restore_command'.\n"
+    "Value can be '' if wal_archive is disabled and "
+    "'curl -v -S -f --connect-timeout 3 postgres-backup-daemon:8082/archive/get?filename=%f -o %p' if enabled."
+)
 
 _SECRET_FILE_PATH = "/var/run/secrets/postgresql/"
 _PG_CREDS_PATH = _SECRET_FILE_PATH + "postgres-credentials/"
 
+
 def read_secret_file(path: str, default_val: str) -> str:
     try:
-        with open(path, 'r') as f:
+        with open(path, "r") as f:
             value = f.read().strip()
     except OSError as e:
         logging.error(f"Failed to read secret file {path}: {e}")
@@ -86,6 +90,7 @@ def read_secret_file(path: str, default_val: str) -> str:
         logging.info(f"Secret file {path} is empty, using default value")
         return default_val
     return value
+
 
 class PoolLogger(object):
 
@@ -106,28 +111,47 @@ class LoggingPool(ThreadPool):
     def apply_async(self, func, args=(), kwds={}, callback=None):
         return ThreadPool.apply_async(self, PoolLogger(func), args, kwds, callback)
 
+
 # todo[anin] OpenshiftPyClient cannot work in parallel!
-
-
 
 
 def cleanup_pg_pod_data_directory(oc_client, pod_id, preserve_old_files):
     log.info("Try to cleanup data directory for pod {}".format(pod_id))
     if preserve_old_files == "yes":
-        oc_client.oc_exec(pod_id, "sh -c 'mv {} {}_backup_$(date +%s); ls -ll {}'".format(pg_data_dir, pg_data_dir, pg_dir))
+        oc_client.oc_exec(
+            pod_id,
+            "sh -c 'mv {} {}_backup_$(date +%s); ls -ll {}'".format(pg_data_dir, pg_data_dir, pg_dir),
+        )
         log.info("Old files were preserved on volume. Cleanup if needed.")
-    oc_client.oc_exec(pod_id, " sh -c 'rm -rf {}; mkdir {}; chmod 700 {}' ".format(pg_data_dir, pg_data_dir, pg_data_dir))
+    oc_client.oc_exec(
+        pod_id,
+        " sh -c 'rm -rf {}; mkdir {}; chmod 700 {}' ".format(pg_data_dir, pg_data_dir, pg_data_dir),
+    )
 
 
-def update_configmap(oc_client, dcs_storage, recovery_pod_id, pg_cluster_name, restore_version,
-                     recovery_target_timeline, recovery_target_inclusive,
-                     recovery_target_name, recovery_target_time, recovery_target_xid, recovery_target,):
+def update_configmap(
+    oc_client,
+    dcs_storage,
+    recovery_pod_id,
+    pg_cluster_name,
+    restore_version,
+    recovery_target_timeline,
+    recovery_target_inclusive,
+    recovery_target_name,
+    recovery_target_time,
+    recovery_target_xid,
+    recovery_target,
+):
     log.info("Update configmap with actual bootstrap method")
     patroni_config_cm = oc_client.get_configmap("patroni-{}.config.yaml".format(pg_cluster_name))
     if not patroni_config_cm:
-        log.info("Can't find patroni-{}.config.yaml, trying to find {}-patroni.config.yaml".format(pg_cluster_name, pg_cluster_name))
+        log.info(
+            "Can't find patroni-{}.config.yaml, trying to find {}-patroni.config.yaml".format(
+                pg_cluster_name, pg_cluster_name
+            )
+        )
         patroni_config_cm = oc_client.get_configmap("{}-patroni.config.yaml".format(pg_cluster_name))
-    patroni_config_data = patroni_config_cm['data']['patroni-config-template.yaml']
+    patroni_config_data = patroni_config_cm["data"]["patroni-config-template.yaml"]
     log.debug("Patroni config template from configmap: \n {}".format(patroni_config_data))
     patroni_config = yaml.safe_load(patroni_config_data)
     log.debug("Patroni config template from configmap (parsed): \n {}".format(patroni_config))
@@ -138,13 +162,13 @@ def update_configmap(oc_client, dcs_storage, recovery_pod_id, pg_cluster_name, r
         "recovery_target_name": recovery_target_name,
         "recovery_target_time": recovery_target_time,
         "recovery_target_xid": recovery_target_xid,
-        "recovery_target": recovery_target
+        "recovery_target": recovery_target,
     }
 
     recovery_target_key = ""
     recovery_target_value = ""
 
-    for (key, value) in list(targets.items()):
+    for key, value in list(targets.items()):
         if value:
             recovery_target_key = key
             recovery_target_value = value
@@ -154,8 +178,8 @@ def update_configmap(oc_client, dcs_storage, recovery_pod_id, pg_cluster_name, r
         "recovery_conf": {
             "recovery_target_action": "promote",
             "recovery_target_timeline": recovery_target_timeline,
-            "recovery_target_inclusive": recovery_target_inclusive
-        }
+            "recovery_target_inclusive": recovery_target_inclusive,
+        },
     }
 
     restore_command = get_restore_command(oc_client, dcs_storage, pg_cluster_name, recovery_pod_id)
@@ -170,11 +194,13 @@ def update_configmap(oc_client, dcs_storage, recovery_pod_id, pg_cluster_name, r
 
     patroni_config["bootstrap"]["method"] = "daemon_recovery"
     log.debug("Patroni config template after update: {}".format(patroni_config))
-    updated_patroni_config = yaml.safe_dump(patroni_config, default_flow_style=False, encoding="utf-8", allow_unicode=True)
+    updated_patroni_config = yaml.safe_dump(
+        patroni_config, default_flow_style=False, encoding="utf-8", allow_unicode=True
+    )
     log.debug("Patroni config template after update: {}".format(updated_patroni_config))
     # encoded_patroni_config = json.dumps(updated_patroni_config)
     # log.debug("Encoded patroni config template after update: {}".format(encoded_patroni_config))
-    patroni_config_cm['data']['patroni-config-template.yaml'] = updated_patroni_config.decode()
+    patroni_config_cm["data"]["patroni-config-template.yaml"] = updated_patroni_config.decode()
     oc_client.apply_object(patroni_config_cm)
 
 
@@ -182,30 +208,46 @@ def remove_bootstrap_method(oc_client, pg_cluster_name):
     log.info("Remove bootstrap method from configmap")
     patroni_config_cm = oc_client.get_configmap("patroni-{}.config.yaml".format(pg_cluster_name))
     if not patroni_config_cm:
-        log.info("Can't find patroni-{}.config.yaml, trying to find {}-patroni.config.yaml".format(pg_cluster_name, pg_cluster_name))
+        log.info(
+            "Can't find patroni-{}.config.yaml, trying to find {}-patroni.config.yaml".format(
+                pg_cluster_name, pg_cluster_name
+            )
+        )
         patroni_config_cm = oc_client.get_configmap("{}-patroni.config.yaml".format(pg_cluster_name))
-    patroni_config_data = patroni_config_cm['data']['patroni-config-template.yaml']
+    patroni_config_data = patroni_config_cm["data"]["patroni-config-template.yaml"]
     log.debug("Patroni config template from configmap: \n {}".format(patroni_config_data))
     patroni_config = yaml.safe_load(patroni_config_data)
     log.debug("Patroni config template from configmap (parsed): \n {}".format(patroni_config))
 
     patroni_config["bootstrap"].pop("method", None)
     log.debug("Patroni config template after update: {}".format(patroni_config))
-    updated_patroni_config = yaml.safe_dump(patroni_config, default_flow_style=False, encoding="utf-8", allow_unicode=True)
+    updated_patroni_config = yaml.safe_dump(
+        patroni_config, default_flow_style=False, encoding="utf-8", allow_unicode=True
+    )
     log.debug("Patroni config template after update: {}".format(updated_patroni_config))
 
-    patroni_config_cm['data']['patroni-config-template.yaml'] = updated_patroni_config.decode()
+    patroni_config_cm["data"]["patroni-config-template.yaml"] = updated_patroni_config.decode()
     oc_client.apply_object(patroni_config_cm)
 
 
-
-def perform_bootstrap_recovery(oc_client, oc_orch, pg, dcs_storage,
-                               pg_depl_name, pg_cluster_name,
-                               preserve_old_files, restore_version,
-                               recovery_target_timeline, recovery_target_inclusive,
-                               recovery_target_name, recovery_target_time, recovery_target_xid, recovery_target,
-                               deployment_type):
-    '''
+def perform_bootstrap_recovery(
+    oc_client,
+    oc_orch,
+    pg,
+    dcs_storage,
+    pg_depl_name,
+    pg_cluster_name,
+    preserve_old_files,
+    restore_version,
+    recovery_target_timeline,
+    recovery_target_inclusive,
+    recovery_target_name,
+    recovery_target_time,
+    recovery_target_xid,
+    recovery_target,
+    deployment_type,
+):
+    """
     :type oc_client: OpenshiftClient
     :type oc_orch: OpenshiftOrchestrator
     :type pg: PostgresqlClient
@@ -222,7 +264,7 @@ def perform_bootstrap_recovery(oc_client, oc_orch, pg, dcs_storage,
     :param recovery_target:
     :param deployment_type:
     :return:
-    '''
+    """
     log.info("Start recovery procedure using bootstrap config")
 
     log.info("Replace current postgresql deployments with test versions")
@@ -237,18 +279,28 @@ def perform_bootstrap_recovery(oc_client, oc_orch, pg, dcs_storage,
 
     if deployment_type == "dc":
         deployments = oc_client.get_deployment_names(pg_depl_name)
-        tasks = [loop.run_in_executor(
-            pool,
-            oc_orch.replace_command_on_dc,
-            p, ["sh", "-c", "while true ; do sleep 3600; done"]) for p in deployments]
+        tasks = [
+            loop.run_in_executor(
+                pool,
+                oc_orch.replace_command_on_dc,
+                p,
+                ["sh", "-c", "while true ; do sleep 3600; done"],
+            )
+            for p in deployments
+        ]
         loop.run_until_complete(asyncio.gather(*tasks))
     elif deployment_type == "deployment":
         log.info("Will set test version on postgresql deployments: {}".format(pg_depl_name))
         deployments = oc_client.get_deployment_names(pg_depl_name, deployment_type)
-        tasks = [loop.run_in_executor(
-            pool,
-            oc_orch.replace_command_on_deployment,
-            p, ["sh", "-c", "while true ; do sleep 3600; done"]) for p in deployments]
+        tasks = [
+            loop.run_in_executor(
+                pool,
+                oc_orch.replace_command_on_deployment,
+                p,
+                ["sh", "-c", "while true ; do sleep 3600; done"],
+            )
+            for p in deployments
+        ]
 
         loop.run_until_complete(asyncio.gather(*tasks))
 
@@ -258,38 +310,54 @@ def perform_bootstrap_recovery(oc_client, oc_orch, pg, dcs_storage,
         for sts in statefulsets:
             oc_orch.replace_command_on_statefulset(sts, ["sh", "-c", "while true ; do sleep 3600; done"])
 
-    recovery_pod_id = list([pod for pod in initial_replicas_desc if not list([env for env in pod["spec"]["containers"][0]["env"] if env["name"] == "DR_MODE" and "value" in env and env["value"].lower() == "true"])])[0]["metadata"]["name"]
+    recovery_pod_id = list(
+        [
+            pod
+            for pod in initial_replicas_desc
+            if not list(
+                [
+                    env
+                    for env in pod["spec"]["containers"][0]["env"]
+                    if env["name"] == "DR_MODE" and "value" in env and env["value"].lower() == "true"
+                ]
+            )
+        ]
+    )[0]["metadata"]["name"]
     log.info("Will use for procedure pod {} from {}".format(recovery_pod_id, initial_replicas))
 
     log.info("Update configmap")
 
     update_configmap(
-         oc_client, dcs_storage, recovery_pod_id, pg_cluster_name, restore_version,
-         recovery_target_timeline, recovery_target_inclusive,
-         recovery_target_name, recovery_target_time, recovery_target_xid, recovery_target)
+        oc_client,
+        dcs_storage,
+        recovery_pod_id,
+        pg_cluster_name,
+        restore_version,
+        recovery_target_timeline,
+        recovery_target_inclusive,
+        recovery_target_name,
+        recovery_target_time,
+        recovery_target_xid,
+        recovery_target,
+    )
 
     log.info("Cleanup initialization key")
-    dcs_storage.cleanup_initialization_key(
-    oc_client, pg_cluster_name, recovery_pod_id)
+    dcs_storage.cleanup_initialization_key(oc_client, pg_cluster_name, recovery_pod_id)
 
     log.info("Cleanup data directories")
     for p in initial_replicas:
-        cleanup_pg_pod_data_directory(
-        oc_client, p, preserve_old_files)
+        cleanup_pg_pod_data_directory(oc_client, p, preserve_old_files)
 
     # restore command on deployments
     if deployment_type == "dc":
         recovery_dc = list([p for p in deployments if p in recovery_pod_id])[0]
         log.info("Restore command for replica deployment and leave them shut down")
-        tasks = [loop.run_in_executor(
-            pool,
-            oc_orch.replace_command_on_dc,
-            p, None, False) for p in [d for d in deployments if d != recovery_dc]]
+        tasks = [
+            loop.run_in_executor(pool, oc_orch.replace_command_on_dc, p, None, False)
+            for p in [d for d in deployments if d != recovery_dc]
+        ]
         log.info("Restore command for deployment {}".format(recovery_dc))
-        tasks.append(loop.run_in_executor(
-            pool,
-            oc_orch.replace_command_on_dc,
-            recovery_dc, None))
+        tasks.append(loop.run_in_executor(pool, oc_orch.replace_command_on_dc, recovery_dc, None))
 
         loop.run_until_complete(asyncio.gather(*tasks))
 
@@ -301,10 +369,10 @@ def perform_bootstrap_recovery(oc_client, oc_orch, pg, dcs_storage,
         log.info("Deployments: {}".format(deployments))
         recovery_dc = list([p for p in deployments if p in recovery_pod_id])[0]
         log.info("Restore command for replica deployment and leave them shut down")
-        tasks = [loop.run_in_executor(
-            pool,
-            oc_orch.replace_command_on_deployment,
-            p, None, True) for p in [d for d in deployments if d != recovery_dc]]
+        tasks = [
+            loop.run_in_executor(pool, oc_orch.replace_command_on_deployment, p, None, True)
+            for p in [d for d in deployments if d != recovery_dc]
+        ]
         log.info("Restore command for deployment {}".format(recovery_dc))
         loop.run_until_complete(asyncio.gather(*tasks))
         oc_orch.replace_command_on_deployment(recovery_dc, None)
@@ -323,8 +391,7 @@ def perform_bootstrap_recovery(oc_client, oc_orch, pg, dcs_storage,
         raise Exception("Pod {} is not ready".format(recovery_pod_id))
 
     log.info("Cleanup initialization key")
-    dcs_storage.cleanup_initialization_key(
-    oc_client, pg_cluster_name, recovery_pod_id)
+    dcs_storage.cleanup_initialization_key(oc_client, pg_cluster_name, recovery_pod_id)
 
     cleanup_pg_pod_data_directory(oc_client, recovery_pod_id, preserve_old_files)
     log.info("Wait while postgres will exit from recovery mode.")
@@ -335,24 +402,26 @@ def perform_bootstrap_recovery(oc_client, oc_orch, pg, dcs_storage,
     def split(line):
         pos = line.find("=")
         if pos > 0:
-            return line[0:pos], line[pos+1:]
+            return line[0:pos], line[pos + 1:]
         else:
             return line, ""
 
     pg_user, pg_password = oc_client.get_secret_data("postgres-credentials")
     log.info(
-        pg.execute_local_query(recovery_pod_id, "ALTER USER {} WITH PASSWORD '{}'"
-                               .format(pg_user, pg_password)))
+        pg.execute_local_query(
+            recovery_pod_id,
+            "ALTER USER {} WITH PASSWORD '{}'".format(pg_user, pg_password),
+        )
+    )
     replicator_user, replicator_password = oc_client.get_secret_data("replicator-credentials")
     log.info(
-        pg.execute_local_query(recovery_pod_id, "ALTER USER {} WITH PASSWORD '{}'"
-                               .format(replicator_user, replicator_password)))
+        pg.execute_local_query(
+            recovery_pod_id,
+            "ALTER USER {} WITH PASSWORD '{}'".format(replicator_user, replicator_password),
+        )
+    )
 
-    bootstrap_method_cleanup = loop.run_in_executor(
-        pool,
-        remove_bootstrap_method,
-        oc_client,
-        pg_cluster_name)
+    bootstrap_method_cleanup = loop.run_in_executor(pool, remove_bootstrap_method, oc_client, pg_cluster_name)
     loop.run_until_complete(asyncio.gather(bootstrap_method_cleanup))
     # restore replicas
     if deployment_type == "dc":
@@ -383,7 +452,7 @@ def perform_bootstrap_recovery(oc_client, oc_orch, pg, dcs_storage,
                 "no action. I am ({}), a secondary, and following a leader ({})".format(pod_id, recovery_pod_id),
                 time.time(),
                 "Bootstrap from master is in progress.",
-                " bootstrap from leader"
+                " bootstrap from leader",
             )
             log.info("Wait while replica database will start on pod {}.".format(pod_id))
             pg.wait_database(pod_id)
@@ -394,12 +463,17 @@ def statefulset_from_pod(pod_name: str) -> str:
 
 
 def download_archive(oc_client, recovery_pod_id, restore_version):
-    if restore_version:
-        oc_client.oc_exec(recovery_pod_id, "sh -c 'cd {} ; curl -u postgres:\"$(cat /var/run/secrets/postgresql/postgres-credentials/password)\" postgres-backup-daemon:8081/get?id={} | tar -xzf - '"
-                .format(pg_data_dir, restore_version)) #do not touch yet
-    else:
-        oc_client.oc_exec(recovery_pod_id, "sh -c 'cd {} ; curl -u postgres:\"$(cat /var/run/secrets/postgresql/postgres-credentials/password)\" postgres-backup-daemon:8081/get | tar -xzf - '"
-                .format(pg_data_dir))
+    url = (
+        f"postgres-backup-daemon:8081/get?id={restore_version}"
+        if restore_version
+        else "postgres-backup-daemon:8081/get"
+    )
+    cmd = (
+        f"sh -c 'cd {pg_data_dir} ; "
+        f'curl -u postgres:"$(cat /var/run/secrets/postgresql/postgres-credentials/password)" '
+        f"{url} | tar -xzf - '"
+    )
+    oc_client.oc_exec(recovery_pod_id, cmd)
 
 
 def update_string_value_in_map(map, key, value):
@@ -409,9 +483,16 @@ def update_string_value_in_map(map, key, value):
         map.pop(key, None)
 
 
-def prepare_recovery_conf(recovery_pod_id, patroni_dsc,
-                          recovery_target_timeline, recovery_target_inclusive,
-                          recovery_target_name, recovery_target_time, recovery_target_xid, recovery_target):
+def prepare_recovery_conf(
+    recovery_pod_id,
+    patroni_dsc,
+    recovery_target_timeline,
+    recovery_target_inclusive,
+    recovery_target_name,
+    recovery_target_time,
+    recovery_target_xid,
+    recovery_target,
+):
     if "recovery_conf" not in patroni_dsc["postgresql"]:
         patroni_dsc["postgresql"]["recovery_conf"] = {}
 
@@ -424,6 +505,7 @@ def prepare_recovery_conf(recovery_pod_id, patroni_dsc,
     update_string_value_in_map(recovery_conf, "recovery_target_xid", recovery_target_xid)
     update_string_value_in_map(recovery_conf, "recovery_target", recovery_target)
 
+
 def is_recovery_target_specified(recovery_target_name, recovery_target_time, recovery_target_xid, recovery_target):
     return recovery_target_name or recovery_target_time or recovery_target_xid or recovery_target
 
@@ -434,16 +516,26 @@ def validate_restore_version(backups, restore_version):
 
     if restore_version:
         if restore_version not in backups:
-            raise RecoveryException("FAILURE: RESTORE_VERSION={} does not match any existing backup. "
-                                    "List of available backups: {}.".format(restore_version, backups))
+            raise RecoveryException(
+                "FAILURE: RESTORE_VERSION={} does not match any existing backup. "
+                "List of available backups: {}.".format(restore_version, backups)
+            )
     else:
         log.info("Proceed with empty RESTORE_VERSION.")
 
 
 def validate_recovery_target_parameters(
-        oc_client, dcs_storage, pg_cluster_name, backup_daemon_pod_id,  restore_version,
-        recovery_target_name, recovery_target_time, recovery_target_xid, recovery_target):
-    '''
+    oc_client,
+    dcs_storage,
+    pg_cluster_name,
+    backup_daemon_pod_id,
+    restore_version,
+    recovery_target_name,
+    recovery_target_time,
+    recovery_target_xid,
+    recovery_target,
+):
+    """
 
     :type oc_client: OpenshiftClient
     :type dcs_storage: PatroniDCS
@@ -455,15 +547,21 @@ def validate_recovery_target_parameters(
     :param recovery_target_xid:
     :param recovery_target:
     :return:
-    '''
-    if is_recovery_target_specified(recovery_target_name, recovery_target_time, recovery_target_xid, recovery_target) \
-            and (not restore_version and not recovery_target_time):
-        raise RecoveryException("FAILURE: cannot perform PITR "
-                                "without specified backup or recovery_target_time")
+    """
+    if is_recovery_target_specified(
+        recovery_target_name, recovery_target_time, recovery_target_xid, recovery_target
+    ) and (not restore_version and not recovery_target_time):
+        raise RecoveryException("FAILURE: cannot perform PITR " "without specified backup or recovery_target_time")
 
     if is_recovery_target_specified(recovery_target_name, recovery_target_time, recovery_target_xid, recovery_target):
-        archive_mode = get_dcs_config_params(oc_client, dcs_storage, pg_cluster_name, backup_daemon_pod_id,
-                                             ["postgresql", "parameters", "archive_mode"], use_template=True)
+        archive_mode = get_dcs_config_params(
+            oc_client,
+            dcs_storage,
+            pg_cluster_name,
+            backup_daemon_pod_id,
+            ["postgresql", "parameters", "archive_mode"],
+            use_template=True,
+        )
         if archive_mode != "on":
             raise RecoveryException("FAILURE: Cannot perform PITR recovery without WAL archive.")
 
@@ -474,8 +572,9 @@ def validate_recovery_target_parameters(
 def check_if_replication_works(oc_client, pg, pg_cluster_name):
     log.info("Start replication check")
     replicas = oc_client.get_cluster_pods_desc(pg_cluster_name)
-    master_replicas = list([p for p in replicas if "pgtype" in p["metadata"]["labels"] and
-                                            p["metadata"]["labels"]["pgtype"] == "primary"])
+    master_replicas = list(
+        [p for p in replicas if "pgtype" in p["metadata"]["labels"] and p["metadata"]["labels"]["pgtype"] == "primary"]
+    )
 
     if len(master_replicas) > 1:
         raise RecoveryException("FAILURE: Several masters detected. Healthy PostgreSQL cluster should have one master.")
@@ -486,15 +585,20 @@ def check_if_replication_works(oc_client, pg, pg_cluster_name):
     master_pod_id = master_replicas[0]["metadata"]["name"]
 
     id = int(time.time()) * 100000 + random.randint(1, 99999)
-    uuid = ''.join(random.choice(string.ascii_letters + string.digits) for _ in range(32))
-    pg.execute_local_query(master_pod_id, "create table IF NOT EXISTS test_recovery (id bigint primary key not null, value text not null)")
+    uuid = "".join(random.choice(string.ascii_letters + string.digits) for _ in range(32))
+    pg.execute_local_query(
+        master_pod_id,
+        "create table IF NOT EXISTS test_recovery (id bigint primary key not null, value text not null)",
+    )
     pg.execute_local_query(master_pod_id, "insert into test_recovery values ({}, '{}')".format(id, uuid))
     resulted_uuid = pg.execute_local_query(master_pod_id, "select value from test_recovery where id={}".format(id))
     log.debug("Select result from master {}: {}".format(master_pod_id, resulted_uuid))
 
     if resulted_uuid != uuid:
-        raise RecoveryException("FAILURE: Unexpected result '{}' on master while expected '{}'. "
-                                "Master does not work or does not perform write operations.".format(resulted_uuid, uuid))
+        raise RecoveryException(
+            "FAILURE: Unexpected result '{}' on master while expected '{}'. "
+            "Master does not work or does not perform write operations.".format(resulted_uuid, uuid)
+        )
 
     log.info("Record was inserted in master")
 
@@ -512,8 +616,10 @@ def check_if_replication_works(oc_client, pg, pg_cluster_name):
                 time.sleep(1)
 
             if query_result != uuid:
-                raise RecoveryException("FAILURE: Unexpected result '{}' while expected '{}'. "
-                                        "Replica was not able to receive changes from master.".format(query_result, uuid))
+                raise RecoveryException(
+                    "FAILURE: Unexpected result '{}' while expected '{}'. "
+                    "Replica was not able to receive changes from master.".format(query_result, uuid)
+                )
 
 
 def get_tzinfos():
@@ -548,7 +654,11 @@ def get_dcs_config_params(oc_client, dcs_storage, pg_cluster_name, pod_id, path,
         log.warning("Cannot get '{}' from dcs. It is possible that dcs state was removed or lost.".format(path))
         patroni_template_cm = oc_client.get_configmap("patroni-{}.config.yaml".format(pg_cluster_name))
         if not patroni_template_cm:
-            log.info("Can't find patroni-{}.config.yaml, trying to find {}-patroni.config.yaml".format(pg_cluster_name, pg_cluster_name))
+            log.info(
+                "Can't find patroni-{}.config.yaml, trying to find {}-patroni.config.yaml".format(
+                    pg_cluster_name, pg_cluster_name
+                )
+            )
             patroni_template_cm = oc_client.get_configmap("{}-patroni.config.yaml".format(pg_cluster_name))
         patroni_template_data = patroni_template_cm.get("data", {}).get("patroni-config-template.yaml")
         patroni_template = yaml.load(patroni_template_data)
@@ -560,29 +670,60 @@ def get_dcs_config_params(oc_client, dcs_storage, pg_cluster_name, pod_id, path,
 
 
 def get_restore_command(oc_client, dcs_storage, pg_cluster_name, backup_daemon_pod_id):
-    return get_dcs_config_params(oc_client, dcs_storage, pg_cluster_name, backup_daemon_pod_id,
-                                 ["postgresql", "recovery_conf", "restore_command"], use_template=True)
+    return get_dcs_config_params(
+        oc_client,
+        dcs_storage,
+        pg_cluster_name,
+        backup_daemon_pod_id,
+        ["postgresql", "recovery_conf", "restore_command"],
+        use_template=True,
+    )
 
 
-def perform_recovery(oc_openshift_url, oc_username, oc_password, oc_project,
-                     pg_cluster_name, pg_depl_name, preserve_old_files, restore_version,
-                     recovery_target_timeline, recovery_target_inclusive,
-                     recovery_target_name, recovery_target_time, recovery_target_xid, recovery_target,
-                     oc_path, oc_config_file, skip_tls_verify=False):
+def perform_recovery(
+    oc_openshift_url,
+    oc_username,
+    oc_password,
+    oc_project,
+    pg_cluster_name,
+    pg_depl_name,
+    preserve_old_files,
+    restore_version,
+    recovery_target_timeline,
+    recovery_target_inclusive,
+    recovery_target_name,
+    recovery_target_time,
+    recovery_target_xid,
+    recovery_target,
+    oc_path,
+    oc_config_file,
+    skip_tls_verify=False,
+):
 
     # todo[anin] OpenshiftPyClient requires more testing (statefulsets for example)
     # so leave OpenshiftShellClient as default for backward compatibility
     try:
         from kubernetes import config as k8s_config
+
         k8s_config.load_incluster_config()
         log.info("Using pyclient")
         oc_client = utils_oc.OpenshiftPyClient()
-        oc_client.use_token(oc_url=oc_openshift_url, oc_token="", project=oc_project, skip_tls_verify=skip_tls_verify)
-    except Exception as e:
+        oc_client.use_token(
+            oc_url=oc_openshift_url,
+            oc_token="",
+            project=oc_project,
+            skip_tls_verify=skip_tls_verify,
+        )
+    except Exception:
         log.exception("Failed to create OpenshiftPyClient, proceeding with OpenshiftShellClient")
         oc_client = utils_oc.OpenshiftShellClient(oc_path, oc_config_file)
-        oc_client.login(oc_url=oc_openshift_url, username=oc_username, password=oc_password, project=oc_project,
-                       skip_tls_verify=skip_tls_verify)
+        oc_client.login(
+            oc_url=oc_openshift_url,
+            username=oc_username,
+            password=oc_password,
+            project=oc_project,
+            skip_tls_verify=skip_tls_verify,
+        )
 
     oc_orch = utils_oc.OpenshiftOrchestrator(oc_client, retry_count)
     pg = utils_pg.PostgresqlClient(oc_client, retry_count)
@@ -594,8 +735,9 @@ def perform_recovery(oc_openshift_url, oc_username, oc_password, oc_project,
         log.info("Use etcd as DCS storage")
         dcs_storage = PatroniDCSEtcd()
     else:
-        raise RecoveryException("Cannot find configmap {}-config or service etcd and guess dcs type."
-                                .format(pg_cluster_name))
+        raise RecoveryException(
+            "Cannot find configmap {}-config or service etcd and guess dcs type.".format(pg_cluster_name)
+        )
     deployment_type = "dc"
 
     # here we are trying to check if this is a deployment via operator
@@ -603,7 +745,7 @@ def perform_recovery(oc_openshift_url, oc_username, oc_password, oc_project,
         log.info("Deployments are used for Pods management")
         deployment_type = "deployment"
 
-    #Changed Order here of deployment check
+    # Changed Order here of deployment check
     if oc_client.get_entity_safe("statefulset", "patroni"):
         log.info("Statefulset is used for Pod management")
         deployment_type = "statefulset"
@@ -613,15 +755,24 @@ def perform_recovery(oc_openshift_url, oc_username, oc_password, oc_project,
     log.info("Try to validate if backup daemon running")
     backup_daemon_replicas = oc_client.get_postgres_backup_daemon_pod()
     if not backup_daemon_replicas:
-        raise RecoveryException("FAILURE: cannot find backup daemon pod."
-                                "Recovery procedure requires running backup daemon pod.")
+        raise RecoveryException(
+            "FAILURE: cannot find backup daemon pod." "Recovery procedure requires running backup daemon pod."
+        )
     backup_daemon_pod_id = backup_daemon_replicas[0]
     log.info("Found backup daemon pod {}".format(backup_daemon_pod_id))
 
     log.info("Try to validate recovery target parameters")
     validate_recovery_target_parameters(
-        oc_client, dcs_storage, pg_cluster_name, backup_daemon_pod_id, restore_version,
-        recovery_target_name, recovery_target_time, recovery_target_xid, recovery_target)
+        oc_client,
+        dcs_storage,
+        pg_cluster_name,
+        backup_daemon_pod_id,
+        restore_version,
+        recovery_target_name,
+        recovery_target_time,
+        recovery_target_xid,
+        recovery_target,
+    )
 
     log.info("Try to validate restore_command setting")
     restore_command = get_restore_command(oc_client, dcs_storage, pg_cluster_name, backup_daemon_pod_id)
@@ -629,16 +780,22 @@ def perform_recovery(oc_openshift_url, oc_username, oc_password, oc_project,
     if restore_command is None:
         raise RecoveryException(RECOVERY_EXCEPTION_NO_RESTORE_COMMAND.format(pg_cluster_name, pg_cluster_name))
 
-
     if restore_version:
-        log.info("Try to validate backup {} against list of backups from {}".format(restore_version,
-                                                                                    backup_daemon_pod_id))
+        log.info(
+            "Try to validate backup {} against list of backups from {}".format(restore_version, backup_daemon_pod_id)
+        )
 
-        backup_list = requests.get("http://localhost:8081/list", auth=('postgres', read_secret_file(_PG_CREDS_PATH + 'password', "")))
+        backup_list = requests.get(
+            "http://localhost:8081/list",
+            auth=("postgres", read_secret_file(_PG_CREDS_PATH + "password", "")),
+        )
         validate_restore_version(backup_list.json(), restore_version)
     elif recovery_target_time:
         log.info("Try to find backup id from specified recovery_target_time={}".format(recovery_target_time))
-        backup_list = requests.get("http://localhost:8081/list", auth=('postgres', read_secret_file(_PG_CREDS_PATH + 'password', "")))
+        backup_list = requests.get(
+            "http://localhost:8081/list",
+            auth=("postgres", read_secret_file(_PG_CREDS_PATH + "password", "")),
+        )
         cluster_tz_name = oc_client.oc_exec(backup_daemon_pod_id, 'date "+%Z"').strip()
         log.debug("Cluster time zone: {}" + cluster_tz_name)
 
@@ -648,43 +805,72 @@ def perform_recovery(oc_openshift_url, oc_username, oc_password, oc_project,
             rt_time = rt_time.replace(tzinfo=tzinfos[cluster_tz_name])
 
         log.debug("Parsed time: {}".format(rt_time))
-        possible_backup_list = list([p for p in [enrich_backup(p, tzinfos, cluster_tz_name) for p in [p for p in list(backup_list.json().values()) if not p["failed"]]] if p["parsed"] and p["parsed"] < rt_time])
+        possible_backup_list = list(
+            [
+                p
+                for p in [
+                    enrich_backup(p, tzinfos, cluster_tz_name)
+                    for p in [p for p in list(backup_list.json().values()) if not p["failed"]]
+                ]
+                if p["parsed"] and p["parsed"] < rt_time
+            ]
+        )
 
         if not possible_backup_list:
-            raise RecoveryException("FAILURE: Cannot find backup for specified recovery_target_time='{}'. "
-                                    "Try to specify restore_version manually. "
-                                    "Available backups: {}".format(recovery_target_time, backup_list.json()))
+            raise RecoveryException(
+                "FAILURE: Cannot find backup for specified recovery_target_time='{}'. "
+                "Try to specify restore_version manually. "
+                "Available backups: {}".format(recovery_target_time, backup_list.json())
+            )
 
         possible_backup = max(possible_backup_list, key=lambda p: p["parsed"])
         restore_version = possible_backup["id"]
 
         log.info("Selected restore_version is {}".format(restore_version))
     else:
-        raise RecoveryException("FAILURE: Cannot perform recovery without restore_version and recovery_target_time. "
-                                "Please specify at least one of them.")
-    
-    ##Added backup status check here
+        raise RecoveryException(
+            "FAILURE: Cannot perform recovery without restore_version and recovery_target_time. "
+            "Please specify at least one of them."
+        )
+
+    # Added backup status check here
     log.info("Try to validate if the backup status is successful")
     backup_status = check_backup_status(restore_version)
     if not backup_status:
         raise RecoveryException(
-            "FAILURE: Backup with id {} has an unsuccessful status. Recovery cannot proceed."
-            .format(restore_version)
+            "FAILURE: Backup with id {} has an unsuccessful status. Recovery cannot proceed.".format(restore_version)
         )
 
     patroni_cm = oc_client.get_entity_safe("configmap", "patroni-{}.config.yaml".format(pg_cluster_name))
     if not patroni_cm:
-        log.info("Can't find patroni-{}.config.yaml, trying to find {}-patroni.config.yaml".format(pg_cluster_name, pg_cluster_name))
+        log.info(
+            "Can't find patroni-{}.config.yaml, trying to find {}-patroni.config.yaml".format(
+                pg_cluster_name, pg_cluster_name
+            )
+        )
         patroni_cm = oc_client.get_entity_safe("configmap", "{}-patroni.config.yaml".format(pg_cluster_name))
     if not patroni_cm:
-        raise RecoveryException("FAILURE: Cannot find configmap patroni-{}.config.yaml. "
-                                "Check if recovery scripts version complies with cluster version".format(pg_cluster_name))
-    perform_bootstrap_recovery(oc_client, oc_orch, pg, dcs_storage,
-                               pg_depl_name, pg_cluster_name,
-                               preserve_old_files, restore_version,
-                               recovery_target_timeline, recovery_target_inclusive,
-                               recovery_target_name, recovery_target_time, recovery_target_xid, recovery_target,
-                               deployment_type)
+        raise RecoveryException(
+            "FAILURE: Cannot find configmap patroni-{}.config.yaml. "
+            "Check if recovery scripts version complies with cluster version".format(pg_cluster_name)
+        )
+    perform_bootstrap_recovery(
+        oc_client,
+        oc_orch,
+        pg,
+        dcs_storage,
+        pg_depl_name,
+        pg_cluster_name,
+        preserve_old_files,
+        restore_version,
+        recovery_target_timeline,
+        recovery_target_inclusive,
+        recovery_target_name,
+        recovery_target_time,
+        recovery_target_xid,
+        recovery_target,
+        deployment_type,
+    )
 
     if not os.getenv("SKIP_REPLICATION_CHECK", False):
         check_if_replication_works(oc_client, pg, pg_cluster_name)
@@ -710,7 +896,6 @@ def check_backup_status(backup_id):
     except requests.RequestException as e:
         log.error("Error occurred while checking backup status: %s", e)
         return False
-
 
 
 def prepare_parameters_and_perform_recovery():
@@ -741,44 +926,119 @@ def prepare_parameters_and_perform_recovery():
     oc_config_file = os.getenv("OC_CONFIG_FILE", "./oc_config_file.yaml")
 
     # parse args
-    parser = argparse.ArgumentParser(description='Recovery procedure for Postgresql cluster')
-    parser.add_argument('--oc-openshift-url', dest='oc_openshift_url', default=None, help='address of openshift console')
-    parser.add_argument('--oc-username', dest='oc_username', default=None, help='user of openshift console')
-    parser.add_argument('--oc-password', dest='oc_password', default=None, help='password of openshift console')
-    parser.add_argument('--oc-project', dest='oc_project', default=None, help='address of openshift console')
+    parser = argparse.ArgumentParser(description="Recovery procedure for Postgresql cluster")
+    parser.add_argument(
+        "--oc-openshift-url",
+        dest="oc_openshift_url",
+        default=None,
+        help="address of openshift console",
+    )
+    parser.add_argument(
+        "--oc-username",
+        dest="oc_username",
+        default=None,
+        help="user of openshift console",
+    )
+    parser.add_argument(
+        "--oc-password",
+        dest="oc_password",
+        default=None,
+        help="password of openshift console",
+    )
+    parser.add_argument(
+        "--oc-project",
+        dest="oc_project",
+        default=None,
+        help="address of openshift console",
+    )
 
-    parser.add_argument('--pg-cluster-name', dest='pg_cluster_name', default=None, help='Postgresql cluster name')
-    parser.add_argument('--pg-depl-name', dest='pg_depl_name', default=None,
-                        help='Template of postgresql deployment name like "pg-common-node"')
+    parser.add_argument(
+        "--pg-cluster-name",
+        dest="pg_cluster_name",
+        default=None,
+        help="Postgresql cluster name",
+    )
+    parser.add_argument(
+        "--pg-depl-name",
+        dest="pg_depl_name",
+        default=None,
+        help='Template of postgresql deployment name like "pg-common-node"',
+    )
 
-    parser.add_argument('--preserve-old-files', dest='preserve_old_files', default=None, choices=["yes", "no"],
-                        help='If "yes" then store old files on volume otherwise remove old files.')
+    parser.add_argument(
+        "--preserve-old-files",
+        dest="preserve_old_files",
+        default=None,
+        choices=["yes", "no"],
+        help='If "yes" then store old files on volume otherwise remove old files.',
+    )
 
-    parser.add_argument('--restore-version', dest='restore_version', default=None,
-                        help='ID of backup to recovery procedure')
+    parser.add_argument(
+        "--restore-version",
+        dest="restore_version",
+        default=None,
+        help="ID of backup to recovery procedure",
+    )
 
-    parser.add_argument('--timeline', dest='recovery_target_timeline', default=None,
-                        help='Only for point in time recovery. Desired timeline for recovery procedure')
-    parser.add_argument('--inclusive', dest='recovery_target_inclusive', default=None, choices=['true', 'false'],
-                        help='Only for point in time recovery. Specifies if recovery procedure should inslude specified recovery target')
+    parser.add_argument(
+        "--timeline",
+        dest="recovery_target_timeline",
+        default=None,
+        help="Only for point in time recovery. Desired timeline for recovery procedure",
+    )
+    parser.add_argument(
+        "--inclusive",
+        dest="recovery_target_inclusive",
+        default=None,
+        choices=["true", "false"],
+        help="Only for point in time recovery. "
+        "Specifies if recovery procedure should inslude specified recovery target",
+    )
 
-    parser.add_argument('--recovery-target-time', dest='recovery_target_time', default=None,
-                        help='Only for point in time recovery. Specifies recovery_target_time.')
-    parser.add_argument('--recovery-target-name', dest='recovery_target_name', default=None,
-                        help='Only for point in time recovery. Specifies recovery_target_name.')
-    parser.add_argument('--recovery-target-xid', dest='recovery_target_xid', default=None,
-                        help='Only for point in time recovery. Specifies recovery_target_xid.')
-    parser.add_argument('--recovery-target', dest='recovery_target', default=None, choices=['immediate'],
-                        help='Only for point in time recovery. Specifies recovery_target.')
+    parser.add_argument(
+        "--recovery-target-time",
+        dest="recovery_target_time",
+        default=None,
+        help="Only for point in time recovery. Specifies recovery_target_time.",
+    )
+    parser.add_argument(
+        "--recovery-target-name",
+        dest="recovery_target_name",
+        default=None,
+        help="Only for point in time recovery. Specifies recovery_target_name.",
+    )
+    parser.add_argument(
+        "--recovery-target-xid",
+        dest="recovery_target_xid",
+        default=None,
+        help="Only for point in time recovery. Specifies recovery_target_xid.",
+    )
+    parser.add_argument(
+        "--recovery-target",
+        dest="recovery_target",
+        default=None,
+        choices=["immediate"],
+        help="Only for point in time recovery. Specifies recovery_target.",
+    )
 
-    parser.add_argument('--oc-path', dest='oc_path', default=None, help='path to oc client (with oc)')
-    parser.add_argument('--oc-config', dest='oc_config_file', default=None, help='path to oc client (with oc)')
-    parser.add_argument('--oc-skip-tls-verify', dest='skip_tls_verify', default=None, choices=['true', 'false'],
-                        help='Set value to "true" to turn off ssl validation')
+    parser.add_argument("--oc-path", dest="oc_path", default=None, help="path to oc client (with oc)")
+    parser.add_argument(
+        "--oc-config",
+        dest="oc_config_file",
+        default=None,
+        help="path to oc client (with oc)",
+    )
+    parser.add_argument(
+        "--oc-skip-tls-verify",
+        dest="skip_tls_verify",
+        default=None,
+        choices=["true", "false"],
+        help='Set value to "true" to turn off ssl validation',
+    )
 
     args = parser.parse_args()
 
-    for (key, value) in list(vars(args).items()):
+    for key, value in list(vars(args).items()):
         if value and key in locals():
             locals()[key] = value
 
@@ -790,14 +1050,26 @@ def prepare_parameters_and_perform_recovery():
     log.debug("Global vars : {}".format(globals()))
 
     try:
-        perform_recovery(oc_openshift_url, oc_username, oc_password, oc_project,
-                         pg_cluster_name, pg_depl_name,
-                         preserve_old_files, restore_version,
-                         recovery_target_timeline, recovery_target_inclusive,
-                         recovery_target_name, recovery_target_time, recovery_target_xid, recovery_target,
-                         oc_path, oc_config_file,
-                         # force_manual_recovery,
-                         skip_tls_verify=(True if skip_tls_verify == 'true' else False))
+        perform_recovery(
+            oc_openshift_url,
+            oc_username,
+            oc_password,
+            oc_project,
+            pg_cluster_name,
+            pg_depl_name,
+            preserve_old_files,
+            restore_version,
+            recovery_target_timeline,
+            recovery_target_inclusive,
+            recovery_target_name,
+            recovery_target_time,
+            recovery_target_xid,
+            recovery_target,
+            oc_path,
+            oc_config_file,
+            # force_manual_recovery,
+            skip_tls_verify=(True if skip_tls_verify == "true" else False),
+        )
     except RecoveryException as ex:
         log.exception("Recovery procedure failed.")
         log.error(str(ex))

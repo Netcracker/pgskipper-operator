@@ -12,23 +12,25 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-
 import json
-import re
-import subprocess
 import sys
 import os
-import time
 
-from utils import read_property_file, get_host_ip, get_log_level
-from utils_db import get_settings_data, get_context_data, is_values_diff, is_restart_pending, schedule_restart, patroni_restart_state
+from utils import read_property_file, get_host_ip
+from utils_db import (
+    get_settings_data,
+    get_context_data,
+    is_values_diff,
+    schedule_restart,
+    patroni_restart_state,
+)
 import logging
 import requests
 
 logging.basicConfig(
     level=logging.INFO,
-    format='[%(asctime)s][%(levelname)-5s][category=%(name)s] %(message)s',
-    datefmt='%Y-%m-%dT%H:%M:%S'
+    format="[%(asctime)s][%(levelname)-5s][category=%(name)s] %(message)s",
+    datefmt="%Y-%m-%dT%H:%M:%S",
 )
 logger = logging.getLogger(__name__)
 
@@ -42,7 +44,6 @@ def main():
 
         # find properties which requires update
         properties4update = {}
-        restart_required = False
         for key, value in list(properties.items()):
             current_value = get_settings_data(key)
             if is_values_diff(value, current_value):
@@ -63,7 +64,7 @@ def main():
         patch_data = {"postgresql": {"parameters": {}}}
         for key, value in list(properties4update.items()):
             tmp = ""
-            if key != 'log_line_prefix':
+            if key != "log_line_prefix":
                 tmp = value.strip()
                 if "\\" in tmp:
                     tmp = tmp.replace("\\", "\\\\")
@@ -78,15 +79,18 @@ def main():
         # send patch
         # curl -i -XPATCH -d @/patroni/parameters_data http://$(hostname -i):8008/config
         logger.debug("Patch prepared: {}".format(patch_data))
-        user = os.getenv('PATRONI_REST_API_USER')
-        password = os.getenv('PATRONI_REST_API_PASSWORD')
+        user = os.getenv("PATRONI_REST_API_USER")
+        password = os.getenv("PATRONI_REST_API_PASSWORD")
         from requests.auth import HTTPBasicAuth
-        basic_auth = HTTPBasicAuth(user, password)
-        logger.info(requests.patch(
-            "http://{}:8008/config".format(get_host_ip()),
-            data=json.dumps(patch_data),
-            auth=basic_auth))
 
+        basic_auth = HTTPBasicAuth(user, password)
+        logger.info(
+            requests.patch(
+                "http://{}:8008/config".format(get_host_ip()),
+                data=json.dumps(patch_data),
+                auth=basic_auth,
+            )
+        )
 
         # todo[anin] replace with pg_settings.pending_restart check.
         # There is problem - patroni updates config after restart command.
@@ -97,8 +101,8 @@ def main():
         #         logger.info("Schedule restart because some settings requires restart")
         #         schedule_restart()
         #         return
-        iterations = int(os.getenv('CHANGE_SETTINGS_RETRIES', 5))
-        sleep = int(os.getenv('CHANGE_SETTINGS_INTERVAL', 3))
+        iterations = int(os.getenv("CHANGE_SETTINGS_RETRIES", 5))
+        sleep = int(os.getenv("CHANGE_SETTINGS_INTERVAL", 3))
         if patroni_restart_state(iterations, sleep):
             schedule_restart()
 
@@ -123,5 +127,5 @@ def main():
         sys.exit("Usage: {0} ./active.properties".format(sys.argv[0]))
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     main()

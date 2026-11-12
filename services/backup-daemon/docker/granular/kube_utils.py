@@ -12,7 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import os
 import logging
 from kubernetes import client, config
 from kubernetes.client.rest import ApiException
@@ -25,12 +24,12 @@ namespace = open(NS_PATH).read()
 config.load_incluster_config()
 api_instance = client.CoreV1Api()
 
+
 def get_configmap(name):
     try:
         api_response = api_instance.read_namespaced_config_map(name, namespace)
         return api_response
     except ApiException as e:
         if e.status != 404:
-            log.error(f'cannot get cm {namespace}/{name}')
-            raise e 
-        
+            log.error(f"cannot get cm {namespace}/{name}")
+            raise e
