@@ -33,7 +33,6 @@ vet:
 
 lint:
 	@command -v golangci-lint >/dev/null || { echo "golangci-lint is not installed"; exit 1; }
-	@command -v staticcheck >/dev/null || { echo "staticcheck is not installed"; exit 1; }
 	@python3 -m flake8 --version >/dev/null || { echo "Python flake8 is not installed"; exit 1; }
 	@set -e; \
 	for module in $(GO_MODULES); do \
