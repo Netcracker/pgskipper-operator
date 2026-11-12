@@ -19,10 +19,13 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v7
 
+      - name: Load tool versions
+        run: cat .github/tool-versions.env >> "$GITHUB_ENV"
+
       - name: Set up Go
         uses: actions/setup-go@v7
         with:
-          go-version-file: operator/go.mod
+          go-version-file: ${{ env.GO_VERSION }}
           cache-dependency-path: |
             operator/go.sum
             services/**/go.sum
@@ -30,22 +33,22 @@ jobs:
       - name: Set up Python
         uses: actions/setup-python@v7
         with:
-          python-version: '3.12.3'
+          python-version: ${{ env.PYTHON_VERSION }}
 
       - name: Install golangci-lint
         run: |
           mkdir -p "$(go env GOPATH)/bin"
           curl -sSfL https://golangci-lint.run/install.sh \
-            | sh -s -- -b "$(go env GOPATH)/bin" v2.15.0
+            | sh -s -- -b "$(go env GOPATH)/bin" "v${GOLANGCI_LINT_VERSION}"
           echo "$(go env GOPATH)/bin" >> "$GITHUB_PATH"
 
       - name: Install Python linters
         run: |
           python -m pip install \
-            flake8==7.5.0 \
-            mccabe==0.7.0 \
-            pycodestyle==2.15.0 \
-            pyflakes==4.1.0
+            "flake8==${FLAKE8_VERSION}" \
+            "mccabe==${MCCABE_VERSION}" \
+            "pycodestyle==${PYCODESTYLE_VERSION}" \
+            "pyflakes==${PYFLAKES_VERSION}"
 
       - name: Print tool versions
         run: |
