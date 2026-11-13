@@ -54,6 +54,7 @@ type Watcher struct {
 	cmList     map[string][]string
 	labels     map[string]string
 	watchers   map[string]watch.Interface
+	mu         sync.Mutex
 }
 
 type Config struct {
@@ -125,11 +126,16 @@ func (exp *Watcher) watchNamespaces() error {
 	for _, namespace := range exp.namespaces {
 		go exp.watchNamespace(namespace)
 	}
+	mutex.Lock()
 	activeWatcher = exp
+	mutex.Unlock()
 	return nil
 }
 
 func (exp *Watcher) isCmAlreadyPresent(cm *v1.ConfigMap) bool {
+	exp.mu.Lock()
+	defer exp.mu.Unlock()
+
 	for n, cmList := range exp.cmList {
 		if n == cm.Namespace {
 			for _, v := range cmList {
@@ -171,7 +177,7 @@ func (exp *Watcher) handleWatcher(clientSet *kubernetes.Clientset, namespace str
 			if exp.isCmAlreadyPresent(cm) {
 				continue
 			}
-			exp.cmList[cm.Namespace] = append(exp.cmList[cm.Namespace], cm.Name)
+			exp.addCMToList(cm.Namespace, cm.Name)
 			logger.Info(fmt.Sprintf("CM %s was added in namespace %s", cm.Name, cm.Namespace))
 			if err := exp.updateCM(); err != nil {
 				continue
@@ -192,6 +198,9 @@ func (exp *Watcher) handleWatcher(clientSet *kubernetes.Clientset, namespace str
 }
 
 func (exp *Watcher) replaceWatcher(namespace string, watcher watch.Interface) {
+	exp.mu.Lock()
+	defer exp.mu.Unlock()
+
 	oldWatcher, ok := exp.watchers[namespace]
 	if ok {
 		oldWatcher.Stop()
@@ -199,7 +208,16 @@ func (exp *Watcher) replaceWatcher(namespace string, watcher watch.Interface) {
 	exp.watchers[namespace] = watcher
 }
 
+func (exp *Watcher) addCMToList(namespace string, cmName string) {
+	exp.mu.Lock()
+	defer exp.mu.Unlock()
+	exp.cmList[namespace] = append(exp.cmList[namespace], cmName)
+}
+
 func (exp *Watcher) removeCMFromList(namespace string, cmName string) {
+	exp.mu.Lock()
+	defer exp.mu.Unlock()
+
 	for i, v := range exp.cmList[namespace] {
 		if v == cmName {
 			exp.cmList[namespace] = append(exp.cmList[namespace][:i], exp.cmList[namespace][i+1:]...)
@@ -224,7 +242,9 @@ func (exp *Watcher) findConfigMaps() ([]v1.ConfigMap, error) {
 				configMaps = append(configMaps, configMap)
 				cmInNamespace = append(cmInNamespace, configMap.Name)
 			}
+			exp.mu.Lock()
 			exp.cmList[namespace] = cmInNamespace
+			exp.mu.Unlock()
 		} else {
 			logger.Error(fmt.Sprintf("cannot get config maps list for namespaces %s", namespace), zap.Error(err))
 			return nil, err
@@ -253,6 +273,9 @@ func (exp *Watcher) updateCM() (err error) {
 }
 
 func (exp *Watcher) stopAllWatchers() {
+	exp.mu.Lock()
+	defer exp.mu.Unlock()
+
 	logger.Info("Close all watchers")
 	for _, w := range exp.watchers {
 		w.Stop()
@@ -260,8 +283,12 @@ func (exp *Watcher) stopAllWatchers() {
 }
 
 func RemoveActiveWatcher() {
+	mutex.Lock()
+	defer mutex.Unlock()
+
 	if activeWatcher != nil {
 		activeWatcher.stopAllWatchers()
+		activeWatcher = nil
 	}
 }
 
