@@ -153,6 +153,7 @@ type Upgrade struct {
 	Enabled            bool   `json:"enabled,omitempty"`
 	InitDbParams       string `json:"initDbParams,omitempty"`
 	DockerUpgradeImage string `json:"dockerUpgradeImage,omitempty"`
+	UseMigrationPvc    bool   `json:"useMigrationPvc,omitempty"`
 }
 
 type Powa struct {
