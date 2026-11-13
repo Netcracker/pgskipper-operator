@@ -830,7 +830,11 @@ func (rm *ResourceManager) UpdatePGService() error {
 			continue
 		}
 		svc.OwnerReferences = rm.GetOwnerReferences()
-		svc.Labels = rm.getLabels(svc.ObjectMeta)
+		// Helm owns the labels of chart-deployed services. Taking them over makes a
+		// later server-side apply, the Helm 4 default, fail with a field conflict.
+		if !slices.Contains(chartDeployedServices, svcName) {
+			svc.Labels = rm.getLabels(svc.ObjectMeta)
+		}
 		if err := rm.UpdateService(svc); err != nil {
 			logger.Error("error during update of pgService in resource_management.go", zap.Error(err))
 			return err
