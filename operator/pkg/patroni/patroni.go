@@ -419,6 +419,7 @@ func UpdatePostgreSQLParams(patroni *patroniv1.Patroni, patroniUrl string) error
 
 	postgreSQL["parameters"] = postgreSQLParams
 	postgreSQL["pg_hba"] = getPgHba(patroni.PgHba)
+	postgreSQL["use_slots"] = patroni.UseSlots
 
 	patchData := map[string]interface{}{
 		"postgresql": postgreSQL,

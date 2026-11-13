@@ -91,7 +91,7 @@ func getReplicationSlots(client *pgClient.PostgresClient) ([]Slot, error) {
 			logger.Error("error during obtain slot information", zap.Error(err))
 			return nil, err
 		}
-		if !strings.HasPrefix(name.String, ignoreSlotsPrefix) {
+		if !matchesAnyPrefix(name.String, ignoreSlotsPrefix) {
 			continue
 		}
 		slot := Slot{
@@ -120,6 +120,16 @@ func updateIgnoreSlotsInConfig(slots []Slot, patroniUrl string) error {
 	}
 
 	return nil
+}
+
+func matchesAnyPrefix(name, prefixes string) bool {
+	for _, prefix := range strings.Split(prefixes, ",") {
+		prefix = strings.TrimSpace(prefix)
+		if prefix != "" && strings.HasPrefix(name, prefix) {
+			return true
+		}
+	}
+	return false
 }
 
 func getNewSlotsForIgnore(slots []Slot) (difSlots []Slot) {
