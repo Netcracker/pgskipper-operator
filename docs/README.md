@@ -6,6 +6,7 @@
 
 - [Quickstart](public/quickstart.md) — Get a PostgreSQL cluster running with Helm in minutes.
 - [Installation guide](public/installation.md) — Prerequisites, all Helm chart parameters, platform-specific configurations, and upgrade procedures.
+- [Troubleshooting](public/troubleshooting.md) — Procedures for alerts, deployment failures, upgrades, replication, and disaster recovery.
 
 ### `docs/public/features/`
 
@@ -29,6 +30,7 @@ docs/
 └── public/
     ├── quickstart.md                     # Fast-path installation guide
     ├── installation.md                   # Full Helm parameter reference and platform setup
+    ├── troubleshooting.md                # Alert, deployment, and recovery procedures
     ├── features/
     │   ├── active-standby-cluster.md     # Active-standby deployment scheme
     │   ├── cis-hardening.md              # CIS benchmark compliance guidance
