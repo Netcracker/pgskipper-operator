@@ -36,7 +36,10 @@ RUN apt-get --no-install-recommends install -y libaom3=3.3.0-1ubuntu0.1 || apt-g
 
 RUN apt-get -y update
 RUN apt-get -o DPkg::Options::="--force-confnew" -y dist-upgrade
+# PostgreSQL 9.6: jammy-pgdg core packages only (pgaudit). Skipped for 9.6 on this
+# source: pgvector, pg-failover-slots, credcheck, pgnodemx, and other modern-only extensions.
 RUN apt-get --no-install-recommends install -y \
+     postgresql-9.6 postgresql-contrib-9.6 postgresql-server-dev-9.6 postgresql-plpython3-9.6 postgresql-9.6-pgaudit \
      postgresql-12 postgresql-server-dev-12 \
      postgresql-13 postgresql-server-dev-13 \
      postgresql-14 postgresql-server-dev-14 \

@@ -1151,6 +1151,12 @@ func (r *PatroniReconciler) applyUseSlotsAdditionalSettings(cr *v1.PatroniCore) 
 		return
 	}
 
+	if !opUtil.ShouldLoadPgFailoverSlots(pgVersion) {
+		logger.Info(fmt.Sprintf("useSlots is enabled on PostgreSQL %d; skipping pg_failover_slots (not available); ensuring hot_standby_feedback=on", pgVersion))
+		ensurePostgreSQLParam(cr, "hot_standby_feedback", "on")
+		return
+	}
+
 	logger.Info(fmt.Sprintf("useSlots is enabled on PostgreSQL %d; ensuring pg_failover_slots and hot_standby_feedback=on", pgVersion))
 	helper.UpdatePreloadLibraries(cr, []string{"pg_failover_slots"})
 	ensureSharedPreloadLibrary(cr, "pg_failover_slots")

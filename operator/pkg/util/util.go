@@ -504,3 +504,9 @@ func ReadSecretFile(path string, defaultVal string) string {
 	}
 	return value
 }
+
+// ShouldLoadPgFailoverSlots reports whether pg_failover_slots should be added for useSlots.
+// PostgreSQL 9.x (major 9) does not ship that extension; majors 17+ use native sync slots.
+func ShouldLoadPgFailoverSlots(pgVersion int64) bool {
+	return pgVersion >= 10 && pgVersion < 17
+}

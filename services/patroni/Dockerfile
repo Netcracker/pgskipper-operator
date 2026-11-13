@@ -30,6 +30,9 @@ COPY ./scripts/postgresql.conf /tmp/postgresql.conf
 COPY ./scripts/fix_permission.sh /usr/libexec/fix-permissions
 COPY ./scripts/* /
 
+# jammy-pgdg publishes modern majors and core PostgreSQL 9.6 packages (server, contrib,
+# client, server-dev, plpython3, pgaudit). Most third-party extensions are not built for 9.6
+# on jammy; see the PG_VERSION install branch below.
 RUN echo "deb [trusted=yes] http://apt.postgresql.org/pub/repos/apt jammy-pgdg main" >> /etc/apt/sources.list.d/pgdg.list
 
 RUN ls -la /etc/apt/
@@ -85,11 +88,25 @@ RUN apt-get --no-install-recommends install -y \
     mkdir -p /var/spool/pgbackrest
 
 ARG DEBIAN_FRONTEND=noninteractive
-RUN apt-get --no-install-recommends install -y postgresql-$PG_VERSION postgresql-contrib-$PG_VERSION postgresql-server-dev-$PG_VERSION postgresql-plpython3-$PG_VERSION postgresql-$PG_VERSION-hypopg postgresql-$PG_VERSION-powa postgresql-$PG_VERSION-orafce\
-    hostname gettext jq vim \
-    postgresql-$PG_VERSION-cron postgresql-$PG_VERSION-repack postgresql-$PG_VERSION-pgaudit postgresql-$PG_VERSION-pg-stat-kcache postgresql-$PG_VERSION-pg-qualstats postgresql-$PG_VERSION-set-user postgresql-$PG_VERSION-postgis \
-    postgresql-$PG_VERSION-pg-wait-sampling postgresql-$PG_VERSION-pg-track-settings postgresql-$PG_VERSION-pg-hint-plan postgresql-$PG_VERSION-pgnodemx postgresql-$PG_VERSION-decoderbufs postgresql-$PG_VERSION-pglogical postgresql-$PG_VERSION-pgvector \
-    postgresql-$PG_VERSION-pg-failover-slots
+# PostgreSQL 9.6 (jammy-pgdg): core + pgaudit only.
+# Skipped for 9.6 (not published on jammy for this major): hypopg, powa, orafce, cron,
+# repack, pg-stat-kcache, pg-qualstats, set-user, postgis, pg-wait-sampling,
+# pg-track-settings, pg-hint-plan, pgnodemx, decoderbufs, pglogical, pgvector,
+# pg-failover-slots.
+RUN set -eux; \
+    apt-get update; \
+    CORE_PKGS="postgresql-${PG_VERSION} postgresql-contrib-${PG_VERSION} postgresql-server-dev-${PG_VERSION} postgresql-plpython3-${PG_VERSION} hostname gettext jq vim"; \
+    if python3 -c "import sys; sys.exit(0 if float('${PG_VERSION}') < 10 else 1)"; then \
+        EXT_PKGS="postgresql-${PG_VERSION}-pgaudit"; \
+    else \
+        EXT_PKGS="postgresql-${PG_VERSION}-hypopg postgresql-${PG_VERSION}-powa postgresql-${PG_VERSION}-orafce \
+            postgresql-${PG_VERSION}-cron postgresql-${PG_VERSION}-repack postgresql-${PG_VERSION}-pgaudit \
+            postgresql-${PG_VERSION}-pg-stat-kcache postgresql-${PG_VERSION}-pg-qualstats postgresql-${PG_VERSION}-set-user \
+            postgresql-${PG_VERSION}-postgis postgresql-${PG_VERSION}-pg-wait-sampling postgresql-${PG_VERSION}-pg-track-settings \
+            postgresql-${PG_VERSION}-pg-hint-plan postgresql-${PG_VERSION}-pgnodemx postgresql-${PG_VERSION}-decoderbufs \
+            postgresql-${PG_VERSION}-pglogical postgresql-${PG_VERSION}-pgvector postgresql-${PG_VERSION}-pg-failover-slots"; \
+    fi; \
+    apt-get --no-install-recommends install -y ${CORE_PKGS} ${EXT_PKGS}
 
 
 # Install LDAP utilities including openldap-clients and necessary libraries
@@ -105,32 +122,48 @@ RUN localedef -i en_US -f UTF-8 en_US.UTF-8 && \
     localedef -i es_PE -f UTF-8 es_PE.UTF-8 && \
     localedef -i es_ES -f UTF-8 es_ES.UTF-8
 
-RUN wget https://github.com/zubkov-andrei/pg_profile/releases/download/4.8/pg_profile--4.8.tar.gz && \
-    tar -xzf pg_profile--4.8.tar.gz --directory $(pg_config --sharedir)/extension && \
-    rm -rf pg_profile--4.8.tar.gz
-
-# Install pgsentinel and pg_dbms_stats
-RUN apt-get update && apt-get install -y git make gcc && \
-    git clone https://github.com/pgsentinel/pgsentinel.git && \
-    cd pgsentinel && \
-    git checkout 0218c2147daab0d2dbbf08433cb480163d321839 && \
-    cd src && make install && \
-    cd ../.. && \
-    if [ "$PG_VERSION" -lt 18 ]; then \
-        git clone --depth 1 --branch REL14_0 https://github.com/ossc-db/pg_dbms_stats.git && \
-        cd pg_dbms_stats && sed -i 's/$(MAJORVERSION)/14/g' Makefile && \
-        make install && \
-        cd .. ; \
+# pg_profile 4.8 targets modern PostgreSQL; skip on 9.6.
+RUN set -eux; \
+    if python3 -c "import sys; sys.exit(0 if float('${PG_VERSION}') < 10 else 1)"; then \
+        echo "Skipping pg_profile: not supported on PostgreSQL ${PG_VERSION}"; \
     else \
-        echo "Skipping pg_dbms_stats: not supported on PostgreSQL $PG_VERSION"; \
-    fi && \
-    apt-get purge -y --auto-remove git make gcc && \
-    rm -rf pgsentinel
+        wget https://github.com/zubkov-andrei/pg_profile/releases/download/4.8/pg_profile--4.8.tar.gz && \
+        tar -xzf pg_profile--4.8.tar.gz --directory $(pg_config --sharedir)/extension && \
+        rm -rf pg_profile--4.8.tar.gz; \
+    fi
 
-# Install credcheck extension
-RUN apt-get update && apt-get install -y postgresql-$PG_VERSION-credcheck
+# Install pgsentinel and pg_dbms_stats (not supported on PostgreSQL 9.6)
+RUN set -eux; \
+    if python3 -c "import sys; sys.exit(0 if float('${PG_VERSION}') < 10 else 1)"; then \
+        echo "Skipping pgsentinel and pg_dbms_stats: not supported on PostgreSQL ${PG_VERSION}"; \
+    else \
+        apt-get update && apt-get install -y git make gcc && \
+        git clone https://github.com/pgsentinel/pgsentinel.git && \
+        cd pgsentinel && \
+        git checkout 0218c2147daab0d2dbbf08433cb480163d321839 && \
+        cd src && make install && \
+        cd ../.. && \
+        if python3 -c "import sys; sys.exit(0 if float('${PG_VERSION}') < 18 else 1)"; then \
+            git clone --depth 1 --branch REL14_0 https://github.com/ossc-db/pg_dbms_stats.git && \
+            cd pg_dbms_stats && sed -i 's/$(MAJORVERSION)/14/g' Makefile && \
+            make install && \
+            cd .. ; \
+        else \
+            echo "Skipping pg_dbms_stats: not supported on PostgreSQL ${PG_VERSION}"; \
+        fi && \
+        apt-get purge -y --auto-remove git make gcc && \
+        rm -rf pgsentinel pg_dbms_stats; \
+    fi
 
-RUN apt-get install -y alien vmtouch openssh-server
+# Install credcheck extension (not published for PostgreSQL 9.6)
+RUN set -eux; \
+    if python3 -c "import sys; sys.exit(0 if float('${PG_VERSION}') < 10 else 1)"; then \
+        echo "Skipping credcheck: not supported on PostgreSQL ${PG_VERSION}"; \
+    else \
+        apt-get update && apt-get install -y postgresql-${PG_VERSION}-credcheck; \
+    fi
+
+RUN apt-get update && apt-get install -y alien vmtouch openssh-server
 
 RUN cat /root/.pip/pip.conf
 # 1. Install pip dependencies

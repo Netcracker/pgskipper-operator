@@ -4,6 +4,10 @@ ifndef TAG_ENV
 override TAG_ENV = local
 endif
 
+ifndef PG_VERSION
+override PG_VERSION = 15
+endif
+
 ifndef DOCKER_NAMES
 override DOCKER_NAMES = ghcr.io/netcracker/pgskipper-docker-patroni:${TAG_ENV}
 endif
@@ -15,7 +19,7 @@ all: sandbox-build docker-push
 local: docker-build docker-push
 
 docker-build:
-	$(foreach docker_tag,$(DOCKER_NAMES),docker build --file="${DOCKER_FILE}" --pull -t $(docker_tag) ./;)
+	$(foreach docker_tag,$(DOCKER_NAMES),docker build --file="${DOCKER_FILE}" --pull --build-arg PG_VERSION=$(PG_VERSION) -t $(docker_tag) ./;)
 
 docker-push:
 	$(foreach docker_tag,$(DOCKER_NAMES),docker push $(docker_tag);)

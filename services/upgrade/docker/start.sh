@@ -242,7 +242,9 @@ function check_pgsql_version(){
     # get version of data files
     PG_VERSION=$(head -n 1 "/var/lib/pgsql/data/${DATA_DIR}/PG_VERSION")
 
-    if python -c "import sys; sys.exit(0 if 11.0 <= float("${PG_VERSION}") < 12.0 else 1)"; then
+    if python -c "import sys; sys.exit(0 if 9.0 <= float("${PG_VERSION}") < 10.0 else 1)"; then
+        PG_VERSION_TARGET="18"
+    elif python -c "import sys; sys.exit(0 if 11.0 <= float("${PG_VERSION}") < 12.0 else 1)"; then
         PG_VERSION_TARGET="12"
     elif python -c "import sys; sys.exit(0 if 10.0 <= float("${PG_VERSION}") < 11.0 else 1)"; then
         PG_VERSION_TARGET="11"
