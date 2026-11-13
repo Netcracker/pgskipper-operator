@@ -29,19 +29,21 @@ import configs
 import pg_backup
 import pg_restore
 import utils
-import glob
 import storage_s3
 import psycopg2
 import threading
 from functools import wraps
 
 import shutil
-from backups import build_backup_path, build_namespace_path, is_valid_namespace, build_backup_status_file_path
+from backups import (
+    build_backup_path,
+    build_namespace_path,
+    is_valid_namespace,
+    build_backup_status_file_path,
+)
 from flask_httpauth import HTTPBasicAuth
 
-from flask import request, abort, Response, stream_with_context
-
-
+from flask import request, abort, stream_with_context
 
 auth = HTTPBasicAuth()
 
@@ -53,7 +55,7 @@ def superuser_authorization(func_to_decorate):
             if request.authorization.username == configs.postgresql_user():
                 return func_to_decorate(self, *args, **kwargs)
             else:
-                abort(403, 'You are not authorized to perform such action')
+                abort(403, "You are not authorized to perform such action")
         else:
             return func_to_decorate(self, *args, **kwargs)
 
@@ -83,48 +85,61 @@ def common_authorization(func_to_decorate):
     @wraps(func_to_decorate)
     def wrap(self, *args, **kwargs):
         if utils.is_auth_needed():
-            content_type = request.headers.get('Content-Type')
+            content_type = request.headers.get("Content-Type")
 
-            if content_type and content_type.split(";")[0] != 'application/json' \
-                    and request.headers.get('Content-Length'):
-                return "Invalid request body: Content Type is not json", http.client.BAD_REQUEST
+            if (
+                content_type
+                and content_type.split(";")[0] != "application/json"
+                and request.headers.get("Content-Length")
+            ):
+                return (
+                    "Invalid request body: Content Type is not json",
+                    http.client.BAD_REQUEST,
+                )
 
             backup_request = request.get_json() or {}
 
             for k in list(backup_request.keys()):
                 if k not in self.allowed_fields:
-                    return "Unknown field: %s" % k.encode('utf-8'), http.client.BAD_REQUEST
+                    return (
+                        "Unknown field: %s" % k.encode("utf-8"),
+                        http.client.BAD_REQUEST,
+                    )
 
-            databases = backup_request.get('databases') or []
+            databases = backup_request.get("databases") or []
 
             cred = request.authorization
             if not cred:
-                abort(401, 'Credentials should be provided for this endpoint')
+                abort(401, "Credentials should be provided for this endpoint")
 
             databases_count = len(databases)
             if databases_count == 1:
                 dbname = databases[0]
-                connection_properties = \
-                    configs.connection_properties(username=cred.username, password=cred.password, database='postgres')
+                connection_properties = configs.connection_properties(
+                    username=cred.username, password=cred.password, database="postgres"
+                )
                 connect = None
                 try:
                     connect = psycopg2.connect(**connection_properties)
                     with connect.cursor() as cur:
-                        cur.execute("""
+                        cur.execute(
+                            """
                             SELECT pg_catalog.pg_get_userbyid(d.datdba) as Owner
                             FROM pg_catalog.pg_database d WHERE d.datname = %s
                             ORDER BY 1;
-                            """, (dbname,))
+                            """,
+                            (dbname,),
+                        )
                         database_owner = cur.fetchone()[0]
                         if database_owner == cred.username:
                             return func_to_decorate(self, *args, **kwargs)
                         else:
-                            abort(403, 'You are not authorized to perform such action')
+                            abort(403, "You are not authorized to perform such action")
                 finally:
                     if connect:
                         connect.close()
             elif not cred.username == configs.postgresql_user():
-                abort(403, 'You are not authorized to perform such action')
+                abort(403, "You are not authorized to perform such action")
             else:
                 return func_to_decorate(self, *args, **kwargs)
         else:
@@ -133,83 +148,106 @@ def common_authorization(func_to_decorate):
     return wrap
 
 
-if os.getenv("DEBUG") and os.getenv("DEBUG").lower() == 'true':
+if os.getenv("DEBUG") and os.getenv("DEBUG").lower() == "true":
     logging.getLogger().setLevel(logging.DEBUG)
 
 
 def schedule_granular_backup(scheduler):
     cron_pattern = configs.granular_cron_pattern()
-    if cron_pattern.lower() != 'none' and os.getenv("GRANULAR_BACKUP_SCHEDULE") != "":
+    if cron_pattern.lower() != "none" and os.getenv("GRANULAR_BACKUP_SCHEDULE") != "":
         if utils.is_mirror_env():
-            logging.info('It is a mirror env')
+            logging.info("It is a mirror env")
             return
-        logging.info('Start schedule granular backup')
+        logging.info("Start schedule granular backup")
         databases = configs.dbs_to_granular_backup()
-        backup_request = {'databases': databases, 'namespace': 'schedule'}
+        backup_request = {"databases": databases, "namespace": "schedule"}
         compression_level = configs.compression_level()
         if compression_level is not None:
-            backup_request['compressionLevel'] = str(compression_level)
-        items = cron_pattern.split(' ', 5)
-        minute, hour, day, month, day_of_week = items[0], items[1], items[2], items[3], items[4]
+            backup_request["compressionLevel"] = str(compression_level)
+        items = cron_pattern.split(" ", 5)
+        minute, hour, day, month, day_of_week = (
+            items[0],
+            items[1],
+            items[2],
+            items[3],
+            items[4],
+        )
 
         granular_backup_request = GranularBackupRequestEndpoint()
 
         return scheduler.add_job(
             granular_backup_request.perform_granular_backup,
-            'cron',
+            "cron",
             [backup_request],
             minute=minute,
             hour=hour,
             day=day,
             month=month,
-            day_of_week=day_of_week)
+            day_of_week=day_of_week,
+        )
 
 
 def schedule_diff_backup(scheduler):
     cron_pattern = configs.diff_cron_pattern()
     logging.info(f'DIFF SHEDULE {os.getenv("DIFF_SCHEDULE")}')
-    if cron_pattern.lower() != 'none' and os.getenv("DIFF_SCHEDULE") is not None:
-        logging.info('Start schedule diff backup')
-        items = cron_pattern.split(' ', 5)
+    if cron_pattern.lower() != "none" and os.getenv("DIFF_SCHEDULE") is not None:
+        logging.info("Start schedule diff backup")
+        items = cron_pattern.split(" ", 5)
         logging.info(f"{items} cron items")
-        minute, hour, day, month, day_of_week = items[0], items[1], items[2], items[3], items[4]
+        minute, hour, day, month, day_of_week = (
+            items[0],
+            items[1],
+            items[2],
+            items[3],
+            items[4],
+        )
 
         diff_backup_request = DiffBackupRequestEndpoint()
 
         return scheduler.add_job(
             diff_backup_request.perform_diff_backup,
-            'cron',
+            "cron",
             minute=minute,
             hour=hour,
             day=day,
             month=month,
-            day_of_week=day_of_week)
+            day_of_week=day_of_week,
+        )
+
 
 def schedule_incr_backup(scheduler):
     cron_pattern = configs.incr_cron_pattern()
     logging.info(f'INCR SHEDULE {os.getenv("INCR_SCHEDULE")}')
-    if cron_pattern.lower() != 'none' and os.getenv("INCR_SCHEDULE") is not None:
-        logging.info('Start schedule incr backup')
-        items = cron_pattern.split(' ', 5)
+    if cron_pattern.lower() != "none" and os.getenv("INCR_SCHEDULE") is not None:
+        logging.info("Start schedule incr backup")
+        items = cron_pattern.split(" ", 5)
         logging.info(f"{items} cron items")
-        minute, hour, day, month, day_of_week = items[0], items[1], items[2], items[3], items[4]
+        minute, hour, day, month, day_of_week = (
+            items[0],
+            items[1],
+            items[2],
+            items[3],
+            items[4],
+        )
 
         incr_backup_request = IncrBackupRequestEndpoint()
 
         return scheduler.add_job(
             incr_backup_request.perform_incr_backup,
-            'cron',
+            "cron",
             minute=minute,
             hour=hour,
             day=day,
             month=month,
-            day_of_week=day_of_week)
+            day_of_week=day_of_week,
+        )
+
 
 class GranularBackupsListEndpoint(flask_restful.Resource):
 
     def __init__(self):
-        self.log = logging.getLogger('BackupsListEndpoint')
-        self.s3 = storage_s3.AwsS3Vault() if os.environ['STORAGE_TYPE'] == "s3" else None
+        self.log = logging.getLogger("BackupsListEndpoint")
+        self.s3 = storage_s3.AwsS3Vault() if os.environ["STORAGE_TYPE"] == "s3" else None
 
     @auth.login_required
     def get(self):
@@ -236,7 +274,7 @@ class GranularBackupsListEndpoint(flask_restful.Resource):
             status[namespace] = {}
             if self.s3:
                 backup_ids = self.s3.get_backup_ids(storage, namespace)
-            for backup in os.listdir(backups.build_namespace_path(namespace)) if not self.s3 else backup_ids:
+            for backup in (os.listdir(backups.build_namespace_path(namespace)) if not self.s3 else backup_ids):
                 status_file = backups.build_backup_status_file_path(backup, namespace)
                 if self.s3:
                     try:
@@ -244,32 +282,32 @@ class GranularBackupsListEndpoint(flask_restful.Resource):
                             status_file = self.s3.read_object(status_file)
                             backup_status = json.loads(status_file)
                             status[namespace][backup] = {
-                                'status': backup_status.get('status'),
-                                'created': backup_status.get('created'),
-                                'expirationDate': backup_status.get('expirationDate')
+                                "status": backup_status.get("status"),
+                                "created": backup_status.get("created"),
+                                "expirationDate": backup_status.get("expirationDate"),
                             }
                         else:
                             self.log.error("Cannot find status file in bucket with backup id {}".format(backup))
-                            status[namespace][backup] = {'status': 'Unknown'}
+                            status[namespace][backup] = {"status": "Unknown"}
 
                     except ValueError:
                         self.log.exception("Cannot read status file")
-                        status[namespace][backup] = {'status': 'Unknown'}
+                        status[namespace][backup] = {"status": "Unknown"}
 
                 elif os.path.isfile(status_file):
-                    with open(status_file, 'r') as f:
+                    with open(status_file, "r") as f:
                         try:
                             backup_status = json.load(f)
                             status[namespace][backup] = {
-                                'status': backup_status.get('status'),
-                                'created': backup_status.get('created'),
-                                'expirationDate': backup_status.get('expirationDate')
+                                "status": backup_status.get("status"),
+                                "created": backup_status.get("created"),
+                                "expirationDate": backup_status.get("expirationDate"),
                             }
                         except ValueError:
                             self.log.exception("Cannot read status file")
-                            status[namespace][backup] = {'status': 'Unknown'}
+                            status[namespace][backup] = {"status": "Unknown"}
                 else:
-                    status[namespace][backup] = {'status': 'Unknown'}
+                    status[namespace][backup] = {"status": "Unknown"}
 
         return status, http.client.OK
 
@@ -277,15 +315,17 @@ class GranularBackupsListEndpoint(flask_restful.Resource):
 class GranularBackupRequestEndpoint(flask_restful.Resource):
 
     def __init__(self):
-        self.log = logging.getLogger('BackupRequestEndpoint')
-        self.allowed_fields = ['backupId',
-                               'namespace',
-                               'databases',
-                               'keep',
-                               'compressionLevel',
-                               'externalBackupPath',
-                               'storageName',
-                               'blobPath']
+        self.log = logging.getLogger("BackupRequestEndpoint")
+        self.allowed_fields = [
+            "backupId",
+            "namespace",
+            "databases",
+            "keep",
+            "compressionLevel",
+            "externalBackupPath",
+            "storageName",
+            "blobPath",
+        ]
 
     def perform_granular_backup(self, backup_request, use_s3_alias=False):
         # # for gke full backup
@@ -300,15 +340,15 @@ class GranularBackupRequestEndpoint(flask_restful.Resource):
         #     else:
         #         return backup_id, http.client.BAD_REQUEST
 
-        self.log.info('Perform granular backup')
+        self.log.info("Perform granular backup")
 
         for k in list(backup_request.keys()):
             if k not in self.allowed_fields:
-                self.log.exception("Unknown field: %s" % k.encode('utf-8'))
-                return "Unknown field: %s" % k.encode('utf-8'), http.client.BAD_REQUEST
+                self.log.exception("Unknown field: %s" % k.encode("utf-8"))
+                return "Unknown field: %s" % k.encode("utf-8"), http.client.BAD_REQUEST
 
-        databases = backup_request.get('databases') or []
-        namespace = backup_request.get('namespace') or configs.default_namespace()
+        databases = backup_request.get("databases") or []
+        namespace = backup_request.get("namespace") or configs.default_namespace()
         if databases:
             baselist = utils.get_database_list(databases)
 
@@ -317,37 +357,51 @@ class GranularBackupRequestEndpoint(flask_restful.Resource):
             return "Field 'database' must be an array.", http.client.BAD_REQUEST
 
         if not backups.is_valid_namespace(namespace):
-            self.log.exception("Invalid namespace name: %s." % namespace.encode('utf-8'))
-            return "Invalid namespace name: %s." % namespace.encode('utf-8'), http.client.BAD_REQUEST
+            self.log.exception("Invalid namespace name: %s." % namespace.encode("utf-8"))
+            return (
+                "Invalid namespace name: %s." % namespace.encode("utf-8"),
+                http.client.BAD_REQUEST,
+            )
 
         for database in databases:
             if backups.is_database_protected(database):
                 self.log.exception("Database '%s' is not suitable for backup/restore." % database)
-                return "Database '%s' is not suitable for backup/restore." % database, http.client.FORBIDDEN
+                return (
+                    "Database '%s' is not suitable for backup/restore." % database,
+                    http.client.FORBIDDEN,
+                )
 
             if database not in baselist:
                 self.log.exception("Database '%s' does not exist" % database)
-                return "Database '%s' does not exist" % database, http.client.BAD_REQUEST
+                return (
+                    "Database '%s' does not exist" % database,
+                    http.client.BAD_REQUEST,
+                )
 
         backup_id = backups.generate_backup_id()
-        backup_request['backupId'] = backup_id
+        backup_request["backupId"] = backup_id
 
-        worker = pg_backup.PostgreSQLDumpWorker(databases, backup_request, backup_request.get('blobPath'), use_s3_alias=use_s3_alias,)
+        worker = pg_backup.PostgreSQLDumpWorker(
+            databases,
+            backup_request,
+            backup_request.get("blobPath"),
+            use_s3_alias=use_s3_alias,
+        )
 
         worker.start()
 
-        return {
-                   'backupId': backup_id
-               }, http.client.ACCEPTED
+        return {"backupId": backup_id}, http.client.ACCEPTED
 
     @auth.login_required
     @common_authorization
     def post(self):
-        content_type = request.headers.get('Content-Type')
+        content_type = request.headers.get("Content-Type")
 
-        if content_type and content_type.split(";")[0] != 'application/json' \
-                and request.headers.get('Content-Length'):
-            return "Invalid request body: Content Type is not json", http.client.BAD_REQUEST
+        if content_type and content_type.split(";")[0] != "application/json" and request.headers.get("Content-Length"):
+            return (
+                "Invalid request body: Content Type is not json",
+                http.client.BAD_REQUEST,
+            )
 
         backup_request = request.get_json() or {}
 
@@ -357,8 +411,8 @@ class GranularBackupRequestEndpoint(flask_restful.Resource):
 class GranularBackupStatusEndpoint(flask_restful.Resource):
 
     def __init__(self):
-        self.log = logging.getLogger('BackupRequestEndpoint')
-        self.s3 = storage_s3.AwsS3Vault() if os.environ['STORAGE_TYPE'] == "s3" else None
+        self.log = logging.getLogger("BackupRequestEndpoint")
+        self.s3 = storage_s3.AwsS3Vault() if os.environ["STORAGE_TYPE"] == "s3" else None
 
     @auth.login_required
     def get(self, backup_id):
@@ -371,12 +425,15 @@ class GranularBackupStatusEndpoint(flask_restful.Resource):
         #     response = client.backup_status(backup_id)
         #     return response
 
-        namespace = flask.request.args.get('namespace') or configs.default_namespace()
+        namespace = flask.request.args.get("namespace") or configs.default_namespace()
 
         if not backups.is_valid_namespace(namespace):
-            return "Invalid namespace name: %s." % namespace.encode('utf-8'), http.client.BAD_REQUEST
+            return (
+                "Invalid namespace name: %s." % namespace.encode("utf-8"),
+                http.client.BAD_REQUEST,
+            )
 
-        external_backup_path = flask.request.args.get('externalBackupPath') or None
+        external_backup_path = flask.request.args.get("externalBackupPath") or None
         external_backup_root = None
         if external_backup_path is not None:
             external_backup_root = backups.build_external_backup_root(external_backup_path)
@@ -386,7 +443,7 @@ class GranularBackupStatusEndpoint(flask_restful.Resource):
                 status = self.s3.read_object(backup_status_file)
                 logging.info(status)
 
-            except:
+            except BaseException:
                 return "Backup in bucket is not found.", http.client.NOT_FOUND
             return json.loads(status), http.client.OK
         else:
@@ -399,9 +456,9 @@ class GranularBackupStatusEndpoint(flask_restful.Resource):
 class GranularBackupStatusJSONEndpoint(flask_restful.Resource):
 
     def __init__(self):
-        self.log = logging.getLogger('BackupRequestEndpoint')
-        self.allowed_fields = ['backupId', 'namespace', 'externalBackupPath']
-        self.s3 = storage_s3.AwsS3Vault() if os.environ['STORAGE_TYPE'] == "s3" else None
+        self.log = logging.getLogger("BackupRequestEndpoint")
+        self.allowed_fields = ["backupId", "namespace", "externalBackupPath"]
+        self.s3 = storage_s3.AwsS3Vault() if os.environ["STORAGE_TYPE"] == "s3" else None
 
     @auth.login_required
     def post(self):
@@ -409,13 +466,16 @@ class GranularBackupStatusJSONEndpoint(flask_restful.Resource):
 
         for k in list(backup_request.keys()):
             if k not in self.allowed_fields:
-                return "Unknown field: %s" % k.encode('utf-8'), http.client.BAD_REQUEST
+                return "Unknown field: %s" % k.encode("utf-8"), http.client.BAD_REQUEST
 
-        backup_id = backup_request.get('backupId')
-        namespace = backup_request.get('namespace') or configs.default_namespace()
+        backup_id = backup_request.get("backupId")
+        namespace = backup_request.get("namespace") or configs.default_namespace()
 
         if not backups.is_valid_namespace(namespace):
-            return "Invalid namespace name: %s." % namespace.encode('utf-8'), http.client.BAD_REQUEST
+            return (
+                "Invalid namespace name: %s." % namespace.encode("utf-8"),
+                http.client.BAD_REQUEST,
+            )
 
         if not backup_request:
             return "Request body is empty.", http.client.BAD_REQUEST
@@ -423,7 +483,7 @@ class GranularBackupStatusJSONEndpoint(flask_restful.Resource):
         if not backup_id:
             return "Backup ID is not specified.", http.client.BAD_REQUEST
 
-        external_backup_path = backup_request.get('externalBackupPath')
+        external_backup_path = backup_request.get("externalBackupPath")
         external_backup_root = None
         if external_backup_path is not None:
             external_backup_root = backups.build_external_backup_root(external_backup_path)
@@ -434,7 +494,7 @@ class GranularBackupStatusJSONEndpoint(flask_restful.Resource):
                 status = self.s3.read_object(status_path)
                 logging.info(status)
 
-            except:
+            except BaseException:
                 return "Backup in bucket is not found.", http.client.NOT_FOUND
             return json.loads(status), http.client.OK
         else:
@@ -448,10 +508,19 @@ class GranularBackupStatusJSONEndpoint(flask_restful.Resource):
 class GranularRestoreRequestEndpoint(flask_restful.Resource):
 
     def __init__(self):
-        self.log = logging.getLogger('BackupRequestEndpoint')
-        self.allowed_fields = ['backupId', 'namespace', 'databases', 'force', 'restoreRoles', 'databasesMapping',
-                               'externalBackupPath', 'singleTransaction', "dbaasClone"]
-        self.s3 = storage_s3.AwsS3Vault() if os.environ['STORAGE_TYPE'] == "s3" else None
+        self.log = logging.getLogger("BackupRequestEndpoint")
+        self.allowed_fields = [
+            "backupId",
+            "namespace",
+            "databases",
+            "force",
+            "restoreRoles",
+            "databasesMapping",
+            "externalBackupPath",
+            "singleTransaction",
+            "dbaasClone",
+        ]
+        self.s3 = storage_s3.AwsS3Vault() if os.environ["STORAGE_TYPE"] == "s3" else None
 
     @auth.login_required
     @superuser_authorization
@@ -466,27 +535,33 @@ class GranularRestoreRequestEndpoint(flask_restful.Resource):
 
         for k in list(restore_request.keys()):
             if k not in self.allowed_fields:
-                return "Unknown field: %s" % k.encode('utf-8'), http.client.BAD_REQUEST
+                return "Unknown field: %s" % k.encode("utf-8"), http.client.BAD_REQUEST
 
-        databases = restore_request.get('databases') or []
-        databases_mapping = restore_request.get('databasesMapping') or {}
+        databases = restore_request.get("databases") or []
+        databases_mapping = restore_request.get("databasesMapping") or {}
 
         if not isinstance(databases, list) and not isinstance(databases, tuple):
             return "Field 'database' must be an array.", http.client.BAD_REQUEST
 
         if not isinstance(databases_mapping, dict):
-            return "Field 'database_mapping' must be a dictionary.", http.client.BAD_REQUEST
+            return (
+                "Field 'database_mapping' must be a dictionary.",
+                http.client.BAD_REQUEST,
+            )
 
-        backup_id = restore_request.get('backupId')
+        backup_id = restore_request.get("backupId")
         if not backup_id:
             return "Backup ID is not specified.", http.client.BAD_REQUEST
 
-        namespace = restore_request.get('namespace') or configs.default_namespace()
+        namespace = restore_request.get("namespace") or configs.default_namespace()
 
         if not backups.is_valid_namespace(namespace):
-            return "Invalid namespace name: %s." % namespace.encode('utf-8'), http.client.BAD_REQUEST
+            return (
+                "Invalid namespace name: %s." % namespace.encode("utf-8"),
+                http.client.BAD_REQUEST,
+            )
 
-        external_backup_path = restore_request.get('externalBackupPath')
+        external_backup_path = restore_request.get("externalBackupPath")
         external_backup_root = None
         if external_backup_path is not None:
             external_backup_root = backups.build_external_backup_root(external_backup_path)
@@ -495,7 +570,7 @@ class GranularRestoreRequestEndpoint(flask_restful.Resource):
         if self.s3:
             try:
                 status = self.s3.read_object(backup_details_file)
-            except:
+            except BaseException:
                 return "Backup in bucket is not found.", http.client.NOT_FOUND
             backup_details = json.loads(status)
 
@@ -503,18 +578,22 @@ class GranularRestoreRequestEndpoint(flask_restful.Resource):
             if not os.path.isfile(backup_details_file):
                 return "Backup is not found.", http.client.NOT_FOUND
 
-            with open(backup_details_file, 'r') as f:
+            with open(backup_details_file, "r") as f:
                 backup_details = json.load(f)
 
-        backup_status = backup_details['status']
+        backup_status = backup_details["status"]
 
         if backup_status != backups.BackupStatus.SUCCESSFUL:
-            return "Backup status '%s' is unsuitable status for restore." % backup_status, http.client.FORBIDDEN
+            return (
+                "Backup status '%s' is unsuitable status for restore." % backup_status,
+                http.client.FORBIDDEN,
+            )
         if self.s3:
-            databases = list(backup_details.get('databases', {}).keys())
+            databases = list(backup_details.get("databases", {}).keys())
             for database in databases:
-                if not self.s3.is_file_exists(backups.build_database_backup_path(backup_id, database,
-                                                                                 namespace, external_backup_root)):
+                if not self.s3.is_file_exists(
+                    backups.build_database_backup_path(backup_id, database, namespace, external_backup_root)
+                ):
                     return "Backup in bucket is not found.", http.client.NOT_FOUND
         elif not backups.backup_exists(backup_id, namespace, external_backup_root):
             return "Backup is not found.", http.client.NOT_FOUND
@@ -522,71 +601,80 @@ class GranularRestoreRequestEndpoint(flask_restful.Resource):
         ghost_databases = []
         uncompleted_backups = []
 
-        databases = restore_request.get('databases') or list(backup_details.get('databases', {}).keys())
+        databases = restore_request.get("databases") or list(backup_details.get("databases", {}).keys())
 
         # dict of owners {"db": "db_owner", ..}
         owners_mapping = {}
 
         for database in databases:
-            database_details = backup_details['databases'].get(database)
+            database_details = backup_details["databases"].get(database)
             if not database_details:
                 ghost_databases.append(database)
                 continue
-            if database_details['status'] != backups.BackupStatus.SUCCESSFUL:
-                uncompleted_backups.append((database, database_details['status']))
+            if database_details["status"] != backups.BackupStatus.SUCCESSFUL:
+                uncompleted_backups.append((database, database_details["status"]))
                 continue
 
-            owners_mapping[database] = database_details.get('owner', 'postgres')
+            owners_mapping[database] = database_details.get("owner", "postgres")
 
         if ghost_databases:
-            return "Databases are not found: %s." % ', '.join([db.encode('utf-8') for db in ghost_databases]), \
-                   http.client.NOT_FOUND
+            return (
+                "Databases are not found: %s." % ", ".join([db.encode("utf-8") for db in ghost_databases]),
+                http.client.NOT_FOUND,
+            )
 
         if uncompleted_backups:
-            return "Database backup is in unsuitable status for restore: %s." \
-                   % ', '.join(['%s: %s' % (i[0].encode('utf-8'), i[1]) for i in uncompleted_backups]), \
-                   http.client.FORBIDDEN
+            return (
+                "Database backup is in unsuitable status for restore: %s."
+                % ", ".join(["%s: %s" % (i[0].encode("utf-8"), i[1]) for i in uncompleted_backups]),
+                http.client.FORBIDDEN,
+            )
 
         tracking_id = backups.generate_restore_id(backup_id, namespace)
-        restore_request['trackingId'] = tracking_id
+        restore_request["trackingId"] = tracking_id
 
         # force is false by default
         force = False
-        force_param = restore_request.get('force')
+        force_param = restore_request.get("force")
 
         if force_param:
             if isinstance(force_param, str):
-                force = force_param == 'true'
+                force = force_param == "true"
             elif type(force_param) is bool:
                 force = force_param
 
-
         # restore_roles is true by default
         restore_roles = True
-        restore_roles_param = restore_request.get('restoreRoles', True)
+        restore_roles_param = restore_request.get("restoreRoles", True)
 
         if restore_roles_param:
             if isinstance(restore_roles_param, str):
-                restore_roles = restore_roles_param == 'true'
+                restore_roles = restore_roles_param == "true"
             elif type(restore_roles_param) is bool:
                 restore_roles = restore_roles_param
         single_transaction = False
-        single_transaction_param = restore_request.get('singleTransaction', True)
+        single_transaction_param = restore_request.get("singleTransaction", True)
         if single_transaction_param:
             if isinstance(single_transaction_param, str):
-                single_transaction = single_transaction_param == 'true'
+                single_transaction = single_transaction_param == "true"
         elif type(single_transaction_param) is bool:
             single_transaction = single_transaction_param
 
-        is_dbaas_clone= restore_request.get('dbaasClone')
-        worker = pg_restore.PostgreSQLRestoreWorker(databases, force, restore_request, databases_mapping,
-                                                    owners_mapping, restore_roles,single_transaction, is_dbaas_clone)
+        is_dbaas_clone = restore_request.get("dbaasClone")
+        worker = pg_restore.PostgreSQLRestoreWorker(
+            databases,
+            force,
+            restore_request,
+            databases_mapping,
+            owners_mapping,
+            restore_roles,
+            single_transaction,
+            is_dbaas_clone,
+        )
 
         worker.start()
 
-        return {
-                   'trackingId': tracking_id
-               }, http.client.ACCEPTED
+        return {"trackingId": tracking_id}, http.client.ACCEPTED
 
 
 class TerminateBackupEndpoint(flask_restful.Resource):
@@ -640,11 +728,12 @@ class TerminateRestoreEndpoint(flask_restful.Resource):
             self.log.exception("Restore {0} termination failed. \n {1}".format(tracking_id, str(e)))
             return Response("Restore {} termination failed".format(tracking_id), status=500)
 
+
 class GranularRestoreStatusEndpoint(flask_restful.Resource):
 
     def __init__(self):
-        self.log = logging.getLogger('BackupRequestEndpoint')
-        self.s3 = storage_s3.AwsS3Vault() if os.environ['STORAGE_TYPE'] == "s3" else None
+        self.log = logging.getLogger("BackupRequestEndpoint")
+        self.s3 = storage_s3.AwsS3Vault() if os.environ["STORAGE_TYPE"] == "s3" else None
 
     @auth.login_required
     @superuser_authorization
@@ -663,23 +752,27 @@ class GranularRestoreStatusEndpoint(flask_restful.Resource):
             backup_id, namespace = backups.extract_backup_id_from_tracking_id(tracking_id)
         except Exception as e:
             self.log.exception(e)
-            return 'Malformed restore tracking ID.', http.client.BAD_REQUEST
+            return "Malformed restore tracking ID.", http.client.BAD_REQUEST
 
-        external_backup_path = flask.request.args.get('externalBackupPath') or None
+        external_backup_path = flask.request.args.get("externalBackupPath") or None
         external_backup_root = None
         if external_backup_path is not None:
             external_backup_root = backups.build_external_backup_root(external_backup_path)
-        restore_status_file = backups.build_restore_status_file_path(backup_id, tracking_id, namespace,
-                                                                     external_backup_root)
+        restore_status_file = backups.build_restore_status_file_path(
+            backup_id, tracking_id, namespace, external_backup_root
+        )
 
         if not backups.is_valid_namespace(namespace):
-            return "Invalid namespace name: %s." % namespace.encode('utf-8'), http.client.BAD_REQUEST
+            return (
+                "Invalid namespace name: %s." % namespace.encode("utf-8"),
+                http.client.BAD_REQUEST,
+            )
         if self.s3:
             try:
                 status = self.s3.read_object(restore_status_file)
                 logging.info(status)
 
-            except:
+            except BaseException:
                 return "Backup in bucket is not found.", http.client.NOT_FOUND
             return json.loads(status), http.client.OK
         else:
@@ -692,9 +785,9 @@ class GranularRestoreStatusEndpoint(flask_restful.Resource):
 class GranularRestoreStatusJSONEndpoint(flask_restful.Resource):
 
     def __init__(self):
-        self.log = logging.getLogger('BackupRequestEndpoint')
-        self.allowed_fields = ['trackingId', 'externalBackupPath']
-        self.s3 = storage_s3.AwsS3Vault() if os.environ['STORAGE_TYPE'] == "s3" else None
+        self.log = logging.getLogger("BackupRequestEndpoint")
+        self.allowed_fields = ["trackingId", "externalBackupPath"]
+        self.s3 = storage_s3.AwsS3Vault() if os.environ["STORAGE_TYPE"] == "s3" else None
 
     @auth.login_required
     @superuser_authorization
@@ -703,12 +796,12 @@ class GranularRestoreStatusJSONEndpoint(flask_restful.Resource):
 
         for k in list(tracking_request.keys()):
             if k not in self.allowed_fields:
-                return "Unknown field: %s" % k.encode('utf-8'), http.client.BAD_REQUEST
+                return "Unknown field: %s" % k.encode("utf-8"), http.client.BAD_REQUEST
 
         if not tracking_request:
             return "Restore tracking request has empty body.", http.client.BAD_REQUEST
 
-        tracking_id = tracking_request.get('trackingId')
+        tracking_id = tracking_request.get("trackingId")
 
         if not tracking_id:
             return "Restore tracking ID is not specified.", http.client.BAD_REQUEST
@@ -717,20 +810,21 @@ class GranularRestoreStatusJSONEndpoint(flask_restful.Resource):
             backup_id, namespace = backups.extract_backup_id_from_tracking_id(tracking_id)
         except Exception as e:
             self.log.exception(e)
-            return 'Malformed restore tracking ID.', http.client.BAD_REQUEST
+            return "Malformed restore tracking ID.", http.client.BAD_REQUEST
 
-        external_backup_path = tracking_request.get('externalBackupPath')
+        external_backup_path = tracking_request.get("externalBackupPath")
         external_backup_root = None
         if external_backup_path is not None:
             external_backup_root = backups.build_external_backup_root(external_backup_path)
-        restore_status_file = backups.build_restore_status_file_path(backup_id, tracking_id, namespace,
-                                                                     external_backup_root)
+        restore_status_file = backups.build_restore_status_file_path(
+            backup_id, tracking_id, namespace, external_backup_root
+        )
         if self.s3:
             try:
                 status = self.s3.read_object(restore_status_file)
                 logging.info(status)
 
-            except:
+            except BaseException:
                 return "Backup in bucket is not found.", http.client.NOT_FOUND
             return json.loads(status), http.client.OK
         else:
@@ -744,8 +838,8 @@ class GranularRestoreStatusJSONEndpoint(flask_restful.Resource):
 class GranularBackupDeleteEndpoint(flask_restful.Resource):
 
     def __init__(self):
-        self.log = logging.getLogger('GranularBackupDeleteEndpoint')
-        self.s3 = storage_s3.AwsS3Vault() if os.environ['STORAGE_TYPE'] == "s3" else None
+        self.log = logging.getLogger("GranularBackupDeleteEndpoint")
+        self.s3 = storage_s3.AwsS3Vault() if os.environ["STORAGE_TYPE"] == "s3" else None
 
     @auth.login_required
     @superuser_authorization
@@ -760,10 +854,12 @@ class GranularBackupDeleteEndpoint(flask_restful.Resource):
     def process_delete(self, backup_id):
         self.log.info("Request to delete backup %s" % backup_id)
         if not backup_id:
-            return self.response(backup_id,
-                                 "Backup ID is not specified.",
-                                 backups.BackupStatus.FAILED,
-                                 http.client.BAD_REQUEST)
+            return self.response(
+                backup_id,
+                "Backup ID is not specified.",
+                backups.BackupStatus.FAILED,
+                http.client.BAD_REQUEST,
+            )
 
         # for gke full backup
         # if os.getenv("GOOGLE_APPLICATION_CREDENTIALS"):
@@ -772,26 +868,30 @@ class GranularBackupDeleteEndpoint(flask_restful.Resource):
         #     response = client.delete_backup(backup_id)
         #     return response
 
-        namespace = flask.request.args.get('namespace') or configs.default_namespace()
+        namespace = flask.request.args.get("namespace") or configs.default_namespace()
 
         if not is_valid_namespace(namespace):
-            return self.response(backup_id,
-                                 "Invalid namespace name: %s." % namespace.encode('utf-8'),
-                                 backups.BackupStatus.FAILED,
-                                 http.client.BAD_REQUEST)
+            return self.response(
+                backup_id,
+                "Invalid namespace name: %s." % namespace.encode("utf-8"),
+                backups.BackupStatus.FAILED,
+                http.client.BAD_REQUEST,
+            )
 
         backup_status_file = build_backup_status_file_path(backup_id, namespace)
         if self.s3:
             try:
                 self.s3.read_object(backup_status_file)
-            except:
+            except BaseException:
                 return "Backup in bucket is not found.", http.client.NOT_FOUND
 
         elif not os.path.isfile(backup_status_file):
-            return self.response(backup_id,
-                                 "Backup is not found.",
-                                 backups.BackupStatus.FAILED,
-                                 http.client.NOT_FOUND)
+            return self.response(
+                backup_id,
+                "Backup is not found.",
+                backups.BackupStatus.FAILED,
+                http.client.NOT_FOUND,
+            )
 
         try:
             dir = build_backup_path(backup_id, namespace)
@@ -804,31 +904,34 @@ class GranularBackupDeleteEndpoint(flask_restful.Resource):
 
                 # remove namespace dir if no more backups in namespace
                 backup_list = os.listdir(build_namespace_path(namespace))
-                if len(backup_list) == 0 and namespace != 'default':
+                if len(backup_list) == 0 and namespace != "default":
                     shutil.rmtree(build_namespace_path(namespace))
 
         except Exception as e:
             self.log.exception(e)
-            return self.response(backup_id,
-                                 'An error occurred while deleting backup {} : {}.'.format(backup_id, e),
-                                 backups.BackupStatus.FAILED,
-                                 http.client.INTERNAL_SERVER_ERROR)
+            return self.response(
+                backup_id,
+                "An error occurred while deleting backup {} : {}.".format(backup_id, e),
+                backups.BackupStatus.FAILED,
+                http.client.INTERNAL_SERVER_ERROR,
+            )
 
-        return self.response(backup_id, "Backup deleted successfully.", backups.BackupStatus.SUCCESSFUL, http.client.OK)
+        return self.response(
+            backup_id,
+            "Backup deleted successfully.",
+            backups.BackupStatus.SUCCESSFUL,
+            http.client.OK,
+        )
 
     def response(self, backup_id, message, status, code):
-        return {
-                   'backupId': backup_id,
-                   'message': message,
-                   'status': status
-               }, code
+        return {"backupId": backup_id, "message": message, "status": status}, code
 
 
 class GranularBackupHealthEndpoint(flask_restful.Resource):
 
     def __init__(self):
-        self.log = logging.getLogger('GranularBackupHealthEndpoint')
-        self.s3 = storage_s3.AwsS3Vault() if os.environ['STORAGE_TYPE'] == "s3" else None
+        self.log = logging.getLogger("GranularBackupHealthEndpoint")
+        self.s3 = storage_s3.AwsS3Vault() if os.environ["STORAGE_TYPE"] == "s3" else None
 
     def get(self):
 
@@ -843,42 +946,43 @@ class GranularBackupHealthEndpoint(flask_restful.Resource):
         sorted_backups = sorted(os.listdir(namespace_path), reverse=True)
         dump_count = len(sorted_backups)
         space = os.statvfs(namespace_path)
-        free_space, total_space = space.f_bfree * space.f_bsize, space.f_blocks * space.f_bsize
-        status[namespace]['dump_count'] = dump_count
-        status[namespace]['total_space'] = total_space
-        status[namespace]['free_space'] = free_space
+        free_space, total_space = (
+            space.f_bfree * space.f_bsize,
+            space.f_blocks * space.f_bsize,
+        )
+        status[namespace]["dump_count"] = dump_count
+        status[namespace]["total_space"] = total_space
+        status[namespace]["free_space"] = free_space
 
         if len(sorted_backups) > 0:
-            status[namespace]['backup'] = {
-                'count': len(sorted_backups)
-            }
+            status[namespace]["backup"] = {"count": len(sorted_backups)}
             last_backup = sorted_backups[-1]
             status_file = backups.build_backup_status_file_path(last_backup, namespace)
             if os.path.isfile(status_file):
-                with open(status_file, 'r') as f:
+                with open(status_file, "r") as f:
                     try:
                         backup_status = json.load(f)
-                        status[namespace]['last'] = {
-                            'id': last_backup,
-                            'status': backup_status.get('status'),
-                            'status_id': backups.get_backup_status_id(backup_status.get('status')),
-                            'created': backup_status.get('created'),
-                            'expires': backup_status.get('expires'),
-                            'expirationDate': backup_status.get('expirationDate')
+                        status[namespace]["last"] = {
+                            "id": last_backup,
+                            "status": backup_status.get("status"),
+                            "status_id": backups.get_backup_status_id(backup_status.get("status")),
+                            "created": backup_status.get("created"),
+                            "expires": backup_status.get("expires"),
+                            "expirationDate": backup_status.get("expirationDate"),
                         }
                         return status, http.client.OK
                     except ValueError:
                         self.log.exception("Cannot read status file")
-                        status[namespace]['last'] = {
-                            'id': last_backup,
-                            'status': backups.BackupStatus.UNKNOWN,
-                            'status_id': backups.get_backup_status_id(backups.BackupStatus.UNKNOWN)
+                        status[namespace]["last"] = {
+                            "id": last_backup,
+                            "status": backups.BackupStatus.UNKNOWN,
+                            "status_id": backups.get_backup_status_id(backups.BackupStatus.UNKNOWN),
                         }
             else:
-                status[namespace]['last'] = {
-                    'id': last_backup,
-                    'status': backups.BackupStatus.UNKNOWN,
-                    'status_id': backups.get_backup_status_id(backups.BackupStatus.UNKNOWN)
+                status[namespace]["last"] = {
+                    "id": last_backup,
+                    "status": backups.BackupStatus.UNKNOWN,
+                    "status_id": backups.get_backup_status_id(backups.BackupStatus.UNKNOWN),
                 }
 
         return status, http.client.OK
@@ -888,7 +992,7 @@ class GranularBackupDownloadEndpoint(flask_restful.Resource):
 
     def __init__(self):
         self.log = logging.getLogger("GranularBackupDownloadEndpoint")
-        self.s3 = storage_s3.AwsS3Vault() if os.environ['STORAGE_TYPE'] == "Zs3" else None
+        self.s3 = storage_s3.AwsS3Vault() if os.environ["STORAGE_TYPE"] == "Zs3" else None
 
     @auth.login_required
     def get(self, backup_id):
@@ -907,35 +1011,36 @@ class GranularBackupDownloadEndpoint(flask_restful.Resource):
                         return
                     yield data
 
-        namespace = flask.request.args.get('namespace') or configs.default_namespace()
+        namespace = flask.request.args.get("namespace") or configs.default_namespace()
         path_for_streaming = utils.get_backup_tar_file_path(backup_id, namespace)
         if path_for_streaming:
-            return Response(stream_with_context(
-                generate(path_for_streaming)),
-                mimetype='application/octet-stream',
+            return Response(
+                stream_with_context(generate(path_for_streaming)),
+                mimetype="application/octet-stream",
                 headers=[
-                    ('Content-Type', 'application/octet-stream'),
-                    ('Content-Disposition',
-                     "pg_granular_backup_{}.tar.gz".format(
-                         backup_id))
-                ])
+                    ("Content-Type", "application/octet-stream"),
+                    (
+                        "Content-Disposition",
+                        "pg_granular_backup_{}.tar.gz".format(backup_id),
+                    ),
+                ],
+            )
         else:
             return Response("Cannot find backup ", status=404)
-
 
 
 class DiffBackupRequestEndpoint(flask_restful.Resource):
 
     def __init__(self):
-        self.log = logging.getLogger('DifferentialBackup')
-        self.allowed_fields = ['timestamp']
+        self.log = logging.getLogger("DifferentialBackup")
+        self.allowed_fields = ["timestamp"]
 
     def perform_diff_backup(self):
 
-        self.log.info('Perform diff backup')
+        self.log.info("Perform diff backup")
 
         backup_id = backups.generate_short_id()
-        payload = {'timestamp':backup_id}
+        payload = {"timestamp": backup_id}
 
         try:
             pgbackrest_service = get_pgbackrest_service()
@@ -946,35 +1051,30 @@ class DiffBackupRequestEndpoint(flask_restful.Resource):
 
         r = requests.post(f"http://{pgbackrest_service}:3000/backup/diff", payload)
         if r.status_code == 200:
-            return {
-                'backupId': backup_id
-            }, http.client.ACCEPTED
+            return {"backupId": backup_id}, http.client.ACCEPTED
         else:
             return r.status_code
 
-
     def post(self):
-        content_type = request.headers.get('Content-Type')
-
         # if content_type and content_type.split(";")[0] != 'application/json' \
         #         and request.headers.get('Content-Length'):
         #     return "Invalid request body: Content Type is not json", http.client.BAD_REQUEST
 
-
         return self.perform_diff_backup()
+
 
 class IncrBackupRequestEndpoint(flask_restful.Resource):
 
     def __init__(self):
-        self.log = logging.getLogger('IncrementalBackup')
-        self.allowed_fields = ['timestamp']
+        self.log = logging.getLogger("IncrementalBackup")
+        self.allowed_fields = ["timestamp"]
 
     def perform_incr_backup(self):
 
-        self.log.info('Perform incremental backup')
+        self.log.info("Perform incremental backup")
 
         backup_id = backups.generate_short_id()
-        payload = {'timestamp':backup_id}
+        payload = {"timestamp": backup_id}
 
         try:
             pgbackrest_service = get_pgbackrest_service()
@@ -985,28 +1085,26 @@ class IncrBackupRequestEndpoint(flask_restful.Resource):
 
         r = requests.post(f"http://{pgbackrest_service}:3000/backup/incr", payload)
         if r.status_code == 200:
-            return {
-                'backupId': backup_id
-            }, http.client.ACCEPTED
+            return {"backupId": backup_id}, http.client.ACCEPTED
         else:
             return r.status_code
-
 
     def post(self):
         return self.perform_incr_backup()
 
+
 class GranularBackupStatusInfoEndpoint(flask_restful.Resource):
 
     def __init__(self):
-        self.log = logging.getLogger('GranularBackupStatusMetricEndpoint')
-        self.s3 = storage_s3.AwsS3Vault() if os.environ['STORAGE_TYPE'] == "s3" else None
+        self.log = logging.getLogger("GranularBackupStatusMetricEndpoint")
+        self.s3 = storage_s3.AwsS3Vault() if os.environ["STORAGE_TYPE"] == "s3" else None
 
     @auth.login_required
     def get(self):
         self.log.info("Backups metric gathering")
         storage = configs.backups_storage()
         s3 = None
-        if os.environ['STORAGE_TYPE'] == "s3":
+        if os.environ["STORAGE_TYPE"] == "s3":
             s3 = backups.get_s3_client()
             namespaces = s3.get_granular_namespaces(storage)
 
@@ -1016,7 +1114,7 @@ class GranularBackupStatusInfoEndpoint(flask_restful.Resource):
             if s3:
                 backup_ids = s3.get_backup_ids(storage, namespace)
 
-            for backup_id in os.listdir(build_namespace_path(namespace)) if not s3 else backup_ids:
+            for backup_id in (os.listdir(build_namespace_path(namespace)) if not s3 else backup_ids):
                 status_file = build_backup_status_file_path(backup_id, namespace)
                 if s3:
                     try:
@@ -1027,14 +1125,22 @@ class GranularBackupStatusInfoEndpoint(flask_restful.Resource):
                             continue
                         else:
                             self.log.error("Cannot find status file in bucket with backup id {}".format(backup_id))
-                            failed_backup = {"backupId": backup_id, "namespace": namespace,  "status": backups.BackupStatus.FAILED}
+                            failed_backup = {
+                                "backupId": backup_id,
+                                "namespace": namespace,
+                                "status": backups.BackupStatus.FAILED,
+                            }
                             all_backups.append(failed_backup)
                             continue
                     except ValueError:
                         self.log.exception("Cannot read status file")
 
                 if not os.path.isfile(status_file):
-                    failed_backup = {"backupId": backup_id, "namespace": namespace, "status": backups.BackupStatus.FAILED}
+                    failed_backup = {
+                        "backupId": backup_id,
+                        "namespace": namespace,
+                        "status": backups.BackupStatus.FAILED,
+                    }
                     all_backups.append(failed_backup)
                     continue
                 else:
@@ -1056,13 +1162,14 @@ class GranularBackupStatusInfoEndpoint(flask_restful.Resource):
 
         return backupInfo
 
+
 class NewBackup(flask_restful.Resource):
     __endpoints = ["/api/v1/backup"]
 
     def __init__(self):
         self.log = logging.getLogger("NewBackup")
         self.allowed_fields = ["storageName", "blobPath", "databases"]
-    
+
     def _normalize_storage_name(self, storage_name):
         storage_name = (storage_name or "").strip()
         if not storage_name:
@@ -1085,7 +1192,7 @@ class NewBackup(flask_restful.Resource):
             self.s3 = storage_s3.AwsS3Vault(storage_name=storage_name, prefix="", use_s3_alias=True)
         except Exception as e:
             return {"message": str(e)}, http.client.BAD_REQUEST
-        
+
         if not blob_path:
             return {"message": "blobPath is required"}, http.client.BAD_REQUEST
         if databases and not isinstance(databases, (list, tuple)):
@@ -1097,9 +1204,12 @@ class NewBackup(flask_restful.Resource):
         backup_request = {
             "databases": list(databases),
             "blobPath": blob_path,
-            "storageName": storage_name
+            "storageName": storage_name,
         }
-        resp = GranularBackupRequestEndpoint().perform_granular_backup(backup_request, use_s3_alias=True,)
+        resp = GranularBackupRequestEndpoint().perform_granular_backup(
+            backup_request,
+            use_s3_alias=True,
+        )
         body = None
         code = None
         if isinstance(resp, tuple) and len(resp) >= 2:
@@ -1115,21 +1225,24 @@ class NewBackup(flask_restful.Resource):
 
         try:
             import datetime
+
             created_iso = datetime.datetime.utcnow().replace(microsecond=0).isoformat() + "Z"
         except Exception:
             created_iso = ""
 
         dbs_out = []
-        for d in (databases or []):
+        for d in databases or []:
             if isinstance(d, dict):
                 name = d.get("databaseName") or d.get("name") or ""
             else:
                 name = str(d or "")
-            dbs_out.append({
-                "databaseName": name,
-                "status": "notStarted" if name else "",
-                "creationTime": created_iso
-            })
+            dbs_out.append(
+                {
+                    "databaseName": name,
+                    "status": "notStarted" if name else "",
+                    "creationTime": created_iso,
+                }
+            )
 
         enriched = {
             "status": "notStarted",
@@ -1137,7 +1250,7 @@ class NewBackup(flask_restful.Resource):
             "creationTime": created_iso,
             "storageName": storage_name,
             "blobPath": blob_path or "",
-            "databases": dbs_out
+            "databases": dbs_out,
         }
 
         return enriched, code
@@ -1162,9 +1275,7 @@ class NewBackupStatus(flask_restful.Resource):
 
         meta = load_backup_metadata_from_local_status(backup_id, namespace)
         if not meta:
-            return {
-                "message": "Backup metadata is not found for backupId %s" % backup_id
-            }, http.client.NOT_FOUND
+            return {"message": "Backup metadata is not found for backupId %s" % backup_id}, http.client.NOT_FOUND
 
         storage_name = meta.get("storageName")
         blob_path = normalize_blobPath(meta.get("blobPath"))
@@ -1174,10 +1285,7 @@ class NewBackupStatus(flask_restful.Resource):
         except Exception as e:
             return {"message": str(e)}, http.client.BAD_REQUEST
 
-        status_path = backups.build_backup_status_file_path(
-            backup_id,
-            blob_path=blob_path
-        )
+        status_path = backups.build_backup_status_file_path(backup_id, blob_path=blob_path)
 
         try:
             raw = json.loads(self.s3.read_object(status_path))
@@ -1190,7 +1298,7 @@ class NewBackupStatus(flask_restful.Resource):
             raw["storageName"] = storage_name
 
         return backups.transform_backup_status_v1(raw), http.client.OK
-    
+
     @auth.login_required
     @superuser_authorization
     def delete(self, backup_id):
@@ -1198,7 +1306,7 @@ class NewBackupStatus(flask_restful.Resource):
             return {
                 "backupId": backup_id,
                 "message": "Backup ID is not specified",
-                "status": "Failed"
+                "status": "Failed",
             }, http.client.BAD_REQUEST
 
         namespace = request.args.get("namespace") or configs.default_namespace()
@@ -1208,7 +1316,7 @@ class NewBackupStatus(flask_restful.Resource):
             return {
                 "backupId": backup_id,
                 "message": "Backup metadata is not found.",
-                "status": "Failed"
+                "status": "Failed",
             }, http.client.NOT_FOUND
 
         storage_name = meta.get("storageName")
@@ -1219,10 +1327,7 @@ class NewBackupStatus(flask_restful.Resource):
         except Exception as e:
             return {"message": str(e)}, http.client.BAD_REQUEST
 
-        status_path = backups.build_backup_status_file_path(
-            backup_id,
-            blob_path=blob_path
-        )
+        status_path = backups.build_backup_status_file_path(backup_id, blob_path=blob_path)
 
         existed_before = self.s3.is_file_exists(status_path)
 
@@ -1251,34 +1356,36 @@ class NewBackupStatus(flask_restful.Resource):
         except Exception:
             term_body = repr(resp)
 
-        self.log.info("Terminate response for %s: code=%s body=%s", backup_id, term_code, term_body)
+        self.log.info(
+            "Terminate response for %s: code=%s body=%s",
+            backup_id,
+            term_code,
+            term_body,
+        )
 
         try:
-            target_dir = backups.build_backup_path(
-                backup_id,
-                blob_path=blob_path
-            )
+            target_dir = backups.build_backup_path(backup_id, blob_path=blob_path)
             self.s3.delete_objects(target_dir)
         except Exception as e:
             if not existed_before and term_code == http.client.NOT_FOUND:
                 return {
                     "backupId": backup_id,
                     "message": "Backup is not found.",
-                    "status": "Failed"
+                    "status": "Failed",
                 }, http.client.NOT_FOUND
 
             self.log.exception("Delete failed for %s: %s", backup_id, e)
             return {
                 "backupId": backup_id,
                 "message": f"An error occurred while deleting backup: {e}",
-                "status": "Failed"
+                "status": "Failed",
             }, http.client.INTERNAL_SERVER_ERROR
 
         if not existed_before and term_code == http.client.NOT_FOUND:
             return {
                 "backupId": backup_id,
                 "message": "Backup is not found.",
-                "status": "Failed"
+                "status": "Failed",
             }, http.client.NOT_FOUND
 
         # Optional: remove local metadata/status directory too
@@ -1300,15 +1407,16 @@ class NewBackupStatus(flask_restful.Resource):
             "backupId": backup_id,
             "message": msg,
             "status": "Successful",
-            "termination": {"code": term_code, "body": term_body}
+            "termination": {"code": term_code, "body": term_body},
         }, http.client.OK
+
 
 class NewRestore(flask_restful.Resource):
     __endpoints = ["/api/v1/restore/<backup_id>"]
 
     def __init__(self):
         self.log = logging.getLogger("NewRestore")
-    
+
     def _normalize_storage_name(self, storage_name):
         storage_name = (storage_name or "").strip()
         if not storage_name:
@@ -1327,12 +1435,12 @@ class NewRestore(flask_restful.Resource):
         blob_path = body.get("blobPath")
         pairs = body.get("databases") or []
         storage_name = self._normalize_storage_name(body.get("storageName"))
-        
+
         try:
             self.s3 = storage_s3.AwsS3Vault(storage_name=storage_name, prefix="", use_s3_alias=True)
         except Exception as e:
             return {"message": str(e)}, http.client.BAD_REQUEST
-        
+
         dry_run = body.get("dryRun")
         if dry_run:
             self.log.info(f"Dry run requested for restore with backup ID: {backup_id}")
@@ -1350,13 +1458,18 @@ class NewRestore(flask_restful.Resource):
             prev_name = item.get("previousDatabaseName")
             curr_name = item.get("databaseName")
             if not prev_name or not curr_name:
-                return {"message": "each databases item must have previousDatabaseName and databaseName"}, http.client.BAD_REQUEST
+                return {
+                    "message": "each databases item must have " "previousDatabaseName and databaseName"
+                }, http.client.BAD_REQUEST
             databases.append(prev_name)
             databases_mapping[prev_name] = curr_name
 
         namespace = configs.default_namespace()
         if not backups.is_valid_namespace(namespace):
-            return "Invalid namespace name: %s." % namespace.encode("utf-8"), http.client.BAD_REQUEST
+            return (
+                "Invalid namespace name: %s." % namespace.encode("utf-8"),
+                http.client.BAD_REQUEST,
+            )
 
         backup_details_file = backups.build_backup_status_file_path(backup_id, blob_path=blob_path)
 
@@ -1368,7 +1481,10 @@ class NewRestore(flask_restful.Resource):
 
         backup_status = backup_details["status"]
         if backup_status != backups.BackupStatus.SUCCESSFUL:
-            return "Backup status '%s' is unsuitable status for restore." % backup_status, http.client.FORBIDDEN
+            return (
+                "Backup status '%s' is unsuitable status for restore." % backup_status,
+                http.client.FORBIDDEN,
+            )
 
         for database in list(backup_details.get("databases", {}).keys()):
             if not self.s3.is_file_exists(backups.build_database_backup_path(backup_id, database, blob_path=blob_path)):
@@ -1390,7 +1506,10 @@ class NewRestore(flask_restful.Resource):
             owners_mapping[database] = database_details.get("owner", "postgres")
 
         if ghost_databases:
-            return "Databases are not found: %s." % ", ".join(ghost_databases), http.client.NOT_FOUND
+            return (
+                "Databases are not found: %s." % ", ".join(ghost_databases),
+                http.client.NOT_FOUND,
+            )
         if uncompleted_backups:
             return (
                 "Database backup is in unsuitable status for restore: %s."
@@ -1408,31 +1527,46 @@ class NewRestore(flask_restful.Resource):
         # Start worker (same as old)
         if not dry_run:
             worker = pg_restore.PostgreSQLRestoreWorker(
-                requested, force,
-                {"backupId": backup_id, "namespace": namespace, "trackingId": tracking_id, "storageName": storage_name},
-                databases_mapping, owners_mapping, restore_roles, single_transaction, body.get("dbaasClone"), blob_path, use_s3_alias=True,
+                requested,
+                force,
+                {
+                    "backupId": backup_id,
+                    "namespace": namespace,
+                    "trackingId": tracking_id,
+                    "storageName": storage_name,
+                },
+                databases_mapping,
+                owners_mapping,
+                restore_roles,
+                single_transaction,
+                body.get("dbaasClone"),
+                blob_path,
+                use_s3_alias=True,
             )
             worker.start()
 
         try:
             import datetime
+
             created_iso = datetime.datetime.utcnow().replace(microsecond=0).isoformat() + "Z"
         except Exception:
             created_iso = ""
 
         dbs_out = []
-        for prev in (requested or []):
+        for prev in requested or []:
             prev_name = prev or ""
             restored_as = databases_mapping.get(prev_name) if isinstance(databases_mapping, dict) else None
             status = "notStarted" if prev_name else ""
             if dry_run:
                 status = "Successful"
-            dbs_out.append({
-                "previousDatabaseName": prev_name,
-                "databaseName": restored_as or prev_name,
-                "status": status,
-                "creationTime": created_iso
-            })
+            dbs_out.append(
+                {
+                    "previousDatabaseName": prev_name,
+                    "databaseName": restored_as or prev_name,
+                    "status": status,
+                    "creationTime": created_iso,
+                }
+            )
 
         enriched = {
             "status": "notStarted",
@@ -1440,7 +1574,7 @@ class NewRestore(flask_restful.Resource):
             "creationTime": created_iso,
             "storageName": storage_name,
             "blobPath": blob_path,
-            "databases": dbs_out
+            "databases": dbs_out,
         }
 
         try:
@@ -1452,12 +1586,20 @@ class NewRestore(flask_restful.Resource):
                 "created": created_iso,
                 "creationTime": created_iso,
                 "completionTime": None,
-                "databases": { prev: {"newDatabaseName": (databases_mapping.get(prev) if isinstance(databases_mapping, dict) else prev) or prev,
-                                      "status": "notStarted",
-                                      "creationTime": created_iso} for prev in (requested or []) },
+                "databases": {
+                    prev: {
+                        "newDatabaseName": (
+                            databases_mapping.get(prev) if isinstance(databases_mapping, dict) else prev
+                        )
+                        or prev,
+                        "status": "notStarted",
+                        "creationTime": created_iso,
+                    }
+                    for prev in (requested or [])
+                },
                 "storageName": storage_name,
                 "blobPath": blob_path,
-                "sourceBackupId": backup_id
+                "sourceBackupId": backup_id,
             }
 
             if dry_run:
@@ -1499,9 +1641,7 @@ class NewRestoreStatus(flask_restful.Resource):
 
         meta = load_restore_metadata_from_local_status(restore_id)
         if not meta:
-            return {
-                "message": "Restore metadata is not found for restoreId %s" % restore_id
-            }, http.client.NOT_FOUND
+            return {"message": "Restore metadata is not found for restoreId %s" % restore_id}, http.client.NOT_FOUND
 
         backup_id = meta.get("sourceBackupId") or meta.get("backupId")
         storage_name = meta.get("storageName")
@@ -1514,18 +1654,17 @@ class NewRestoreStatus(flask_restful.Resource):
             return "Malformed restore tracking ID.", http.client.BAD_REQUEST
 
         if not backups.is_valid_namespace(namespace):
-            return "Invalid namespace name: %s." % namespace.encode("utf-8"), http.client.BAD_REQUEST
+            return (
+                "Invalid namespace name: %s." % namespace.encode("utf-8"),
+                http.client.BAD_REQUEST,
+            )
 
         try:
             self.s3 = storage_s3.AwsS3Vault(storage_name=storage_name, prefix="", use_s3_alias=True)
         except Exception as e:
             return {"message": str(e)}, http.client.BAD_REQUEST
 
-        status_path = backups.build_restore_status_file_path(
-            backup_id,
-            restore_id,
-            blob_path=blob_path
-        )
+        status_path = backups.build_restore_status_file_path(backup_id, restore_id, blob_path=blob_path)
 
         try:
             raw = json.loads(self.s3.read_object(status_path))
@@ -1540,7 +1679,7 @@ class NewRestoreStatus(flask_restful.Resource):
             raw["sourceBackupId"] = backup_id
 
         return backups.transform_restore_status_v1(raw), http.client.OK
-    
+
     @auth.login_required
     @superuser_authorization
     def delete(self, restore_id):
@@ -1548,7 +1687,7 @@ class NewRestoreStatus(flask_restful.Resource):
             return {
                 "restoreId": restore_id,
                 "message": "Restore ID is not specified",
-                "status": "Failed"
+                "status": "Failed",
             }, http.client.BAD_REQUEST
 
         meta = load_restore_metadata_from_local_status(restore_id)
@@ -1556,7 +1695,7 @@ class NewRestoreStatus(flask_restful.Resource):
             return {
                 "restoreId": restore_id,
                 "message": "Restore metadata is not found.",
-                "status": "Failed"
+                "status": "Failed",
             }, http.client.NOT_FOUND
 
         backup_id = meta.get("sourceBackupId") or meta.get("backupId")
@@ -1594,14 +1733,14 @@ class NewRestoreStatus(flask_restful.Resource):
                 "restoreId": restore_id,
                 "message": "Malformed restore ID; termination attempted but cleanup skipped.",
                 "status": "Successful",
-                "termination": {"code": term_code, "body": term_body}
+                "termination": {"code": term_code, "body": term_body},
             }, http.client.OK
 
         if not backups.is_valid_namespace(namespace):
             return {
                 "restoreId": restore_id,
                 "message": "Invalid namespace name: %s." % namespace,
-                "status": "Failed"
+                "status": "Failed",
             }, http.client.BAD_REQUEST
 
         try:
@@ -1609,15 +1748,8 @@ class NewRestoreStatus(flask_restful.Resource):
         except Exception as e:
             return {"message": str(e)}, http.client.BAD_REQUEST
 
-        status_path = backups.build_restore_status_file_path(
-            backup_id,
-            restore_id,
-            blob_path=blob_path
-        )
-        backup_base = backups.build_backup_path(
-            backup_id,
-            blob_path=blob_path
-        )
+        status_path = backups.build_restore_status_file_path(backup_id, restore_id, blob_path=blob_path)
+        backup_base = backups.build_backup_path(backup_id, blob_path=blob_path)
         pattern_name = f"{restore_id}"
 
         def _exists_file(p: str) -> bool:
@@ -1646,7 +1778,7 @@ class NewRestoreStatus(flask_restful.Resource):
             return {
                 "restoreId": restore_id,
                 "message": "Restore is not found.",
-                "status": "Failed"
+                "status": "Failed",
             }, http.client.NOT_FOUND
 
         resp = TerminateRestoreEndpoint().post(restore_id)
@@ -1674,7 +1806,12 @@ class NewRestoreStatus(flask_restful.Resource):
         except Exception:
             term_body = repr(resp)
 
-        self.log.info("Terminate response for restore %s: code=%s body=%s", restore_id, term_code, term_body)
+        self.log.info(
+            "Terminate response for restore %s: code=%s body=%s",
+            restore_id,
+            term_code,
+            term_body,
+        )
 
         try:
             prefix = os.path.join(backup_base, pattern_name).rstrip("/")
@@ -1685,16 +1822,12 @@ class NewRestoreStatus(flask_restful.Resource):
                 "restoreId": restore_id,
                 "message": f"Termination attempted; cleanup encountered an error: {e}",
                 "status": "Failed",
-                "termination": {"code": term_code, "body": term_body}
+                "termination": {"code": term_code, "body": term_body},
             }, http.client.INTERNAL_SERVER_ERROR
 
         # Optional: remove local restore metadata/status file
         try:
-            local_status_path = backups.build_restore_status_file_path(
-                backup_id,
-                restore_id,
-                namespace
-            )
+            local_status_path = backups.build_restore_status_file_path(backup_id, restore_id, namespace)
             if os.path.isfile(local_status_path):
                 os.remove(local_status_path)
         except Exception:
@@ -1709,8 +1842,9 @@ class NewRestoreStatus(flask_restful.Resource):
             "restoreId": restore_id,
             "message": msg,
             "status": "Successful",
-            "termination": {"code": term_code, "body": term_body}
+            "termination": {"code": term_code, "body": term_body},
         }, http.client.OK
+
 
 def normalize_blobPath(blob_path):
     # Normalize blob_path by removing a single leading and trailing slash
@@ -1729,10 +1863,7 @@ def normalize_blobPath(blob_path):
 def load_backup_metadata_from_local_status(backup_id, namespace=None):
     namespace = namespace or configs.default_namespace()
 
-    local_status_path = backups.build_backup_status_file_path(
-        backup_id,
-        namespace
-    )
+    local_status_path = backups.build_backup_status_file_path(backup_id, namespace)
 
     if not os.path.isfile(local_status_path):
         return None
@@ -1741,6 +1872,7 @@ def load_backup_metadata_from_local_status(backup_id, namespace=None):
         return utils.get_json_by_path(local_status_path)
     except Exception:
         return None
+
 
 def load_restore_metadata_from_local_status(restore_id):
     try:
@@ -1748,11 +1880,7 @@ def load_restore_metadata_from_local_status(restore_id):
     except Exception:
         return None
 
-    local_status_path = backups.build_restore_status_file_path(
-        backup_id,
-        restore_id,
-        namespace
-    )
+    local_status_path = backups.build_restore_status_file_path(backup_id, restore_id, namespace)
 
     if not os.path.isfile(local_status_path):
         return None
@@ -1762,16 +1890,20 @@ def load_restore_metadata_from_local_status(restore_id):
     except Exception:
         return None
 
+
 def get_pgbackrest_service():
     if os.getenv("BACKUP_FROM_STANDBY") == "true":
         try:
             # Query Patroni API
             patroni_response = requests.get("http://pg-patroni:8008/cluster").json()
-            
+
             # Look for healthy streaming replicas
-            streaming_replicas = [member for member in patroni_response.get('members', []) 
-                                if member.get('role') == 'replica' and member.get('state') == 'streaming']
-            
+            streaming_replicas = [
+                member
+                for member in patroni_response.get("members", [])
+                if member.get("role") == "replica" and member.get("state") == "streaming"
+            ]
+
             if streaming_replicas:
                 logging.info("Found healthy streaming replica(s), using pgbackrest-standby")
                 return "backrest-standby"
@@ -1780,8 +1912,9 @@ def get_pgbackrest_service():
         except Exception as e:
             logging.error(f"Failed to query Patroni API: {str(e)}")
             raise e
-    
+
     return "backrest"
+
 
 app = Flask("GranularREST")
 collector_endpoint = os.getenv("OTEL_EXPORTER_OTLP_TRACES_ENDPOINT", "")
@@ -1794,32 +1927,34 @@ if collector_endpoint != "":
     from opentelemetry.sdk.resources import SERVICE_NAME, Resource
 
     collector_endpoint = "http://" + collector_endpoint
-    NAMESPACE_PATH = '/var/run/secrets/kubernetes.io/serviceaccount/namespace'
+    NAMESPACE_PATH = "/var/run/secrets/kubernetes.io/serviceaccount/namespace"
     ns = open(NAMESPACE_PATH).read()
-    resource = Resource(attributes={
-        SERVICE_NAME: "postgresql-backup-daemon-" + ns
-    })
+    resource = Resource(attributes={SERVICE_NAME: "postgresql-backup-daemon-" + ns})
     provider = TracerProvider(resource=resource)
     processor = BatchSpanProcessor(OTLPSpanExporter(endpoint=collector_endpoint, insecure=True))
     provider.add_span_processor(processor)
-    FlaskInstrumentor().instrument_app(app=app, tracer_provider=provider, excluded_urls="health,/health,v2/health,/v2/health")
+    FlaskInstrumentor().instrument_app(
+        app=app,
+        tracer_provider=provider,
+        excluded_urls="health,/health,v2/health,/v2/health",
+    )
 api = flask_restful.Api(app)
 
-api.add_resource(GranularBackupsListEndpoint, '/backups')
-api.add_resource(GranularBackupRequestEndpoint, '/backup/request')
-api.add_resource(GranularBackupStatusEndpoint, '/backup/status/<backup_id>')
-api.add_resource(GranularBackupStatusJSONEndpoint, '/backup/status')
-api.add_resource(GranularRestoreRequestEndpoint, '/restore/request')
-api.add_resource(TerminateBackupEndpoint, '/terminate/<backup_id>')
-api.add_resource(TerminateRestoreEndpoint, '/restore/terminate/<tracking_id>')
-api.add_resource(GranularRestoreStatusEndpoint, '/restore/status/<tracking_id>')
-api.add_resource(GranularRestoreStatusJSONEndpoint, '/restore/status')
-api.add_resource(GranularBackupDeleteEndpoint, '/delete/<backup_id>')
-api.add_resource(GranularBackupHealthEndpoint, '/health')
-api.add_resource(GranularBackupDownloadEndpoint, '/backup/download/<backup_id>')
-api.add_resource(DiffBackupRequestEndpoint, '/backup/diff')
-api.add_resource(IncrBackupRequestEndpoint, '/backup/incr')
-api.add_resource(GranularBackupStatusInfoEndpoint, '/backup/info')
+api.add_resource(GranularBackupsListEndpoint, "/backups")
+api.add_resource(GranularBackupRequestEndpoint, "/backup/request")
+api.add_resource(GranularBackupStatusEndpoint, "/backup/status/<backup_id>")
+api.add_resource(GranularBackupStatusJSONEndpoint, "/backup/status")
+api.add_resource(GranularRestoreRequestEndpoint, "/restore/request")
+api.add_resource(TerminateBackupEndpoint, "/terminate/<backup_id>")
+api.add_resource(TerminateRestoreEndpoint, "/restore/terminate/<tracking_id>")
+api.add_resource(GranularRestoreStatusEndpoint, "/restore/status/<tracking_id>")
+api.add_resource(GranularRestoreStatusJSONEndpoint, "/restore/status")
+api.add_resource(GranularBackupDeleteEndpoint, "/delete/<backup_id>")
+api.add_resource(GranularBackupHealthEndpoint, "/health")
+api.add_resource(GranularBackupDownloadEndpoint, "/backup/download/<backup_id>")
+api.add_resource(DiffBackupRequestEndpoint, "/backup/diff")
+api.add_resource(IncrBackupRequestEndpoint, "/backup/incr")
+api.add_resource(GranularBackupStatusInfoEndpoint, "/backup/info")
 api.add_resource(NewBackup, *NewBackup.get_endpoints())
 api.add_resource(NewBackupStatus, *NewBackupStatus.get_endpoints())
 api.add_resource(NewRestore, *NewRestore.get_endpoints())
@@ -1827,9 +1962,9 @@ api.add_resource(NewRestoreStatus, *NewRestoreStatus.get_endpoints())
 
 scheduler = BackgroundScheduler()
 scheduler.start()
-if os.environ['STORAGE_TYPE'] == "pgbackrest":
+if os.environ["STORAGE_TYPE"] == "pgbackrest":
     schedule_diff_backup(scheduler)
     schedule_incr_backup(scheduler)
 else:
-    scheduler.add_job(backups.sweep_manager, 'interval', seconds=configs.eviction_interval())
+    scheduler.add_job(backups.sweep_manager, "interval", seconds=configs.eviction_interval())
     schedule_granular_backup(scheduler)

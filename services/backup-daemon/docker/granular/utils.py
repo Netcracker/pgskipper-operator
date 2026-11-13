@@ -43,7 +43,7 @@ log = logging.getLogger("utils")
 """
 
 
-@retry(stop_max_delay=int(os.getenv("FILE_OPERATION_DELAY", '5000')))
+@retry(stop_max_delay=int(os.getenv("FILE_OPERATION_DELAY", "5000")))
 def get_json_by_path(path):
     with open(path) as fd:
         try:
@@ -56,9 +56,9 @@ def get_json_by_path(path):
             fcntl.lockf(fd, fcntl.LOCK_UN)
 
 
-@retry(stop_max_delay=int(os.getenv("FILE_OPERATION_DELAY", '5000')))
+@retry(stop_max_delay=int(os.getenv("FILE_OPERATION_DELAY", "5000")))
 def write_in_json(path, data):
-    with open(path, 'w+') as fd:
+    with open(path, "w+") as fd:
         try:
             fcntl.lockf(fd, fcntl.LOCK_EX | fcntl.LOCK_NB)
             json.dump(data, fd)
@@ -81,10 +81,11 @@ def execute_query(conn_properties, query):
         if conn:
             conn.close()
 
+
 def get_version_of_pgsql_server():
     conn_properties = configs.connection_properties()
-    result = execute_query(conn_properties, 'SHOW SERVER_VERSION;')
-    return list(map(int, result.split(' ')[0].split('.')))
+    result = execute_query(conn_properties, "SHOW SERVER_VERSION;")
+    return list(map(int, result.split(" ")[0].split(".")))
 
 
 # need to rewrite this one with usage of execute_query()
@@ -94,15 +95,19 @@ def get_owner_of_db(database):
     try:
         conn = psycopg2.connect(**conn_properties)
         with conn.cursor() as cur:
-            cur.execute("""
+            cur.execute(
+                """
             SELECT pg_catalog.pg_get_userbyid(d.datdba) as "Owner"
             FROM pg_catalog.pg_database d
             WHERE d.datname = %s;
-            """, (database,))
+            """,
+                (database,),
+            )
             return cur.fetchone()[0]
     finally:
         if conn:
             conn.close()
+
 
 def get_database_list(databases):
     databases = tuple(databases)
@@ -117,25 +122,25 @@ def get_database_list(databases):
         if conn:
             conn.close()
 
+
 def get_pg_version_from_dump(backup_path, key_name, bin_path):
-  
+
     parallel_jobs = configs.get_parallel_jobs()
     if key_name:
-        command = "openssl enc -aes-256-cbc -nosalt -d -pass " \
-                  "pass:'{}' < '{}' | {} -l ".format(
-            encryption.KeyManagement.get_object().get_password_by_name(
-                key_name), backup_path, bin_path)
+        command = "openssl enc -aes-256-cbc -nosalt -d -pass " "pass:'{}' < '{}' | {} -l ".format(
+            encryption.KeyManagement.get_object().get_password_by_name(key_name),
+            backup_path,
+            bin_path,
+        )
     else:
         if int(parallel_jobs) > 1:
-            command = '{}/pg_restore -j {} -l {}'.format(bin_path, parallel_jobs, backup_path)
-        else:    
-            command = '{}/pg_restore -l {}'.format(bin_path, backup_path) 
+            command = "{}/pg_restore -j {} -l {}".format(bin_path, parallel_jobs, backup_path)
+        else:
+            command = "{}/pg_restore -l {}".format(bin_path, backup_path)
 
     subprocess.check_output("ls -la {}".format(backup_path), shell=True)
 
-    output = \
-        subprocess.Popen(command, shell=True,
-                         stdout=subprocess.PIPE).communicate()[0]
+    output = subprocess.Popen(command, shell=True, stdout=subprocess.PIPE).communicate()[0]
 
     # pg_restore -l output format example
     # ; Archive created at 2019-02-11 09:38:35 UTC
@@ -147,9 +152,8 @@ def get_pg_version_from_dump(backup_path, key_name, bin_path):
     for item in output.decode().split(";"):
         if "Dumped from database version" in item:
             version_as_string = item.split(": ")[1]
-            return list(map(int, version_as_string.split(' ')[0].split('.')))
+            return list(map(int, version_as_string.split(" ")[0].split(".")))
     return None
-
 
 
 class Rule:
@@ -162,20 +166,19 @@ class Rule:
     }
 
     def __init__(self, rule):
-        (startStr, intervalStr) = rule.strip().split("/")
+        startStr, intervalStr = rule.strip().split("/")
         self.start = self.__parseTimeSpec(startStr)
-        self.interval = "delete" if (
-                intervalStr == "delete") else self.__parseTimeSpec(intervalStr)
+        self.interval = "delete" if (intervalStr == "delete") else self.__parseTimeSpec(intervalStr)
 
     def __parseTimeSpec(self, spec):
         import re
-        if (spec == "0"):
+
+        if spec == "0":
             return 0
 
         r = re.match("^(\\d+)(%s)$" % "|".join(list(self.magnifiers.keys())), spec)
-        if (r is None):
-            raise Exception(
-                "Incorrect eviction start/interval specification: %s" % spec)
+        if r is None:
+            raise Exception("Incorrect eviction start/interval specification: %s" % spec)
 
         digit = int(r.groups()[0])
         magnifier = self.magnifiers[r.groups()[1]]
@@ -199,7 +202,7 @@ def get_backup_tar_file_path(backup_id, namespace):
     path = backups.build_backup_path(backup_id, namespace)
     if os.path.exists(path):
         tar_path = os.path.join(path, backup_id)
-        items = [x for x in os.listdir(path) if x.endswith('.dump') or x.endswith('.sql')]
+        items = [x for x in os.listdir(path) if x.endswith(".dump") or x.endswith(".sql")]
         with tarfile.open(tar_path + ".tar.gz", "w:gz") as tar:
             for item in items:
                 tar.add(os.path.join(path, item), arcname=item)
@@ -211,8 +214,8 @@ def get_backup_tar_file_path(backup_id, namespace):
 
 class GkeBackupApiCaller:
     def __init__(self):
-        self.log = logging.getLogger('BackupRequestEndpoint')
-        self.service = build('sqladmin', 'v1beta4', cache_discovery=False)
+        self.log = logging.getLogger("BackupRequestEndpoint")
+        self.service = build("sqladmin", "v1beta4", cache_discovery=False)
         self.project = os.getenv("GKE_PROJECT")
         self.instance = os.getenv("GKE_INSTANCE")
 
@@ -241,14 +244,14 @@ class GkeBackupApiCaller:
         try:
             resp = req.execute()
             self.log.info(json.dumps(resp, indent=2))
-            return {
-                "backupId": backup_id,
-                "message": resp["status"]
-                   }, http.client.OK
+            return {"backupId": backup_id, "message": resp["status"]}, http.client.OK
 
         except errors.HttpError as e:
             if e.resp["status"] == "404":
-                return "Backup with id {} not found".format(backup_id), http.client.NOT_FOUND
+                return (
+                    "Backup with id {} not found".format(backup_id),
+                    http.client.NOT_FOUND,
+                )
             else:
                 return http.client.BAD_REQUEST
 
@@ -260,26 +263,26 @@ class GkeBackupApiCaller:
             return resp, http.client.OK
         except errors.HttpError as e:
             if e.resp["status"] == "404":
-                return "Backup with id {} not found".format(backup_id), http.client.NOT_FOUND
+                return (
+                    "Backup with id {} not found".format(backup_id),
+                    http.client.NOT_FOUND,
+                )
             else:
                 return http.client.BAD_REQUEST
 
     def restore(self, restore_request):
-        body = {
-            "restoreBackupContext": {
-                "backupRunId": restore_request["backupId"]
-            }
-        }
+        body = {"restoreBackupContext": {"backupRunId": restore_request["backupId"]}}
         req = self.service.instances().restoreBackup(project=self.project, instance=self.instance, body=body)
         try:
             resp = req.execute()
             self.log.info(json.dumps(resp, indent=2))
-            return {
-                   'trackingId': resp["name"]
-               }, http.client.ACCEPTED
+            return {"trackingId": resp["name"]}, http.client.ACCEPTED
         except errors.HttpError as e:
             if e.resp["status"] == "404":
-                return "Backup with id {} not found".format(restore_request["backupId"]), http.client.NOT_FOUND
+                return (
+                    "Backup with id {} not found".format(restore_request["backupId"]),
+                    http.client.NOT_FOUND,
+                )
             else:
                 return "Bad request", http.client.BAD_REQUEST
 
@@ -291,7 +294,10 @@ class GkeBackupApiCaller:
             return resp, http.client.ACCEPTED
         except errors.HttpError as e:
             if e.resp["status"] == "404":
-                return "Restore with id {} not found".format(restore_id), http.client.NOT_FOUND
+                return (
+                    "Restore with id {} not found".format(restore_id),
+                    http.client.NOT_FOUND,
+                )
             else:
                 return http.client.BAD_REQUEST
 
@@ -305,21 +311,24 @@ class GkeBackupApiCaller:
             for item in resp["items"]:
                 result["default"][item["id"]] = {"status": item["status"]}
             return result, http.client.OK
-        except:
+        except BaseException:
             return http.client.BAD_REQUEST
 
 
 def get_postgres_version_by_path(storage_path):
-    #storage_path = '/usr'
-    pg_dirs = fnmatch.filter(os.listdir(storage_path), 'pg*')
+    # storage_path = '/usr'
+    pg_dirs = fnmatch.filter(os.listdir(storage_path), "pg*")
     log.info(f"Possible directories for backup store using path method {pg_dirs}")
-    versions = sorted([int(re.search(r'\d+', x).group()) for x in pg_dirs], reverse=True)
+    versions = sorted([int(re.search(r"\d+", x).group()) for x in pg_dirs], reverse=True)
     version_postfix = "pg" + str(versions[0])
-    log.info(f"PostgreSQL server version from path method is equal to {version_postfix}, "
-             f"so will save all backups in {version_postfix} dir")
+    log.info(
+        f"PostgreSQL server version from path method is equal to {version_postfix}, "
+        f"so will save all backups in {version_postfix} dir"
+    )
     version_as_list = [int(version_postfix.replace("pg", "")), 0]
     return version_as_list
 
+
 def is_mirror_env():
-    cm = kube_utils.get_configmap('mirror-config')
+    cm = kube_utils.get_configmap("mirror-config")
     return cm is not None

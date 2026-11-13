@@ -136,7 +136,7 @@ func (azCl *Client) RestoreDatabase() {
 		dataToUpdate[config.GeoRGKey] = azCl.ResourceGroup()
 		dataToUpdate[config.GeoPrivateDNSZone] = *oldServer.Properties.Network.PrivateDNSZoneArmResourceID
 		dataToUpdate[config.MainLocationKey] = azCl.GeoLocation()
-		k8s.UpdateCMData(restoreConfigCM, dataToUpdate)
+		_ = k8s.UpdateCMData(restoreConfigCM, dataToUpdate)
 	}
 
 	status.Status = statusSuccessful

@@ -19,17 +19,18 @@ import configs
 import endpoints.wal
 import storage
 
-
-app = Flask('ArchiveEndpoints')
+app = Flask("ArchiveEndpoints")
 api = Api(app)
 
 conf = configs.load_configs()
-storage_instance = storage.init_storage(storageRoot=conf['storage'])
+storage_instance = storage.init_storage(storageRoot=conf["storage"])
 
-api.add_resource(endpoints.wal.Upload, *endpoints.wal.Upload.get_endpoints(), resource_class_args=(storage_instance, ))
-api.add_resource(endpoints.wal.Download, *endpoints.wal.Download.get_endpoints(), resource_class_args=(storage_instance, ))
-api.add_resource(endpoints.wal.Delete, *endpoints.wal.Delete.get_endpoints(), resource_class_args=(storage_instance, ))
+api.add_resource(endpoints.wal.Upload, *endpoints.wal.Upload.get_endpoints(), resource_class_args=(storage_instance,))
+api.add_resource(
+    endpoints.wal.Download, *endpoints.wal.Download.get_endpoints(), resource_class_args=(storage_instance,)
+)
+api.add_resource(endpoints.wal.Delete, *endpoints.wal.Delete.get_endpoints(), resource_class_args=(storage_instance,))
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     app.run()

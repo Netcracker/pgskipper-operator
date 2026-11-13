@@ -16,7 +16,6 @@ import logging
 from datetime import datetime
 import threading
 import time
-import os
 
 from croniter import croniter
 from flask_restful import Resource, Api
@@ -32,7 +31,7 @@ import workers
 # TODO: move to postgres/endpoints
 class SchedulerEndpoint(Resource):
 
-    __endpoint = '/schedule'
+    __endpoint = "/schedule"
 
     def __init__(self, scheduler):
         self.__scheduler = scheduler
@@ -53,10 +52,10 @@ class BackupsScheduler:
         self.__log = logging.getLogger("BackupsScheduler")
         self.__backup_options = backup_options
 
-        self.__storage = storage.init_storage(storageRoot=self.__backup_options['storage_root'])
+        self.__storage = storage.init_storage(storageRoot=self.__backup_options["storage_root"])
         self.__task_queue = Queue()
 
-        if schedule.lower() != 'none':
+        if schedule.lower() != "none":
             self.__log.info("Start backup scheduler with: %s" % schedule)
             self.__cron = croniter(schedule)
             self.__reschedule()
@@ -66,8 +65,9 @@ class BackupsScheduler:
 
     def __reschedule(self):
         self.__next_timestamp = self.__cron.get_next()
-        self.__log.info("Scheduled next run at %s" % datetime.fromtimestamp(self.__next_timestamp).strftime(
-            "%Y-%m-%d %H:%M:%S"))
+        self.__log.info(
+            "Scheduled next run at %s" % datetime.fromtimestamp(self.__next_timestamp).strftime("%Y-%m-%d %H:%M:%S")
+        )
 
         # TODO check on negative value after substraction
         delay = self.__next_timestamp - time.time()
@@ -98,33 +98,42 @@ class BackupsScheduler:
             lock = locks.backup_lock()
             try:
 
-
                 lock.acquire_lock()
-                self.__log.info("[reason={}] Spawn new backup worker. Backup requests queue length: {}".format
-                                (backup.get_reason(), self.__task_queue.qsize()))
+                self.__log.info(
+                    "[reason={}] Spawn new backup worker. Backup requests queue length: {}".format(
+                        backup.get_reason(), self.__task_queue.qsize()
+                    )
+                )
                 oldest_backup = self.__storage.get_oldest_backup()
-                worker = workers.spawn_backup_worker(self.__storage,
-                                                     backup_command=self.__backup_options['backup_command'],
-                                                     eviction_rule=self.__backup_options['eviction_rule'],
-                                                     backup_id=backup.get_backup_id()
-                                                     )
+                worker = workers.spawn_backup_worker(
+                    self.__storage,
+                    backup_command=self.__backup_options["backup_command"],
+                    eviction_rule=self.__backup_options["eviction_rule"],
+                    backup_id=backup.get_backup_id(),
+                )
 
-                backup_timeout = None               
+                backup_timeout = None
                 if oldest_backup:
                     self.__log.info("Id of latest backup: {}".format(oldest_backup.get_id()))
-                    spent_time = oldest_backup.load_metrics().get('spent_time')
+                    spent_time = oldest_backup.load_metrics().get("spent_time")
 
                     if spent_time:
-                        timeout_from_options = self.__backup_options.get('timeout')
+                        timeout_from_options = self.__backup_options.get("timeout")
                         if timeout_from_options:
                             backup_timeout = timeout_from_options
                         # time stored as milliseconds converting to seconds and double the value
                         calculated_timeout = spent_time / 1000 * 2
                         if backup_timeout is None or calculated_timeout > backup_timeout:
                             backup_timeout = calculated_timeout
-                            self.__log.info("Setting calculated timeout for backup process: %ss", backup_timeout)
+                            self.__log.info(
+                                "Setting calculated timeout for backup process: %ss",
+                                backup_timeout,
+                            )
                         elif backup_timeout is not None:
-                            self.__log.info("Setting configured timeout for backup process: %ss", backup_timeout)
+                            self.__log.info(
+                                "Setting configured timeout for backup process: %ss",
+                                backup_timeout,
+                            )
 
                 worker.join(backup_timeout)
 
@@ -140,7 +149,7 @@ class BackupsScheduler:
                     worker.kill()
                     raise Exception("Backup worker timeout exceeded")
 
-            except:
+            except BaseException:
                 self.__log.error("Error execute schedule callback", exc_info=1)
             finally:
                 lock.release_lock()
@@ -149,25 +158,30 @@ class BackupsScheduler:
     def enqueue_backup(self, reason="manual"):
         backup_id = datetime.now().strftime(VAULT_NAME_FORMAT)
         backup = Backup(backup_id, reason)
-        
+
         self.__task_queue.put(backup)
         queue_size = self.__task_queue.qsize()
-        self.__log.info("[reason={}] New backup request has been received and added to queue. Queue length: {}".format
-                        (reason, queue_size))
+        self.__log.info(
+            "[reason={}] New backup request has been received and added to queue. Queue length: {}".format(
+                reason, queue_size
+            )
+        )
 
         return {
-            'accepted': True,
-            'reason': reason,
-            'backup_requests_in_queue': queue_size,
-            'message': "PostgreSQL backup has been scheduled successfully.",
-            'backup_id': backup_id
+            "accepted": True,
+            "reason": reason,
+            "backup_requests_in_queue": queue_size,
+            "message": "PostgreSQL backup has been scheduled successfully.",
+            "backup_id": backup_id,
         }
 
     def get_metrics(self):
         return {
-            'requests_in_queue': self.__task_queue.qsize(),
-            'time_until_next_backup': 'none' if self.__next_timestamp is None else self.__next_timestamp - time.time(),
-            'eviction_rule': self.__backup_options['eviction_rule']
+            "requests_in_queue": self.__task_queue.qsize(),
+            "time_until_next_backup": (
+                "none" if self.__next_timestamp is None else self.__next_timestamp - time.time()
+            ),
+            "eviction_rule": self.__backup_options["eviction_rule"],
         }
 
 
@@ -191,8 +205,12 @@ def start(backups_schedule, backups_params):
 def _activate_endpoint(scheduler):
     app = Flask("ScheduleEndpoint")
     api = Api(app)
-    api.add_resource(SchedulerEndpoint, SchedulerEndpoint.get_endpoint(), resource_class_args=(scheduler, ))
-    backup_endpoint_thread = threading.Thread(target=app.run, args=('127.0.0.1', 8085))
+    api.add_resource(
+        SchedulerEndpoint,
+        SchedulerEndpoint.get_endpoint(),
+        resource_class_args=(scheduler,),
+    )
+    backup_endpoint_thread = threading.Thread(target=app.run, args=("127.0.0.1", 8085))
     backup_endpoint_thread.setDaemon(True)
     backup_endpoint_thread.start()
 

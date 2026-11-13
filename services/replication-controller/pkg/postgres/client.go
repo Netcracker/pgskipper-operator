@@ -170,7 +170,7 @@ func (ca Client) executeHealthQuery() error {
 	if err != nil {
 		return err
 	}
-	defer conn.Close(ctx)
+	defer func() { _ = conn.Close(ctx) }()
 
 	_, err = conn.Exec(ctx, healthQuery)
 	return err

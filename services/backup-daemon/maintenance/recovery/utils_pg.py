@@ -14,7 +14,6 @@
 
 import time
 import logging
-import sys
 from utils_common import RecoveryException
 
 log = logging.getLogger()
@@ -22,9 +21,10 @@ log = logging.getLogger()
 _SECRET_FILE_PATH = "/var/run/secrets/postgresql/"
 _PG_CREDS_PATH = _SECRET_FILE_PATH + "postgres-credentials/"
 
+
 def read_secret_file(path: str, default_val: str) -> str:
     try:
-        with open(path, 'r') as f:
+        with open(path, "r") as f:
             value = f.read().strip()
     except OSError as e:
         logging.error(f"Failed to read secret file {path}: {e}")
@@ -33,6 +33,7 @@ def read_secret_file(path: str, default_val: str) -> str:
         logging.info(f"Secret file {path} is empty, using default value")
         return default_val
     return value
+
 
 class PostgresqlClient:
 
@@ -44,12 +45,15 @@ class PostgresqlClient:
         import psycopg2
         from psycopg2 import Error
         import os
+
         try:
-            connection = psycopg2.connect(user="postgres",
-                                          password=read_secret_file(_PG_CREDS_PATH + 'password', ""), #
-                                          host=os.getenv('POSTGRES_HOST'),
-                                          port="5432",
-                                          database="postgres")
+            connection = psycopg2.connect(
+                user="postgres",
+                password=read_secret_file(_PG_CREDS_PATH + "password", ""),
+                host=os.getenv("POSTGRES_HOST"),
+                port="5432",
+                database="postgres",
+            )
 
             cursor = connection.cursor()
             cursor.execute(query)
@@ -59,7 +63,7 @@ class PostgresqlClient:
             log.error("Postgres communication failed: {}".format(error))
 
     def execute_local_query(self, pod_id, query):
-        return self.oc.oc_exec(pod_id, "psql -h localhost -p 5432 postgres -t -c \"{}\"".format(query)).strip()
+        return self.oc.oc_exec(pod_id, 'psql -h localhost -p 5432 postgres -t -c "{}"'.format(query)).strip()
 
     def wait_db_response(self, pod_id, query, result):
         log.info("Start waiting for response '{}' for query '{}' from DB on {}".format(result, query, pod_id))
@@ -79,9 +83,11 @@ class PostgresqlClient:
                 query_result = self.execute_select_query(query)
                 log.debug("Response from DB: {}".format(query_result))
             except Exception as e:
-                if 'current phase is Pending' in str(e) or \
-                   'Is the server running on host' in str(e) or \
-                   'server closed the connection' in str(e):
+                if (
+                    "current phase is Pending" in str(e)
+                    or "Is the server running on host" in str(e)
+                    or "server closed the connection" in str(e)
+                ):
                     log.debug("One of allowed error occurred during request.")
                 else:
                     raise e
@@ -89,13 +95,15 @@ class PostgresqlClient:
         if query_result == result and select_counter == 5:
             log.info("SUCCESS: Received response {} in {} sec".format(query_result, wait_database_time))
         else:
-            raise RecoveryException("FAILURE: Cannot get expected result '{}' for query '{}' "
-                                    "from DB on pod {} in {} sec. Check if database working properly."
-                                    .format(result, query, pod_id, wait_database_time))
+            raise RecoveryException(
+                "FAILURE: Cannot get expected result '{}' for query '{}' "
+                "from DB on pod {} in {} sec. Check if database working properly.".format(
+                    result, query, pod_id, wait_database_time
+                )
+            )
 
     def wait_pg_recovery_complete(self, pod_id):
         self.wait_db_response(pod_id, "select pg_is_in_recovery()", False)
 
     def wait_database(self, pod_id):
         self.wait_db_response(pod_id, "select 1", 1)
-

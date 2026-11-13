@@ -50,8 +50,12 @@ class PostgreSQLBackupWorker(Process):
         self.__cleanup_storage()
 
     def __perform_database_backup(self):
-        with self.__storage.open_vault(self.__backup_id) as (vault_folder, metrics, console):
-            backup_id = self.__backup_id.split('/')[-1]
+        with self.__storage.open_vault(self.__backup_id) as (
+            vault_folder,
+            metrics,
+            console,
+        ):
+            backup_id = self.__backup_id.split("/")[-1]
 
             self.__log.info("[backup-id=%s] Start new backup streaming." % backup_id)
             locks.update_lock_file(backup_id=backup_id)
@@ -62,15 +66,22 @@ class PostgreSQLBackupWorker(Process):
 
             cmd_processed = self.__split_command_line(self.__backup_command % cmd_options)
             if not self.encryption:
-                self.__log.info("Run cmd template: %s\n\toptions: %s\n\tcmd: [%s]" % (
-                    self.__backup_command, str(cmd_options), ", ".join(cmd_processed)))
+                self.__log.info(
+                    "Run cmd template: %s\n\toptions: %s\n\tcmd: [%s]"
+                    % (
+                        self.__backup_command,
+                        str(cmd_options),
+                        ", ".join(cmd_processed),
+                    )
+                )
             else:
                 self.__log.info("Run cmd template %s\n" % (self.__backup_command))
             import subprocess
+
             process = subprocess.Popen(cmd_processed, stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
             while True:
                 output = process.stdout.readline()
-                if output.decode() == '':
+                if output.decode() == "":
                     if process.poll() is not None:
                         break
                     else:
@@ -85,7 +96,11 @@ class PostgreSQLBackupWorker(Process):
                 metrics["key_source"] = self.key_source
 
             if exit_code != 0:
-                msg = "[backup-id=%s] Execution of '%s' was finished with non zero exit code: %d" % (backup_id, cmd_processed, exit_code)
+                msg = "[backup-id=%s] Execution of '%s' was finished with non zero exit code: %d" % (
+                    backup_id,
+                    cmd_processed,
+                    exit_code,
+                )
                 self.__log.error(msg)
                 raise BackupProcessException(msg)
             else:
@@ -93,8 +108,11 @@ class PostgreSQLBackupWorker(Process):
 
     def __cleanup_storage(self):
         self.__log.info("Start eviction process by policy: %s" % self.__eviction_rule)
-        outdated_vaults = eviction.evict(self.__storage.list(), self.__eviction_rule,
-                                         accessor=lambda x: x.create_time())
+        outdated_vaults = eviction.evict(
+            self.__storage.list(),
+            self.__eviction_rule,
+            accessor=lambda x: x.create_time(),
+        )
         if len(outdated_vaults) > 0:
             for vault in outdated_vaults:
                 self.__storage.evict(vault)
@@ -108,10 +126,11 @@ class PostgreSQLBackupWorker(Process):
     @staticmethod
     def __split_command_line(cmd_line):
         import shlex
+
         lex = shlex.shlex(cmd_line)
         lex.quotes = '"'
         lex.whitespace_split = True
-        lex.commenters = ''
+        lex.commenters = ""
         return list(lex)
 
 

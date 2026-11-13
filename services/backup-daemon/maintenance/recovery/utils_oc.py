@@ -17,8 +17,7 @@ import json
 from abc import abstractmethod, ABCMeta
 import subprocess
 import logging
-from utils_common import *
-import pprint
+from utils_common import Differ, retry
 import time
 import re
 
@@ -26,12 +25,9 @@ log = logging.getLogger()
 
 try:
     from kubernetes import client
-    from kubernetes.client import configuration
-    from kubernetes.client import rest
-    #from openshift import client as op_client
     from kubernetes.client.rest import ApiException
     from kubernetes.stream import stream
-    from kubernetes.stream.ws_client import ERROR_CHANNEL, STDOUT_CHANNEL, STDERR_CHANNEL
+    from kubernetes.stream.ws_client import ERROR_CHANNEL
     import kubernetes
     from six import iteritems
 
@@ -53,8 +49,12 @@ try:
             elif hasattr(value, "to_dict"):
                 result[attr_name] = value.to_dict()
             elif isinstance(value, dict):
-                result[attr_name] = dict([(item[0], item[1].to_dict())
-                    if hasattr(item[1], "to_dict") else item for item in list(value.items())])
+                result[attr_name] = dict(
+                    [
+                        ((item[0], item[1].to_dict()) if hasattr(item[1], "to_dict") else item)
+                        for item in list(value.items())
+                    ]
+                )
             else:
                 result[attr_name] = value
 
@@ -82,7 +82,7 @@ try:
             return super(ObjectEncoder, self).default(o)
 
     use_kube_client = True
-except ImportError as e:
+except ImportError:
     log.exception("Cannot use python client")
     use_kube_client = False
 
@@ -92,9 +92,7 @@ def get_api_token(oc_url, username, password):
     import requests
     import re
 
-    auth_url = oc_url + "/oauth/authorize?" \
-                        "client_id=openshift-challenging-client&" \
-                        "response_type=token"
+    auth_url = oc_url + "/oauth/authorize?" "client_id=openshift-challenging-client&" "response_type=token"
     headers = {}
     user_password = username + b":" + password
     encoding = base64.b64encode(user_password)
@@ -217,8 +215,10 @@ class OpenshiftClient(metaclass=ABCMeta):
     def get_running_stateful_set_replicas_count(self, stateful_set_name):
         stateful_set = self.get_stateful_set(stateful_set_name)
         status = stateful_set.get("status")
-        return min(int(status.get("ready_replicas") or "0"),
-                   int(status.get("updated_replicas") or "0"))
+        return min(
+            int(status.get("ready_replicas") or "0"),
+            int(status.get("updated_replicas") or "0"),
+        )
 
     def get_liveness_probe_from_stateful_set(self, stateful_set_name):
         stateful_set = self.get_stateful_set(stateful_set_name)
@@ -333,36 +333,56 @@ class OpenshiftShellClient(OpenshiftClient):
     def login(self, oc_url, username, password, project, skip_tls_verify=False):
         log.info("Log in as {} to {}".format(username, oc_url))
         subprocess.check_call(
-            '{} login -u "{}" -p "{}" {} {}'
-                .format(self.oc,
-                        username, password, oc_url,
-                        ("--insecure-skip-tls-verify=true" if skip_tls_verify else "")),
-            shell=True, stdout=subprocess.PIPE)
+            '{} login -u "{}" -p "{}" {} {}'.format(
+                self.oc,
+                username,
+                password,
+                oc_url,
+                ("--insecure-skip-tls-verify=true" if skip_tls_verify else ""),
+            ),
+            shell=True,
+            stdout=subprocess.PIPE,
+        )
 
         if project:
             log.info("Change project to {}".format(project))
             subprocess.check_call(
-                '{} project {}'.format(self.oc, project),
-                shell=True, stdout=subprocess.PIPE)
+                "{} project {}".format(self.oc, project),
+                shell=True,
+                stdout=subprocess.PIPE,
+            )
 
     def use_token(self, oc_url, oc_token, project, skip_tls_verify=False):
         raise NotImplementedError("Cannot use token with oc client")
 
     def get_entities(self, entity_type):
-        entity = json.loads(subprocess.Popen(
-            '{} get {} -o json'.format(self.oc, entity_type),
-            shell=True, stdout=subprocess.PIPE).stdout.read())
+        entity = json.loads(
+            subprocess.Popen(
+                "{} get {} -o json".format(self.oc, entity_type),
+                shell=True,
+                stdout=subprocess.PIPE,
+            ).stdout.read()
+        )
         return entity["items"]
 
     def get_entity(self, entity_type, entity_name):
-        entity = json.loads(subprocess.Popen(
-            '{} get {} {} -o json'.format(self.oc, entity_type, entity_name),
-            shell=True, stdout=subprocess.PIPE).stdout.read())
+        entity = json.loads(
+            subprocess.Popen(
+                "{} get {} {} -o json".format(self.oc, entity_type, entity_name),
+                shell=True,
+                stdout=subprocess.PIPE,
+            ).stdout.read()
+        )
         return entity
 
     def get_entity_safe(self, entity_type, entity_name):
-        entities_data = json.loads(subprocess.Popen(
-            '{} get {} -o json'.format(self.oc, entity_type), shell=True, stdout=subprocess.PIPE).stdout.read())
+        entities_data = json.loads(
+            subprocess.Popen(
+                "{} get {} -o json".format(self.oc, entity_type),
+                shell=True,
+                stdout=subprocess.PIPE,
+            ).stdout.read()
+        )
         entities = list([p for p in entities_data["items"] if entity_name == p["metadata"]["name"]])
         if entities:
             return entities[0]
@@ -374,19 +394,37 @@ class OpenshiftShellClient(OpenshiftClient):
         subprocess.check_call("{} set env dc {} {}".format(self.oc, dc_name, env_repr), shell=True)
 
     def get_deployment_names(self, dc_name_part, type="dc"):
-        deployments_data = json.loads(subprocess.Popen(
-            '{} get {} -o json'.format(self.oc, type), shell=True, stdout=subprocess.PIPE).stdout.read())
+        deployments_data = json.loads(
+            subprocess.Popen(
+                "{} get {} -o json".format(self.oc, type),
+                shell=True,
+                stdout=subprocess.PIPE,
+            ).stdout.read()
+        )
         deployments = list(
-            [p["metadata"]["name"] for p in [p for p in deployments_data["items"] if dc_name_part in p["metadata"]["name"]]])
+            [
+                p["metadata"]["name"]
+                for p in [p for p in deployments_data["items"] if dc_name_part in p["metadata"]["name"]]
+            ]
+        )
         return deployments
 
     def get_replicas_desc(self, dc_name, running=True):
-        pods_data = json.loads(subprocess.Popen(
-            "{} get pods {} -o json".format(self.oc, ("-a" if not running else "")),
-            shell=True, stdout=subprocess.PIPE).stdout.read())
+        pods_data = json.loads(
+            subprocess.Popen(
+                "{} get pods {} -o json".format(self.oc, ("-a" if not running else "")),
+                shell=True,
+                stdout=subprocess.PIPE,
+            ).stdout.read()
+        )
         pods = list(
-            [p for p in pods_data["items"] if "deploymentconfig" in p["metadata"]["labels"] and
-                   dc_name in p["metadata"]["labels"]["deploymentconfig"]])
+            [
+                p
+                for p in pods_data["items"]
+                if "deploymentconfig" in p["metadata"]["labels"]
+                and dc_name in p["metadata"]["labels"]["deploymentconfig"]
+            ]
+        )
         if running:
             pods = list([p for p in pods if "running" == p["status"]["phase"].lower()])
         return pods
@@ -394,18 +432,26 @@ class OpenshiftShellClient(OpenshiftClient):
     def delete_entity(self, entity_type, entity_name, ignore_not_found=True):
         log.debug("Try to delete entity {} {}".format(entity_type, entity_name))
         inf_value = "true" if ignore_not_found else "false"
-        subprocess.check_call("{} delete {} {} --ignore-not-found={}"
-                              .format(self.oc, entity_type, entity_name, inf_value),
-                              shell=True)
+        subprocess.check_call(
+            "{} delete {} {} --ignore-not-found={}".format(self.oc, entity_type, entity_name, inf_value),
+            shell=True,
+        )
 
     def oc_exec(self, pod_id, command):
         log.info("Try to execute '{}' on pod {}".format(command, pod_id))
-        process = subprocess.Popen("{} exec {} -- {}".format(self.oc, pod_id, command), shell=True,
-                                   stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+        process = subprocess.Popen(
+            "{} exec {} -- {}".format(self.oc, pod_id, command),
+            shell=True,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE,
+        )
         if process.wait() != 0:
-            raise Exception("Error occurred during execution. "
-                            "Return code: {}, stderr: {}, stdout: {}"
-                            .format(process.returncode, process.stderr.read(), process.stdout.read()))
+            raise Exception(
+                "Error occurred during execution. "
+                "Return code: {}, stderr: {}, stdout: {}".format(
+                    process.returncode, process.stderr.read(), process.stdout.read()
+                )
+            )
         return process.stdout.read().decode()
 
     def get_logs(self, pod_id, since=None):
@@ -426,8 +472,12 @@ class OpenshiftShellClient(OpenshiftClient):
     def delete_pod(self, pod_id, grace_period=None):
         log.debug("Remove pod {} with grace-period {}".format(pod_id, grace_period))
         grace_period = "--grace-period={}".format(grace_period) if grace_period else ""
-        p = subprocess.Popen("{} delete pod {} {}".format(self.oc, pod_id, grace_period),
-                             shell=True, stdin=subprocess.PIPE, stderr=subprocess.PIPE)
+        p = subprocess.Popen(
+            "{} delete pod {} {}".format(self.oc, pod_id, grace_period),
+            shell=True,
+            stdin=subprocess.PIPE,
+            stderr=subprocess.PIPE,
+        )
         if p.wait() != 0:
             error = p.stderr.read()
             if 'pods "{}" not found'.format(pod_id) in error.decode():
@@ -438,8 +488,10 @@ class OpenshiftShellClient(OpenshiftClient):
 
     @retry(tries=5)  # handle case when DC version is Unknown
     def scale(self, name, count, entity="dc"):
-        subprocess.check_call("{} scale --replicas={} {} {}"
-                              .format(self.oc, count, entity, name), shell=True)
+        subprocess.check_call(
+            "{} scale --replicas={} {} {}".format(self.oc, count, entity, name),
+            shell=True,
+        )
 
     def apply_object(self, data):
         p = subprocess.Popen("{} apply -f -".format(self.oc), shell=True, stdin=subprocess.PIPE)
@@ -451,23 +503,37 @@ class OpenshiftShellClient(OpenshiftClient):
 
     def get_cluster_pods(self, cluster_name, running=True):
         pods_data = json.loads(
-            subprocess.Popen("{} get pods {} --selector=\"pgcluster={}\" -o json"
-                             .format(self.oc, ("-a" if not running else ""), cluster_name),
-                             shell=True, stdout=subprocess.PIPE).stdout.read())
+            subprocess.Popen(
+                '{} get pods {} --selector="pgcluster={}" -o json'.format(
+                    self.oc, ("-a" if not running else ""), cluster_name
+                ),
+                shell=True,
+                stdout=subprocess.PIPE,
+            ).stdout.read()
+        )
         pods = [pod["metadata"]["name"] for pod in pods_data["items"]]
         return pods
 
     def get_cluster_pods_desc(self, cluster_name, running=True):
         pods_data = json.loads(
-            subprocess.Popen("{} get pods {} --selector=\"pgcluster={}\" -o json"
-                             .format(self.oc, ("-a" if not running else ""), cluster_name),
-                             shell=True, stdout=subprocess.PIPE).stdout.read())
+            subprocess.Popen(
+                '{} get pods {} --selector="pgcluster={}" -o json'.format(
+                    self.oc, ("-a" if not running else ""), cluster_name
+                ),
+                shell=True,
+                stdout=subprocess.PIPE,
+            ).stdout.read()
+        )
         return pods_data["items"]
 
     def get_pods_by_label(self, label_selector):
         pods_data = json.loads(
-            subprocess.Popen("{0} get pods {1} -l={2} -o json".format(self.oc, "-a", label_selector),
-                             shell=True, stdout=subprocess.PIPE).stdout.read())
+            subprocess.Popen(
+                "{0} get pods {1} -l={2} -o json".format(self.oc, "-a", label_selector),
+                shell=True,
+                stdout=subprocess.PIPE,
+            ).stdout.read()
+        )
         pods = [pod["metadata"]["name"] for pod in pods_data["items"]]
         return pods
 
@@ -500,6 +566,7 @@ class OpenshiftPyClient(OpenshiftClient):
     def use_token(self, oc_url, oc_token, project, skip_tls_verify=False):
         log.info("Log in to {} with token".format(oc_url))
         from kubernetes import config
+
         config.load_incluster_config()
         log.info("Will use namespace {}".format(project))
         self.project = project
@@ -521,14 +588,14 @@ class OpenshiftPyClient(OpenshiftClient):
             try:
                 apps_api = client.AppsV1Api(self._api_client)
                 items = apps_api.list_namespaced_stateful_set(self.project).items
-            except:
+            except BaseException:
                 apps_api = client.AppsV1beta1Api(self._api_client)
                 items = apps_api.list_namespaced_stateful_set(self.project).items
         elif entity_type == "deployment":
             try:
                 apps_api = client.AppsV1beta1Api(self._api_client)
                 items = apps_api.list_namespaced_deployment(self.project).items
-            except:
+            except BaseException:
                 apps_api = client.AppsV1Api(self._api_client)
                 items = apps_api.list_namespaced_deployment(self.project).items
         else:
@@ -539,20 +606,19 @@ class OpenshiftPyClient(OpenshiftClient):
         data = entity.to_dict()
         if isinstance(entity, kubernetes.client.models.v1_pod.V1Pod):
             data["kind"] = "Pod"
-        elif isinstance(entity,
-                        kubernetes.client.models.v1_config_map.V1ConfigMap):
+        elif isinstance(entity, kubernetes.client.models.v1_config_map.V1ConfigMap):
             data["kind"] = "ConfigMap"
-        elif isinstance(entity,
-                        kubernetes.client.models.v1_deployment.V1Deployment):
+        elif isinstance(entity, kubernetes.client.models.v1_deployment.V1Deployment):
             data["kind"] = "Deployment"
-        elif isinstance(entity,
-                        kubernetes.client.models.v1_replication_controller.V1ReplicationController):
+        elif isinstance(
+            entity,
+            kubernetes.client.models.v1_replication_controller.V1ReplicationController,
+        ):
             data["kind"] = "ReplicationController"
         elif isinstance(entity, kubernetes.client.models.v1_stateful_set.V1StatefulSet):
             data["kind"] = "StatefulSet"
         else:
-            raise NotImplementedError("Cannot transform to dict entity {}"
-                                      .format(entity))
+            raise NotImplementedError("Cannot transform to dict entity {}".format(entity))
         data = json.loads(json.dumps(data, cls=ObjectEncoder))
         return data
 
@@ -566,7 +632,10 @@ class OpenshiftPyClient(OpenshiftClient):
         if entity_type != "statefulset":
             return self.__to_dict(next(x for x in items if x.metadata.name == entity_name))
 
-        sts = sorted((x for x in items if "patroni" in x.metadata.name), key=lambda x: x.metadata.name)
+        sts = sorted(
+            (x for x in items if "patroni" in x.metadata.name),
+            key=lambda x: x.metadata.name,
+        )
 
         m = re.search(r"node(\d+)$", entity_name or "")
         idx = int(m.group(1)) - 1 if m else 0
@@ -576,7 +645,7 @@ class OpenshiftPyClient(OpenshiftClient):
     def get_entity_safe(self, entity_type, entity_name):
         try:
             return self.get_entity(entity_type, entity_name)
-        except Exception as e:
+        except Exception:
             return None
 
     def set_env_for_dc(self, dc_name, env_name, env_value):
@@ -598,18 +667,20 @@ class OpenshiftPyClient(OpenshiftClient):
 
     def get_deployment_names(self, dc_name_part, type="dc"):
         items = self.__list_entities(type)
-        deployments = list(
-            [p.metadata.name for p in [p for p in items if dc_name_part in p.metadata.name]])
+        deployments = list([p.metadata.name for p in [p for p in items if dc_name_part in p.metadata.name]])
         return deployments
 
     def get_replicas_desc(self, dc_name, type="dc", running=True):
         items = self.__list_entities("pod")
         pods = list(
-            [p for p in items if "deploymentconfig" in p.metadata.labels and
-                   dc_name in p.metadata.labels["deploymentconfig"]])
+            [
+                p
+                for p in items
+                if "deploymentconfig" in p.metadata.labels and dc_name in p.metadata.labels["deploymentconfig"]
+            ]
+        )
         if running:
-            pods = list(
-                [self.__to_dict(x) for x in [p for p in pods if "running" == p.status.phase.lower()]])
+            pods = list([self.__to_dict(x) for x in [p for p in pods if "running" == p.status.phase.lower()]])
         else:
             pods = list([self.__to_dict(x) for x in pods])
         return pods
@@ -623,19 +694,20 @@ class OpenshiftPyClient(OpenshiftClient):
             elif entity_type == "configmap":
                 body = client.V1DeleteOptions()
                 core_api = client.CoreV1Api(self._api_client)
-                core_api.delete_namespaced_config_map(entity_name, self.project, body=body,)
+                core_api.delete_namespaced_config_map(
+                    entity_name,
+                    self.project,
+                    body=body,
+                )
             elif entity_type == "dc":
                 core_api = client.CoreV1Api(self._api_client)
-                core_api.delete_namespaced_deployment_config(entity_name,
-                                                             self.project, {})
+                core_api.delete_namespaced_deployment_config(entity_name, self.project, {})
             elif entity_type == "rc":
                 core_api = client.CoreV1Api(self._api_client)
-                core_api.delete_namespaced_replication_controller(entity_name,
-                                                                  self.project, {})
+                core_api.delete_namespaced_replication_controller(entity_name, self.project, {})
             elif entity_type == "statefulset":
                 core_api = client.AppsV1Api(self._api_client)
-                core_api.delete_namespaced_stateful_set(entity_name,
-                                                        self.project, {})
+                core_api.delete_namespaced_stateful_set(entity_name, self.project, {})
             else:
                 raise NotImplementedError("Cannot delete {}".format(entity_type))
         except kubernetes.client.rest.ApiException as e:
@@ -649,17 +721,21 @@ class OpenshiftPyClient(OpenshiftClient):
         log.debug(f"Try to execute '{command}' on pod {pod_id}")
         core_api = client.CoreV1Api(self._api_client)
 
-        exec_command = [
-            '/bin/sh', '-c', command
-        ]
+        exec_command = ["/bin/sh", "-c", command]
 
         try:
-            resp = stream(core_api.connect_get_namespaced_pod_exec,
-                          pod_id,
-                          self.project,
-                          command=exec_command,
-                          stderr=True, stdin=False,
-                          stdout=True, tty=False, _preload_content=True, _request_timeout=60)
+            resp = stream(
+                core_api.connect_get_namespaced_pod_exec,
+                pod_id,
+                self.project,
+                command=exec_command,
+                stderr=True,
+                stdin=False,
+                stdout=True,
+                tty=False,
+                _preload_content=True,
+                _request_timeout=60,
+            )
 
             log.info(f"Command executed. Result: {resp}")
 
@@ -679,8 +755,7 @@ class OpenshiftPyClient(OpenshiftClient):
         return None
 
     def get_logs(self, pod_id, since=None):
-        log.debug("Try to obtain logs from pod {} for last {}s."
-                  .format(pod_id, since))
+        log.debug("Try to obtain logs from pod {} for last {}s.".format(pod_id, since))
         # time.sleep(20)
         core_api = client.CoreV1Api(self._api_client)
         if since:
@@ -691,27 +766,32 @@ class OpenshiftPyClient(OpenshiftClient):
     def rsync(self, source, target):
         if ":" in source:
             raise Exception("Cannot load files from pod yet")
-        (pod_id, target_dir) = target.split(":")
-        log.debug("Try to upload files from {} to pod {} in dir {}"
-                  .format(source, pod_id, target_dir))
+        pod_id, target_dir = target.split(":")
+        log.debug("Try to upload files from {} to pod {} in dir {}".format(source, pod_id, target_dir))
 
         import tarfile
         import tempfile
+
         tempfile_fd = tempfile.TemporaryFile()
-        tar = tarfile.open(fileobj=tempfile_fd, mode='w:gz')
+        tar = tarfile.open(fileobj=tempfile_fd, mode="w:gz")
         tar.add(source)
         tar.close()
         tempfile_fd.flush()
         tempfile_fd.seek(0)
 
         core_api = client.CoreV1Api(self._api_client)
-        exec_command = ['tar', 'xzvf', '-', '-C', target_dir]
-        resp = stream(core_api.connect_get_namespaced_pod_exec, pod_id,
-                      self.project,
-                      command=exec_command,
-                      stderr=True, stdin=True,
-                      stdout=True, tty=False,
-                      _preload_content=False)
+        exec_command = ["tar", "xzvf", "-", "-C", target_dir]
+        resp = stream(
+            core_api.connect_get_namespaced_pod_exec,
+            pod_id,
+            self.project,
+            command=exec_command,
+            stderr=True,
+            stdin=True,
+            stdout=True,
+            tty=False,
+            _preload_content=False,
+        )
 
         resp.write_stdin(tempfile_fd.read())
         resp.update(1)
@@ -723,21 +803,17 @@ class OpenshiftPyClient(OpenshiftClient):
         tempfile_fd.close()
         error = resp.read_channel(ERROR_CHANNEL)
         if error and "Success" != json.loads(error).get("status"):
-            raise Exception("Error occurred during execution: {}. "
-                            .format(error))
+            raise Exception("Error occurred during execution: {}. ".format(error))
 
     def delete_pod(self, pod_id, grace_period=None):
-        log.debug("Try to remove pod {} with grace-period {}"
-                  .format(pod_id, grace_period))
+        log.debug("Try to remove pod {} with grace-period {}".format(pod_id, grace_period))
         core_api = client.CoreV1Api(self._api_client)
         try:
-            status = core_api.delete_namespaced_pod(pod_id, self.project, {},
-                                                    grace_period_seconds=grace_period)
+            status = core_api.delete_namespaced_pod(pod_id, self.project, {}, grace_period_seconds=grace_period)
             log.debug(status)
         except ApiException as ae:
             if 'pods \\"{}\\" not found'.format(pod_id) in ae.body:
-                log.warning("Cannot remove pod {} - no such pod."
-                            .format(pod_id))
+                log.warning("Cannot remove pod {} - no such pod.".format(pod_id))
                 pass
             else:
                 raise ae
@@ -755,7 +831,7 @@ class OpenshiftPyClient(OpenshiftClient):
             try:
                 core_api = client.AppsV1beta1Api(self._api_client)
                 data = core_api.patch_namespaced_deployment(name, self.project, {"spec": {"replicas": count}})
-            except:
+            except BaseException:
                 core_api = client.AppsV1Api(self._api_client)
                 data = core_api.patch_namespaced_deployment(name, self.project, {"spec": {"replicas": count}})
         else:
@@ -803,13 +879,14 @@ class OpenshiftPyClient(OpenshiftClient):
             apps_api = client.AppsV1Api(self._api_client)
             source = reset_last_applied(self.get_entity("statefulset", entity_name))
             # return self.__to_dict(apps_api.patch_namespaced_stateful_set(entity_name, self.project, data))
-            # TODO: It's not working at all, we are just returning same without patching, just rolled back coz of release
+            # TODO: It's not working at all, we are just returning same without
+            # patching, just rolled back coz of release
             return data
         elif entity_type == "Deployment":
             try:
                 apps_api = client.AppsV1beta1ApiApi(self._api_client)
                 source = reset_last_applied(self.get_entity("deployment", entity_name))
-            except:
+            except BaseException:
                 apps_api = client.AppsV1Api(self._api_client)
                 source = reset_last_applied(self.get_entity("deployment", entity_name))
 
@@ -843,12 +920,20 @@ class OpenshiftPyClient(OpenshiftClient):
             raise NotImplementedError("Cannot replace {}".format(entity_type))
 
     def get_cluster_pods(self, cluster_name, running=True):
-        pods = [x for x in self.__list_entities("pod") if "pgcluster" in x.metadata.labels and x.metadata.labels["pgcluster"] == cluster_name]
+        pods = [
+            x
+            for x in self.__list_entities("pod")
+            if "pgcluster" in x.metadata.labels and x.metadata.labels["pgcluster"] == cluster_name
+        ]
         pods = list([x.metadata.name for x in pods])
         return pods
 
     def get_cluster_pods_desc(self, cluster_name, running=True):
-        pods = [x for x in self.__list_entities("pod") if "pgcluster" in x.metadata.labels and x.metadata.labels["pgcluster"] == cluster_name]
+        pods = [
+            x
+            for x in self.__list_entities("pod")
+            if "pgcluster" in x.metadata.labels and x.metadata.labels["pgcluster"] == cluster_name
+        ]
         pods = list([self.__to_dict(x) for x in pods])
         return pods
 
@@ -863,12 +948,13 @@ class OpenshiftPyClient(OpenshiftClient):
         try:
             api_response = core_api.read_namespaced_secret(secret_name, self.project)
             import base64
+
             data = api_response.data
-            password = base64.b64decode(data.get("password")).decode('utf-8')
+            password = base64.b64decode(data.get("password")).decode("utf-8")
             user_data = data.get("user")
             if not user_data:
                 user_data = data.get("username")
-            user = base64.b64decode(user_data).decode('utf-8')
+            user = base64.b64decode(user_data).decode("utf-8")
             return user, password
         except ApiException as exc:
             log.error(exc)
@@ -955,7 +1041,11 @@ class OpenshiftOrchestrator:
             dc = self.oc.get_deployment(dc_name)
             envs = dc["spec"]["template"]["spec"]["containers"][0]["env"]
             env = list([x for x in envs if x["name"] == env_name])
-            version = dc["metadata"].get("resourceVersion") if dc["metadata"].get("resourceVersion") else dc["metadata"].get("resource_version")
+            version = (
+                dc["metadata"].get("resourceVersion")
+                if dc["metadata"].get("resourceVersion")
+                else dc["metadata"].get("resource_version")
+            )
             log.debug("Env: {}. Version: {}".format(env, version))
             if env_value:
                 if env and env[0]["value"] == env_value and version != "Unknown":
@@ -989,7 +1079,6 @@ class OpenshiftOrchestrator:
             else:
                 time.sleep(1)
 
-
     def replace_command_on_dc(self, dc_name, command, scale_up=True):
         log.info("Try to set command {} to deployment config {}".format(command, dc_name))
 
@@ -1020,7 +1109,11 @@ class OpenshiftOrchestrator:
             current_command = None
             if "command" in container_def:
                 current_command = container_def["command"]
-            version = dc["metadata"].get("resourceVersion") if dc["metadata"].get("resourceVersion") else dc["metadata"].get("resource_version")
+            version = (
+                dc["metadata"].get("resourceVersion")
+                if dc["metadata"].get("resourceVersion")
+                else dc["metadata"].get("resource_version")
+            )
             log.debug("Command: {}. Version: {}".format(current_command, version))
             if current_command == command and version != "Unknown":
                 break
@@ -1053,8 +1146,9 @@ class OpenshiftOrchestrator:
             log.info("Scale up after changes")
             self.scale_stateful_set(stateful_set_name, replicas_number)
 
-    def wait_for_one_of_records_in_logs_since(self, pod_id, records, start_time,
-                                              wait_message=None, restart_timer_records=None):
+    def wait_for_one_of_records_in_logs_since(
+        self, pod_id, records, start_time, wait_message=None, restart_timer_records=None
+    ):
         """
         Receives logs from specified pod and checks if logs contain one of records since start_time.
         Process will wait for record until retry counter reaches self.retry_count or
@@ -1100,11 +1194,13 @@ class OpenshiftOrchestrator:
         raise Exception("Cannot find records in logs")
 
     def wait_for_record_in_logs_since(self, pod_id, record, start_time, wait_message=None, restart_timer_record=None):
-        self.wait_for_one_of_records_in_logs_since(pod_id,
-                                                   [record],
-                                                   start_time,
-                                                   wait_message,
-                                                   [restart_timer_record] if restart_timer_record else None)
+        self.wait_for_one_of_records_in_logs_since(
+            pod_id,
+            [record],
+            start_time,
+            wait_message,
+            [restart_timer_record] if restart_timer_record else None,
+        )
 
     def scale_stateful_set(self, stateful_set_name, replicas_number):
         log.info("Try to scale statefulset {} to {} replicas.".format(stateful_set_name, replicas_number))

@@ -113,32 +113,32 @@ func Read(path string) (*Config, error) {
 	config := Config{}
 	configFile, err := os.Open(path)
 	if err != nil {
-		return nil, fmt.Errorf("Error opening config file %v : %+v", path, err)
+		return nil, fmt.Errorf("error opening config file %v : %+v", path, err)
 	} else {
-		defer configFile.Close()
+		defer func() { _ = configFile.Close() }()
 	}
 
 	buf := bytes.Buffer{}
 
 	length, err := io.Copy(&buf, configFile)
 	if err != nil {
-		return nil, fmt.Errorf("Error copying config file %v : %+v", path, err)
+		return nil, fmt.Errorf("error copying config file %v : %+v", path, err)
 	}
 	log.Debugf("Copied %v bytes successfully to the buffer from file %v", length, path)
 
 	err = yaml.Unmarshal(buf.Bytes(), &config)
 	if err != nil {
-		return nil, fmt.Errorf("Error unmarshalling config file %v : %+v", path, err)
+		return nil, fmt.Errorf("error unmarshalling config file %v : %+v", path, err)
 	}
 
 	err = validateConfig(&config)
 	if err != nil {
-		return nil, fmt.Errorf("Error vaildating config file %v : %+v", path, err)
+		return nil, fmt.Errorf("error validating config file %v : %+v", path, err)
 	}
 
 	err = processCrypto(path, &config)
 	if err != nil {
-		return nil, fmt.Errorf("Crypto error for config %v : %+v", path, err)
+		return nil, fmt.Errorf("crypto error for config %v : %+v", path, err)
 	}
 
 	config.initDefaultDB()
@@ -149,11 +149,11 @@ func validateConfig(config *Config) error {
 	startupBlockingErrors := make([]string, 0)
 	log.Infof("CONFIG VALIDATION STARTED")
 	if len(config.Databases) == 0 {
-		return fmt.Errorf("Databases are not defined")
+		return fmt.Errorf("databases are not defined")
 	}
 	for dbName, dbConfig := range config.Databases {
 		if dbConfig.Dsn == "" {
-			return fmt.Errorf("Database %v has empty Dsn", dbName)
+			return fmt.Errorf("database %v has empty Dsn", dbName)
 		}
 		for label, labelValue := range dbConfig.Labels {
 			if labelValue == "" {
@@ -163,7 +163,7 @@ func validateConfig(config *Config) error {
 	}
 
 	if len(config.Queries) == 0 {
-		return fmt.Errorf("Queries are not defined")
+		return fmt.Errorf("queries are not defined")
 	}
 
 	if len(config.Metrics) == 0 {
@@ -243,7 +243,7 @@ func validateConfig(config *Config) error {
 	log.Infof("CONFIG VALIDATION FINISHED")
 
 	if len(startupBlockingErrors) != 0 {
-		return fmt.Errorf("Query exporter can not start, reasons: %+v", startupBlockingErrors)
+		return fmt.Errorf("query exporter cannot start, reasons: %+v", startupBlockingErrors)
 	}
 	return nil
 }
@@ -260,7 +260,7 @@ func checkHistogramFields(startupBlockingErrors []string, mName string, mCfg *Me
 		}
 		if mCfg.Count == "" {
 			errorMessage := fmt.Sprintf("Count field is not defined for histogram metric %v", mName)
-			startupBlockingErrors = append(startupBlockingErrors, errorMessage)
+			_ = append(startupBlockingErrors, errorMessage)
 		}
 	} else {
 		if len(mCfg.Buckets) != 0 {
@@ -312,12 +312,12 @@ func processCrypto(path string, config *Config) error {
 
 	key, isNew, err := getOrCreateKey()
 	if err != nil {
-		return fmt.Errorf("Key Error : %+v", err)
+		return fmt.Errorf("key error: %+v", err)
 	}
 
 	cryptoService, err := crypto.NewCrypto(key)
 	if err != nil {
-		return fmt.Errorf("Crypto Error : %+v", err)
+		return fmt.Errorf("crypto error: %+v", err)
 	}
 
 	configModified := false
@@ -334,7 +334,7 @@ func processCrypto(path string, config *Config) error {
 			}
 		} else {
 			if isNew {
-				return fmt.Errorf("There is no sense trying to decipher with fresh key %v", *keyPath)
+				return fmt.Errorf("there is no sense trying to decipher with fresh key %v", *keyPath)
 			}
 			dbConfig.DecryptedDsn, err = cryptoService.Decrypt([]byte(dbConfig.Dsn[len(enc_prefix):]))
 			if err != nil {
@@ -349,7 +349,7 @@ func processCrypto(path string, config *Config) error {
 		log.Infof("Modifying %v ...", path)
 		err = writeConfigToFile(path, *config)
 		if err != nil {
-			return fmt.Errorf("Error modifying %v : %+v", path, err)
+			return fmt.Errorf("error modifying %v : %+v", path, err)
 		} else {
 			log.Infof("Config %v modified successfully", path)
 		}
@@ -361,12 +361,12 @@ func processCrypto(path string, config *Config) error {
 func writeConfigToFile(path string, cfg Config) error {
 	err := os.Truncate(path, 0)
 	if err != nil {
-		return fmt.Errorf("Error truncating file %v : %+v", path, err)
+		return fmt.Errorf("error truncating file %v : %+v", path, err)
 	}
 	perms := os.FileMode(utils.GetOctalUintEnvironmentVariable("CONFIG_FILE_PERMS", 0600))
 	err = os.Chmod(path, perms)
 	if err != nil {
-		return fmt.Errorf("Error chmod file %v : %+v", path, err)
+		return fmt.Errorf("error chmod file %v : %+v", path, err)
 	}
 	f, err := os.OpenFile(path, os.O_RDWR|os.O_APPEND, perms)
 	defer func() {
@@ -374,26 +374,26 @@ func writeConfigToFile(path string, cfg Config) error {
 		_ = f.Close()
 	}()
 	if err != nil {
-		return fmt.Errorf("Error opening file %v : %+v", path, err)
+		return fmt.Errorf("error opening file %v : %+v", path, err)
 	}
 	_, err = f.Seek(0, 0)
 	if err != nil {
-		return fmt.Errorf("Error executing Seek for file %v : %+v", path, err)
+		return fmt.Errorf("error executing Seek for file %v : %+v", path, err)
 	}
 	out, err := yaml.Marshal(cfg)
 	if err != nil {
-		return fmt.Errorf("Error marshalling yaml : %+v", err)
+		return fmt.Errorf("error marshalling yaml : %+v", err)
 	}
 	_, err = f.Write(out)
 	if err != nil {
-		return fmt.Errorf("Error writing to file %v : %+v", path, err)
+		return fmt.Errorf("error writing to file %v : %+v", path, err)
 	}
 	return nil
 }
 
 func getOrCreateKey() (key []byte, new bool, err error) {
 	file, err := os.Open(*keyPath)
-	defer file.Close()
+	defer func() { _ = file.Close() }()
 
 	if err != nil && !os.IsNotExist(err) {
 		return nil, false, err
@@ -419,20 +419,20 @@ func getOrCreateKey() (key []byte, new bool, err error) {
 	log.Infof("Key file is empty. Generating new key and writing it to %v...", *keyPath)
 	newKey, err := randStringBytes(keySize)
 	if err != nil {
-		return nil, false, fmt.Errorf("Error generating crypto key %+v", err)
+		return nil, false, fmt.Errorf("error generating crypto key %+v", err)
 	}
 	key = []byte(base64.StdEncoding.EncodeToString(newKey))
 	file, err = os.Create(*keyPath)
 	if err != nil {
-		return nil, false, fmt.Errorf("Error creating file %v : %+v", *keyPath, err)
+		return nil, false, fmt.Errorf("error creating file %v : %+v", *keyPath, err)
 	}
 	err = os.Chmod(*keyPath, os.FileMode(utils.GetOctalUintEnvironmentVariable("KEY_FILE_PERMS", 0600)))
 	if err != nil {
-		return nil, false, fmt.Errorf("Error chmod file %v : %+v", *keyPath, err)
+		return nil, false, fmt.Errorf("error chmod file %v : %+v", *keyPath, err)
 	}
 	_, err = file.Write(key)
 	if err != nil {
-		return nil, false, fmt.Errorf("Error writing file %v : %+v", *keyPath, err)
+		return nil, false, fmt.Errorf("error writing file %v : %+v", *keyPath, err)
 	}
 	log.Infof("Key file generated successfully and written to %v", *keyPath)
 	return newKey, true, nil

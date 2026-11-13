@@ -24,15 +24,7 @@ import time
 import locks
 import utils
 import errno
-import subprocess
 import configs
-from retrying import retry
-from traceback import format_exception
-
-try:
-    from io import StringIO
-except ImportError:
-    from io import StringIO
 
 
 class StorageLocationAlreadyExistsException(Exception):
@@ -40,9 +32,12 @@ class StorageLocationAlreadyExistsException(Exception):
 
 
 VAULT_NAME_FORMAT = "%Y%m%dT%H%M"
-VAULT_DIRNAME_MATCHER = re.compile("\\d{8}T\\d{4}", re.IGNORECASE)
+VAULT_DIRNAME_MATCHER = re.compile(r"\\d{8}T\\d{4}", re.IGNORECASE)
 # pg_{}_archive_{}
-ARCHIVE_NAME_MATCHER = re.compile("pg_(.*)_archive_(?P<name>[\da-f]+(\.[\da-f]+\.backup)?(\.partial)?(\.bk)?)$", re.IGNORECASE)
+ARCHIVE_NAME_MATCHER = re.compile(
+    r"pg_(.*)_archive_(?P<name>[\\da-f]+(\\.[\\da-f]+\\.backup)?(\\.partial)?(\\.bk)?)$",
+    re.IGNORECASE,
+)
 # print(ARCHIVE_NAME_MATCHER.match("pg_common_archive_000000320000004600000066").group("name"))
 # print(ARCHIVE_NAME_MATCHER.match("pg_common_archive_0000001B000000100000003E.bk").group("name"))
 # print(ARCHIVE_NAME_MATCHER.match("pg_common_archive_0000003200000046000000A3.00000028.backup").group("name"))
@@ -51,17 +46,22 @@ ARCHIVE_NAME_MATCHER = re.compile("pg_(.*)_archive_(?P<name>[\da-f]+(\.[\da-f]+\
 
 PG_CLUSTER_NAME = os.getenv("PG_CLUSTER_NAME")
 ARCHIVE_EVICT_POLICY = os.getenv("ARCHIVE_EVICT_POLICY")
-unit_pattern = re.compile("(?P<mult>\d*)(?P<unit>.+)")
-memory_pattern = re.compile("\d+(\.\d+)?(?P<unit>[kmgt][bB]?)?")
+unit_pattern = re.compile(r"(?P<mult>\d*)(?P<unit>.+)")
+memory_pattern = re.compile(r"\d+(\.\d+)?(?P<unit>[kmgt][bB]?)?")
 memory_units = {
-    "ki": 1, "mi": 1024, "gi": 1048576,
-    "k": 1, "m": 1000, "g": 1000000,
-    "kb": 1, "mb": 1024, "gb": 1048576, "tb": 1073741824
+    "ki": 1,
+    "mi": 1024,
+    "gi": 1048576,
+    "k": 1,
+    "m": 1000,
+    "g": 1000000,
+    "kb": 1,
+    "mb": 1024,
+    "gb": 1048576,
+    "tb": 1073741824,
 }
-time_pattern = re.compile("\d+(\.\d+)?(?P<unit>(ms|s|min|h|d))?")
-time_utins = {
-    "ms": 1, "s": 1000, "min": 60000, "h": 3600000, "d": 86400000
-}
+time_pattern = re.compile(r"\d+(\.\d+)?(?P<unit>(ms|s|min|h|d))?")
+time_utins = {"ms": 1, "s": 1000, "min": 60000, "h": 3600000, "d": 86400000}
 log = logging.getLogger("Storage")
 
 
@@ -69,24 +69,30 @@ class StorageException(Exception):
     def __init__(self, msg):
         super(Exception, self).__init__(msg)
 
-#@retry(retry_on_exception=utils.retry_if_storage_error, wait_fixed=1000)
+
+# @retry(retry_on_exception=utils.retry_if_storage_error, wait_fixed=1000)
+
+
 def init_storage(storageRoot):
     if configs.is_external_pg():
         version_postfix = "external"
-        log.info("External Postgres is used, storage folder is \"external\"")
+        log.info('External Postgres is used, storage folder is "external"')
     else:
         version_postfix = utils.get_version_of_pgsql_server()
         if version_postfix is None:
             import fnmatch
-            pg_dirs = fnmatch.filter(os.listdir(storageRoot), 'pg*')
+
+            pg_dirs = fnmatch.filter(os.listdir(storageRoot), "pg*")
             if not pg_dirs:
                 raise StorageException("No suitable directories are found, retrying")
             log.info(f"Possible directories for backup store {pg_dirs}")
-            versions = sorted([int(re.search(r'\d+', x).group()) for x in pg_dirs], reverse=True)
+            versions = sorted([int(re.search(r"\d+", x).group()) for x in pg_dirs], reverse=True)
             version_postfix = "pg" + str(versions[0])
 
-    log.info(f"PostgreSQL server version is equal to {version_postfix}, "
-             f"so will save all backups in {version_postfix} dir")
+    log.info(
+        f"PostgreSQL server version is equal to {version_postfix}, "
+        f"so will save all backups in {version_postfix} dir"
+    )
     storageRoot = os.path.join(storageRoot, version_postfix)
 
     # folders
@@ -98,36 +104,40 @@ def init_storage(storageRoot):
             except OSError as exc:
                 if exc.errno != errno.EEXIST:
                     raise
-    if os.environ['STORAGE_TYPE'] not in ["s3", "swift"]:
+    if os.environ["STORAGE_TYPE"] not in ["s3", "swift"]:
         storage = os.path.join(storageRoot, "granular")
         for namespace in os.listdir(storage):
             for backup_id in os.listdir(os.path.join(storage, namespace)):
                 status_file = os.path.join(storage, namespace, backup_id, "status.json")
                 if os.path.isfile(status_file):
-                    with open(status_file , "r+") as f:
+                    with open(status_file, "r+") as f:
                         try:
                             status_json = json.load(f)
                         except ValueError as e:
-                            log.error("Failed to read the status file {} Error: {}".format(status_file,e))
+                            log.error("Failed to read the status file {} Error: {}".format(status_file, e))
                         else:
-                            if status_json['status'] == 'In progress':
+                            if status_json["status"] == "In progress":
                                 log.info("Attempt to change the status Path: {} ".format(status_file))
-                                status_json['status'] = 'Failed'
+                                status_json["status"] = "Failed"
                                 f.seek(0)
                                 f.write(json.dumps(status_json))
                                 f.truncate()
 
-    if os.environ['STORAGE_TYPE'] == "swift":
+    if os.environ["STORAGE_TYPE"] == "swift":
         import storage_swift
+
         return storage_swift.SwiftStorage(storageRoot)
-    if os.environ['STORAGE_TYPE'] == "s3":
+    if os.environ["STORAGE_TYPE"] == "s3":
         import storage_s3
+
         return storage_s3.AwsS3Storage(storageRoot)
-    if os.environ['STORAGE_TYPE'] == 'pgbackrest':
+    if os.environ["STORAGE_TYPE"] == "pgbackrest":
         import storage_pgbackrest
+
         print("Backrest storage init")
         return storage_pgbackrest.BackRestStorage(storageRoot)
     import storage_fs
+
     return storage_fs.FSStorage(storageRoot)
 
 
@@ -168,7 +178,7 @@ class Storage(metaclass=abc.ABCMeta):
 
     @abc.abstractmethod
     def open_vault(self):
-        """        
+        """
         :return:
         :rtype: (str, dict, StringIO)
         """
@@ -187,8 +197,8 @@ class Storage(metaclass=abc.ABCMeta):
     def prot_is_file_exists(self, filename):
         """
         Internal method. Should not use outside storage.
-        :param filename: filename with path from entry point. For fs storage entrypoint is /backup-storage/. 
-        :return: 
+        :param filename: filename with path from entry point. For fs storage entrypoint is /backup-storage/.
+        :return:
         """
         raise NotImplementedError
 
@@ -196,8 +206,8 @@ class Storage(metaclass=abc.ABCMeta):
     def prot_delete(self, filename):
         """
         Internal method. Should not use outside storage.
-        :param filename: filename with path from entry point. For fs storage entrypoint is /backup-storage/. 
-        :return: 
+        :param filename: filename with path from entry point. For fs storage entrypoint is /backup-storage/.
+        :return:
         """
         raise NotImplementedError
 
@@ -216,7 +226,7 @@ class Storage(metaclass=abc.ABCMeta):
     def prot_put_as_stream(self, filename, stream):
         """
         Internal method. Should not use outside storage.
-        :param filename: 
+        :param filename:
         :type filename: string
         :param stream:
         :type stream: io.RawIOBase
@@ -292,8 +302,8 @@ class Storage(metaclass=abc.ABCMeta):
                 else:
                     self.__log.error(
                         "Cannot parse eviction policy {}. "
-                        "Will use oldest backup to perform eviction.".
-                        format(ARCHIVE_EVICT_POLICY))
+                        "Will use oldest backup to perform eviction.".format(ARCHIVE_EVICT_POLICY)
+                    )
                     self.__evict_by_oldest_backup(archives)
 
             else:
@@ -305,16 +315,14 @@ class Storage(metaclass=abc.ABCMeta):
         if oldest_backup:
             bct = oldest_backup.create_timestamp()
         else:
-            self.__log.warning(
-                "Does not have oldest backup. "
-                "Will use current time and remove all files in archive.")
+            self.__log.warning("Does not have oldest backup. " "Will use current time and remove all files in archive.")
             bct = int(time.time() * 1000)
         self.__evict_by_time(archives, bct)
 
     def __evict_by_time(self, archives, keep_time):
         self.__log.info("Eviction timestamp {}".format(keep_time))
         for archive in archives:
-            self.__log.debug("Check WAL".format(archive))
+            self.__log.debug("Check WAL: {}".format(archive.filename))
             if keep_time > archive.timestamp:
                 self.delete_archive(archive.filename)
 
@@ -324,7 +332,7 @@ class Storage(metaclass=abc.ABCMeta):
         occupied_space = 0
         freed_space = 0
         for archive in sorted_archives:
-            self.__log.debug("Check WAL".format(archive))
+            self.__log.debug("Check WAL: {}".format(archive.filename))
             full_name = self.__get_fullfilename_for_archive(archive.filename)
             size = self.prot_get_file_size(full_name)
             occupied_space = occupied_space + size
@@ -347,8 +355,7 @@ class Storage(metaclass=abc.ABCMeta):
 
         # encrypted backups
         if not self.prot_is_file_exists(backup_name):
-            backup_name = "{}/pg_backup_{}_enc.tar.gz".format(vault.get_id(),
-                                                          vault.get_id())
+            backup_name = "{}/pg_backup_{}_enc.tar.gz".format(vault.get_id(), vault.get_id())
 
         return self.prot_get_as_stream(backup_name)
 
@@ -407,12 +414,12 @@ class Storage(metaclass=abc.ABCMeta):
             try:
                 crc = int(result.split("_")[0])
                 sha256 = result.split("_")[1]
-                if (crc == binascii.crc32(sha256.encode())):
+                if crc == binascii.crc32(sha256.encode()):
                     return sha256
                 else:
                     self.__log.warning("CRC32 check failed for sha file {}.".format(filename))
                     return None
-            except Exception as e:
+            except Exception:
                 return None
         return None
 
@@ -425,15 +432,13 @@ class Storage(metaclass=abc.ABCMeta):
                 data = f.read(chunk_size)
                 if len(data) == 0:
                     stream.close()
-                    self.__log.info(
-                        "Calculated sha256 {} for local archive".format(
-                            sha256.hexdigest()))
+                    self.__log.info("Calculated sha256 {} for local archive".format(sha256.hexdigest()))
                     return sha256.hexdigest()
                 sha256.update(data)
 
     def get_backup_in_progress_metrics(self):
         is_backup_in_progress = os.path.isfile(locks.get_backup_lock_file_path())
-        in_progress_metrics = {'backup_is_in_progress': is_backup_in_progress}
+        in_progress_metrics = {"backup_is_in_progress": is_backup_in_progress}
 
         if is_backup_in_progress:
             with open(locks.get_backup_lock_file_path(), "r") as f:
@@ -466,28 +471,36 @@ class Vault(metaclass=abc.ABCMeta):
         self.metrics = {}
 
     @abc.abstractmethod
-    def get_id(self): raise NotImplementedError
+    def get_id(self):
+        raise NotImplementedError
 
     @abc.abstractmethod
-    def get_folder(self): raise NotImplementedError
+    def get_folder(self):
+        raise NotImplementedError
 
     @abc.abstractmethod
-    def load_metrics(self): raise NotImplementedError
+    def load_metrics(self):
+        raise NotImplementedError
 
     @abc.abstractmethod
-    def is_locked(self): raise NotImplementedError
+    def is_locked(self):
+        raise NotImplementedError
 
     @abc.abstractmethod
-    def is_failed(self): raise NotImplementedError
+    def is_failed(self):
+        raise NotImplementedError
 
     @abc.abstractmethod
-    def is_done(self): raise NotImplemented
+    def is_done(self):
+        raise NotImplementedError
 
     @abc.abstractmethod
-    def create_time(self): raise NotImplementedError
+    def create_time(self):
+        raise NotImplementedError
 
     @abc.abstractmethod
-    def is_back_up_archive_exists(self): raise NotImplementedError
+    def is_back_up_archive_exists(self):
+        raise NotImplementedError
 
     def create_timestamp(self):
         return int(self.create_time() * 1000)
@@ -515,7 +528,7 @@ class Vault(metaclass=abc.ABCMeta):
             "failed": self.is_failed(),
             "locked": self.is_locked(),
             "ts": self.create_timestamp(),
-            "metrics": metrics
+            "metrics": metrics,
         }
 
         end_backup_timestamp = metrics.get("end_backup_timestamp")

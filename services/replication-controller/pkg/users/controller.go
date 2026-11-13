@@ -44,7 +44,7 @@ func (pc *UsersController) grantUserToReplication(ctx context.Context, request U
 	if err != nil {
 		panic(err)
 	}
-	defer conn.Close(ctx)
+	defer func() { _ = conn.Close(ctx) }()
 
 	_, err = conn.Exec(ctx, getGrantReplicationQuery(username))
 	if err != nil {

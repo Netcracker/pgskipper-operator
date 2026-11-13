@@ -48,8 +48,8 @@ func PerformRestore(payload utils.Payload) error {
 	args := []string{"restore", fmt.Sprintf("--stanza=%s", os.Getenv("PGBACKREST_STANZA"))}
 	args = append(args, restoreParams...)
 	logger.Info("Restore procedure has been started")
-	if err, _ := utils.ExecCommand(constants.BackrestBin, args); err != nil {
-
+	_, err := utils.ExecCommand(constants.BackrestBin, args)
+	if err != nil {
 		return err
 	}
 	return nil

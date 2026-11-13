@@ -98,7 +98,9 @@ func processDatabaseForMigration(ctx context.Context, adapter *basic.ServiceAdap
 }
 
 func cloneMetadata(metadataOrig map[string]interface{}) map[string]interface{} {
+	//nolint:govet
 	metadata := maps.Clone(metadataOrig)
+	//nolint:govet
 	metadata[basic.RolesKey] = maps.Clone(metadataOrig[basic.RolesKey].(map[string]interface{}))
 	return metadata
 }
@@ -142,6 +144,7 @@ func performAlteringRoles(ctx context.Context, dbAdministration *basic.ServiceAd
 		log.Warn(fmt.Sprintf("cannot perform roles grant for database %s", database), zap.Error(err))
 		return false
 	}
+	//nolint:govet
 	return maps.Equal(roles, validRoles)
 }
 

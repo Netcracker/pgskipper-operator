@@ -41,6 +41,14 @@ Entry point: `operator/cmd/pgskipper-operator/main.go`
 
 ## Building and Development
 
+### Repository-wide verification
+
+From the repository root:
+
+```bash
+make verify   # Go fmt, vet, lint, tests + Python flake8
+make modules  # List all Go modules
+
 ### Operator
 
 Work from `/operator` directory:
@@ -86,6 +94,17 @@ make test
 # Format code
 make fmt
 ```
+
+### Repository-wide verification
+
+Run from repository root:
+
+- `make verify` — Go formatting, vet, lint, tests and Python Flake8.
+- `make modules` — List all Go modules.
+
+Tool versions: `.github/tool-versions.env`.
+CI runs `make verify`.
+
 
 ### Default Docker Image Naming
 

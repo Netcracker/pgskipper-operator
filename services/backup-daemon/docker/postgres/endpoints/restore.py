@@ -17,7 +17,6 @@ Set of endpoints to performs actions with external restore.
 """
 
 import datetime
-import time
 import errno
 import hashlib
 import json
@@ -43,13 +42,13 @@ def verify(username, password):
 
 class ExternalRestoreRequest(Resource):
     __endpoints = [
-        '/external/restore',
+        "/external/restore",
     ]
 
     def __init__(self, storage):
         self.__log = logging.getLogger("ExternalRestoreEndpoint")
         self.restore_folder = f"{storage.root}/external/restore"
-        self.allowable_db_types = ['AZURE', 'RDS']
+        self.allowable_db_types = ["AZURE", "RDS"]
         if not os.path.exists(self.restore_folder):
             try:
                 os.makedirs(self.restore_folder)
@@ -60,26 +59,24 @@ class ExternalRestoreRequest(Resource):
 
     @staticmethod
     def cleanup_restore_status(storage):
-        log=logging.getLogger("ExternalRestoreEndpoint")
         restore_folder = f"{storage.root}/external/restore"
         status_file = f"{restore_folder}/status"
         if os.path.exists(status_file):
-            with open(status_file, 'r') as f:
+            with open(status_file, "r") as f:
                 status_map = json.load(f)
                 f.close()
-                restoreId = status_map['restoreId']
+                restoreId = status_map["restoreId"]
                 restore_file = f"{restore_folder}/{restoreId}"
                 if os.path.exists(restore_file):
                     stuck_status = None
-                    with open(restore_file, 'r') as o:
+                    with open(restore_file, "r") as o:
                         stuck_status = json.load(o)
                         o.close()
-                    stuck_status['status'] = "Failed"
-                    with open(restore_file, 'w') as o:   
+                    stuck_status["status"] = "Failed"
+                    with open(restore_file, "w") as o:
                         o.write(json.dumps(stuck_status))
                         o.close()
             os.remove(status_file)
-
 
     @staticmethod
     def get_endpoints():
@@ -96,28 +93,28 @@ class ExternalRestoreRequest(Resource):
 
         req = request.get_json()
 
-        if req.get('restore_time'):
-            restore_time = req.get('restore_time')
+        if req.get("restore_time"):
+            restore_time = req.get("restore_time")
         else:
             self.__log.info("No restore_time provided")
             return "No restore_time provided", 400
 
-        if req.get('restore_as_separate'):
-            restore_as_separate = req.get('restore_as_separate')
+        if req.get("restore_as_separate"):
+            restore_as_separate = req.get("restore_as_separate")
         else:
             restore_as_separate = "false"
 
-        if req.get('geo_restore'):
-            geo_restore = req.get('geo_restore')
+        if req.get("geo_restore"):
+            geo_restore = req.get("geo_restore")
         else:
             geo_restore = "false"
 
-        subnet = req.get('subnet', 'false')
+        subnet = req.get("subnet", "false")
         if os.path.isfile(self.status_file):
-            with open(self.status_file, 'r') as f:
+            with open(self.status_file, "r") as f:
                 status_map = json.load(f)
                 f.close()
-                if status_map['status'] == "In Progress":
+                if status_map["status"] == "In Progress":
                     return status_map, 200
                 else:
                     os.remove(self.status_file)
@@ -125,7 +122,14 @@ class ExternalRestoreRequest(Resource):
         restore_id = ExternalRestore.generate_restore_id()
 
         if external_pg_type == "AZURE":
-            restore = ExternalRestore(self.restore_folder, restore_id, restore_time, restore_as_separate, geo_restore, subnet)
+            restore = ExternalRestore(
+                self.restore_folder,
+                restore_id,
+                restore_time,
+                restore_as_separate,
+                geo_restore,
+                subnet,
+            )
 
         if external_pg_type == "RDS":
             restore = RDSRestore(self.restore_folder, restore_id, restore_time, restore_as_separate)
@@ -135,9 +139,17 @@ class ExternalRestoreRequest(Resource):
 
 
 class ExternalRestore(Thread):
-    def __init__(self, restore_folder, restore_id, restore_time, restore_as_separate, geo_restore, subnet):
+    def __init__(
+        self,
+        restore_folder,
+        restore_id,
+        restore_time,
+        restore_as_separate,
+        geo_restore,
+        subnet,
+    ):
         Thread.__init__(self)
-        self.__log = logging.getLogger('ExternalRestore')
+        self.__log = logging.getLogger("ExternalRestore")
         self.restore_id = restore_id
         self.restore_time = restore_time
         self.restore_folder = restore_folder
@@ -146,18 +158,35 @@ class ExternalRestore(Thread):
         self.subnet = subnet
 
     def run(self):
-        cmd_processed = self.__process_cmd(self.restore_id, self.restore_time, self.restore_folder,
-                                           self.restore_as_separate, self.geo_restore, self.subnet)
+        cmd_processed = self.__process_cmd(
+            self.restore_id,
+            self.restore_time,
+            self.restore_folder,
+            self.restore_as_separate,
+            self.geo_restore,
+            self.subnet,
+        )
         exit_code = subprocess.call(cmd_processed)
         if exit_code != 0:
             self.__log.error("Restore process has been failed")
         else:
             self.__log.info("Restore process successfully finished")
 
-    def __process_cmd(self, restore_id, restore_time, restore_folder, restore_as_separate, geo_restore, subnet):
-        self.__log.info(f"restore_id {restore_id}, restore_time {restore_time}, "
-                        f"restore_folder {restore_folder}, restore_as_separate {restore_as_separate}, "
-                        f"subnet: {subnet}")
+    def __process_cmd(
+        self,
+        restore_id,
+        restore_time,
+        restore_folder,
+        restore_as_separate,
+        geo_restore,
+        subnet,
+    ):
+        self.__log.info(
+            f"restore_id {restore_id}, restore_time {restore_time}, "
+            f"restore_folder {restore_folder}, "
+            f"restore_as_separate {restore_as_separate}, "
+            f"subnet: {subnet}"
+        )
         cmd_processed = self.__split_command_line(
             f"/opt/backup/azure_restore "
             f"--restore_id {restore_id} "
@@ -165,16 +194,18 @@ class ExternalRestore(Thread):
             f"--restore_folder {restore_folder} "
             f"--restore_as_separate {restore_as_separate} "
             f"--geo_restore {geo_restore} "
-            f"--subnet {subnet}")
+            f"--subnet {subnet}"
+        )
         return cmd_processed
 
     @staticmethod
     def __split_command_line(cmd_line):
         import shlex
+
         lex = shlex.shlex(cmd_line)
         lex.quotes = '"'
         lex.whitespace_split = True
-        lex.commenters = ''
+        lex.commenters = ""
         return list(lex)
 
     @staticmethod
@@ -183,32 +214,33 @@ class ExternalRestore(Thread):
 
     @staticmethod
     def generate_restore_id():
-        return 'restore-%s' % ExternalRestore.generate_id()
+        return "restore-%s" % ExternalRestore.generate_id()
 
 
 class RDSRestore(Thread):
 
-    NAMESPACE_PATH = '/var/run/secrets/kubernetes.io/serviceaccount/namespace'
+    NAMESPACE_PATH = "/var/run/secrets/kubernetes.io/serviceaccount/namespace"
 
     def __init__(self, restore_folder, restore_id, restore_time, restore_as_separate):
         Thread.__init__(self)
         try:
-            self.__log = logging.getLogger('RDSRestore')
+            self.__log = logging.getLogger("RDSRestore")
             self.restore_id = restore_id
             self.restore_time = restore_time
             self.restore_folder = restore_folder
             self.client = self.get_rds_client()
-            self.pg_service_name = 'pg-patroni'
+            self.pg_service_name = "pg-patroni"
             self.namespace = open(self.NAMESPACE_PATH).read()
-            # Imported here: most daemons never restore from RDS, and these
-            # libraries would stay in every worker's memory.
+            # Imported here: most daemons never restore from RDS, and
+            # these libraries would stay in every worker's memory.
             from kubernetes import client as k8s_client, config as k8s_config
+
             k8s_config.load_incluster_config()
             self.k8s_core_api = k8s_client.CoreV1Api()
             self.status = {
-                'trackingId': self.restore_id,
-                'namespace': self.namespace,
-                'status': BackupStatus.PLANNED
+                "trackingId": self.restore_id,
+                "namespace": self.namespace,
+                "status": BackupStatus.PLANNED,
             }
             self.restore_as_separate = restore_as_separate
         except Exception as e:
@@ -226,7 +258,7 @@ class RDSRestore(Thread):
             response, restored_cluster_name = self.restore_cluster(cluster_name)
             current_instances, restored_instances = self.restore_db_instances(cluster_name, restored_cluster_name)
             self.wait_for_db_instance(restored_instances)
-            if self.restore_as_separate != 'true':
+            if self.restore_as_separate != "true":
                 self.update_service_external_name(restored_cluster_name)
                 self.stop_db_cluster(cluster_name)
             self.update_status("status", BackupStatus.SUCCESSFUL, True)
@@ -241,11 +273,12 @@ class RDSRestore(Thread):
 
     @staticmethod
     def generate_restore_id():
-        return 'restore-%s' % RDSRestore.generate_id()
+        return "restore-%s" % RDSRestore.generate_id()
 
     def get_rds_client(self):
         self.__log.info("RDS: Init RDS Client")
         import boto3
+
         return boto3.client("rds")
 
     def restore_cluster(self, cluster_name):
@@ -259,18 +292,28 @@ class RDSRestore(Thread):
         try:
             security_groups = []
             instance_response = self.client.describe_db_instances(
-                Filters=[{'Name': 'db-cluster-id', 'Values': [cluster_name, ]}, ])
-            if instance_response.get('DBInstances'):
+                Filters=[
+                    {
+                        "Name": "db-cluster-id",
+                        "Values": [
+                            cluster_name,
+                        ],
+                    },
+                ]
+            )
+            if instance_response.get("DBInstances"):
                 security_groups = self.extract_vpc_security_group_ids(
-                    instance_response.get('DBInstances')[0].get('VpcSecurityGroups'))
+                    instance_response.get("DBInstances")[0].get("VpcSecurityGroups")
+                )
 
             cluster_response = self.client.describe_db_clusters(DBClusterIdentifier=cluster_name)
-            if cluster_response.get('DBClusters'):
-                cluster = cluster_response.get('DBClusters')[0]
-                subnet_group_name = cluster.get('DBSubnetGroup')
-                port = cluster.get('Port')
+            if cluster_response.get("DBClusters"):
+                cluster = cluster_response.get("DBClusters")[0]
+                subnet_group_name = cluster.get("DBSubnetGroup")
+                port = cluster.get("Port")
             else:
-                raise Exception("Cluster response is empty. Can not read parameters to continue")
+                msg = "Cluster response is empty. " "Can not read parameters to continue"
+                raise Exception(msg)
 
             restore_date = parser.parse(self.restore_time)
 
@@ -281,20 +324,19 @@ class RDSRestore(Thread):
                 DBSubnetGroupName=subnet_group_name,
                 Port=port,
                 VpcSecurityGroupIds=security_groups,
-                Tags=[{
-                    'Key': 'SOURCE-CLUSTER',
-                    'Value': cluster_name
-                }, {
-                    'Key': 'RESTORE-TIME',
-                    'Value': self.restore_time
-                },
+                Tags=[
+                    {"Key": "SOURCE-CLUSTER", "Value": cluster_name},
+                    {"Key": "RESTORE-TIME", "Value": self.restore_time},
                 ],
             )
 
-            status_code = response.get('ResponseMetadata').get('HTTPStatusCode')
+            response_metadata = response.get("ResponseMetadata")
+            status_code = response_metadata.get("HTTPStatusCode")
             if status_code != 200:
-                raise Exception("Error occurred while cluster restoring. http code: %s" % status_code)
-            self.__log.info("RDS: Cluster %s restored successfully" % restored_cluster_name)
+                msg = "Error occurred while cluster restoring. " "http code: %s" % status_code
+                raise Exception(msg)
+            msg = "RDS: Cluster %s restored successfully" % (restored_cluster_name)
+            self.__log.info(msg)
         except Exception as e:
             raise Exception("RDS: Client Error: %s " % e)
 
@@ -303,33 +345,42 @@ class RDSRestore(Thread):
     def wait_for_db_instance(self, restored_instances):
         for instance_name in restored_instances:
             self.__log.info("RDS: Wait For DB Instance: %s" % instance_name)
-            waiter = self.client.get_waiter('db_instance_available')
+            waiter = self.client.get_waiter("db_instance_available")
             waiter.wait(DBInstanceIdentifier=instance_name)
             self.__log.info("RDS: DB Instance %s is ready" % instance_name)
 
     def restore_db_instances(self, cluster_name, restored_cluster_name):
         instance_response = self.client.describe_db_instances(
-            Filters=[{'Name': 'db-cluster-id', 'Values': [cluster_name, ]}, ])
-        if instance_response.get('DBInstances'):
+            Filters=[
+                {
+                    "Name": "db-cluster-id",
+                    "Values": [
+                        cluster_name,
+                    ],
+                },
+            ]
+        )
+        if instance_response.get("DBInstances"):
             restored_instances = []
             current_instances = []
-            for current_instance in instance_response.get('DBInstances'):
+            for current_instance in instance_response.get("DBInstances"):
                 current_instance, restored_instance = self.create_db_instance(restored_cluster_name, current_instance)
                 restored_instances.append(restored_instance)
                 current_instances.append(current_instance)
         else:
-            raise Exception("RDS: Instance response is empty. Can not read parameters to continue")
+            msg = "RDS: Instance response is empty. " "Can not read parameters to continue"
+            raise Exception(msg)
         return current_instances, restored_instances
 
     def create_db_instance(self, restored_cluster_name, current_instance):
         try:
-            current_instance_id = current_instance.get('DBInstanceIdentifier')
+            current_instance_id = current_instance.get("DBInstanceIdentifier")
             self.check_name(current_instance_id)
             restored_instance_id = self.get_restored_name(current_instance_id)
             self.__log.info("RDS: Create DB Instance: %s" % restored_instance_id)
 
-            db_instance_class = current_instance.get('DBInstanceClass')
-            db_engine = current_instance.get('Engine')
+            db_instance_class = current_instance.get("DBInstanceClass")
+            db_engine = current_instance.get("Engine")
             # db_master_username = current_instance.get('MasterUsername')
 
             self.client.create_db_instance(
@@ -337,10 +388,8 @@ class RDSRestore(Thread):
                 DBInstanceClass=db_instance_class,
                 Engine=db_engine,
                 DBClusterIdentifier=restored_cluster_name,
-                Tags=[{
-                    'Key': 'SOURCE-CLUSTER',
-                    'Value': current_instance_id
-                },
+                Tags=[
+                    {"Key": "SOURCE-CLUSTER", "Value": current_instance_id},
                 ],
             )
         except Exception as e:
@@ -351,56 +400,64 @@ class RDSRestore(Thread):
     def extract_vpc_security_group_ids(self, current_instance_security_groups):
         vpc_security_group_ids = []
         for group in current_instance_security_groups:
-            vpc_security_group_ids.append(group.get('VpcSecurityGroupId'))
+            vpc_security_group_ids.append(group.get("VpcSecurityGroupId"))
         return vpc_security_group_ids
 
     def get_cluster_name(self, instance_name):
         instance_response = self.client.describe_db_instances(DBInstanceIdentifier=instance_name)
-        return instance_response.get('DBClusterIdentifier')
+        return instance_response.get("DBClusterIdentifier")
 
     def update_service_external_name(self, restored_cluster_name):
         self.__log.info("RDS: update service external name: %s" % restored_cluster_name)
         # instance_response = self.client.describe_db_instances(
-        #     Filters=[{'Name': 'db-cluster-id', 'Values': [restored_cluster_name,]},])
+        #     Filters=[{'Name': 'db-cluster-id',
+        #               'Values': [restored_cluster_name,]},])
         # if instance_response.get('DBInstances'):
-        #     restored_db_endpoint = instance_response.get('DBInstances')[0].get('Endpoint').get('Address')
+        #     restored_db_endpoint = (
+        #         instance_response.get('DBInstances')[0].get('Endpoint')
+        #         .get('Address'))
         cluster_response = self.client.describe_db_clusters(DBClusterIdentifier=restored_cluster_name)
-        if cluster_response.get('DBClusters'):
-            restored_db_endpoint = cluster_response.get('DBClusters')[0].get('Endpoint')
+        if cluster_response.get("DBClusters"):
+            db_clusters = cluster_response.get("DBClusters")[0]
+            restored_db_endpoint = db_clusters.get("Endpoint")
         else:
-            raise Exception("RDS: Restored instance response is empty. Can not read parameters to continue")
+            msg = "RDS: Restored instance response is empty. " "Can not read parameters to continue"
+            raise Exception(msg)
 
         service_patch = self.create_service(restored_db_endpoint)
-        self.k8s_core_api.patch_namespaced_service(name=self.pg_service_name, namespace=self.namespace, body=service_patch)
+        self.k8s_core_api.patch_namespaced_service(
+            name=self.pg_service_name, namespace=self.namespace, body=service_patch
+        )
 
     def get_service_external_name(self):
-        services = self.k8s_core_api.list_namespaced_service(
-            namespace=self.namespace,
-            field_selector="metadata.name=%s" % self.pg_service_name)
+        field_sel = "metadata.name=%s" % self.pg_service_name
+        services = self.k8s_core_api.list_namespaced_service(namespace=self.namespace, field_selector=field_sel)
         external_name = services.items[0].spec.external_name
         self.__log.info("RDS: Current service external name: %s" % external_name)
         return external_name
 
     def create_service(self, external_name):
         from kubernetes import client as k8s_client
+
         return k8s_client.V1Service(
-            spec=k8s_client.V1ServiceSpec(
-                external_name=external_name
-            ),
+            spec=k8s_client.V1ServiceSpec(external_name=external_name),
         )
 
     def get_restored_name(self, name):
-        hashed_time = hashlib.md5(self.restore_id.encode('utf-8')).hexdigest()[0:8]
+        md5_hash = hashlib.md5(self.restore_id.encode("utf-8"))
+        hashed_time = md5_hash.hexdigest()[0:8]
         if "-restore-" in name:
             old_name = name.split("-restore-")
             return old_name[0] + "-restore-" + hashed_time
         else:
             return name + "-restore-" + hashed_time
 
-    #RDS cluster or instance names must contain from 1 to 63 symbols. 17 of them are reserved for restored name.
+    # RDS cluster or instance names must contain from 1 to 63 symbols.
+    # 17 of them are reserved for restored name.
     def check_name(self, name):
         if len(name) > 46:
-            raise Exception("Name :%s is too long. Must me not more than 46 symbols")
+            msg = "Name :%s is too long. Must me not more than 46 symbols"
+            raise Exception(msg)
 
     def stop_db_instances(self, instances):
         for instance in instances:
@@ -413,8 +470,10 @@ class RDSRestore(Thread):
         self.client.stop_db_cluster(DBClusterIdentifier=cluster_name)
         self.__log.info("RDS: Stop cluster: %s - Stopped" % cluster_name)
 
-    def build_restore_status_file_path(self, ):
-        return '%s/%s' % (self.restore_folder, self.restore_id)
+    def build_restore_status_file_path(
+        self,
+    ):
+        return "%s/%s" % (self.restore_folder, self.restore_id)
 
     def flush_status(self):
         path = self.build_restore_status_file_path()
@@ -426,7 +485,7 @@ class RDSRestore(Thread):
             self.flush_status()
 
     def write_in_json(self, path, data):
-        with open(path, 'w') as fd:
+        with open(path, "w") as fd:
             try:
                 fcntl.lockf(fd, fcntl.LOCK_EX | fcntl.LOCK_NB)
                 json.dump(data, fd)
@@ -439,9 +498,9 @@ class RDSRestore(Thread):
 
 
 class BackupStatus:
-    SUCCESSFUL = 'Successful'
-    FAILED = 'Failed'
-    IN_PROGRESS = 'In progress'
-    PLANNED = 'Planned'
-    UNKNOWN = 'Unknown'
-    CANCELED = 'Canceled'
+    SUCCESSFUL = "Successful"
+    FAILED = "Failed"
+    IN_PROGRESS = "In progress"
+    PLANNED = "Planned"
+    UNKNOWN = "Unknown"
+    CANCELED = "Canceled"

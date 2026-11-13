@@ -13,7 +13,6 @@
 # limitations under the License.
 
 import datetime
-import glob
 import http.client
 import logging
 import os
@@ -40,36 +39,39 @@ class PostgreSQLDumpWorker(Thread):
         self.name = self.backup_id
         self.namespace = backup_request.get("namespace") or configs.default_namespace()
         self.compression_level = backup_request.get("compressionLevel", 9)
-        self.keep = (
-            backup_request.get("keep") or configs.default_backup_expiration_period()
-        )
+        self.keep = backup_request.get("keep") or configs.default_backup_expiration_period()
         self.postgres_version = utils.get_version_of_pgsql_server()
-        self.is_standard_storage = (
-            True if backup_request.get("externalBackupPath") is None else False
-        )
+        self.is_standard_storage = True if backup_request.get("externalBackupPath") is None else False
         self.location = (
             configs.backups_storage(self.postgres_version)
             if self.is_standard_storage
-            else backups.build_external_backup_root(
-                backup_request.get("externalBackupPath")
-            )
+            else backups.build_external_backup_root(backup_request.get("externalBackupPath"))
         )
         self.external_backup_root = None if self.is_standard_storage else self.location
         self.bin_path = configs.get_pgsql_bin_path(self.postgres_version)
         self.parallel_jobs = configs.get_parallel_jobs()
         self.databases = databases if databases else []
         self.blob_path = blob_path
-        self.backup_dir = backups.build_backup_path(
-            self.backup_id, self.namespace, self.external_backup_root
-        )
+        self.backup_dir = backups.build_backup_path(self.backup_id, self.namespace, self.external_backup_root)
         self.create_backup_dir()
-        self.storage_name = backup_request.get('storageName') or ""
+        self.storage_name = backup_request.get("storageName") or ""
         self.use_s3_alias = use_s3_alias
 
         if blob_path:
-            self.s3 = storage_s3.AwsS3Vault(storage_name=self.storage_name, prefix="", use_s3_alias=self.use_s3_alias,)
+            self.s3 = storage_s3.AwsS3Vault(
+                storage_name=self.storage_name,
+                prefix="",
+                use_s3_alias=self.use_s3_alias,
+            )
         else:
-            self.s3 = storage_s3.AwsS3Vault(storage_name=self.storage_name, use_s3_alias=self.use_s3_alias,) if os.environ['STORAGE_TYPE'] == "s3" else None
+            self.s3 = (
+                storage_s3.AwsS3Vault(
+                    storage_name=self.storage_name,
+                    use_s3_alias=self.use_s3_alias,
+                )
+                if os.environ["STORAGE_TYPE"] == "s3"
+                else None
+            )
 
         self._cancel_event = Event()
         if configs.get_encryption():
@@ -79,13 +81,13 @@ class PostgreSQLDumpWorker(Thread):
             self.key_source = encryption.KeyManagement.get_key_source()
         else:
             self.encryption = False
-            
+
         self.status = {
-            'backupId': self.backup_id,
-            'namespace': self.namespace,
-            'status': backups.BackupStatus.PLANNED,
-            'storageName': self.storage_name,
-            'blobPath': self.blob_path,
+            "backupId": self.backup_id,
+            "namespace": self.namespace,
+            "status": backups.BackupStatus.PLANNED,
+            "storageName": self.storage_name,
+            "blobPath": self.blob_path,
         }
         self.pg_dump_proc = None
 
@@ -104,9 +106,7 @@ class PostgreSQLDumpWorker(Thread):
 
     def kill_processes(self):
         if self.pg_dump_proc:
-            self.log.info(
-                "kill backup process with pid: {}".format(self.pg_dump_proc.pid)
-            )
+            self.log.info("kill backup process with pid: {}".format(self.pg_dump_proc.pid))
             self.pg_dump_proc.kill()
 
     def update_status(self, key, value, database=None, flush=False):
@@ -131,9 +131,7 @@ class PostgreSQLDumpWorker(Thread):
             self.flush_status(self.external_backup_root)
 
     def flush_status(self, external_backup_storage=None):
-        path = backups.build_backup_status_file_path(
-            self.backup_id, self.namespace, external_backup_storage
-        )
+        path = backups.build_backup_status_file_path(self.backup_id, self.namespace, external_backup_storage)
         utils.write_in_json(path, self.status)
         if self.s3:
             try:
@@ -157,9 +155,7 @@ class PostgreSQLDumpWorker(Thread):
                     "WHERE datallowconn = 't' and "
                     "      datistemplate = 'f' and "
                     "      datname not in ({0})".format(
-                        ",".join(
-                            "'{0}'".format(x) for x in configs.protected_databases()
-                        )
+                        ",".join("'{0}'".format(x) for x in configs.protected_databases())
                     )
                 )
                 self.databases = [db[0] for db in cur]
@@ -175,23 +171,17 @@ class PostgreSQLDumpWorker(Thread):
             conn = psycopg2.connect(**connection_properties)
             with conn.cursor() as cur:
                 excluded_env = os.getenv("EXCLUDED_EXTENSIONS", "")
-                excluded_extensions = [
-                    e.strip() for e in excluded_env.split(",") if e.strip()
-                ]
+                excluded_extensions = [e.strip() for e in excluded_env.split(",") if e.strip()]
 
                 # Always exclude pg_hint_plan
                 if "pg_hint_plan" not in excluded_extensions:
                     excluded_extensions.append("pg_hint_plan")
 
-                self.log.info(
-                    self.log_msg(f"Excluded extensions: {excluded_extensions}")
-                )
+                self.log.info(self.log_msg(f"Excluded extensions: {excluded_extensions}"))
 
                 if not excluded_extensions:
                     self.log.warning(
-                        self.log_msg(
-                            "No excluded extensions configured; all extensions will be included."
-                        )
+                        self.log_msg("No excluded extensions configured; all extensions will be included.")
                     )
 
                 placeholders = ",".join(["%s"] * len(excluded_extensions))
@@ -199,25 +189,17 @@ class PostgreSQLDumpWorker(Thread):
                 cur.execute(query, excluded_extensions)
 
                 included_extensions = [row[0] for row in cur]
-                self.log.info(
-                    self.log_msg(
-                        f"Fetched included extensions for '{database}': {included_extensions}"
-                    )
-                )
+                self.log.info(self.log_msg(f"Fetched included extensions for '{database}': {included_extensions}"))
                 return included_extensions
         except Exception as e:
-            raise backups.BackupFailedException(
-                database, f"Failed to fetch included extensions: {e}"
-            )
+            raise backups.BackupFailedException(database, f"Failed to fetch included extensions: {e}")
         finally:
             if conn:
                 conn.close()
 
     def backup_single_database(self, database):
         self.log.info(self.log_msg("Start processing database '{}'.".format(database)))
-        self.log.info(
-            self.log_msg("Will use binaries: '{}' for backup.".format(self.bin_path))
-        )
+        self.log.info(self.log_msg("Will use binaries: '{}' for backup.".format(self.bin_path)))
 
         if database == "postgres":
             raise backups.BackupFailedException(
@@ -232,9 +214,7 @@ class PostgreSQLDumpWorker(Thread):
         iso_date = datetime.datetime.fromtimestamp(self.status["timestamp"]).isoformat()
         self.update_status("created", str(iso_date), database, flush=True)
 
-        pg_dump_backup_path = backups.build_backup_path(
-            self.backup_id, self.namespace, self.external_backup_root
-        )
+        pg_dump_backup_path = backups.build_backup_path(self.backup_id, self.namespace, self.external_backup_root)
 
         # Some databases may contain special symbols like '=',
         # '!' and others, so use this WA.
@@ -285,9 +265,7 @@ class PostgreSQLDumpWorker(Thread):
             with open(self.stderr_file(database), "w+") as stderr:
                 start = time.time()
                 if self.encryption:
-                    pg_dump_proc = subprocess.Popen(
-                        command, stdout=subprocess.PIPE, stderr=stderr, env=proc_env
-                    )
+                    pg_dump_proc = subprocess.Popen(command, stdout=subprocess.PIPE, stderr=stderr, env=proc_env)
                     openssl_proc = subprocess.Popen(
                         "openssl enc -aes-256-cbc -nosalt -pass pass:%s" % self.key,
                         stdin=pg_dump_proc.stdout,
@@ -297,17 +275,13 @@ class PostgreSQLDumpWorker(Thread):
                     self.pg_dump_proc = openssl_proc
                     exit_code = openssl_proc.wait()
                 else:
-                    pg_dump_proc = subprocess.Popen(
-                        command, stderr=stderr, env=proc_env
-                    )
+                    pg_dump_proc = subprocess.Popen(command, stderr=stderr, env=proc_env)
                     self.pg_dump_proc = pg_dump_proc
                     exit_code = pg_dump_proc.wait()
 
                 if exit_code != 0:
                     with open(self.stderr_file(database)) as f:
-                        raise backups.BackupFailedException(
-                            database, "\n".join(f.readlines())
-                        )
+                        raise backups.BackupFailedException(database, "\n".join(f.readlines()))
 
                 self.pg_dump_proc = None
 
@@ -346,9 +320,7 @@ class PostgreSQLDumpWorker(Thread):
                 start = time.time()
                 # in case of encryption lets redirect output of pg_dump to openssl
                 if self.encryption:
-                    pg_dump_proc = subprocess.Popen(
-                        command, stdout=subprocess.PIPE, stderr=stderr, env=proc_env
-                    )
+                    pg_dump_proc = subprocess.Popen(command, stdout=subprocess.PIPE, stderr=stderr, env=proc_env)
                     openssl_proc = subprocess.Popen(
                         "openssl enc -aes-256-cbc -nosalt -pass pass:%s" % self.key,
                         stdin=pg_dump_proc.stdout,
@@ -359,29 +331,21 @@ class PostgreSQLDumpWorker(Thread):
                     self.pg_dump_proc = openssl_proc
                     exit_code = openssl_proc.wait()
                 else:
-                    pg_dump_proc = subprocess.Popen(
-                        command, stdout=dump, stderr=stderr, env=proc_env
-                    )
+                    pg_dump_proc = subprocess.Popen(command, stdout=dump, stderr=stderr, env=proc_env)
                     self.pg_dump_proc = pg_dump_proc
                     exit_code = pg_dump_proc.wait()
 
                 if exit_code != 0:
                     with open(self.stderr_file(database)) as f:
-                        raise backups.BackupFailedException(
-                            database, "\n".join(f.readlines())
-                        )
+                        raise backups.BackupFailedException(database, "\n".join(f.readlines()))
 
                 self.pg_dump_proc = None
         if self.s3:
             try:
                 # upload dumpfile
-                self.s3.upload_file(
-                    database_backup_path, self.blob_path, self.backup_id
-                )
+                self.s3.upload_file(database_backup_path, self.blob_path, self.backup_id)
                 # upload errorfile
-                self.s3.upload_file(
-                    self.stderr_file(database), self.blob_path, self.backup_id
-                )
+                self.s3.upload_file(self.stderr_file(database), self.blob_path, self.backup_id)
             except Exception as e:
                 raise e
 
@@ -413,7 +377,7 @@ class PostgreSQLDumpWorker(Thread):
                     "      AND datname = %s LIMIT 1",
                     (database,),
                 )
-                pids = [p[0] for p in cur.fetchall()]
+                # Active connections check performed
 
                 cur.execute(
                     """
@@ -436,9 +400,7 @@ class PostgreSQLDumpWorker(Thread):
             if conn:
                 conn.close()
 
-        self.log.debug(
-            self.log_msg("Roles {} have been fetched for backup ".format(rolesList))
-        )
+        self.log.debug(self.log_msg("Roles {} have been fetched for backup ".format(rolesList)))
 
         roles_backup_path = backups.build_roles_backup_path(
             self.backup_id, database, self.namespace, self.external_backup_root
@@ -447,29 +409,24 @@ class PostgreSQLDumpWorker(Thread):
             self.backup_id, database, self.namespace, self.external_backup_root
         )
 
-        pg_dump_backup_path = backups.build_backup_path(
-            self.backup_id, self.namespace, self.external_backup_root
-        )
+        pg_dump_backup_path = backups.build_backup_path(self.backup_id, self.namespace, self.external_backup_root)
         path_for_parallel_flag_backup = os.path.join(pg_dump_backup_path, database)
 
         self.log.debug("Will try to fetch users to %s" % roles_backup_path)
         with open(self.stderr_file(database), "w+") as stderr:
             fetch_command = (
-                "| grep -P 'ALTER TABLE.*OWNER TO.*' | "
-                "awk 'NF>1{print  substr($NF, 1, length($NF)-1)}' | uniq"
+                "| grep -P 'ALTER TABLE.*OWNER TO.*' | " "awk 'NF>1{print  substr($NF, 1, length($NF)-1)}' | uniq"
             )
             if self.encryption:
-                encrypt = (
-                    "openssl enc -aes-256-cbc -nosalt -d -pass "
-                    "pass:'%s' < '%s' | %s/pg_restore "
-                    % (self.key, database_backup_path, self.bin_path)
+                encrypt = "openssl enc -aes-256-cbc -nosalt -d -pass " "pass:'%s' < '%s' | %s/pg_restore " % (
+                    self.key,
+                    database_backup_path,
+                    self.bin_path,
                 )
                 fetch_command = encrypt + fetch_command
             else:
                 if int(self.parallel_jobs) > 1:
-                    dump_version = self.get_pg_version_from_dump(
-                        path_for_parallel_flag_backup
-                    )
+                    dump_version = self.get_pg_version_from_dump(path_for_parallel_flag_backup)
                 else:
                     dump_version = self.get_pg_version_from_dump(database_backup_path)
 
@@ -494,21 +451,13 @@ class PostgreSQLDumpWorker(Thread):
             p = Popen(fetch_command, shell=True, stdout=PIPE, stderr=stderr)
             output, err = p.communicate()
             exit_code = p.returncode
-            self.log.info(
-                "Roles search result: {} type: {} . Exit code: {}".format(
-                    output, type(output), exit_code
-                )
-            )
+            self.log.info("Roles search result: {} type: {} . Exit code: {}".format(output, type(output), exit_code))
             if exit_code != 0:
                 stderr.seek(0)
-                raise backups.BackupFailedException(
-                    database, "\n".join(stderr.readlines())
-                )
+                raise backups.BackupFailedException(database, "\n".join(stderr.readlines()))
             rolesFromRestore = [x for x in output.decode().split("\n") if x.strip()]
             rolesList = list(set(rolesList + rolesFromRestore))
-            roles = "|".join(
-                list([x for x in rolesList if x not in configs.protected_roles()])
-            )
+            roles = "|".join(list([x for x in rolesList if x not in configs.protected_roles()]))
             self.log.debug("Selected roles template: %s " % roles)
             return roles
 
@@ -522,24 +471,17 @@ class PostgreSQLDumpWorker(Thread):
             open(self.stderr_file(database), "w+") as stderr,
         ):
             if roles:
-                cmd = (
-                    "{}/pg_dumpall --roles-only -U {} --host {} --port {} {}"
-                    "| grep -P '{}' ".format(
-                        self.bin_path,
-                        configs.postgresql_user(),
-                        configs.postgresql_host(),
-                        configs.postgresql_port(),
-                        configs.postgresql_no_role_password_flag(),
-                        roles,
-                    )
+                cmd = "{}/pg_dumpall --roles-only -U {} --host {} --port {} {}" "| grep -P '{}' ".format(
+                    self.bin_path,
+                    configs.postgresql_user(),
+                    configs.postgresql_host(),
+                    configs.postgresql_port(),
+                    configs.postgresql_no_role_password_flag(),
+                    roles,
                 )
 
                 if self.encryption:
-                    encrypt_cmd = (
-                        "| openssl enc -aes-256-cbc -nosalt -pass pass:'{}'".format(
-                            self.key
-                        )
-                    )
+                    encrypt_cmd = "| openssl enc -aes-256-cbc -nosalt -pass pass:'{}'".format(self.key)
                     cmd = cmd + encrypt_cmd
                 proc_env = os.environ.copy()
                 proc_env["PGPASSWORD"] = configs.postgres_password() or ""
@@ -550,17 +492,13 @@ class PostgreSQLDumpWorker(Thread):
 
                 if exit_code != 0:
                     stderr.seek(0)
-                    raise backups.BackupFailedException(
-                        database, "\n".join(stderr.readlines())
-                    )
+                    raise backups.BackupFailedException(database, "\n".join(stderr.readlines()))
             else:
                 self.log.info("No roles to fetch")
             if self.s3:
                 try:
                     logging.info("Streaming {} roles to AWS".format(database))
-                    self.s3.upload_file(
-                        roles_backup_path, self.blob_path, self.backup_id
-                    )
+                    self.s3.upload_file(roles_backup_path, self.blob_path, self.backup_id)
                 except Exception as e:
                     raise e
                 finally:
@@ -612,19 +550,7 @@ class PostgreSQLDumpWorker(Thread):
         if self.encryption:
             self.update_status("key_name", self.key_name)
             self.update_status("key_source", self.key_source)
-        self.update_status(
-            "status", backups.BackupStatus.SUCCESSFUL, database, flush=True
-        )
-
-    def on_failure(self, database, e):
-        self.log.exception(
-            "Failed to backup database {0} {1}.".format(database, str(e))
-        )
-        self.update_status("details", str(e), database)
-        self.update_status("status", backups.BackupStatus.FAILED, database)
-
-        for f in glob.glob(self.backup_dir + "/*.dump"):
-            os.remove(f)
+        self.update_status("status", backups.BackupStatus.SUCCESSFUL, database, flush=True)
 
     def on_cancel(self, database=None):
         if database:
@@ -638,9 +564,7 @@ class PostgreSQLDumpWorker(Thread):
         self.update_status("details", "Backup got canceled for database")
         self.update_status("status", backups.BackupStatus.CANCELED, flush=True)
 
-    def expire(
-        self, start_timestamp=None, keep=configs.default_backup_expiration_period()
-    ):
+    def expire(self, start_timestamp=None, keep=configs.default_backup_expiration_period()):
 
         if not start_timestamp:
             start_timestamp = int(time.time())
@@ -649,9 +573,7 @@ class PostgreSQLDumpWorker(Thread):
             self.update_status("expires", "Never")
             self.update_status("expirationDate", "Never", flush=True)
         else:
-            expiration_timestamp = backups.calculate_expiration_timestamp(
-                start_timestamp, keep
-            )
+            expiration_timestamp = backups.calculate_expiration_timestamp(start_timestamp, keep)
             self.update_status("expires", expiration_timestamp)
             self.update_status(
                 "expirationDate",
@@ -663,26 +585,21 @@ class PostgreSQLDumpWorker(Thread):
         self.update_status("status", backups.BackupStatus.IN_PROGRESS, flush=True)
         self.log.info(
             self.log_msg(
-                "Backup request processing has been started. Databases to backup: '{}'.".format(
-                    self.databases
-                )
+                "Backup request processing has been started. Databases to backup: '{}'.".format(self.databases)
             )
         )
 
         start_timestamp = int(time.time())
         self.expire(keep=self.keep)
         self.update_status("timestamp", start_timestamp)
-        self.update_status(
-            "created", str(datetime.datetime.fromtimestamp(start_timestamp).isoformat())
-        )
+        self.update_status("created", str(datetime.datetime.fromtimestamp(start_timestamp).isoformat()))
 
         for database in self.databases:
             if backups.is_database_protected(database):
-                return "Database '{}' is not suitable for backup/restore.".format(
-                    database, http.client.FORBIDDEN
+                return (
+                    "Database '{}' is not suitable for backup/restore.".format(database),
+                    http.client.FORBIDDEN,
                 )
-            # if self.should_be_skipped(database):
-            #    self.log.info("Skipping Logical Database: {}, because it's not suitable for the backup.".format(database))
             try:
                 self.backup_single_database(database)
                 self.on_success(database)
@@ -705,10 +622,8 @@ class PostgreSQLDumpWorker(Thread):
         try:
             conn = psycopg2.connect(**connection_properties)
             with conn.cursor() as cur:
-                cur.execute(
-                    "select 1 from pg_tables where upper(tablename) = '_DBAAS_METADATA'"
-                )
-                return cur.fetchone() == None
+                cur.execute("select 1 from pg_tables where upper(tablename) = '_DBAAS_METADATA'")
+                return cur.fetchone() is None
         finally:
             if conn:
                 conn.close()

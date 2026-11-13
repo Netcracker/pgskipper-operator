@@ -36,7 +36,7 @@ type Payload struct {
 	Target   string `json:"target,omitempty"`
 }
 
-func ExecCommand(command string, args []string) (error, string) {
+func ExecCommand(command string, args []string) (string, error) {
 	var output string
 
 	logger.Info(fmt.Sprintf("Executed command is %s with args %v", command, args))
@@ -48,11 +48,11 @@ func ExecCommand(command string, args []string) (error, string) {
 	stdout, err := cmd.StdoutPipe()
 	if err != nil {
 		logger.Error("Error obtaining StdoutPipe", zap.Error(err))
-		return err, ""
+		return "", err
 	}
 	if err := cmd.Start(); err != nil {
 		logger.Error("Error starting command", zap.Error(err))
-		return err, ""
+		return "", err
 	}
 
 	in := bufio.NewScanner(stdout)
@@ -64,15 +64,15 @@ func ExecCommand(command string, args []string) (error, string) {
 	}
 	if err = in.Err(); err != nil {
 		logger.Error("Error reading stdout", zap.Error(err))
-		return err, ""
+		return "", err
 	}
 
 	if err := cmd.Wait(); err != nil {
 		logger.Error("Error waiting for command to finish", zap.Error(err), zap.String("stderr", stderr.String()))
-		return err, ""
+		return "", err
 	}
 
-	return nil, output
+	return output, nil
 }
 
 func GetLogger() *zap.Logger {
