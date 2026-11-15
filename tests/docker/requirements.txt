@@ -1,4 +1,4 @@
-allure-robotframework==2.15.0
+allure-robotframework==2.16.2
 aniso8601==10.0.1
 cachetools==4.2.4
 certifi==2026.7.22
