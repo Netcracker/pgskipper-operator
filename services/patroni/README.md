@@ -18,3 +18,5 @@ PG_VERSION=9.6 DOCKER_NAMES=ghcr.io/netcracker/pgskipper-docker-patroni-9.6:loca
 - `postgresql-9.6-pgaudit`
 
 Skipped on 9.6 (not available for this major on the current package source): `hypopg`, `powa`, `orafce`, `cron`, `repack`, `pg-stat-kcache`, `pg-qualstats`, `set-user`, `postgis`, `pg-wait-sampling`, `pg-track-settings`, `pg-hint-plan`, `pgnodemx`, `decoderbufs`, `pglogical`, `pgvector`, `pg-failover-slots`, `credcheck`, `pg_profile`, `pgsentinel`, and `pg_dbms_stats`.
+
+On PostgreSQL 9.6, `shared_preload_libraries` may contain only `pg_stat_statements`,`pg_dbms_stats`, `pgaudit`, `pg_cron`, `pg_hint_plan`, `pg_profile`, and `decoderbufs`. Other libraries are removed after the PostgreSQL version is read.

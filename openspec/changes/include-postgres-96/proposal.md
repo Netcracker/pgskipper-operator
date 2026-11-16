@@ -14,6 +14,7 @@ The CI build matrix publishes Patroni images only for PostgreSQL 15–18, so clu
 - Skip 9.6-unavailable extensions when installing the 9.6 package set in the upgrade image.
 - Align backup-daemon 9.6 client binary paths with the Debian layout used by the Patroni image (`/usr/lib/postgresql/9.6/...`) when the image path and existing `/usr/pgsql-9.6/...` assumption diverge.
 - Document that 9.6 is an EOL compatibility target with a reduced extension set.
+- For PostgreSQL 9.6, keep `shared_preload_libraries` limited to `pg_stat_statements`, `pg_dbms_stats`, `pgaudit`, `pg_cron`, `pg_hint_plan`, `pg_profile`, and `decoderbufs`. The operator must not write any other library from Patroni/PostgreSQL params, the query exporter, PoWA, PoWA UI, or any other caller.
 
 ## Capabilities
 
@@ -34,3 +35,4 @@ The CI build matrix publishes Patroni images only for PostgreSQL 15–18, so clu
 - `.github/build-config.cfg`, `.github/workflows/clean.yaml`, `.github/charts-values-update-config.yaml`
 - Possibly `services/backup-daemon` scripts that still point at CentOS-style 9.6 bin paths
 - Operator/runtime feature defaults that assume extensions absent on 9.6 (for example `pg_failover_slots`) only where needed for a usable cluster; chart default image stays on a modern version
+- Operator preload updates and `services/patroni/scripts/prepare_settings_file.py` for the 9.6 `shared_preload_libraries` allowlist

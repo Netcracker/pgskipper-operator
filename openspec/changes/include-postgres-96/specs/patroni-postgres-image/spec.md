@@ -48,6 +48,37 @@ Because PostgreSQL 9.6 packages are not published on the current Ubuntu 22.04 (`
 - **THEN** the package manager can install `postgresql-9.6` (and the 9.6-compatible extension subset selected for that image)
 - **AND** the build does not depend on `jammy-pgdg` providing 9.6 packages
 
+### Requirement: PostgreSQL 9.6 shared preload allowlist
+When the PostgreSQL major is 9.6, `shared_preload_libraries` MUST contain only libraries from this allowlist:
+
+- `pg_stat_statements`
+- `pg_dbms_stats`
+- `pgaudit`
+- `pg_cron`
+- `pg_hint_plan`
+- `pg_profile`
+- `decoderbufs` (the library provided by postgres-decoderbufs)
+
+The operator and Patroni settings generation MUST NOT add any other extension to `shared_preload_libraries` for PostgreSQL 9.6. Libraries outside the allowlist MUST be removed from that setting before it is applied. Modern majors MUST keep their existing preload behavior.
+
+#### Scenario: 9.6 settings drop libraries outside the allowlist
+- **WHEN** PostgreSQL 9.6 settings are prepared with `shared_preload_libraries` that includes `pg_stat_statements`, `powa`, `pg_cron`, and `pgaudit`
+- **THEN** the applied value keeps `pg_cron` and `pgaudit`
+- **AND** it does not contain `pg_stat_statements` or `powa`
+
+#### Scenario: Operator does not add excluded libraries on 9.6
+- **WHEN** the operator reconciles a PostgreSQL 9.6 cluster and would normally add `pg_stat_statements`, `pgsentinel`, `pg_stat_kcache`, `pg_wait_sampling`, `pgnodemx`, `powa`, or `pg_failover_slots`
+- **THEN** those libraries are not present in `shared_preload_libraries`
+
+#### Scenario: Feature paths do not write restricted libraries
+- **WHEN** PostgreSQL 9.6 is selected and PoWA, the query exporter, PoWA UI, or another feature asks to set `shared_preload_libraries` to a library outside the allowlist
+- **THEN** that feature does not write the restricted library
+- **AND** an allowlisted library already present, such as `pg_cron` or `pgaudit`, stays in the setting
+
+#### Scenario: Modern major keeps existing preload libraries
+- **WHEN** the operator reconciles a PostgreSQL 15 or newer cluster
+- **THEN** preload libraries added for that major stay unchanged
+
 ### Requirement: Version comparisons tolerate dotted 9.6
 Any build-time logic that branches on `PG_VERSION` MUST treat `9.6` as a valid version identifier. Integer-only comparisons that reject dotted values MUST NOT be used for that argument.
 

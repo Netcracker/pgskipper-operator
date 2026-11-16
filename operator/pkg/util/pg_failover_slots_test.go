@@ -38,3 +38,17 @@ func TestShouldLoadPgFailoverSlots(t *testing.T) {
 		})
 	}
 }
+
+func TestFilterSharedPreloadCSV(t *testing.T) {
+	input := "pg_stat_statements, pg_hint_plan, pg_cron, powa, pgaudit, decoderbufs, pgsentinel"
+
+	got := FilterSharedPreloadCSV(9, input)
+	want := "pg_stat_statements, pg_hint_plan, pg_cron, pgaudit, decoderbufs"
+	if got != want {
+		t.Fatalf("FilterSharedPreloadCSV(9) = %q, want %q", got, want)
+	}
+
+	if got := FilterSharedPreloadCSV(15, input); got != input {
+		t.Fatalf("FilterSharedPreloadCSV(15) = %q, want the original list", got)
+	}
+}

@@ -340,6 +340,7 @@ func (r *PatroniReconciler) Reconcile() error {
 
 	// Validate and apply additional settings for use slots
 	r.applyUseSlotsAdditionalSettings(cr)
+	r.restrictPreloadLibrariesFor96(cr)
 
 	if err := patroni.UpdatePatroniParams(patroniSpec, r.cluster.PatroniUrl); err != nil {
 		logger.Error("Failed to update Patroni Params, exiting", zap.Error(err))
@@ -1161,6 +1162,29 @@ func (r *PatroniReconciler) applyUseSlotsAdditionalSettings(cr *v1.PatroniCore) 
 	helper.UpdatePreloadLibraries(cr, []string{"pg_failover_slots"})
 	ensureSharedPreloadLibrary(cr, "pg_failover_slots")
 	ensurePostgreSQLParam(cr, "hot_standby_feedback", "on")
+}
+
+func (r *PatroniReconciler) restrictPreloadLibrariesFor96(cr *v1.PatroniCore) {
+	masterPods, err := r.helper.GetPodsByLabel(r.cluster.PatroniMasterSelectors)
+	if err != nil || len(masterPods.Items) == 0 {
+		return
+	}
+
+	pgVersion, err := strconv.ParseInt(r.helper.GetPGVersion(masterPods.Items[0].Name), 10, 64)
+	if err != nil || pgVersion >= 10 {
+		return
+	}
+
+	for i, param := range cr.Spec.Patroni.PostgreSQLParams {
+		normalized := strings.Replace(param, "=", ":", 1)
+		parts := strings.SplitN(normalized, ":", 2)
+		if strings.TrimSpace(parts[0]) != "shared_preload_libraries" || len(parts) < 2 {
+			continue
+		}
+		filtered := opUtil.FilterSharedPreloadCSV(pgVersion, parts[1])
+		logger.Info(fmt.Sprintf("PostgreSQL %d shared_preload_libraries restricted to the 9.6 allowlist: %s", pgVersion, filtered))
+		cr.Spec.Patroni.PostgreSQLParams[i] = "shared_preload_libraries: " + filtered
+	}
 }
 
 func ensureMaxSlotWalKeepSize(cr *v1.PatroniCore) {

@@ -87,6 +87,12 @@ Apply the same hard skip list to the upgrade image’s 9.6 package set.
 
 **Why:** A built image that cannot start because of a missing preload library fails the practical goal of “include 9.6.”
 
+### 8. PostgreSQL 9.6 shared preload allowlist
+
+**Choice:** For a reported PostgreSQL major below 10, keep `shared_preload_libraries` to `pg_stat_statements`, `pg_dbms_stats`, `pgaudit`, `pg_cron`, `pg_hint_plan`, `pg_profile`, and `decoderbufs`. Do this in one place after the existing preload updates, using the version read from PostgreSQL. Do not infer the version from the image name. Apply the same filter in `prepare_settings_file.py` when `POSTGRESQL_VERSION` is `9.6`. Leave majors 10 and above unchanged.
+
+**Why:** 9.6 must not load the modern preload set (PoWA libraries, exporter libraries, `pg_failover_slots`). The allowlist is the only set that may be present.
+
 ## Risks / Trade-offs
 
 - **[Risk] Archive PGDG packages or older-suite deps conflict with Ubuntu 22.04 libraries** → Mitigation: try archive-on-jammy first; if unresolved, switch the 9.6 Patroni matrix entry (and/or upgrade 9.6 install) to an older base image / dedicated Dockerfile fragment.

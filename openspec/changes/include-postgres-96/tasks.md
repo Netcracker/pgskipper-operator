@@ -32,3 +32,15 @@
 - [x] 5.1 Run or simulate the build matrix selection for a `services/patroni` change and verify `pgskipper-docker-patroni-9.6` is included with `PG_VERSION=9.6`
 - [x] 5.2 Spot-check that a modern Patroni `PG_VERSION` (for example 15) build path still installs the modern-only extension packages; verify no regression in the non-9.6 Dockerfile branch
 - [x] 5.3 Confirm a `services/upgrade` change still builds `pgskipper-docker-upgrade` and that the image includes 9.6 and 18 bindirs for the planned upgrade path
+
+## 6. PostgreSQL 9.6 shared preload allowlist
+
+- [x] 6.1 Restrict operator `shared_preload_libraries` on PostgreSQL major 9 to `pg_stat_statements`, `pg_dbms_stats`, `pgaudit`, `pg_cron`, `pg_hint_plan`, `pg_profile`, and `decoderbufs`; verify with a unit test that other libraries are removed and that major 15 is unchanged
+- [x] 6.2 Filter `services/patroni/scripts/prepare_settings_file.py` the same way when `POSTGRESQL_VERSION` is `9.6`, and accept the dotted version without an integer conversion error; verify a generated settings file omits `pg_stat_statements` and keeps `pg_cron`
+- [x] 6.3 Document the 9.6 preload allowlist in `services/patroni/README.md` and verify the names match the filter
+
+## 7. Do not write restricted preload libraries
+
+- [x] 7.1 Skip PoWA and query-exporter `shared_preload_libraries` updates when the Patroni image is 9.6 or the reported major is below 10; verify a unit test that those library lists are not written
+- [x] 7.2 Make `UpdatePreloadLibraries` refuse restricted libraries for a 9.6 image so PostgreSQL params, `pg_failover_slots`, and any other caller cannot set them; verify the existing allowlisted value is unchanged
+- [x] 7.3 Confirm PoWA UI does not set `shared_preload_libraries` and leave that path without a preload write
