@@ -378,15 +378,8 @@ def perform_bootstrap_recovery(oc_client, oc_orch, pg, dcs_storage,
             log.info("Wait while patroni on replica {} will complete bootstrap from master.".format(pod_id))
             if not oc_client.is_pod_ready(pod_id, attempts=5):
                 raise Exception("Pod {} is not ready".format(pod_id))
-            oc_orch.wait_for_record_in_logs_since(
-                pod_id,
-                "no action. I am ({}), a secondary, and following a leader ({})".format(pod_id, recovery_pod_id),
-                time.time(),
-                "Bootstrap from master is in progress.",
-                " bootstrap from leader"
-            )
             log.info("Wait while replica database will start on pod {}.".format(pod_id))
-            pg.wait_database(pod_id)
+            pg.wait_replica_ready(pod_id)
 
 
 def statefulset_from_pod(pod_name: str) -> str:

@@ -93,8 +93,51 @@ class PostgresqlClient:
                                     "from DB on pod {} in {} sec. Check if database working properly."
                                     .format(result, query, pod_id, wait_database_time))
 
+    def wait_replica_ready(self, pod_id):
+        log.info("Waiting for replica %s to become ready", pod_id)
+
+        for attempt in range(self.retry_count):
+            try:
+                result = self.execute_local_query(
+                    pod_id,
+                    "SELECT pg_is_in_recovery()"
+                )
+
+                if result.lower() in ("t", "true"):
+                    log.info("Replica %s is ready", pod_id)
+                    return
+
+            except Exception as e:
+                log.debug("Replica %s is not ready: %s", pod_id, e)
+
+            time.sleep(1)
+
+        raise RecoveryException(
+            "Replica {} did not become ready".format(pod_id)
+        )
+
     def wait_pg_recovery_complete(self, pod_id):
-        self.wait_db_response(pod_id, "select pg_is_in_recovery()", False)
+        log.info("Waiting for PostgreSQL recovery to complete on %s", pod_id)
+
+        for attempt in range(self.retry_count):
+            try:
+                result = self.execute_local_query(
+                    pod_id,
+                    "SELECT pg_is_in_recovery()"
+                )
+
+                if result.lower() in ("f", "false"):
+                    log.info("Recovery completed on %s", pod_id)
+                    return
+
+            except Exception as e:
+                log.debug("PostgreSQL on %s is not ready: %s", pod_id, e)
+
+            time.sleep(1)
+
+        raise RecoveryException(
+            "PostgreSQL recovery did not complete on {}".format(pod_id)
+        )
 
     def wait_database(self, pod_id):
         self.wait_db_response(pod_id, "select 1", 1)
