@@ -182,7 +182,7 @@ func validateConfig(config *Config) error {
 			} else if !allowedMetricTypes[mCfg.Type] {
 				log.Errorf("Metric %v has not supported type %v", mName, mCfg.Type)
 			}
-			checkHistogramFields(startupBlockingErrors, mName, mCfg)
+			startupBlockingErrors = checkHistogramFields(startupBlockingErrors, mName, mCfg)
 			if !checkExpectedLabelsFields(mName, mCfg) {
 				log.Warnf("Expected labels for metric %v were reset to nil", mName)
 				mCfg.ExpectedLabels = nil
@@ -248,7 +248,7 @@ func validateConfig(config *Config) error {
 	return nil
 }
 
-func checkHistogramFields(startupBlockingErrors []string, mName string, mCfg *MetricsConfig) {
+func checkHistogramFields(startupBlockingErrors []string, mName string, mCfg *MetricsConfig) []string {
 	if mCfg.Type == "histogram" {
 		if len(mCfg.Buckets) == 0 {
 			errorMessage := fmt.Sprintf("Buckets are not defined for histogram metric %v", mName)
@@ -260,7 +260,7 @@ func checkHistogramFields(startupBlockingErrors []string, mName string, mCfg *Me
 		}
 		if mCfg.Count == "" {
 			errorMessage := fmt.Sprintf("Count field is not defined for histogram metric %v", mName)
-			_ = append(startupBlockingErrors, errorMessage)
+			startupBlockingErrors = append(startupBlockingErrors, errorMessage)
 		}
 	} else {
 		if len(mCfg.Buckets) != 0 {
@@ -273,6 +273,7 @@ func checkHistogramFields(startupBlockingErrors []string, mName string, mCfg *Me
 			log.Errorf("Count is defined for non-histogram metric %v, the field will be ignored", mName)
 		}
 	}
+	return startupBlockingErrors
 }
 
 func checkExpectedLabelsFields(mName string, mCfg *MetricsConfig) bool {
