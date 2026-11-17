@@ -149,7 +149,7 @@ class BackupsScheduler:
                     worker.kill()
                     raise Exception("Backup worker timeout exceeded")
 
-            except BaseException:
+            except Exception:
                 self.__log.error("Error execute schedule callback", exc_info=1)
             finally:
                 lock.release_lock()

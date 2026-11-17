@@ -311,7 +311,7 @@ class GkeBackupApiCaller:
             for item in resp["items"]:
                 result["default"][item["id"]] = {"status": item["status"]}
             return result, http.client.OK
-        except BaseException:
+        except Exception:
             return http.client.BAD_REQUEST
 
 

@@ -86,7 +86,7 @@ class pgsLibrary(object):
                     logger.info(msg)
                 except (KeyboardInterrupt, SystemExit):
                     raise
-                except BaseException:
+                except Exception:
                     self.handleError(record)
 
         log.addHandler(RobotRedirectHandler())
@@ -199,7 +199,7 @@ class pgsLibrary(object):
         config_map_name = "patroni-{}.config.yaml".format(cluster_name)
         try:
             config_map = self.pl_lib.get_config_map(config_map_name, self._namespace)
-        except BaseException:
+        except Exception:
             config_map_name = "{}-patroni.config.yaml".format(cluster_name)
             config_map = self.pl_lib.get_config_map(config_map_name, self._namespace)
         config_map_yaml = config_map.to_dict()
@@ -606,7 +606,7 @@ class pgsLibrary(object):
             health_json = requests.get(f"{self._scheme}://postgres-backup-daemon:8080/health", verify=False).json()
             new_dump_count = int(health_json["storage"]["lastSuccessful"]["ts"])
             delta = int(expr_date) - new_dump_count
-        except BaseException:
+        except Exception:
             logging.exception("Cannot parse delta")
             delta = 60000
         if delta < 60000:

@@ -443,7 +443,7 @@ class GranularBackupStatusEndpoint(flask_restful.Resource):
                 status = self.s3.read_object(backup_status_file)
                 logging.info(status)
 
-            except BaseException:
+            except Exception:
                 return "Backup in bucket is not found.", http.client.NOT_FOUND
             return json.loads(status), http.client.OK
         else:
@@ -494,7 +494,7 @@ class GranularBackupStatusJSONEndpoint(flask_restful.Resource):
                 status = self.s3.read_object(status_path)
                 logging.info(status)
 
-            except BaseException:
+            except Exception:
                 return "Backup in bucket is not found.", http.client.NOT_FOUND
             return json.loads(status), http.client.OK
         else:
@@ -570,7 +570,7 @@ class GranularRestoreRequestEndpoint(flask_restful.Resource):
         if self.s3:
             try:
                 status = self.s3.read_object(backup_details_file)
-            except BaseException:
+            except Exception:
                 return "Backup in bucket is not found.", http.client.NOT_FOUND
             backup_details = json.loads(status)
 
@@ -772,7 +772,7 @@ class GranularRestoreStatusEndpoint(flask_restful.Resource):
                 status = self.s3.read_object(restore_status_file)
                 logging.info(status)
 
-            except BaseException:
+            except Exception:
                 return "Backup in bucket is not found.", http.client.NOT_FOUND
             return json.loads(status), http.client.OK
         else:
@@ -824,7 +824,7 @@ class GranularRestoreStatusJSONEndpoint(flask_restful.Resource):
                 status = self.s3.read_object(restore_status_file)
                 logging.info(status)
 
-            except BaseException:
+            except Exception:
                 return "Backup in bucket is not found.", http.client.NOT_FOUND
             return json.loads(status), http.client.OK
         else:
@@ -882,7 +882,7 @@ class GranularBackupDeleteEndpoint(flask_restful.Resource):
         if self.s3:
             try:
                 self.s3.read_object(backup_status_file)
-            except BaseException:
+            except Exception:
                 return "Backup in bucket is not found.", http.client.NOT_FOUND
 
         elif not os.path.isfile(backup_status_file):

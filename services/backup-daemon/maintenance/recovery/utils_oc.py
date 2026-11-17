@@ -588,14 +588,14 @@ class OpenshiftPyClient(OpenshiftClient):
             try:
                 apps_api = client.AppsV1Api(self._api_client)
                 items = apps_api.list_namespaced_stateful_set(self.project).items
-            except BaseException:
+            except Exception:
                 apps_api = client.AppsV1beta1Api(self._api_client)
                 items = apps_api.list_namespaced_stateful_set(self.project).items
         elif entity_type == "deployment":
             try:
                 apps_api = client.AppsV1beta1Api(self._api_client)
                 items = apps_api.list_namespaced_deployment(self.project).items
-            except BaseException:
+            except Exception:
                 apps_api = client.AppsV1Api(self._api_client)
                 items = apps_api.list_namespaced_deployment(self.project).items
         else:
@@ -831,7 +831,7 @@ class OpenshiftPyClient(OpenshiftClient):
             try:
                 core_api = client.AppsV1beta1Api(self._api_client)
                 data = core_api.patch_namespaced_deployment(name, self.project, {"spec": {"replicas": count}})
-            except BaseException:
+            except Exception:
                 core_api = client.AppsV1Api(self._api_client)
                 data = core_api.patch_namespaced_deployment(name, self.project, {"spec": {"replicas": count}})
         else:
@@ -886,7 +886,7 @@ class OpenshiftPyClient(OpenshiftClient):
             try:
                 apps_api = client.AppsV1beta1ApiApi(self._api_client)
                 source = reset_last_applied(self.get_entity("deployment", entity_name))
-            except BaseException:
+            except Exception:
                 apps_api = client.AppsV1Api(self._api_client)
                 source = reset_last_applied(self.get_entity("deployment", entity_name))
 

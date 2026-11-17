@@ -13,6 +13,7 @@
 # limitations under the License.
 
 import boto3
+import botocore.exceptions
 
 import urllib3
 import os
@@ -180,7 +181,7 @@ class AwsS3Vault:
         exists = True
         try:
             self.get_s3_client().head_object(Bucket=self.bucket, Key=self.get_prefixed_path(file))
-        except Exception:
+        except botocore.exceptions.ClientError:
             exists = False
         return exists
 

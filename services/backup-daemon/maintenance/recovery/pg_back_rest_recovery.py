@@ -58,7 +58,7 @@ class PgBackRestRecovery:
             self.oc_orch = OpenshiftOrchestrator(self.oc_client, retry_count)
             try:
                 self.apps_api = client.AppsV1Api(self._api_client)
-            except BaseException:
+            except Exception:
                 self.apps_api = client.AppsV1beta1Api(self._api_client)
 
         except Exception:
