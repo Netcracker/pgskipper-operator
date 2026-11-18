@@ -362,20 +362,11 @@ func (u *Upgrade) ProceedUpgrade(cr *v1.PatroniCore, cluster *v1.PatroniClusterS
 		return err
 	}
 
-	command = "set -o pipefail; pg_dumpall -v -U postgres -w --file=/tmp/test_db_dumpall.custom --schema-only 2>&1 | tail -n 100 >&2"
+	command = "set -o pipefail; pg_dumpall -v -U postgres -w --schema-only 2>&1 >/dev/null | tail -n 100 >&2"
 	_, _, err = u.helper.ExecCmdOnPatroniPod(masterPodName, namespace, command, "/bin/bash")
 	if err != nil {
 		logger.Error("Can't execute pg_dumpall command, failing major upgrade", zap.Error(err))
 		return err
-	}
-
-	removeCommand := "rm -rf /tmp/test_db_dumpall.custom"
-	_, _, err = u.helper.ExecCmdOnPatroniPod(masterPodName, namespace, removeCommand)
-	if err != nil {
-		logger.Error("Error removing dump file", zap.Error(err))
-		return err
-	} else {
-		logger.Info("Dump file removed successfully")
 	}
 
 	// Check for prepared transactions before upgrade
