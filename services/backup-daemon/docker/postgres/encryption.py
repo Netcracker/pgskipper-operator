@@ -43,6 +43,7 @@ class FileWrapper(object):
         :return: sha256 - sha256 of processed file
         """
         import hashlib
+
         sha256 = hashlib.sha256()
         if self.__encrypted:
             password = KeyManagement.get_object().get_password()
@@ -56,14 +57,13 @@ class FileWrapper(object):
                     # pad = False
                     # if len(data) % AES.block_size != 0:
                     #     pad = True
-                    pad = len(next_data) == 0   # try to pad only last chunk
+                    pad = len(next_data) == 0  # try to pad only last chunk
                     data = cipher.encrypt(data, pad)
                     self.create_key_file()
                 target.write(data)
                 if len(next_data) == 0:
                     stream.close()
-                    self.__log.info("Processed stream with sha256 {}".format(
-                        sha256.hexdigest()))
+                    self.__log.info("Processed stream with sha256 {}".format(sha256.hexdigest()))
                     return sha256.hexdigest()
                 else:
                     data = next_data
@@ -75,10 +75,10 @@ class FileWrapper(object):
         :return: decrypted file stream
         """
         self.__log.info("Will try to decrypt file: %s" % self.__file_path)
-        cipher = EncryptionHelper.get_cipher_by_pw(
-            self.get_password_for_file())
+        cipher = EncryptionHelper.get_cipher_by_pw(self.get_password_for_file())
         import tempfile
-        decrypted = tempfile.TemporaryFile(mode='w+')
+
+        decrypted = tempfile.TemporaryFile(mode="w+")
         with io.FileIO(self.__file_path, "r", closefd=True) as encrypted:
             number_of_chunks = self.__file_size / self.chunk_size
             iteration = 0
@@ -111,11 +111,11 @@ class FileWrapper(object):
             with open(key_filename) as f:
                 data = json.load(f)
             key_name, key_source = data["key_name"], data["key_source"]
-            self.__log.info("Will use key_name: {} and key_source: {} "
-                            "for file decryption: {}".
-                            format(key_name, key_source, self.__file_path))
-            return KeyManagement(key_source,
-                                 key_name).get_password()
+            self.__log.info(
+                "Will use key_name: {} and key_source: {} "
+                "for file decryption: {}".format(key_name, key_source, self.__file_path)
+            )
+            return KeyManagement(key_source, key_name).get_password()
         else:
             # if file not exists for some of the reason, return default PW
             return KeyManagement.get_object().get_password()
@@ -123,10 +123,10 @@ class FileWrapper(object):
     def create_key_file(self):
         key_info = {
             "key_name": KeyManagement.get_key_name(),
-            "key_source": KeyManagement.get_key_source()
+            "key_source": KeyManagement.get_key_source(),
         }
         key_filename = self.__file_path + ".key"
-        with open(key_filename, 'w+') as outfile:
+        with open(key_filename, "w+") as outfile:
             json.dump(key_info, outfile)
 
 
@@ -141,6 +141,7 @@ class EncryptionHelper(object):
         Derive the key and the IV from the given password and salt.
         """
         from hashlib import md5
+
         d_tot = md5(password).digest()
         d = [d_tot]
         while len(d_tot) < (iv_len + key_len):
@@ -163,7 +164,7 @@ class KeyManagement(object):
 
     @staticmethod
     def get_object():
-        pw_source = os.getenv("KEY_SOURCE", 'kubernetes')
+        pw_source = os.getenv("KEY_SOURCE", "kubernetes")
         pw_name = os.getenv("KEY_NAME", "daemon-secret")
         return KeyManagement(pw_source, pw_name)
 
@@ -203,6 +204,7 @@ class KubernetesPassword(object):
         from kubernetes import config
         from kubernetes.client.apis import core_v1_api
         from kubernetes.client.rest import ApiException
+
         config.load_incluster_config()
         api = core_v1_api.CoreV1Api()
         # https://github.com/kubernetes-client/python/issues/363
@@ -210,6 +212,7 @@ class KubernetesPassword(object):
         try:
             api_response = api.read_namespaced_secret(self.key_name, namespace)
             import base64
+
             return base64.b64decode(api_response.data.get("password"))
         except ApiException as exc:
             self.log.error(exc)
@@ -227,21 +230,23 @@ class VaultPassword(object):
 class CipherWrapper(object):
     def __init__(self, iv, key):
         from Crypto.Cipher import AES
+
         self.__cipher = AES.new(key, AES.MODE_CBC, iv)
 
     def encrypt(self, data, pad=False):
         return self.__cipher.encrypt(self.pad(data) if pad else data)
 
     def decrypt(self, data, unpad=False):
-        return self.unpad(self.__cipher.decrypt(data)) \
-            if unpad else self.__cipher.decrypt(data)
+        return self.unpad(self.__cipher.decrypt(data)) if unpad else self.__cipher.decrypt(data)
 
     def pad(self, data):
         from Crypto.Util.Padding import pad
+
         return pad(data, AES.block_size)
 
     def unpad(self, data):
         from Crypto.Util.Padding import unpad
+
         return unpad(data, AES.block_size)
 
 

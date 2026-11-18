@@ -59,7 +59,7 @@ func NewConnector() *PostgresConnector {
 }
 
 func NewConnectorForUser(host string, port int, user, pass string) *PostgresConnector {
-
+	//nolint:staticcheck
 	ssl := false
 	if PgSsl == "require" {
 		ssl = true

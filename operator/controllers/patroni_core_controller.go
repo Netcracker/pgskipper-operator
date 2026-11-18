@@ -529,5 +529,5 @@ func (pr *PatroniCoreReconciler) failReconcile(reason string, err error, requeue
 	if requeue {
 		requireAfter = time.Minute
 	}
-	return reconcile.Result{RequeueAfter: requireAfter, Requeue: requeue}, err
+	return reconcile.Result{RequeueAfter: requireAfter}, err
 }

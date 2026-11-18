@@ -61,7 +61,7 @@ type Status struct {
 
 type Timestamp struct {
 	Start int `json:"start"`
-	Stop  int `json:"stop"`	
+	Stop  int `json:"stop"`
 }
 
 func MakeFullBackup(timestamp string) error {
@@ -69,8 +69,8 @@ func MakeFullBackup(timestamp string) error {
 	args := []string{fmt.Sprintf("--stanza=%s", os.Getenv("PGBACKREST_STANZA")), "--repo=1", annotation}
 	args = append(args, "--type=full", "backup")
 	logger.Info("Backup has been started")
-	if err, _ := utils.ExecCommand(constants.BackrestBin, args); err != nil {
-
+	_, err := utils.ExecCommand(constants.BackrestBin, args)
+	if err != nil {
 		return err
 	}
 	return nil
@@ -81,8 +81,8 @@ func MakeDiffBackup(timestamp string) error {
 	args := []string{fmt.Sprintf("--stanza=%s", os.Getenv("PGBACKREST_STANZA")), "--repo=1", annotation}
 	args = append(args, "--type=diff", "backup")
 	logger.Info("Diff Backup has been started")
-	if err, _ := utils.ExecCommand(constants.BackrestBin, args); err != nil {
-
+	_, err := utils.ExecCommand(constants.BackrestBin, args)
+	if err != nil {
 		return err
 	}
 	return nil
@@ -93,28 +93,28 @@ func MakeIncrBackup(timestamp string) error {
 	args := []string{fmt.Sprintf("--stanza=%s", os.Getenv("PGBACKREST_STANZA")), "--repo=1", annotation}
 	args = append(args, "--type=incr", "backup")
 	logger.Info("Incremental Backup has been started")
-	if err, _ := utils.ExecCommand(constants.BackrestBin, args); err != nil {
-
+	_, err := utils.ExecCommand(constants.BackrestBin, args)
+	if err != nil {
 		return err
 	}
 	return nil
 }
 
-func GetBackupStatus(label string) (error, Backup) {
+func GetBackupStatus(label string) (Backup, error) {
 	var root []Root
 	args := []string{"info", "--output=json", fmt.Sprintf("--stanza=%s", os.Getenv("PGBACKREST_STANZA"))}
 	logger.Info("Backup status requested")
-	err, output := utils.ExecCommand(constants.BackrestBin, args)
+	output, err := utils.ExecCommand(constants.BackrestBin, args)
 	if err != nil {
-		return err, Backup{}
+		return Backup{}, err
 	}
 	if err := json.Unmarshal([]byte(output), &root); err != nil {
 		logger.Error("Error while unmarshalling output", zap.Error(err))
-		return err, Backup{}
+		return Backup{}, err
 	}
 	logger.Info(fmt.Sprintf("info %v", root))
 	status := GetBackupIdStatus(label, root)
-	return nil, status
+	return status, nil
 }
 
 func GetBackupIdStatus(label string, backupList []Root) Backup {
@@ -134,17 +134,17 @@ func GetBackupIdStatus(label string, backupList []Root) Backup {
 	return Backup{}
 }
 
-func GetBackupList() (error, []Backup) {
+func GetBackupList() ([]Backup, error) {
 	var root []Root
 	args := []string{"info", "--output=json", fmt.Sprintf("--stanza=%s", os.Getenv("PGBACKREST_STANZA"))}
 	logger.Info("Backup list requested")
-	err, output := utils.ExecCommand(constants.BackrestBin, args)
+	output, err := utils.ExecCommand(constants.BackrestBin, args)
 	if err != nil {
-		return err, []Backup{}
+		return []Backup{}, err
 	}
 	if err := json.Unmarshal([]byte(output), &root); err != nil {
 		logger.Error("Error while unmarshalling output", zap.Error(err))
-		return err, []Backup{}
+		return []Backup{}, err
 	}
-	return nil, root[0].Backup
+	return root[0].Backup, nil
 }

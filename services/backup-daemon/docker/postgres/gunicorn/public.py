@@ -38,9 +38,7 @@ if collector_endpoint != "":
     ns = open(NAMESPACE_PATH).read()
     resource = Resource(attributes={SERVICE_NAME: "postgresql-backup-daemon-" + ns})
     provider = TracerProvider(resource=resource)
-    processor = BatchSpanProcessor(
-        OTLPSpanExporter(endpoint=collector_endpoint, insecure=True)
-    )
+    processor = BatchSpanProcessor(OTLPSpanExporter(endpoint=collector_endpoint, insecure=True))
     provider.add_span_processor(processor)
     FlaskInstrumentor().instrument_app(
         app=app,
@@ -59,9 +57,7 @@ api.add_resource(
     *endpoints.status.Status.get_endpoints(),
     resource_class_args=(storage_instance,),
 )
-api.add_resource(
-    endpoints.backup.BackupRequest, *endpoints.backup.BackupRequest.get_endpoints()
-)
+api.add_resource(endpoints.backup.BackupRequest, *endpoints.backup.BackupRequest.get_endpoints())
 api.add_resource(
     endpoints.status.Health,
     *endpoints.status.Health.get_endpoints(),

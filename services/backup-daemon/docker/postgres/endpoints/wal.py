@@ -13,8 +13,9 @@
 # limitations under the License.
 
 """
-    Set of endpoints for PostgreSQL to manipulate with write-ahead logs (WAL) archives.
+Set of endpoints for PostgreSQL to manipulate with write-ahead logs (WAL) archives.
 """
+
 import threading
 from threading import Thread
 
@@ -33,6 +34,7 @@ RESP_EXIST_SHA_SAME = "Archive file already exists with same sha256."
 RESP_SHA_MISMATCH = "Provided sha256 does not match sha256 of stream"
 RESP_WAL_PROC_BUSY = "WAL processor is busy"
 
+
 @auth.verify_password
 def verify(username, password):
     return utils.validate_user(username, password)
@@ -41,10 +43,7 @@ def verify(username, password):
 class Upload(Resource):
     __log = logging.getLogger("UploadArchive")
 
-    __endpoints = [
-        '/archive/put',
-        '/archive/upload'
-    ]
+    __endpoints = ["/archive/put", "/archive/upload"]
 
     __evict_lock = threading.Lock()
 
@@ -69,15 +68,13 @@ class Upload(Resource):
     def __process_wall_post(self):
         filename = None
         sha256 = None
-        if request.args.getlist('filename'):
-            filename = request.args.getlist('filename')[0]
-        if request.args.getlist('sha256'):
-            sha256 = request.args.getlist('sha256')[0]
+        if request.args.getlist("filename"):
+            filename = request.args.getlist("filename")[0]
+        if request.args.getlist("sha256"):
+            sha256 = request.args.getlist("sha256")[0]
 
         self.__log.info(request.args)
-        self.__log.info(
-            "Start upload processing for {} with sha256 {}".format(
-                filename, sha256))
+        self.__log.info("Start upload processing for {} with sha256 {}".format(filename, sha256))
 
         if self.__storage.is_archive_exists(filename):
             stored_sha = self.__storage.get_sha256sum_for_archive(filename)
@@ -87,30 +84,28 @@ class Upload(Resource):
                     self.__log.warning(
                         "Looks like file in storage broken. "
                         "Will receive new one as replacement. "
-                        "Calculated sha256: {}.".format(calc_sha))
+                        "Calculated sha256: {}.".format(calc_sha)
+                    )
                 else:
                     return Response(RESP_EXIST_SHA_SAME, status=208)
             elif not stored_sha and calc_sha == sha256:
-                self.__log.warning(
-                    "Found file without sha. Will store metainfo for future.")
+                self.__log.warning("Found file without sha. Will store metainfo for future.")
                 self.__storage.store_archive_checksum(filename, sha256)
                 return Response(RESP_EXIST_SHA_SAME, status=208)
             else:
                 return Response(RESP_EXIST_SHA_DIFF, status=409)
 
-        if 'file' not in request.files:
+        if "file" not in request.files:
             return Response(RESP_NO_FILE, status=400)
 
-        file_obj = request.files['file']
+        file_obj = request.files["file"]
         try:
             self.__storage.store_archive_checksum(filename, sha256)
-            sha256_processed = self.__storage.put_archive_as_stream(
-                filename, file_obj.stream)
+            sha256_processed = self.__storage.put_archive_as_stream(filename, file_obj.stream)
             if sha256 == sha256_processed:
                 return Response("Ok", status=200)
             else:
-                self.__log.info(
-                    "Wrong result sha256 hash: {}".format(sha256_processed))
+                self.__log.info("Wrong result sha256 hash: {}".format(sha256_processed))
                 self.__storage.delete_archive(filename)
                 return Response(RESP_SHA_MISMATCH, status=400)
         except Exception:
@@ -128,7 +123,7 @@ class Upload(Resource):
         try:
             thread = Thread(target=self.__evict_archive_if_rule_exist)
             thread.start()
-        except Exception as e:
+        except Exception:
             self.__log.exception("Cannot start archive eviction during post.")
         try:
             with self.wal_processing_lock.acquire(timeout=5):
@@ -140,10 +135,7 @@ class Upload(Resource):
 
 class Download(Resource):
 
-    __endpoints = [
-        '/archive/get',
-        '/archive/download'
-    ]
+    __endpoints = ["/archive/get", "/archive/download"]
 
     def __init__(self, storage):
         self.__storage = storage
@@ -164,29 +156,24 @@ class Download(Resource):
                         return
                     yield data
 
-        file_name = request.args.getlist('filename')[
-            0] if request.args.getlist('filename') else None
+        file_name = request.args.getlist("filename")[0] if request.args.getlist("filename") else None
         if file_name:
             if self.__storage.is_archive_exists(file_name):
-                return Response(stream_with_context(
-                    generate(self.__storage, file_name)),
-                                mimetype='application/octet-stream',
-                                headers=[
-                                    ('Content-Type',
-                                     'application/octet-stream'),
-                                    ('Content-Disposition', file_name)
-                                ])
-            else:
                 return Response(
-                    "Cannot find file {} in archive".format(file_name),
-                    status=404)
+                    stream_with_context(generate(self.__storage, file_name)),
+                    mimetype="application/octet-stream",
+                    headers=[
+                        ("Content-Type", "application/octet-stream"),
+                        ("Content-Disposition", file_name),
+                    ],
+                )
+            else:
+                return Response("Cannot find file {} in archive".format(file_name), status=404)
 
 
 class Delete(Resource):
 
-    __endpoints = [
-        '/archive/delete'
-    ]
+    __endpoints = ["/archive/delete"]
 
     def __init__(self, storage):
         self.__storage = storage
@@ -197,6 +184,6 @@ class Delete(Resource):
 
     @auth.login_required
     def delete(self):
-        filename = request.args.getlist('filename')[0] if request.args.getlist('filename') else None
+        filename = request.args.getlist("filename")[0] if request.args.getlist("filename") else None
         if filename:
             self.__storage.delete_archive(filename)
