@@ -330,6 +330,13 @@ func (r *PatroniReconciler) Reconcile() error {
 	} else if err := r.helper.SyncReplicatorPassword(r.cluster.PgHost); err != nil {
 		return err
 	}
+
+	pgVersion, err := r.getMasterPGMajorVersion()
+	if err != nil {
+		logger.Warn("Cannot determine PostgreSQL version for useSlots companion settings; skipping", zap.Error(err))
+		return err
+	}
+
 	// add necessary shared_preload_libraries and settings
 	if cr.Spec.Patroni.Powa.Install {
 		powa.UpdatePgSettings(cr)
@@ -339,8 +346,9 @@ func (r *PatroniReconciler) Reconcile() error {
 	queryexporter.UpdatePreloadLibraries(cr)
 
 	// Validate and apply additional settings for use slots
-	r.applyUseSlotsAdditionalSettings(cr)
-	r.restrictPreloadLibrariesFor96(cr)
+	r.applyUseSlotsAdditionalSettings(cr, pgVersion)
+
+	r.restrictPreloadLibrariesFor96(cr, pgVersion)
 
 	if err := patroni.UpdatePatroniParams(patroniSpec, r.cluster.PatroniUrl); err != nil {
 		logger.Error("Failed to update Patroni Params, exiting", zap.Error(err))
@@ -392,7 +400,7 @@ func (r *PatroniReconciler) Reconcile() error {
 		return err
 	}
 
-	if patroniSpec.Powa.Install && !isStandbyClusterPresent {
+	if patroniSpec.Powa.Install && pgVersion >= 10 && !isStandbyClusterPresent {
 		if err := powa.SetUpPOWA(r.cluster.PgHost); err != nil {
 			return err
 		}
@@ -1120,30 +1128,27 @@ func (r *PatroniReconciler) performLocaleUpgrade(cr *v1.PatroniCore, localeVersi
 	return nil
 }
 
-func (r *PatroniReconciler) applyUseSlotsAdditionalSettings(cr *v1.PatroniCore) {
-	if cr.Spec == nil || cr.Spec.Patroni == nil || !cr.Spec.Patroni.UseSlots {
+func (r *PatroniReconciler) getMasterPGMajorVersion() (int64, error) {
+	masterPods, err := r.helper.GetPodsByLabel(r.cluster.PatroniMasterSelectors)
+	if err != nil {
+		return 0, err
+	}
+	if len(masterPods.Items) == 0 {
+		return 0, fmt.Errorf("no master pods found")
+	}
+	versionStr := r.helper.GetPGVersion(masterPods.Items[0].Name)
+	if versionStr == "" {
+		return 0, fmt.Errorf("PostgreSQL version is empty")
+	}
+	return strconv.ParseInt(versionStr, 10, 64)
+}
+
+func (r *PatroniReconciler) applyUseSlotsAdditionalSettings(cr *v1.PatroniCore, pgVersion int64) {
+	if cr.Spec == nil || cr.Spec.Patroni == nil || !cr.Spec.Patroni.UseSlots || pgVersion < 10 {
 		return
 	}
 
 	ensureMaxSlotWalKeepSize(cr)
-
-	masterPods, err := r.helper.GetPodsByLabel(r.cluster.PatroniMasterSelectors)
-	if err != nil || len(masterPods.Items) == 0 {
-		logger.Warn("Cannot determine PostgreSQL version for useSlots companion settings; skipping")
-		return
-	}
-
-	versionStr := r.helper.GetPGVersion(masterPods.Items[0].Name)
-	if versionStr == "" {
-		logger.Warn("PostgreSQL version is empty; skipping useSlots companion settings")
-		return
-	}
-
-	pgVersion, err := strconv.ParseInt(versionStr, 10, 64)
-	if err != nil {
-		logger.Warn(fmt.Sprintf("Cannot parse PostgreSQL version %q; skipping useSlots companion settings", versionStr), zap.Error(err))
-		return
-	}
 
 	if pgVersion >= 17 {
 		logger.Info(fmt.Sprintf("useSlots is enabled on PostgreSQL %d; ensuring hot_standby_feedback=on and sync_replication_slots=on", pgVersion))
@@ -1164,14 +1169,8 @@ func (r *PatroniReconciler) applyUseSlotsAdditionalSettings(cr *v1.PatroniCore) 
 	ensurePostgreSQLParam(cr, "hot_standby_feedback", "on")
 }
 
-func (r *PatroniReconciler) restrictPreloadLibrariesFor96(cr *v1.PatroniCore) {
-	masterPods, err := r.helper.GetPodsByLabel(r.cluster.PatroniMasterSelectors)
-	if err != nil || len(masterPods.Items) == 0 {
-		return
-	}
-
-	pgVersion, err := strconv.ParseInt(r.helper.GetPGVersion(masterPods.Items[0].Name), 10, 64)
-	if err != nil || pgVersion >= 10 {
+func (r *PatroniReconciler) restrictPreloadLibrariesFor96(cr *v1.PatroniCore, pgVersion int64) {
+	if pgVersion >= 10 {
 		return
 	}
 
