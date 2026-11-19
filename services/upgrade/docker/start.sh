@@ -85,9 +85,17 @@ function handle_master_upgrade() {
     echo "[$(date +%Y-%m-%dT%H:%M:%S)] Content of /tmp/configs/postgresql.conf file:"
     cat /tmp/configs/postgresql.conf
 
-    echo "[$(date +%Y-%m-%dT%H:%M:%S)] making chmod 750 to datadir"
-
-    chmod 750 "${MIGRATION_PATH}/${DATA_DIR}"
+    OLD_DATADIR="/var/lib/pgsql/data/${DATA_DIR}"
+    if python -c "import sys; sys.exit(0 if float('${PG_VERSION}') < 11 else 1)"; then
+        DATADIR_MODE="700"
+    else
+        DATADIR_MODE="750"
+    fi
+    echo "[$(date +%Y-%m-%dT%H:%M:%S)] making chmod ${DATADIR_MODE} to datadir ${OLD_DATADIR}"
+    chmod "${DATADIR_MODE}" "${OLD_DATADIR}"
+    if [[ "${MIGRATION_PATH}/${DATA_DIR}" != "${OLD_DATADIR}" && -d "${MIGRATION_PATH}/${DATA_DIR}" ]]; then
+        chmod "${DATADIR_MODE}" "${MIGRATION_PATH}/${DATA_DIR}"
+    fi
 
     SHARED_PRELOAD_LIBRARIES=$(grep "shared_preload_libraries" "/var/lib/pgsql/data/${DATA_DIR}/postgresql.conf")
 
