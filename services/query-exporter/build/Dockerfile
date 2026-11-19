@@ -8,8 +8,11 @@ ENV EXPORTER_FILE=/usr/local/bin/query-exporter \
 
 COPY build/alpine-repositories /etc/apk/repositories
 
-RUN apk add --upgrade --no-cache gcc 
-RUN apk add --upgrade --no-cache build-base
+ARG TARGETARCH
+RUN --mount=type=cache,id=postgres-apk-alpine-3.24-${TARGETARCH},target=/var/cache/apk,sharing=locked \
+    apk --cache-dir /var/cache/apk --cache-packages --cache-max-age 0 add --upgrade gcc
+RUN --mount=type=cache,id=postgres-apk-alpine-3.24-${TARGETARCH},target=/var/cache/apk,sharing=locked \
+    apk --cache-dir /var/cache/apk --cache-packages --cache-max-age 0 add --upgrade build-base
 
 COPY . /workdir
 WORKDIR /workdir

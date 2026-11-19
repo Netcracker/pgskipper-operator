@@ -32,7 +32,9 @@ ENV USER=postgres \
 COPY build/build-pgbackrest.sh /tmp/build-pgbackrest.sh
 
 # Install build dependencies and runtime dependencies
-RUN apk add --update --no-cache \
+ARG TARGETARCH
+RUN --mount=type=cache,id=postgres-apk-alpine-3.24-${TARGETARCH},target=/var/cache/apk,sharing=locked \
+    apk --cache-dir /var/cache/apk --cache-packages --cache-max-age 0 add \
     # Runtime dependencies
     busybox \
     ssl_client \

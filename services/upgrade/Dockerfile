@@ -27,14 +27,19 @@ ARG PGDG_APT_MIRROR=https://apt.postgresql.org/pub/repos/apt
 RUN printf 'deb [signed-by=/usr/share/keyrings/pgdg.asc] %s jammy-pgdg main\n' "$PGDG_APT_MIRROR" \
     > /etc/apt/sources.list.d/pgdg.list
 RUN ls -la /etc/apt/
+ARG TARGETARCH
+# Keep downloads in the builder cache. Ubuntu's docker-clean hook normally removes them.
+RUN rm -f /etc/apt/apt.conf.d/docker-clean
 RUN apt-get -y update
-RUN apt-get -o DPkg::Options::="--force-confnew" -y dist-upgrade
+RUN --mount=type=cache,id=postgres-apt-jammy-${TARGETARCH},target=/var/cache/apt/archives,sharing=locked \
+    apt-get -o DPkg::Options::="--force-confnew" -y dist-upgrade
 
 RUN groupmod -n postgres tape
 RUN adduser -uid 26 -gid 26 postgres
 
 # Install like base image
-RUN apt-get --no-install-recommends install -y gcc-12 python3.11 python3-pip python3-dev wget
+RUN --mount=type=cache,id=postgres-apt-jammy-${TARGETARCH},target=/var/cache/apt/archives,sharing=locked \
+    apt-get --no-install-recommends install -y gcc-12 python3.11 python3-pip python3-dev wget
 
 RUN python3 -m pip install --no-cache-dir --upgrade wheel==0.47.0 setuptools==82.0.1 && \
     python3 -m pip uninstall -y jaraco.context setuptools wheel && \
@@ -45,11 +50,14 @@ RUN python3 -m pip install --no-cache-dir --upgrade wheel==0.47.0 setuptools==82
            /usr/lib/python3.*/dist-packages/wheel*
 
 # Explicitly install patched libaom3 version
-RUN apt-get --no-install-recommends install -y libaom3=3.3.0-1ubuntu0.1 || apt-get --no-install-recommends install -y libaom3
+RUN --mount=type=cache,id=postgres-apt-jammy-${TARGETARCH},target=/var/cache/apt/archives,sharing=locked \
+    apt-get --no-install-recommends install -y libaom3=3.3.0-1ubuntu0.1 || apt-get --no-install-recommends install -y libaom3
 
 RUN apt-get -y update
-RUN apt-get -o DPkg::Options::="--force-confnew" -y dist-upgrade
-RUN apt-get --no-install-recommends install -y \
+RUN --mount=type=cache,id=postgres-apt-jammy-${TARGETARCH},target=/var/cache/apt/archives,sharing=locked \
+    apt-get -o DPkg::Options::="--force-confnew" -y dist-upgrade
+RUN --mount=type=cache,id=postgres-apt-jammy-${TARGETARCH},target=/var/cache/apt/archives,sharing=locked \
+    apt-get --no-install-recommends install -y \
      postgresql-12 postgresql-server-dev-12 \
      postgresql-13 postgresql-server-dev-13 \
      postgresql-14 postgresql-server-dev-14 \
@@ -64,15 +72,18 @@ RUN apt-get --no-install-recommends install -y \
      postgresql-16-pg-track-settings postgresql-16-pg-wait-sampling postgresql-16-cron postgresql-16-set-user postgresql-16-postgis postgresql-16-pg-stat-kcache postgresql-16-pgaudit postgresql-16-pg-qualstats postgresql-16-hypopg postgresql-16-powa postgresql-16-pg-hint-plan postgresql-16-pgnodemx postgresql-16-decoderbufs postgresql-16-pgsentinel postgresql-16-pglogical postgresql-16-pgvector postgresql-16-pg-failover-slots \
      postgresql-17-pg-track-settings postgresql-17-pg-wait-sampling postgresql-17-cron postgresql-17-set-user postgresql-17-postgis postgresql-17-pg-stat-kcache postgresql-17-pgaudit postgresql-17-pg-qualstats postgresql-17-hypopg postgresql-17-powa postgresql-17-pg-hint-plan postgresql-17-pgnodemx postgresql-17-decoderbufs postgresql-17-pgsentinel postgresql-17-pglogical postgresql-17-pgvector postgresql-17-pg-failover-slots \
      postgresql-18-pg-track-settings postgresql-18-pg-wait-sampling postgresql-18-cron postgresql-18-set-user postgresql-18-postgis postgresql-18-pg-stat-kcache postgresql-18-pgaudit postgresql-18-pg-qualstats postgresql-18-hypopg postgresql-18-powa postgresql-18-pg-hint-plan postgresql-18-pgnodemx postgresql-18-decoderbufs postgresql-18-pgsentinel postgresql-18-pglogical postgresql-18-pgvector postgresql-18-pg-failover-slots
-RUN apt-get --no-install-recommends install -y libproj-dev libgdal30 libgeos3.10.2 libgeotiff5 libsfcgal1
+RUN --mount=type=cache,id=postgres-apt-jammy-${TARGETARCH},target=/var/cache/apt/archives,sharing=locked \
+    apt-get --no-install-recommends install -y libproj-dev libgdal30 libgeos3.10.2 libgeotiff5 libsfcgal1
 
 RUN localedef -i en_US -f UTF-8 en_US.UTF-8 && \
     localedef -i es_PE -f UTF-8 es_PE.UTF-8 && \
     localedef -i es_ES -f UTF-8 es_ES.UTF-8
 # Migrate .rpm to .deb
-RUN apt-get install -y alien
+RUN --mount=type=cache,id=postgres-apt-jammy-${TARGETARCH},target=/var/cache/apt/archives,sharing=locked \
+    apt-get install -y alien
 
-RUN apt-get install -y protobuf-compiler
+RUN --mount=type=cache,id=postgres-apt-jammy-${TARGETARCH},target=/var/cache/apt/archives,sharing=locked \
+    apt-get install -y protobuf-compiler
 
 WORKDIR /tmp
 
