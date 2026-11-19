@@ -1,3 +1,6 @@
+ARG PGDG_CA_IMAGE=docker.io/library/alpine:3.24@sha256:be2656061b536c1883c4034790e21d0a09c5aaaf51968b89368a3c0371ea2c9a
+FROM ${PGDG_CA_IMAGE} AS pgdg-certs
+
 FROM ubuntu:22.04@sha256:5ec03bb3441e8b0bf3b4f9cd4629a1ae763010dc3035bb8da3ae6cf026486401
 
 USER root
@@ -30,7 +33,18 @@ COPY ./scripts/postgresql.conf /tmp/postgresql.conf
 COPY ./scripts/fix_permission.sh /usr/libexec/fix-permissions
 COPY ./scripts/* /
 
-RUN echo "deb [trusted=yes] http://apt.postgresql.org/pub/repos/apt jammy-pgdg main" >> /etc/apt/sources.list.d/pgdg.list
+COPY --from=pgdg-certs \
+    /etc/ssl/cert.pem /etc/ssl/certs/ca-certificates.crt
+ARG UBUNTU_APT_MIRROR=https://archive.ubuntu.com/ubuntu
+RUN sed -Ei "s#http://(archive|security)\.ubuntu\.com/ubuntu/?#${UBUNTU_APT_MIRROR}#g" /etc/apt/sources.list
+ARG PGDG_KEYRING_URL=https://www.postgresql.org/media/keys/ACCC4CF8.asc
+ADD --chmod=644 --checksum=sha256:0144068502a1eddd2a0280ede10ef607d1ec592ce819940991203941564e8e76 \
+    ${PGDG_KEYRING_URL} \
+    /usr/share/keyrings/pgdg.asc
+ARG PGDG_APT_MIRROR=https://apt.postgresql.org/pub/repos/apt
+RUN printf 'deb [signed-by=/usr/share/keyrings/pgdg.asc] %s jammy-pgdg main\n' "$PGDG_APT_MIRROR" \
+    > /etc/apt/sources.list.d/pgdg.list && \
+    printf 'Acquire::Retries "3";\n' > /etc/apt/apt.conf.d/80-download-retries
 
 RUN ls -la /etc/apt/
 

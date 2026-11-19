@@ -1,6 +1,9 @@
 # checkov:skip=CKV_DOCKER_3: Backward compatibility
 FROM --platform=$BUILDPLATFORM golang:1.27-alpine3.24@sha256:8a5910f31396cd4d89662f56c68b3ae31d374308270a1c3bd96672ee5ed43414 AS builder
 
+ARG GOPROXY
+ARG GOSUMDB
+
 ENV GO111MODULE=on
 
 # Copy the go source
@@ -11,6 +14,7 @@ WORKDIR /workspace
 RUN go mod tidy
 
 # Build
+ARG TARGETOS TARGETARCH
 RUN CGO_ENABLED=0 GOOS=$TARGETOS GOARCH=$TARGETARCH go build -o ./_output/bin/azure_restore ./cmd/main.go
 
 FROM ubuntu:22.04@sha256:5ec03bb3441e8b0bf3b4f9cd4629a1ae763010dc3035bb8da3ae6cf026486401
@@ -21,7 +25,17 @@ ENV PG_CLUSTER_NAME=common STORAGE_ROOT=/backup-storage EXTERNAL_STORAGE_ROOT=/e
 
 COPY docker/pip.conf /root/.pip/pip.conf
 
-RUN echo "deb [trusted=yes] http://apt.postgresql.org/pub/repos/apt jammy-pgdg main" >> /etc/apt/sources.list.d/pgdg.list
+# Bootstrap HTTPS on the minimal Ubuntu image with the Go image's CA bundle.
+COPY --from=builder /etc/ssl/certs/ca-certificates.crt /etc/ssl/certs/ca-certificates.crt
+ARG UBUNTU_APT_MIRROR=https://archive.ubuntu.com/ubuntu
+RUN sed -Ei "s#http://(archive|security)\.ubuntu\.com/ubuntu/?#${UBUNTU_APT_MIRROR}#g" /etc/apt/sources.list
+ARG PGDG_KEYRING_URL=https://www.postgresql.org/media/keys/ACCC4CF8.asc
+ADD --chmod=644 --checksum=sha256:0144068502a1eddd2a0280ede10ef607d1ec592ce819940991203941564e8e76 \
+    ${PGDG_KEYRING_URL} \
+    /usr/share/keyrings/pgdg.asc
+ARG PGDG_APT_MIRROR=https://apt.postgresql.org/pub/repos/apt
+RUN printf 'deb [signed-by=/usr/share/keyrings/pgdg.asc] %s jammy-pgdg main\n' "$PGDG_APT_MIRROR" \
+    > /etc/apt/sources.list.d/pgdg.list
 RUN cat /etc/apt/sources.list
 RUN ls -la /etc/apt/
 RUN apt-get -y update
