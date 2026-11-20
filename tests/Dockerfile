@@ -8,8 +8,10 @@ USER root
 COPY docker/pip.conf /root/.pip/pip.conf
 COPY docker/requirements.txt /root/requirements.txt
 
-RUN set -x \
-    && apk add --update --no-cache build-base postgresql-dev \
+ARG TARGETARCH
+RUN --mount=type=cache,id=postgres-apk-integration-tests-${TARGETARCH},target=/var/cache/apk,sharing=locked \
+    set -x \
+    && apk --cache-dir /var/cache/apk --cache-packages --cache-max-age 0 add build-base postgresql-dev \
     && pip3 install --no-cache-dir -r /root/requirements.txt \
     && pip3 uninstall -y pip
 
