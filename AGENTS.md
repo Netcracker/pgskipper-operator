@@ -1,229 +1,139 @@
 # AGENTS.md
 
-This file provides guidance to AI coding assistants when working with code in this repository.
+Instructions for AI coding assistants working in `pgskipper-operator`.
+Use repository source code and Helm templates as the source of truth.
 
-## Project Overview
+## Repository Layout
 
-pgskipper-operator is a Kubernetes operator that provides PostgreSQL as a service on Kubernetes and OpenShift. The operator manages PostgreSQL clusters using Patroni for high availability and includes various supporting services.
+- `operator/` — Go operator, API types, controllers, reconcilers, and Helm charts.
+- `operator/api/patroni/v1/` — `PatroniCore` API types.
+- `operator/api/apps/v1/` — `PatroniServices` API types.
+- `operator/controllers/` — Custom-resource controllers.
+- `operator/pkg/` — Reconciliation, deployment, storage, and service logic.
+- `operator/charts/patroni-core/` — PostgreSQL and Patroni Helm chart.
+- `operator/charts/patroni-services/` — Supporting-services Helm chart.
+- `services/` — Backup daemon, DBaaS adapter, monitoring, Patroni,
+  pgBackRest sidecar, query exporter, replication controller, and upgrade.
+- `tests/robot/` — Robot Framework integration suites.
+- `docs/` — Installation, configuration, features, and troubleshooting.
 
-## Repository Architecture
+## Operator Modes
 
-This is a **monorepo** with multiple Go modules:
+`operator/cmd/pgskipper-operator/main.go` selects the controller by `OPERATOR_ROLE`:
 
-- **`/operator`** - Main operator implementation that manages two Custom Resource Definitions:
-  - `PatroniCore` (api/patroni/v1) - Core PostgreSQL cluster management with Patroni
-  - `PatroniServices` (api/apps/v1) - Additional PostgreSQL services layer
-  
-- **`/services`** - Supporting microservices that run alongside PostgreSQL:
-  - `backup-daemon` - Handles PostgreSQL backups
-  - `dbaas-adapter` - Database-as-a-Service adapter
-  - `monitoring-agent` - Collects PostgreSQL metrics
-  - `patroni` - Patroni service implementation
-  - `pgbackrest-sidecar` - pgBackRest backup sidecar
-  - `query-exporter` - Prometheus query exporter
-  - `replication-controller` - Manages PostgreSQL replication
-  - `upgrade` - Handles PostgreSQL version upgrades
+- `patroni`: reconcile `PatroniCore` and the PostgreSQL/Patroni cluster.
+- Other values: reconcile `PatroniServices` and supporting components.
 
-- **`operator/charts`** - Helm charts
-  - `patroni-core` - Helm chart for Patroni Core operator
-  - `patroni-services` - Helm chart for PostgreSQL Services operator
+Check the appropriate CRD, controller, Helm template, and reconciler before
+modifying behavior. Core and Services are separate Helm releases.
 
-- **`/tests`** - Robot Framework tests
+## Backward Compatibility
 
-## Operator Dual-Mode Operation
+- Changes to `PatroniCore` and `PatroniServices` CRDs must be additive:
+  introduce only optional fields and preserve existing field semantics.
+- Do not remove, rename, or change the type of an existing CRD field.
+- Do not remove or rename existing Helm values, or change their meaning.
+- New Helm values must have defaults that preserve existing deployments.
+- If a breaking change appears necessary, **stop and ask for explicit human
+  approval** before editing APIs, chart behavior, or migration logic.
+- Preserve upgrade and rollback compatibility; never assume a new image or
+  version is safe without checking the corresponding upgrade implementation.
 
-The operator runs in one of two modes controlled by the `OPERATOR_ROLE` environment variable:
+## Safe Operations
 
-1. **`OPERATOR_ROLE=patroni`** - Runs PatroniCoreReconciler (manages PatroniCore CRD)
-2. **Default (or any other value)** - Runs PostgresServiceReconciler (manages PatroniServices CRD)
+- Do not run `make local`, `make all`, `make docker-push`, or any target that
+  invokes `docker push` unless the user explicitly requests image publishing.
+  In `operator/Makefile`, `local` and `all` depend on `docker-push`.
+- Do not delete PVCs, clear PostgreSQL data directories, force failover, or
+  run destructive restore/rollback steps without explicit approval.
+- Never use production clusters for integration tests; the Robot installation
+  suite writes test records to PostgreSQL.
+- For documentation-only changes, do not modify commands, YAML values, or
+  operational procedures unless the user explicitly requests a technical fix.
 
-Entry point: `operator/cmd/pgskipper-operator/main.go`
+## Verification (Repository Root)
 
-## Building and Development
+The root `Makefile` provides read-only formatting checks and verification:
 
-### Operator
+```bash
+make modules  # List Go modules
+make verify   # Go fmt, vet, golangci-lint, Go tests, Python flake8
+```
 
-Work from `/operator` directory:
+- After changing Go or Python source, run `make verify` from repository root.
+  Pass: command exits `0`; report any failed step and its output.
+- After a change under `operator/`, additionally run the operator tests:
 
 ```bash
 cd operator
-
-# Format code
-make fmt
-
-# Vet code
-make vet
-
-# Update dependencies
-make deps
-
-# Compile binary
-make compile
-
-# Build Docker image (requires TAG_ENV and DOCKER_NAMES env vars)
-make docker-build
-
-# Full local build
-make local  # fmt + gzip-charts + deps + vet + compile + docker-build + docker-push
-
-# Generate CRDs from API types
-make generate
+go test ./...
 ```
 
-### Services
+Pass: exit code `0`, with no failed Go tests. Return to the repository root
+before running root-level Makefile targets.
+Use `.github/tool-versions.env` for pinned local tool versions.
+CI runs `make verify` in `.github/workflows/pre-check.yaml`.
+If the root Makefile is missing on the current branch, do not claim that
+`make verify` ran; report the missing prerequisite.
 
-Each service in `/services` has its own Makefile with similar targets:
+## Robot Integration Tests
+
+After any change under `operator/`, run a relevant Robot suite against an
+**isolated, deployed test cluster** with required Python libraries and
+Kubernetes credentials available. Example (from repository root):
 
 ```bash
-cd services/<service-name>
-
-# Build Docker image
-make docker-build
-
-# Run tests (where available)
-make test
-
-# Format code
-make fmt
+POD_NAMESPACE=postgres PGSSLMODE=prefer INTERNAL_TLS_ENABLED=false \
+  robot --outputdir /tmp/pgskipper-robot \
+  --include check_installation_patroni \
+  tests/robot/check_installation/check_installation.robot
 ```
 
-### Default Docker Image Naming
+Pass: Robot exits `0` and the selected test passes. Set the namespace, TLS
+options, credentials, and cluster connection for the actual test environment.
+If a cluster or dependencies are unavailable, **report the test as blocked**;
+do not claim it passed. CI integration runs via `.github/workflows/run_tests.yaml`.
 
-Without environment variables, images default to:
-- Operator: `ghcr.io/netcracker/pgskipper-operator:local`
-- Services: `ghcr.io/netcracker/pgskipper-docker-<service-name>:local`
+## API and Helm Changes
 
-Override with:
-```bash
-TAG_ENV=v1.2.3 DOCKER_NAMES="custom-registry/image:tag" make docker-build
-```
-
-## Key Package Structure
-
-In `operator/pkg`:
-
-- `reconciler/` - Core reconciliation logic
-- `deployment/` - Kubernetes deployment management
-- `storage/` - Storage provisioning and PV management
-- `credentials/` - Secret and credential management
-- `disasterrecovery/` - DR manager initialization
-- `consul/` - Consul integration
-- `pooler/` - Connection pooler management
-- `postgresexporter/`, `pgbackrestexporter/`, `queryexporter/` - Metrics exporters
-- `util/` - Utility functions
-- `client/` - Kubernetes client wrappers
-
-## Testing
-
-Robot Framework tests are in `/tests/robot`:
-
-```bash
-# Tests include:
-# - check_installation
-# - check_crud_user
-# - check_manual_switchover
-# - patroni_rest_api_auth
-```
-
-Service-specific Go tests:
-```bash
-cd services/<service-name>
-make test
-```
-
-## CRD Generation
-
-CRDs are generated from Go types using controller-gen:
+- After changing API types in `operator/api/`, regenerate the CRDs and
+  generated Go artifacts, then inspect the diff:
 
 ```bash
 cd operator
 make generate
+git diff -- api/ charts/patroni-core/crds/ charts/patroni-services/crds/
 ```
 
-This generates:
-- CRDs in `operator/charts/patroni-core/crds/` and `operator/charts/patroni-services/crds/`
-- DeepCopy methods in `api/*/zz_generated.deepcopy.go`
-- OpenAPI specs in `api/*/zz_generated.openapi.go`
-
-API type definitions:
-- `operator/api/common/v1` - Common types
-- `operator/api/apps/v1/postgresservice_types.go` - PatroniServices CRD
-- `operator/api/patroni/v1/patronicore_types.go` - PatroniCore CRD
-
-## Helm Chart Preparation
-
-The operator embeds Helm charts into its deployment:
+Pass: generation succeeds, generated changes are expected, and `make verify`
+passes from the root. There is no `make manifests` target in this repository.
+- After editing either Helm chart, render the affected chart with its sample
+  values and inspect the output; do not deploy to a cluster as a lint check:
 
 ```bash
-cd operator
-make gzip-charts   # Compresses Grafana dashboards
-make move-charts   # Copies charts to operator/deployments/charts/patroni-services
+helm template patroni-core operator/charts/patroni-core \
+  -f operator/charts/patroni-core/patroni-core-quickstart-sample.yaml >/dev/null
+helm template patroni-services operator/charts/patroni-services \
+  -f operator/charts/patroni-services/patroni-services-quickstart-sample.yaml >/dev/null
 ```
 
-## Installation (From Quickstart)
+Pass: affected `helm template` command exits `0`; inspect rendered changes for
+correct Kubernetes resource names, defaults, and backward compatibility.
 
-1. Install CRDs:
-```bash
-kubectl create -f ./operator/charts/patroni-core/crds/netcracker.com_patronicores.yaml
-kubectl create -f ./operator/charts/patroni-services/crds/netcracker.com_patroniservices.yaml
-```
+## Documentation
 
-2. Install Patroni Core:
-```bash
-helm install --namespace=postgres --create-namespace \
-  -f ./operator/charts/patroni-core/patroni-core-quickstart-sample.yaml \
-  patroni-core ./operator/charts/patroni-core
-```
+- [Documentation index](docs/README.md) — navigation and feature guides.
+- [Quickstart](docs/public/quickstart.md) — deployment steps; do not duplicate.
+- [Installation](docs/public/installation.md) — Helm values and prerequisites.
+- [Troubleshooting](docs/public/troubleshooting.md) — operational diagnostics.
+- When adding, moving, or renaming a guide, update `docs/README.md` and all
+  referencing relative links. Pass: each local link resolves to an existing
+  file and relevant heading. Do not invent links to documents not yet added.
 
-3. Wait for leader promotion:
-```bash
-kubectl -n postgres get pods --selector=pgtype=primary --field-selector=status.phase=Running
-```
+## Commits
 
-4. Install Patroni Services:
-```bash
-helm install --namespace=postgres \
-  -f ./operator/charts/patroni-services/patroni-services-quickstart-sample.yaml \
-  patroni-services ./operator/charts/patroni-services
-```
-
-## Dependencies
-
-- Go 1.26.2
-- Kubernetes 0.35.x (client-go, api, apimachinery)
-- controller-runtime 0.23.3
-- Patroni (for PostgreSQL HA)
-- pgBackRest (for backups)
-- Uses Consul for distributed configuration
-- Google Cloud APIs for cloud provider integration
-- operator-framework/operator-lib for leader election
-
-## Common Gotchas
-
-- The operator uses **leader election** via operator-lib (lock name depends on OPERATOR_ROLE)
-- Grafana dashboards must be gzipped before deployment
-- PatroniCore must be fully running (leader elected) before installing PatroniServices
-- Storage configuration is critical - supports both PV provisioners and manual PV assignment
-- TLS can be enabled on operator server (port 8443 vs 8080)
-
-## Commit Message Pattern
-
-All commits in this project MUST follow this format:
-
-```
-<type>: [<ticket-number>] <meaningful message>
-```
-
-Where:
-- `<type>` = fix, chore, feat, chore(deps), etc.
-- `<ticket-number>` = REQUIRED - Always ask the user for the ticket number before creating any commit
-- `<meaningful message>` = Clear, concise description of the change
-
-**Example:**
-```
-feat: [CPCAP-1234] add backup retention policy configuration
-fix: [CPCAP-5678] resolve memory leak in monitoring agent
-chore(deps): [CPCAP-9012] bump kubernetes dependencies to v0.35.1
-```
-
-**Important:** Never create a commit without first asking the user for the ticket number.
+- Never create a commit until the user provides a ticket number.
+- Use `<type>: [<ticket-number>] <meaningful message>`.
+- Example: `fix: [CPCAP-1234] correct operator validation`.
+- Before committing, summarize changed files, validation results, and any
+  blocked checks. Do not push or merge without an explicit user request.

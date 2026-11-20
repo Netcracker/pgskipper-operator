@@ -14,13 +14,28 @@ safety rules are in `SKILL.md`.
   - [Helm install fails: resource already exists](#helm-install-fails-resource-already-exists)
   - [Helm upgrade fails: selector is immutable](#helm-upgrade-fails-selector-is-immutable)
   - [External database project is not a string](#external-database-project-is-not-a-string)
-- [Site Manager and Vault](#site-manager-and-vault)
+- [Site Manager](#site-manager)
   - [Site Manager cannot authorize](#site-manager-cannot-authorize)
   - [Site Manager API calls fail: TokenReview is forbidden](#site-manager-api-calls-fail-tokenreview-is-forbidden)
-  - [Vault login fails with 403](#vault-login-fails-with-403)
 - [Patroni cluster issues](#patroni-cluster-issues)
   - [Cluster has no leader](#cluster-has-no-leader)
   - [Patroni pods do not start](#patroni-pods-do-not-start)
+  - [Pod is Pending: insufficient CPU or memory](#pod-is-pending-insufficient-cpu-or-memory)
+  - [Pod is Pending: node selector or affinity does not match](#pod-is-pending-node-selector-or-affinity-does-not-match)
+  - [Replica bootstrap fails: permission denied](#replica-bootstrap-fails-permission-denied)
+  - [Replica fails to start: could not read from control file](#replica-fails-to-start-could-not-read-from-control-file)
+  - [Replica fails to start: malformed WAL records](#replica-fails-to-start-malformed-wal-records)
+  - [Replica bootstrap fails: malformed pg_internal.init](#replica-bootstrap-fails-malformed-pg_internalinit)
+  - [All members wait for the leader to bootstrap](#all-members-wait-for-the-leader-to-bootstrap)
+  - [Patroni cannot reach the Kubernetes API](#patroni-cannot-reach-the-kubernetes-api)
+- [Replication issues](#replication-issues)
+  - [Replication is broken](#replication-is-broken)
+  - [Replica cannot connect: max_wal_senders exceeded](#replica-cannot-connect-max_wal_senders-exceeded)
+- [Monitoring issues](#monitoring-issues)
+  - [Disk metrics are missing](#disk-metrics-are-missing)
+- [DR scenario issues](#dr-scenario-issues)
+  - [DR scenario fails: failed pods exist](#dr-scenario-fails-failed-pods-exist)
+  - [DR scenario fails: replica gets 404 from the WAL archive](#dr-scenario-fails-replica-gets-404-from-the-wal-archive)
 - [Upgrade and migration issues](#upgrade-and-migration-issues)
   - [Major upgrade fails](#major-upgrade-fails)
   - [Collation fix fails for some databases](#collation-fix-fails-for-some-databases)
@@ -138,7 +153,7 @@ externalDataBase:
   project: "123456789012"
 ```
 
-## Site Manager and Vault
+## Site Manager
 
 ### Site Manager cannot authorize
 
@@ -215,29 +230,6 @@ subjects:
     namespace: <namespace>
 ```
 
-### Vault login fails with 403
-
-**Symptom:** With Vault enabled (`VAULT_ENABLED=true` in the DBaaS adapter), login to Vault fails:
-
-```text
-URL: PUT http://<vault-url>/v1/auth/<auth-method>/login
-Code 403. Errors:
-* permission denied
-```
-
-The Vault log shows that Vault cannot create TokenReviews:
-
-```json
-{"kind":"Status","apiVersion":"v1","metadata":{},"status":"Failure","message":"tokenreviews.authentication.k8s.io is forbidden: User \"system:serviceaccount:<vault-namespace>:<vault-service-account>\" cannot create resource \"tokenreviews\" in API group \"authentication.k8s.io\" at the cluster scope","reason":"Forbidden","details":{"group":"authentication.k8s.io","kind":"tokenreviews"},"code":403}
-```
-
-**Cause:** The Vault Kubernetes auth method validates the client's service account JWT through the TokenReview API, and
-the Vault service account lacks that permission. Vault is misconfigured, not the operator.
-
-**Fix:** Bind `system:auth-delegator` to the Vault service account, as described in the
-[Vault Kubernetes auth documentation](https://developer.hashicorp.com/vault/docs/auth/kubernetes). The Vault
-administrator owns this change.
-
 ## Patroni cluster issues
 
 ### Cluster has no leader
@@ -313,6 +305,305 @@ kubectl get pvc -n <namespace>
 - An invalid entry in `patroni.postgreSQLParams`. PostgreSQL refuses to start with an unknown parameter or with a
   library in `shared_preload_libraries` that the image does not contain.
 
+For `Pending` pods, see also [Pod is Pending: insufficient CPU or memory](#pod-is-pending-insufficient-cpu-or-memory)
+and [Pod is Pending: node selector or affinity does not match](#pod-is-pending-node-selector-or-affinity-does-not-match).
+
+### Pod is Pending: insufficient CPU or memory
+
+**Symptom:** A Patroni pod stays `Pending`, and `kubectl describe pod` shows an event such as:
+
+```text
+0/7 nodes are available: 7 Insufficient memory.
+```
+
+or `7 Insufficient cpu.` Older versions report `fit failure on node (<node>): Insufficient Memory` per node.
+
+**Cause:** No node has enough free resources for the pod's requests. Either the cluster is too small for the requested
+sizing, or the requests in `patroni.resources` are too high.
+
+**Fix**
+
+1. Compare the node capacity with the requests:
+
+   ```bash
+   kubectl describe nodes | grep -A8 'Allocated resources'
+   kubectl get pod <patroni-pod> -n <namespace> -o jsonpath='{.spec.containers[0].resources}'
+   ```
+
+2. Add capacity to the cluster. That belongs to the cluster administrator.
+3. Lowering `patroni.resources` is a last resort: too small limits cause slow queries and out-of-memory kills. Propose it
+   only with that warning, and change it only with the user's confirmation.
+
+### Pod is Pending: node selector or affinity does not match
+
+**Symptom:** A Patroni pod stays `Pending`, and the pod events show:
+
+```text
+0/7 nodes are available: 7 node(s) didn't match Pod's node affinity/selector.
+```
+
+Older versions report `fit failure on node (<node>): MatchNodeSelector`.
+
+**Cause**
+
+- On an existing installation: node labels or the pod's selector changed after deployment, so the selector names a
+  label that no node has.
+- On a first rollout: `patroni.storage.nodes` (used with `patroni.storage.type: pv`) or `patroni.affinity` is wrong.
+
+**Fix:** Compare the selector with the node labels:
+
+```bash
+kubectl get pod <patroni-pod> -n <namespace> -o jsonpath='{.spec.nodeSelector}{"\n"}{.spec.affinity.nodeAffinity}'
+kubectl get nodes --show-labels
+```
+
+Restore the node labels, or correct the values and upgrade the patroni-core release with the user's confirmation. For a
+wrong value on a first rollout, reinstall with the correct value.
+
+### Replica bootstrap fails: permission denied
+
+**Symptom:** The replica cannot copy data from the leader, and its log repeats:
+
+```text
+pg_basebackup: could not create directory "/var/lib/pgsql/data/postgresql_node1": Permission denied
+ERROR: Error when fetching backup: pg_basebackup exited with code=1
+ERROR: failed to bootstrap from leader 'node2'
+INFO: Removing data directory: /var/lib/pgsql/data/postgresql_node1
+```
+
+**Cause:** The data volume is mounted with an owner that the PostgreSQL user cannot write to. With host path volumes, the
+pod can start before the storage is mounted on the node, so it gets an empty directory owned by `root`.
+
+**Investigation**
+
+```bash
+kubectl exec -n <namespace> <patroni-pod> -- ls -ld /var/lib/pgsql/data
+```
+
+`drwxr-xr-x ... root root ... data` means wrong ownership.
+
+**Fix**
+
+- Dynamically provisioned volumes: set `patroni.fsGroup` in the patroni-core values and upgrade the release with the
+  user's confirmation.
+- Host path volumes: find the host path and the node. See
+  [Finding the host path of a volume](troubleshooting-pg-cluster.md#finding-the-host-path-of-a-volume). On the node,
+  `sudo ls -l <volume-path>` must show `postgresql_node<N>` owned by the PostgreSQL user. If it does now, restart the pod
+  with the user's confirmation. Otherwise the cluster administrator must fix the mount.
+
+### Replica fails to start: could not read from control file
+
+**Symptom:** The replica log contains:
+
+```text
+PANIC:  could not read from control file: Success
+```
+
+**Cause:** PostgreSQL cannot read `pg_control`, for example because the volume ran out of space or the database was not
+vacuumed on time.
+
+**Fix:** Check the free space on the volume. Then reinitialize the replica with the user's confirmation. See
+[Replica pod reinitialization](troubleshooting-pg-cluster.md#replica-pod-reinitialization).
+
+### Replica fails to start: malformed WAL records
+
+**Symptom:** The leader runs, but the replica log contains messages such as:
+
+```text
+LOG: record with incorrect prev-link 4000800/0 at 0/305BAF8
+LOG:  invalid resource manager ID 32 at 0/1F8C1450
+```
+
+**Cause:** The replica or the leader was stopped forcefully, or the replication connection broke, and the replica holds
+malformed WAL.
+
+**Fix:** Reinitialize the replica with the user's confirmation. See
+[Replica pod reinitialization](troubleshooting-pg-cluster.md#replica-pod-reinitialization).
+
+### Replica bootstrap fails: malformed pg_internal.init
+
+**Symptom:** The replica log repeats:
+
+```text
+ERROR: Error when fetching backup: pg_basebackup exited with code=1
+pg_basebackup: COPY stream ended before last file was finished
+pg_basebackup: removing data directory "/var/lib/pgsql/data/postgresql_node2"
+```
+
+and the leader log contains:
+
+```text
+ERROR:  invalid segment number 0 in file "pg_internal.init.7348"
+```
+
+**Cause:** A forced restart or a broken replication connection left a malformed relation cache file
+(`pg_internal.init`) on the leader, and `pg_basebackup` fails on it.
+
+**Fix:** With the user's confirmation, either restart PostgreSQL on the leader (`patronictl restart patroni
+<leader-member>`), or delete the malformed `pg_internal.init` file named in the error from the leader's data directory.
+PostgreSQL rebuilds the file on startup. Then let the replica retry the bootstrap.
+
+### All members wait for the leader to bootstrap
+
+**Symptom:** The logs of every Patroni pod repeat:
+
+```text
+INFO: waiting for leader to bootstrap
+```
+
+**Cause:** A member created the `initialize` key in the DCS but did not finish the initialization and did not remove the
+key, so no other member starts it.
+
+**Investigation:** Look for an `initialize` annotation with an empty value, and confirm that **all** members log the
+message above:
+
+```bash
+kubectl get configmap patroni-config -n <namespace> -o jsonpath='{.metadata.annotations}'
+```
+
+**Fix:** With the user's confirmation, remove only the `initialize` annotation. Do not change other annotations, and do
+not delete the ConfigMap.
+
+```bash
+kubectl annotate configmap patroni-config -n <namespace> initialize-
+```
+
+### Patroni cannot reach the Kubernetes API
+
+**Symptom:** The logs of all Patroni pods repeat errors such as:
+
+```text
+WARNING: Retrying (Retry(total=2, ...)) after connection broken by 'ConnectTimeoutError(..., 'Connection to 172.30.0.1 timed out. (connect timeout=1)')': /api/v1/namespaces/<namespace>/pods?labelSelector=app%3Dpatroni
+patroni.utils.RetryFailedError: 'Exceeded retry deadline'
+ERROR: Error communicating with DCS
+INFO: DCS is not accessible
+```
+
+or `Failed to establish a new connection: [Errno 111] Connection refused` and
+`K8sConnectionFailed('No more API server nodes in the cluster',)`. PostgreSQL may have a short outage.
+
+**Cause:** The Kubernetes API, which is the DCS by default, was unavailable, and Patroni demoted the leader.
+
+**Investigation**
+
+```bash
+kubectl exec -n <namespace> <patroni-pod> -- patronictl show-config
+kubectl get patronicore -n <namespace> -o yaml | grep -A10 patroniParams
+```
+
+**Fix**
+
+- Restoring the Kubernetes API belongs to the cluster administrator.
+- Check that `failsafe_mode` is on. The patroni-core chart enables it by default (`"failsafe_mode: true"` in
+  `patroni.patroniParams`). With failsafe mode, the leader keeps running while it can reach all members, even when the
+  DCS is down.
+- If the API is unstable, propose higher `retry_timeout`, `ttl`, and `loop_wait` values. Set them in
+  `patroni.patroniParams` so the next upgrade keeps them, and change them only with the user's confirmation.
+
+## Replication issues
+
+### Replication is broken
+
+**Symptom:** A replica starts but does not replicate, and its log contains one of:
+
+```text
+LOG:  invalid record length at 0/58F09F0: wanted 24, got 0
+requested timeline 144 is not a child of this server's history
+FATAL:  could not receive data from WAL stream: ERROR:  requested WAL segment 0000002B000000C100000036 has already been removed
+```
+
+On the monitoring dashboard, the WAL location of the replica stays flat.
+
+**Cause:** The replica cannot recover data from the leader: WAL it needs is gone, or its timeline diverged.
+
+**Fix:** First confirm that the leader runs and is healthy with `patronictl list`. If the leader is broken, stop:
+reinitializing a replica from a broken leader can lose data that only a backup can restore. If the leader is healthy,
+reinitialize the replica with the user's confirmation. See
+[Replica pod reinitialization](troubleshooting-pg-cluster.md#replica-pod-reinitialization).
+
+### Replica cannot connect: max_wal_senders exceeded
+
+**Symptom:** The replica log contains:
+
+```text
+FATAL: number of requested standby connections exceeds max_wal_senders (currently 10)
+```
+
+**Cause:** The leader already has `max_wal_senders` replication connections.
+
+**Investigation:** On the leader:
+
+```sql
+SHOW max_wal_senders;
+SELECT slot_name, plugin, slot_type, active, active_pid FROM pg_replication_slots;
+SELECT pid, usename, application_name, client_addr, state FROM pg_stat_replication;
+```
+
+**Fix:** With the user's confirmation, either terminate replication connections that are no longer needed
+(`pg_terminate_backend(<pid>)`), or raise the limits:
+
+```bash
+kubectl exec -n <namespace> <leader-pod> -- patronictl edit-config -s 'postgresql.parameters.max_wal_senders=20' -q --force
+kubectl exec -n <namespace> <leader-pod> -- patronictl edit-config -s 'postgresql.parameters.max_replication_slots=20' -q --force
+kubectl exec -n <namespace> <leader-pod> -- patronictl restart patroni --force
+```
+
+The restart is needed for the new values. Also add them to `patroni.postgreSQLParams` so the next upgrade keeps them.
+
+## Monitoring issues
+
+### Disk metrics are missing
+
+**Symptom:** The dashboard shows no disk usage for a Patroni node, and the `Disk is almost full` alerts do not fire.
+
+**Cause:** The monitoring agent (`monitoring-collector`) collects disk metrics by running `du` and `df` in the Patroni
+container through exec. If a command fails or takes too long, the agent skips the disk metrics of that pod.
+
+**Investigation**
+
+```bash
+kubectl logs -n <namespace> deployment/monitoring-collector
+kubectl exec -n <namespace> <patroni-pod> -- sh -c 'time du /var/lib/pgsql/data/ --max-depth=2 --exclude=/var/lib/pgsql/data/lost+found'
+kubectl auth can-i create pods/exec -n <namespace> --as=system:serviceaccount:<namespace>:<collector-service-account>
+```
+
+**Fix:** If `du` is slow, the volume is slow or holds a very large number of files; report it to the storage owner. If
+exec is forbidden, fix the RBAC of the collector's service account. The legacy `SHELL_METRICS_COLLECTOR_EXECUTORS`
+variable does not exist in the current agent.
+
+## DR scenario issues
+
+### DR scenario fails: failed pods exist
+
+**Symptom:** A DR scenario fails on the PostgreSQL step with:
+
+```text
+Exiting because exit_code: 12 not equals zero and failed pods exists:  pg-patroni-node3-41-1j73n pg-patroni-node4-40-058gm
+```
+
+`patronictl list` shows `start failed` for some members, but PostgreSQL runs, and the Patroni logs show no errors.
+
+**Fix:** With the user's confirmation, restart the failed members with `patronictl restart patroni <member-name>`, then
+run the DR scenario again. Before the restart, collect `ps aux | cat` from each failed member and their `kubectl logs`,
+and attach them if you escalate.
+
+### DR scenario fails: replica gets 404 from the WAL archive
+
+**Symptom:** A DR scenario fails with `Patroni cluster is not ready! 2 out of 4`. `patronictl list` shows `starting` for
+some members, and their logs contain:
+
+```text
+> GET /archive/get?filename=000000F100000196000000DB HTTP/1.1
+> Host: postgres-backup-daemon:8082
+* The requested URL returned error: 404 NOT FOUND
+```
+
+**Cause:** The replica needs a WAL file that the backup daemon archive does not have.
+
+**Fix:** Reinitialize the failed member with the user's confirmation. See
+[Replica pod reinitialization](troubleshooting-pg-cluster.md#replica-pod-reinitialization). Collect the logs of the
+`starting` members and of `postgres-backup-daemon` first.
+
 ## Upgrade and migration issues
 
 ### Major upgrade fails
@@ -350,33 +641,58 @@ kubectl get pod <upgrade-pod> -n <namespace> \
 **Cause:** `patroni.postgreSQLParams` has no `shared_preload_libraries` entry, so the `postgresql.conf` of the old
 cluster has none either. The script stops before `pg_upgrade` starts, so the data of the old cluster is intact.
 
-Upgrade images built before this check existed print no message: their log ends with
-`making chmod 750 to datadir`. The cause and the fix are the same.
+The current operator checks this on the leader before it stops the cluster. Then the `patroni-core-operator` log
+contains `shared_preload_libraries is not found in PostgreSQL config, please check PostgreSQL params, failing major
+upgrade`, no upgrade pod starts, and the cluster keeps running on the old version. Older operators stop the cluster
+first and fail in the `pg-upgrade` container instead. Upgrade images built before this check existed print no message:
+their log ends with `making chmod 750 to datadir`. The cause and the fix are the same.
 
-**Fix:** The script reads the parameter from the `postgresql.conf` that Patroni writes, so the old cluster must run once
-with the parameter before you retry. Ask the user before each step.
+**Fix:** Never set `patroni.dockerImage` back to the old image: some pod environment variables work only with a
+specific Patroni version. The operator keeps the old image in the Patroni StatefulSets until the upgrade succeeds, so
+the old cluster starts without an image change. Add the parameter to the running cluster, then repeat the upgrade. Ask
+the user before each step.
 
-1. In the patroni-core values, set `patroni.dockerImage` back to the image of the old PostgreSQL version, and add
-   `shared_preload_libraries`. Helm replaces lists instead of merging them, so keep the other entries of
-   `postgreSQLParams`. Keep the libraries the cluster already uses; the chart default is shown below.
+1. Stop the operator, so that it does not start the upgrade again before the parameter is in place:
+
+   ```bash
+   kubectl scale deployment patroni-core-operator -n <namespace> --replicas=0
+   ```
+
+2. If the Patroni StatefulSets are at zero replicas, confirm that they still use the old image, scale each one back to
+   one replica, and wait until `patronictl list` shows a leader:
+
+   ```bash
+   kubectl get statefulsets -n <namespace> \
+     -o custom-columns='NAME:.metadata.name,REPLICAS:.spec.replicas,IMAGE:.spec.template.spec.containers[0].image'
+   kubectl scale statefulset pg-patroni-node<N> -n <namespace> --replicas=1
+   ```
+
+3. Set the parameter in the Patroni configuration and restart PostgreSQL. Use the libraries the cluster needs; the chart
+   default is shown below.
+
+   ```bash
+   kubectl exec -n <namespace> <leader-pod> -- patronictl edit-config \
+     -s 'postgresql.parameters.shared_preload_libraries=pg_stat_statements, pg_hint_plan, pg_cron' -q --force
+   kubectl exec -n <namespace> <leader-pod> -- patronictl restart patroni --force
+   ```
+
+4. Check the parameter the same way the operator does:
+
+   ```bash
+   kubectl exec -n <namespace> <leader-pod> -- sh -c 'grep shared_preload_libraries /var/lib/pgsql/data/postgresql_${POD_IDENTITY}/postgresql.conf'
+   kubectl exec -n <namespace> <leader-pod> -- psql -c 'SHOW shared_preload_libraries;'
+   ```
+
+5. Add the same value to `patroni.postgreSQLParams`, keeping the new `patroni.dockerImage` and
+   `patroni.majorUpgrade.enabled: true`. Helm replaces lists instead of merging them, so keep the other entries. Upgrade
+   the patroni-core release; this restores the operator Deployment, and the operator repeats the major upgrade.
 
    ```yaml
    patroni:
-     dockerImage: <old-patroni-image>
      postgreSQLParams:
        - "shared_preload_libraries: pg_stat_statements, pg_hint_plan, pg_cron"
        # ...the other entries of the list
    ```
-
-2. Upgrade the patroni-core release. If the Patroni pods do not start, scale the StatefulSets `pg-patroni-node<N>`
-   back to one replica.
-3. Check the parameter on the leader:
-
-   ```bash
-   kubectl exec -n <namespace> <leader-pod> -- psql -c 'SHOW shared_preload_libraries;'
-   ```
-
-4. Set the new image in `patroni.dockerImage` again to repeat the upgrade.
 
 #### `pg_upgrade` itself fails (exit code 1)
 
@@ -616,13 +932,21 @@ kubectl get pods -n <namespace> -L pgtype
 kubectl get endpoints pg-patroni -n <namespace>
 ```
 
-**Fix:** If the labels are wrong, report a bug to the operator maintainers. As a workaround, and only with the user's
-confirmation, fix the labels by hand:
+**Fix**
 
-```bash
-kubectl label pod <former-leader-pod> -n <namespace> pgtype=replica --overwrite
-kubectl label pod <actual-leader-pod> -n <namespace> pgtype=primary --overwrite
-```
+- If the client uses `pg-patroni-ro` or a pod IP for writes, the client must use `pg-patroni` (or the connection
+  pooler). That is an application configuration change.
+- If the labels are wrong, do not edit them, and do not propose editing them. Patroni manages the `pgtype` label
+  (`role_label: pgtype` in its configuration) and sets it on its own pod at every role change, so manual labels are
+  overwritten and can route writes to the wrong pod. Find out why Patroni could not update its pod: read the Patroni
+  logs of the affected pods for Kubernetes API errors, and check the permission:
+
+  ```bash
+  kubectl get pod <patroni-pod> -n <namespace> -o jsonpath='{.spec.serviceAccountName}'
+  kubectl auth can-i patch pods -n <namespace> --as=system:serviceaccount:<namespace>:<service-account>
+  ```
+
+  If you find no cause, escalate with the output of `patronictl list` and `kubectl get pods -L pgtype`.
 
 **Cause 2:** An application bug: the application writes inside a transaction it opened as read-only.
 
