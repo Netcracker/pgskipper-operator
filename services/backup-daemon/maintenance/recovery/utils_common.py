@@ -114,6 +114,7 @@ def retry(exceptions=None, tries=5, delay=1, backoff=1, logger=None):
     :type logger: logging.Logger
     :return:
     """
+
     def deco_retry(f):
 
         def handle_error(e, mtries, mdelay):
@@ -143,4 +144,5 @@ def retry(exceptions=None, tries=5, delay=1, backoff=1, logger=None):
             return f(*args, **kwargs)
 
         return f_retry
+
     return deco_retry

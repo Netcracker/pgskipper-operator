@@ -40,12 +40,12 @@ def verify(username, password):
 
 def _connection_props():
     return {
-        'host': os.getenv('POSTGRES_HOST', 'localhost'),
-        'port': os.getenv('POSTGRES_PORT', '5432'),
-        'user': utils.read_secret_file(f'{utils.POSTGRES_CREDS_PATH}/username', 'postgres'),
-        'password': utils.read_secret_file(f'{utils.POSTGRES_CREDS_PATH}/password', ''),
-        'database': 'postgres',
-        'connect_timeout': int(os.getenv('CONNECT_TIMEOUT', '5')),
+        "host": os.getenv("POSTGRES_HOST", "localhost"),
+        "port": os.getenv("POSTGRES_PORT", "5432"),
+        "user": utils.read_secret_file(f"{utils.POSTGRES_CREDS_PATH}/username", "postgres"),
+        "password": utils.read_secret_file(f"{utils.POSTGRES_CREDS_PATH}/password", ""),
+        "database": "postgres",
+        "connect_timeout": int(os.getenv("CONNECT_TIMEOUT", "5")),
     }
 
 
@@ -69,7 +69,7 @@ _SELECT_SQL = "SELECT marker FROM backup_restore_markers WHERE sentinel = 'curre
 
 class MarkerResource(Resource):
 
-    __endpoints = ['/api/v1/data-validation/marker']
+    __endpoints = ["/api/v1/data-validation/marker"]
 
     @staticmethod
     def get_endpoints():
@@ -78,12 +78,12 @@ class MarkerResource(Resource):
     @auth.login_required
     def post(self):
         body = request.get_json(silent=True)
-        if not body or 'marker' not in body:
-            return {'error': 'Request body must contain "marker" field'}, 400
+        if not body or "marker" not in body:
+            return {"error": 'Request body must contain "marker" field'}, 400
 
-        marker = body['marker']
+        marker = body["marker"]
         if not isinstance(marker, str) or not marker:
-            return {'error': '"marker" must be a non-empty string'}, 400
+            return {"error": '"marker" must be a non-empty string'}, 400
 
         try:
             conn = psycopg2.connect(**_connection_props())
@@ -96,7 +96,7 @@ class MarkerResource(Resource):
                 conn.close()
         except Exception:
             log.exception("Failed to write marker to database")
-            return {'error': 'Internal server error'}, 500
+            return {"error": "Internal server error"}, 500
 
         return None, 201
 
@@ -112,9 +112,9 @@ class MarkerResource(Resource):
                 conn.close()
         except Exception:
             log.exception("Failed to read marker from database")
-            return {'error': 'Internal server error'}, 500
+            return {"error": "Internal server error"}, 500
 
         if row is None:
-            return {'error': 'No marker found'}, 404
+            return {"error": "No marker found"}, 404
 
-        return {'marker': row[0]}, 200
+        return {"marker": row[0]}, 200

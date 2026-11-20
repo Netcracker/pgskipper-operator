@@ -34,10 +34,7 @@ def verify(username, password):
 
 
 class BackupRequest(Resource):
-    __endpoints = [
-        '/backup',
-        '/backups/request'
-    ]
+    __endpoints = ["/backup", "/backups/request"]
 
     def __init__(self):
         self.__log = logging.getLogger("BackupEndpoint")
@@ -50,13 +47,16 @@ class BackupRequest(Resource):
     def post(self):
         self.__log.debug("Endpoint /backup has been called.")
         # Redirect backup request to underlying scheduler, which keeps status of scheduled backups.
-        r = requests.post('http://localhost:8085/schedule')
+        r = requests.post("http://localhost:8085/schedule")
 
         if not r.ok:
             try:
                 r.raise_for_status()
             except HTTPError as e:
-                self.__log.exception("Something went wrong when redirecting backup request to /schedule endpoint.", e)
+                self.__log.exception(
+                    "Something went wrong when redirecting backup request to /schedule endpoint.",
+                    e,
+                )
 
         self.__log.debug(r.json())
 
@@ -65,10 +65,7 @@ class BackupRequest(Resource):
 
 class Eviction(Resource):
 
-    __endpoints = [
-        '/evict',
-        '/backups/delete'
-    ]
+    __endpoints = ["/evict", "/backups/delete"]
 
     def __init__(self, storage):
         self.__storage = storage
@@ -79,7 +76,7 @@ class Eviction(Resource):
 
     @auth.login_required
     def delete(self):
-        backup_id = request.args.getlist('id')[0]
+        backup_id = request.args.getlist("id")[0]
         vaults = self.__storage.list()
         vaults.reverse()
 
@@ -98,10 +95,7 @@ class Eviction(Resource):
 
 class Download(Resource):
 
-    __endpoints = [
-        '/get',
-        '/backups/download'
-    ]
+    __endpoints = ["/get", "/backups/download"]
 
     def __init__(self, storage):
         self.__storage = storage
@@ -126,7 +120,7 @@ class Download(Resource):
 
         vaults = self.__storage.list()
         vaults.reverse()
-        backup_id = request.args.getlist('id')[0] if request.args.getlist('id') else None
+        backup_id = request.args.getlist("id")[0] if request.args.getlist("id") else None
 
         # search for vault
         vault_for_streaming = None
@@ -141,14 +135,16 @@ class Download(Resource):
                     vault_for_streaming = vault
                     break
         if vault_for_streaming:
-            return Response(stream_with_context(
-                generate(self.__storage, vault_for_streaming)),
-                            mimetype='application/octet-stream',
-                            headers=[
-                                ('Content-Type', 'application/octet-stream'),
-                                ('Content-Disposition',
-                                 "pg_backup_{}.tar.gz".format(
-                                     vault_for_streaming.get_id()))
-                            ])
+            return Response(
+                stream_with_context(generate(self.__storage, vault_for_streaming)),
+                mimetype="application/octet-stream",
+                headers=[
+                    ("Content-Type", "application/octet-stream"),
+                    (
+                        "Content-Disposition",
+                        "pg_backup_{}.tar.gz".format(vault_for_streaming.get_id()),
+                    ),
+                ],
+            )
         else:
             return Response("Cannot find backup", status=500)

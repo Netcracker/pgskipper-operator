@@ -116,7 +116,7 @@ func getLogicalDbsServices(dbService DBService, existingServices []DBService) ([
 		if !serviceAlreadyPresent(dbService.GetType(), dbName, existingServices) {
 			newDbService := getServiceByType(dbService.GetType(), false)
 			log.Debugf("New database with name %s and type %s was added", dbName, newDbService.GetType())
-			newDbService.Initialize(dbService.GetDSN(), dbName)
+			_ = newDbService.Initialize(dbService.GetDSN(), dbName)
 			dbServices = append(dbServices, newDbService)
 		}
 	}

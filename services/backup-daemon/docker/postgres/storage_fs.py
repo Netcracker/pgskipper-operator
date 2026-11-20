@@ -12,26 +12,24 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import io
-
 import errno
 import os
 from datetime import datetime
-import logging
+from io import StringIO
 from traceback import format_exception
+import logging
 import time
 import json
 import fsutil
 import storage
-from storage import VAULT_NAME_FORMAT, VAULT_DIRNAME_MATCHER, ARCHIVE_NAME_MATCHER, \
-    StorageLocationAlreadyExistsException
+from storage import (
+    VAULT_NAME_FORMAT,
+    VAULT_DIRNAME_MATCHER,
+    ARCHIVE_NAME_MATCHER,
+    StorageLocationAlreadyExistsException,
+)
 import utils
 import encryption
-
-try:
-    from io import StringIO
-except ImportError:
-    from io import StringIO
 
 PG_CLUSTER_NAME = os.getenv("PG_CLUSTER_NAME")
 STORAGE_ROOT = os.getenv("STORAGE_ROOT")
@@ -60,24 +58,26 @@ class FSStorage(storage.Storage):
 
     def list(self):
         if os.path.exists(self.root):
-            vaults = [FSVault(self.root + "/" + dirname)
-                      for dirname in os.listdir(self.root)
-                      if VAULT_DIRNAME_MATCHER.fullmatch(dirname) is not None]
+            vaults = [
+                FSVault(self.root + "/" + dirname)
+                for dirname in os.listdir(self.root)
+                if VAULT_DIRNAME_MATCHER.fullmatch(dirname) is not None
+            ]
             vaults.sort(key=lambda v: v.create_time())
             return vaults
         else:
             return []
 
     def size(self):
-        """ Returns whole storage size in bytes """
+        """Returns whole storage size in bytes"""
         return fsutil.get_folder_size(self.root)
 
     def archive_size(self):
-        """ Returns whole storage size in bytes """
+        """Returns whole storage size in bytes"""
         return fsutil.get_folder_size(os.path.join(self.root, "archive"))
 
     def fs_space(self):
-        """ Returns tuple (free, total) space on mount point where is root folder located """
+        """Returns tuple (free, total) space on mount point where is root folder located"""
         return fsutil.get_fs_space(self.root)
 
     def open_vault(self, backup_id):
@@ -124,12 +124,11 @@ class FSStorage(storage.Storage):
         self.__log.info("Get request for file: %s" % filename)
         full_file_path = "{}/{}".format(self.root, filename)
 
-        return encryption.FileWrapper(full_file_path, self.encryption) \
-            .get_file_stream()
+        return encryption.FileWrapper(full_file_path, self.encryption).get_file_stream()
 
     def prot_put_as_stream(self, filename, stream):
         """
-        :param filename: 
+        :param filename:
         :type filename: string
         :param stream:
         :type stream: io.RawIOBase
@@ -144,8 +143,7 @@ class FSStorage(storage.Storage):
             except OSError as exc:
                 if exc.errno != errno.EEXIST:
                     raise
-        return encryption.FileWrapper(fs_filename, self.encryption) \
-            .put_file_stream(stream)
+        return encryption.FileWrapper(fs_filename, self.encryption).put_file_stream(stream)
 
     def prot_get_file_size(self, filename):
         # self.__log.info("Size request for file: %s" % filename)
@@ -157,11 +155,14 @@ class FSStorage(storage.Storage):
         archive_root = os.path.join(self.root, "archive")
         if os.path.exists(archive_root):
             self.__log.debug("Archive directory listing {}".format(os.listdir(archive_root)))
-            archives = [storage.Archive(
-                ARCHIVE_NAME_MATCHER.match(filename).group("name"),
-                os.path.getmtime(os.path.join(archive_root, filename)) * 1000)
+            archives = [
+                storage.Archive(
+                    ARCHIVE_NAME_MATCHER.match(filename).group("name"),
+                    os.path.getmtime(os.path.join(archive_root, filename)) * 1000,
+                )
                 for filename in os.listdir(archive_root)
-                if ARCHIVE_NAME_MATCHER.match(filename) is not None]
+                if ARCHIVE_NAME_MATCHER.match(filename) is not None
+            ]
             return archives
         else:
             self.__log.debug("Archive directory does not exist")
@@ -202,7 +203,9 @@ class FSVault(storage.Vault):
                 return json.load(f)
             except Exception as e:
                 self.__log.exception(e)
-                self.__log.warning("Cannot load metrics file: {}. Metrics file can be damaged.".format(self.metrics_filepath))
+                self.__log.warning(
+                    "Cannot load metrics file: {}. Metrics file can be damaged.".format(self.metrics_filepath)
+                )
                 return {}
 
     def __lock_filepath(self):
@@ -228,14 +231,17 @@ class FSVault(storage.Vault):
             return False
         with open(self.__metrics_filepath(), "r") as f:
             j = json.load(f)
-        return j['exit_code'] == 0
+        return j["exit_code"] == 0
 
     def is_back_up_archive_exists(self):
         # for pg10 backups there is another naming convention `pg_backup_{timestamp}`
-        return os.path.exists(self.folder + "/pg_{}_backup_{}.tar.gz".format(PG_CLUSTER_NAME, self.get_id())) \
-               or os.path.exists(self.folder + "/pg_backup_{}.tar.gz".format(self.get_id())) \
-               or os.path.exists(self.folder + "/pg_{}_backup_{}_enc.tar.gz".format(PG_CLUSTER_NAME, self.get_id())) \
-               or os.path.exists(self.folder + "/pg_backup_{}_enc.tar.gz".format(self.get_id()))
+        backup_id = self.get_id()
+        return (
+            os.path.exists(self.folder + "/pg_{}_backup_{}.tar.gz".format(PG_CLUSTER_NAME, backup_id))
+            or os.path.exists(self.folder + "/pg_backup_{}.tar.gz".format(backup_id))
+            or os.path.exists(self.folder + "/pg_{}_backup_{}_enc.tar.gz".format(PG_CLUSTER_NAME, backup_id))
+            or os.path.exists(self.folder + "/pg_backup_{}_enc.tar.gz".format(backup_id))
+        )
 
     def __enter__(self):
         self.__log.info("Init next vault: %s" % self.folder)
@@ -244,7 +250,8 @@ class FSVault(storage.Vault):
         if not os.path.exists(self.folder):
             os.makedirs(self.folder)
         else:
-            raise StorageLocationAlreadyExistsException("Destination backup folder already exists: %s" % self.folder)
+            msg = "Destination backup folder already exists: %s" % self.folder
+            raise StorageLocationAlreadyExistsException(msg)
 
         self.__log.info("Create .lock file in vault: %s" % self.folder)
         fsutil.touch(self.__lock_filepath())

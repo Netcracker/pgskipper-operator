@@ -176,12 +176,14 @@ func parseSSLMode(url string, parameters map[string]interface{}) string {
 	// handle dbaas case
 	if name, ok := parameters["service_name"]; ok && name.(string) == "dbaas-postgres-adapter" {
 		if util.GetEnv("INTERNAL_TLS_ENABLED", "false") == "true" {
+			//nolint:staticcheck
 			return strings.Replace(url, "http", "https", -1)
 		}
 		return url
 	}
 
 	if util.GetEnv("PGSSLMODE", "prefer") == "require" {
+		//nolint:staticcheck
 		return strings.Replace(url, "http", "https", -1)
 	}
 	return url
@@ -249,7 +251,7 @@ func (s *Scraper) handleJsonData(json, module map[string]interface{}) {
 	points := linearizeJson(json)
 	mapStatuses(points)
 	for metricName, value := range points {
-
+		//nolint:staticcheck
 		mName := fmt.Sprintf("ma_%s", strings.Replace(metricName, ".", "_", -1))
 		metric := NewMetric(mName).withLabels(labels).setValue(value)
 		s.metrics = append(s.metrics, metric)

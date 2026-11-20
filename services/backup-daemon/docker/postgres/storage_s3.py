@@ -15,28 +15,23 @@
 import subprocess
 
 import boto3
-import botocore
 import hashlib
 import io
 import utils
 import urllib3
+from io import StringIO
+from traceback import format_exception
 
 import botocore.exceptions
 import errno
 import os
 from datetime import datetime
 import logging
-from traceback import format_exception
 import time
 import json
 import storage
-from storage import VAULT_NAME_FORMAT, VAULT_DIRNAME_MATCHER, StorageLocationAlreadyExistsException, ARCHIVE_NAME_MATCHER
+from storage import VAULT_NAME_FORMAT, ARCHIVE_NAME_MATCHER
 from retrying import retry
-
-try:
-    from io import StringIO
-except ImportError:
-    from io import StringIO
 
 CONTAINER = os.getenv("CONTAINER")
 CONTAINER_SEG = "{}_segments".format(CONTAINER)
@@ -46,6 +41,7 @@ RETRY_COUNT = 10
 RETRY_WAIT = 1000
 
 urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
+
 
 class StreamWrapper(io.RawIOBase):
 
@@ -82,7 +78,7 @@ class AwsS3Storage(storage.Storage):
 
     def prot_put_as_stream(self, filename, stream):
         """
-        :param filename: 
+        :param filename:
         :type filename: string
         :param stream:
         :type stream: io.RawIOBase
@@ -121,14 +117,16 @@ class AwsS3Storage(storage.Storage):
     @retry(stop_max_attempt_number=RETRY_COUNT, wait_fixed=RETRY_WAIT)
     def prot_get_as_stream(self, filename):
         self.__log.info("Get stream request for file: %s" % self.aws_prefix + filename)
-        object_body = AwsS3Vault.get_s3_resource().Bucket(CONTAINER).Object(self.aws_prefix + filename).get()['Body']
+        prefixed_filename = self.aws_prefix + filename
+        object_body = AwsS3Vault.get_s3_resource().Bucket(CONTAINER).Object(prefixed_filename).get()["Body"]
         return StreamWrapper(object_body)
 
     @retry(stop_max_attempt_number=RETRY_COUNT, wait_fixed=RETRY_WAIT)
     def prot_delete_bundle(self, filename):
-        objects_to_delete = AwsS3Vault.get_s3_client().list_objects(Bucket=CONTAINER, Prefix=self.aws_prefix + filename)
-        for obj in objects_to_delete.get('Contents', []):
-            AwsS3Vault.get_s3_client().delete_object(Bucket=CONTAINER, Key=obj['Key'])
+        prefixed_filename = self.aws_prefix + filename
+        objects_to_delete = AwsS3Vault.get_s3_client().list_objects(Bucket=CONTAINER, Prefix=prefixed_filename)
+        for obj in objects_to_delete.get("Contents", []):
+            AwsS3Vault.get_s3_client().delete_object(Bucket=CONTAINER, Key=obj["Key"])
 
     def prot_delete(self, filename):
         self.prot_delete_bundle(filename)
@@ -136,9 +134,10 @@ class AwsS3Storage(storage.Storage):
     def prot_is_file_exists(self, filename):
         exists = True
         try:
-            AwsS3Vault.get_s3_resource().Object(CONTAINER, self.aws_prefix + filename).get()
+            prefixed_filename = self.aws_prefix + filename
+            AwsS3Vault.get_s3_resource().Object(CONTAINER, prefixed_filename).get()
         except botocore.exceptions.ClientError as e:
-            if e.response['Error']['Code'] == 'NoSuchKey':
+            if e.response["Error"]["Code"] == "NoSuchKey":
                 exists = False
             else:
                 raise
@@ -147,7 +146,7 @@ class AwsS3Storage(storage.Storage):
 
     def prot_get_file_size(self, filename):
         if self.prot_is_file_exists(filename):
-            return int(AwsS3Vault.get_s3_resource().Object(CONTAINER, filename).get()['Size'])
+            return int(AwsS3Vault.get_s3_resource().Object(CONTAINER, filename).get()["Size"])
         return 0
 
     def is_valid_backup_id(self, backup_id):
@@ -161,82 +160,95 @@ class AwsS3Storage(storage.Storage):
     def list(self):
         bucket = AwsS3Vault.get_s3_client().list_objects(Bucket=CONTAINER)
         aws_s3_vault_listing = []
-        if 'Contents' in bucket:
+        if "Contents" in bucket:
             # Collect backups ids only
-            aws_s3_vault_listing = [obj["Key"].split('/', 2)[1]
-                                    for obj in bucket['Contents']
-                                    if '/' in obj['Key'] and self.is_valid_backup_id(obj["Key"].split('/', 2)[1])]
+            aws_s3_vault_listing = [
+                obj["Key"].split("/", 2)[1]
+                for obj in bucket["Contents"]
+                if "/" in obj["Key"] and self.is_valid_backup_id(obj["Key"].split("/", 2)[1])
+            ]
 
+        bucket_contents = bucket["Contents"] if "Contents" in bucket else None
         vaults = [
-            AwsS3Vault(backup_id
-                       , bucket=CONTAINER
-                       , cluster_name=PG_CLUSTER_NAME
-                       , cache_enabled=True
-                       , aws_s3_bucket_listing=(bucket['Contents'] if 'Contents' in bucket else None))
-            for backup_id in aws_s3_vault_listing]
+            AwsS3Vault(
+                backup_id,
+                bucket=CONTAINER,
+                cluster_name=PG_CLUSTER_NAME,
+                cache_enabled=True,
+                aws_s3_bucket_listing=bucket_contents,
+            )
+            for backup_id in aws_s3_vault_listing
+        ]
         vaults.sort(key=lambda v: v.create_time())
         return vaults
 
     def size(self):
-        """ Returns whole storage size in bytes """
+        """Returns whole storage size in bytes"""
         total_size = 0
         bucket = AwsS3Vault.get_s3_client().list_objects(Bucket=CONTAINER)
 
-        if 'Contents' not in bucket:
+        if "Contents" not in bucket:
             return 0
 
         for obj in bucket["Contents"]:
-            total_size += obj['Size']
+            total_size += obj["Size"]
         return total_size
 
     def archive_size(self):
-        """ Returns whole storage size in bytes """
+        """Returns whole storage size in bytes"""
         total_size = 0
         bucket = AwsS3Vault.get_s3_client().list_objects(Bucket=CONTAINER, Prefix="archive/")
 
-        if 'Contents' not in bucket:
+        if "Contents" not in bucket:
             return 0
 
         for obj in bucket["Contents"]:
-            total_size += obj['Size']
+            total_size += obj["Size"]
         return total_size
 
     def fs_space(self):
-        """ Returns tuple (free, total) space on mount point where is root folder located """
+        """Returns tuple (free, total) space on mount point where is root folder located"""
         return (1, 1)
 
     def open_vault(self, backup_id):
         """
-        
+
         :return:
         :rtype: (str, dict, StringIO)
         """
-        return AwsS3Vault("%s" % (datetime.now().strftime(VAULT_NAME_FORMAT)), CONTAINER, cluster_name=PG_CLUSTER_NAME)
+        return AwsS3Vault(
+            "%s" % (datetime.now().strftime(VAULT_NAME_FORMAT)),
+            CONTAINER,
+            cluster_name=PG_CLUSTER_NAME,
+        )
 
     def evict_vault(self, vault):
         self.__log.info("Evict vault: %s" % vault)
 
         backup_id = vault.get_folder()
-        backup_name = "{}/{}/pg_backup_{}.tar.gz".format(self.aws_prefix, backup_id, vault.get_id())
         try:
             self.prot_delete_bundle(backup_id)
-        except botocore.exceptions.ClientError as e:
+        except botocore.exceptions.ClientError:
             return "Not Found"
 
     def prot_list_archive(self):
         bucket = AwsS3Vault.get_s3_client().list_objects(Bucket=CONTAINER, Prefix="archive/", Delimiter="/")
         aws_s3_archive_listing = []
-        if 'Contents' in bucket:
+        if "Contents" in bucket:
             # Collect archive ids only
-            aws_s3_archive_listing = [obj
-                  for obj in bucket['Contents']
-                  if '/' in obj['Key'] and ARCHIVE_NAME_MATCHER.match(obj["Key"].split('/', 1)[1])]
+            aws_s3_archive_listing = [
+                obj
+                for obj in bucket["Contents"]
+                if "/" in obj["Key"] and ARCHIVE_NAME_MATCHER.match(obj["Key"].split("/", 1)[1])
+            ]
         self.__log.info("Archives: {}".format(aws_s3_archive_listing))
         if aws_s3_archive_listing:
-            archives = [storage.Archive(
-                ARCHIVE_NAME_MATCHER.match(archive["Key"].split('/', 1)[1]).group("name"),
-                1000 * int(archive["LastModified"].strftime("%s")))
-                for archive in aws_s3_archive_listing]
+            archives = []
+            for archive in aws_s3_archive_listing:
+                key_parts = archive["Key"].split("/", 1)[1]
+                name = ARCHIVE_NAME_MATCHER.match(key_parts).group("name")
+                mod_time = 1000 * int(archive["LastModified"].strftime("%s"))
+                archives.append(storage.Archive(name, mod_time))
             self.__log.info("Parsed archives: {}".format(archives))
             return archives
         else:
@@ -258,19 +270,29 @@ class AwsS3Vault(storage.Vault):
 
     @staticmethod
     def get_s3_resource():
-        return boto3.resource("s3",
-                              region_name=os.getenv("AWS_DEFAULT_REGION") if os.getenv("AWS_DEFAULT_REGION") else None,
-                              endpoint_url=os.getenv("AWS_S3_ENDPOINT_URL"),
-                              aws_access_key_id=utils.read_secret_file(f"{utils.AWS_CREDS_PATH}/key_id", ""),
-                              aws_secret_access_key=utils.read_secret_file(f"{utils.AWS_CREDS_PATH}/access_key", ""),
-                              verify=(False if os.getenv("AWS_S3_UNTRUSTED_CERT", "false").lower() == "true" else None))
+        aws_region = os.getenv("AWS_DEFAULT_REGION") if os.getenv("AWS_DEFAULT_REGION") else None
+        verify_ssl = False if os.getenv("AWS_S3_UNTRUSTED_CERT", "false").lower() == "true" else None
+        return boto3.resource(
+            "s3",
+            region_name=aws_region,
+            endpoint_url=os.getenv("AWS_S3_ENDPOINT_URL"),
+            aws_access_key_id=utils.read_secret_file(f"{utils.AWS_CREDS_PATH}/key_id", ""),
+            aws_secret_access_key=utils.read_secret_file(f"{utils.AWS_CREDS_PATH}/access_key", ""),
+            verify=verify_ssl,
+        )
 
     @staticmethod
     def get_s3_client():
         return AwsS3Vault.get_s3_resource().meta.client
 
-    def __init__(self, backup_id, bucket, cluster_name=None, cache_enabled=False,
-                 aws_s3_bucket_listing=None):
+    def __init__(
+        self,
+        backup_id,
+        bucket,
+        cluster_name=None,
+        cache_enabled=False,
+        aws_s3_bucket_listing=None,
+    ):
         super(AwsS3Vault, self).__init__()
 
         self.backup_id = backup_id
@@ -301,11 +323,15 @@ class AwsS3Vault(storage.Vault):
             #     }
             #         ...
             # ]
-            self.cached_state["is_locked"] = len([x for x in self.aws_s3_bucket_listing if self.__lock_filepath() in x['Key']]) == 1
-            self.cached_state["is_failed"] = len([x for x in self.aws_s3_bucket_listing if self.__failed_filepath() in x['Key']]) == 1
+            is_locked = [x for x in self.aws_s3_bucket_listing if self.__lock_filepath() in x["Key"]]
+            self.cached_state["is_locked"] = len(is_locked) == 1
+            is_failed = [x for x in self.aws_s3_bucket_listing if self.__failed_filepath() in x["Key"]]
+            self.cached_state["is_failed"] = len(is_failed) == 1
         else:
-            self.cached_state["is_locked"] = self.__is_file_exists(self.bucket, self.__lock_filepath())
-            self.cached_state["is_failed"] = self.__is_file_exists(self.bucket, self.__failed_filepath())
+            lock_path = self.__lock_filepath()
+            failed_path = self.__failed_filepath()
+            self.cached_state["is_locked"] = self.__is_file_exists(self.bucket, lock_path)
+            self.cached_state["is_failed"] = self.__is_file_exists(self.bucket, failed_path)
         self.__log.debug("State: {}".format(self.cached_state))
 
     def get_id(self):
@@ -320,7 +346,8 @@ class AwsS3Vault(storage.Vault):
     @retry(stop_max_attempt_number=RETRY_COUNT, wait_fixed=RETRY_WAIT)
     def __load_metrics_from_s3(self):
         try:
-            metrics = AwsS3Vault.get_s3_resource().Object(self.bucket, self.__metrics_filepath()).get()
+            metrics_path = self.__metrics_filepath()
+            metrics = AwsS3Vault.get_s3_resource().Object(self.bucket, metrics_path).get()
             return json.load(metrics["Body"])
         except Exception as e:
             self.__log.exception(e)
@@ -336,25 +363,36 @@ class AwsS3Vault(storage.Vault):
         else:
             return self.__load_metrics_from_s3()
 
-
     def __lock_filepath(self):
         return "%s/%s/%s" % (self.aws_prefix, self.backup_id, self.backup_id + ".lock")
 
     def __failed_filepath(self):
-        return "%s/%s/%s" % (self.aws_prefix, self.backup_id, self.backup_id + ".failed")
+        return "%s/%s/%s" % (
+            self.aws_prefix,
+            self.backup_id,
+            self.backup_id + ".failed",
+        )
 
     def __metrics_filepath(self):
-        return "%s/%s/%s" % (self.aws_prefix, self.backup_id, self.backup_id + ".metrics")
+        return "%s/%s/%s" % (
+            self.aws_prefix,
+            self.backup_id,
+            self.backup_id + ".metrics",
+        )
 
     def __console_filepath(self):
-        return "%s/%s/%s" % (self.aws_prefix, self.backup_id, self.backup_id + ".console")
+        return "%s/%s/%s" % (
+            self.aws_prefix,
+            self.backup_id,
+            self.backup_id + ".console",
+        )
 
     def __is_file_exists(self, bucket, obj):
         exists = True
         try:
             AwsS3Vault.get_s3_resource().Object(bucket, obj).get()
         except botocore.exceptions.ClientError as e:
-            if e.response['Error']['Code'] == 'NoSuchKey':
+            if e.response["Error"]["Code"] == "NoSuchKey":
                 exists = False
             else:
                 raise
@@ -368,7 +406,8 @@ class AwsS3Vault(storage.Vault):
             if "is_locked" in self.cached_state.keys():
                 return self.cached_state["is_locked"]
 
-        return self.__is_file_exists(self.bucket, self.__lock_filepath())
+        lock_path = self.__lock_filepath()
+        return self.__is_file_exists(self.bucket, lock_path)
 
     def is_failed(self):
         if self.cache_enabled:
@@ -376,7 +415,8 @@ class AwsS3Vault(storage.Vault):
                 self.__cache_current_state()
             if "is_failed" in self.cached_state.keys():
                 return self.cached_state["is_failed"]
-        return self.__is_file_exists(self.bucket, self.__failed_filepath())
+        failed_path = self.__failed_filepath()
+        return self.__is_file_exists(self.bucket, failed_path)
 
     def is_done(self):
         if not self.__is_file_exists(CONTAINER, self.__metrics_filepath()):
@@ -384,7 +424,7 @@ class AwsS3Vault(storage.Vault):
             return False
         j = self.__load_metrics_from_s3()
         self.__log.info(j)
-        return j['exit_code'] == 0
+        return j["exit_code"] == 0
 
     def is_back_up_archive_exists(self):
         return self.__is_file_exists(self.bucket, self.backup_name)
@@ -393,13 +433,16 @@ class AwsS3Vault(storage.Vault):
         self.__log.info("Init next vault: %s" % self.backup_id)
         super(AwsS3Vault, self).__enter__()
 
-        if self.__is_file_exists(self.bucket, self.__metrics_filepath()):
-            raise AwsS3VaultCreationException("Destination backup folder already exists: %s" % self.backup_id)
+        metrics_path = self.__metrics_filepath()
+        if self.__is_file_exists(self.bucket, metrics_path):
+            msg = "Destination backup folder already exists: %s" % self.backup_id
+            raise AwsS3VaultCreationException(msg)
 
         self.__log.info("Create .lock file in vault: %s" % self.backup_id)
         lock_marker = "/tmp/.lock"
         subprocess.call("echo .lock > %s" % lock_marker, shell=True)
-        self.__get_s3_bucket().upload_file(lock_marker, self.__lock_filepath())
+        lock_path = self.__lock_filepath()
+        self.__get_s3_bucket().upload_file(lock_marker, lock_path)
 
         self.console = StringIO()
 
@@ -421,8 +464,9 @@ class AwsS3Vault(storage.Vault):
         console_marker = "/tmp/.console"
         with open(console_marker, "w") as f:
             f.write(console_logs)
-        self.__get_s3_bucket().upload_file(console_marker, self.__console_filepath())
-        self.__log.info("Console logs are saved to: %s" % self.__console_filepath())
+        console_path = self.__console_filepath()
+        self.__get_s3_bucket().upload_file(console_marker, console_path)
+        self.__log.info("Console logs are saved to: %s" % console_path)
 
         if exception is None:
             self.__on_successful_upload()
@@ -434,15 +478,17 @@ class AwsS3Vault(storage.Vault):
         with open(metrics_marker, "w") as f:
             json.dump(self.metrics, f)
 
-        self.__get_s3_bucket().upload_file(metrics_marker, self.__metrics_filepath())
-        self.__log.info("Metrics are saved to: %s" % self.__metrics_filepath())
+        metrics_path = self.__metrics_filepath()
+        self.__get_s3_bucket().upload_file(metrics_marker, metrics_path)
+        self.__log.info("Metrics are saved to: %s" % metrics_path)
 
         self.__log.info("Remove lock for %s" % self.get_id())
         self.__get_s3_bucket().Object(self.__lock_filepath()).delete()
 
     def __on_successful_upload(self):
         self.__log.info("Backup %s is uploaded successfully." % self.backup_id)
-        size_str = self.__get_s3_bucket().Object(self.__get_backup_name()).get()["ContentLength"]
+        backup_name = self.__get_backup_name()
+        size_str = self.__get_s3_bucket().Object(backup_name).get()["ContentLength"]
         self.metrics["size"] = int(size_str)
 
     def __on_failed_upload(self, **kwargs):
@@ -450,9 +496,9 @@ class AwsS3Vault(storage.Vault):
         subprocess.call("echo .failed > %s" % failed_marker, shell=True)
         self.__get_s3_bucket().upload_file(failed_marker, self.__failed_filepath())
 
-        self.__log.error("Something wrong happened inside block uses vault: " + kwargs['exception'])
-        self.__log.error("Backup script output: " + kwargs['output'])
-        self.metrics["exception"] = kwargs['exception']
+        self.__log.error("Something wrong happened inside block uses vault: " + kwargs["exception"])
+        self.__log.error("Backup script output: " + kwargs["output"])
+        self.metrics["exception"] = kwargs["exception"]
         self.metrics["size"] = -1
 
     def __repr__(self):

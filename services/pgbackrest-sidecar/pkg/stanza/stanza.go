@@ -33,13 +33,17 @@ func CreateStanza() error {
 	defer ticker.Stop()
 
 	for {
-		if err, _ := utils.ExecCommand("pg_isready", []string{"-q"}); err != nil {
+		_, err := utils.ExecCommand("pg_isready", []string{"-q"})
+		if err != nil {
 			logger.Error(fmt.Sprintf("Postgres is not ready yet [%v], waiting...", err))
-		} else if err, _ := utils.ExecCommand(constants.BackrestBin, args); err != nil {
-			logger.Error(fmt.Sprintf("While creating stanza an error occurred %v", err))
-			return err
 		} else {
-			return nil
+			_, err := utils.ExecCommand(constants.BackrestBin, args)
+			if err != nil {
+				logger.Error(fmt.Sprintf("While creating stanza an error occurred %v", err))
+				return err
+			} else {
+				return nil
+			}
 		}
 
 		select {
@@ -53,7 +57,8 @@ func CreateStanza() error {
 
 func UpgradeStanza() error {
 	cmd := []string{"stanza-upgrade", "--log-level-console=info"}
-	if err, _ := utils.ExecCommand(constants.BackrestBin, cmd); err != nil {
+	_, err := utils.ExecCommand(constants.BackrestBin, cmd)
+	if err != nil {
 		logger.Error(fmt.Sprintf("While creating stanza en error occures %v", err))
 		return err
 	}

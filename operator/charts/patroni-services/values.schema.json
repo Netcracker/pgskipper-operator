@@ -800,7 +800,7 @@
         },
         "image": {
           "type": "string",
-          "default": "ghcr.io/woblerr/pgbackrest_exporter:v0.21.0-alpine"
+          "default": "ghcr.io/woblerr/pgbackrest_exporter:v0.25.0-alpine"
         },
         "resources": {
           "$ref": "#/$defs/resourceRequirements"

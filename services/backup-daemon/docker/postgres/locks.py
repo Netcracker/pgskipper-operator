@@ -22,7 +22,7 @@ from retrying import retry
 
 
 class BackupInProgressLock:
-    __in_progress_lock_file_path = '/tmp/backup.progress'
+    __in_progress_lock_file_path = "/tmp/backup.progress"
 
     def __init__(self):
         self.__log = logging.getLogger(self.__class__.__name__)
@@ -30,18 +30,16 @@ class BackupInProgressLock:
     @retry(wait_fixed=300000)  # Wait for 300 seconds before retry.
     def acquire_lock(self):
         # could not lock the resource
-        #if not self.__lock.acquire(False):
+        # if not self.__lock.acquire(False):
         #    self.__log.info("New backup can not be started, because last backup is still in progress.")
         #    raise Exception
-        #else:
+        # else:
         #    result = self.__lock.acquire()
         self.__log.info("Backup lock has been acquired. File created")
         if not os.path.isfile(self.get_lock_file_path()):
             fsutil.touch(self.get_lock_file_path())
         with open(self.get_lock_file_path(), "w+") as lock_file:
-            lock_details = {
-                'lock_acquisition_time': datetime.datetime.now().isoformat()
-            }
+            lock_details = {"lock_acquisition_time": datetime.datetime.now().isoformat()}
             lock_file.write(json.dumps(lock_details))
 
     def release_lock(self):
@@ -66,7 +64,7 @@ def update_lock_file(**kwargs):
         details = json.load(f)
 
     details.update(kwargs)
-    temp_lock = '%s.tmp' % get_backup_lock_file_path()
+    temp_lock = "%s.tmp" % get_backup_lock_file_path()
     with open(temp_lock, "w") as f:
         json.dump(details, f)
 

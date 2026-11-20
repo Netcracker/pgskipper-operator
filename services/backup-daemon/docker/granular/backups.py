@@ -30,15 +30,19 @@ from itertools import groupby
 class BackupNotFoundException(Exception):
 
     def __init__(self, backup_id, namespace, database=None):
-        super(Exception, self).__init__("Backup of database '%s' is not found in backup '%s' in namespace '%s'."
-                                        % (database, backup_id, namespace))
+        msg = "Backup of database '%s' is not found in backup '%s' " "in namespace '%s'." % (
+            database,
+            backup_id,
+            namespace,
+        )
+        super(Exception, self).__init__(msg)
 
 
 class BackupBadStatusException(Exception):
 
     def __init__(self, backup_id, status=None, database=None):
-        super(Exception, self).__init__("Backup of database '%s' in backup '%s' has bad status for restore: %s"
-                                        % (database, backup_id, status))
+        msg = "Backup of database '%s' in backup '%s' has bad status " "for restore: %s" % (database, backup_id, status)
+        super(Exception, self).__init__(msg)
 
 
 class BackupFailedException(Exception):
@@ -54,12 +58,12 @@ class RestoreFailedException(Exception):
 
 
 class BackupStatus:
-    SUCCESSFUL = 'Successful'
-    FAILED = 'Failed'
-    IN_PROGRESS = 'In progress'
-    PLANNED = 'Planned'
-    UNKNOWN = 'Unknown'
-    CANCELED = 'Canceled'
+    SUCCESSFUL = "Successful"
+    FAILED = "Failed"
+    IN_PROGRESS = "In progress"
+    PLANNED = "Planned"
+    UNKNOWN = "Unknown"
+    CANCELED = "Canceled"
 
 
 def get_backup_status_id(status):
@@ -69,9 +73,10 @@ def get_backup_status_id(status):
         BackupStatus.FAILED: 6,
         BackupStatus.IN_PROGRESS: 5,
         BackupStatus.PLANNED: 4,
-        BackupStatus.UNKNOWN: -1
+        BackupStatus.UNKNOWN: -1,
     }
     return statuses[status]
+
 
 def is_valid_namespace(namespace):
     return re.match("^[a-zA-z0-9_]+$", namespace) is not None
@@ -81,59 +86,108 @@ def backup_exists(backup_id, namespace=configs.default_namespace(), external_bac
     return os.path.exists(build_backup_path(backup_id, namespace, external_backup_storage))
 
 
-def database_backup_exists(backup_id, database, namespace=configs.default_namespace(), external_backup_storage=None):
+def database_backup_exists(
+    backup_id,
+    database,
+    namespace=configs.default_namespace(),
+    external_backup_storage=None,
+):
     return os.path.exists(build_database_backup_path(backup_id, database, namespace, external_backup_storage))
 
 
 def build_namespace_path(namespace=configs.default_namespace()):
-    return '%s/%s' % (configs.backups_storage(), namespace)
+    return "%s/%s" % (configs.backups_storage(), namespace)
 
 
-def build_database_backup_path(backup_id, database, 
-                               namespace=configs.default_namespace(), external_backup_storage=None, blob_path=None):
-    ext = '_enc.dump' if configs.get_encryption() else '.dump'
-    return '%s/%s%s' % (
-                build_backup_path(backup_id, namespace, external_backup_storage, blob_path), database, ext)
+def build_database_backup_path(
+    backup_id,
+    database,
+    namespace=configs.default_namespace(),
+    external_backup_storage=None,
+    blob_path=None,
+):
+    ext = "_enc.dump" if configs.get_encryption() else ".dump"
+    return "%s/%s%s" % (
+        build_backup_path(backup_id, namespace, external_backup_storage, blob_path),
+        database,
+        ext,
+    )
 
-def build_roles_backup_path(backup_id, database,
-                            namespace=configs.default_namespace(), external_backup_storage=None, blob_path=None):
-    ext = 'roles_enc.sql' if configs.get_encryption() else 'roles.sql'
+
+def build_roles_backup_path(
+    backup_id,
+    database,
+    namespace=configs.default_namespace(),
+    external_backup_storage=None,
+    blob_path=None,
+):
+    ext = "roles_enc.sql" if configs.get_encryption() else "roles.sql"
     return "%s/%s.%s" % (
-        build_backup_path(backup_id, namespace, external_backup_storage, blob_path), database, ext)
+        build_backup_path(backup_id, namespace, external_backup_storage, blob_path),
+        database,
+        ext,
+    )
 
-def build_database_backup_full_path(backup_id, database, storage_root,
-                                        namespace=configs.default_namespace(),
-                                        blob_path=None):
-    ext = '_enc.dump' if configs.get_encryption() else '.dump'
+
+def build_database_backup_full_path(
+    backup_id,
+    database,
+    storage_root,
+    namespace=configs.default_namespace(),
+    blob_path=None,
+):
+    ext = "_enc.dump" if configs.get_encryption() else ".dump"
     if blob_path is not None:
-        return '%s/%s/%s%s' % (blob_path, backup_id, database, ext)
+        return "%s/%s/%s%s" % (blob_path, backup_id, database, ext)
     else:
-        return '%s/%s/%s/%s%s' % (storage_root, namespace, backup_id, database, ext)
+        return "%s/%s/%s/%s%s" % (storage_root, namespace, backup_id, database, ext)
 
 
 def build_database_restore_report_path(backup_id, database, restore_tracking_id, namespace=configs.default_namespace()):
-    return '%s/%s.%s.report' % (build_backup_path(backup_id, namespace), database, restore_tracking_id)
+    return "%s/%s.%s.report" % (
+        build_backup_path(backup_id, namespace),
+        database,
+        restore_tracking_id,
+    )
 
 
-def build_backup_path(backup_id, namespace=configs.default_namespace(), external_backup_storage=None, blob_path=None):
+def build_backup_path(
+    backup_id,
+    namespace=configs.default_namespace(),
+    external_backup_storage=None,
+    blob_path=None,
+):
     if blob_path is not None:
-        return '%s/%s' % (blob_path, backup_id)
+        return "%s/%s" % (blob_path, backup_id)
     else:
-        return '%s/%s/%s' % (configs.backups_storage() if external_backup_storage is None else external_backup_storage,
-                             namespace, backup_id)
+        storage = configs.backups_storage() if external_backup_storage is None else external_backup_storage
+        return "%s/%s/%s" % (storage, namespace, backup_id)
 
 
 def build_external_backup_root(external_backup_path):
-    return '%s/%s' % (os.getenv("EXTERNAL_STORAGE_ROOT"), external_backup_path)
+    return "%s/%s" % (os.getenv("EXTERNAL_STORAGE_ROOT"), external_backup_path)
 
 
-def build_backup_status_file_path(backup_id, namespace=configs.default_namespace(), external_backup_storage=None, blob_path=None):
-    return '%s/status.json' % build_backup_path(backup_id, namespace, external_backup_storage, blob_path)
+def build_backup_status_file_path(
+    backup_id,
+    namespace=configs.default_namespace(),
+    external_backup_storage=None,
+    blob_path=None,
+):
+    return "%s/status.json" % build_backup_path(backup_id, namespace, external_backup_storage, blob_path)
 
 
-def build_restore_status_file_path(backup_id, tracking_id, namespace=configs.default_namespace(),
-                                   external_backup_storage=None, blob_path=None):
-    return '%s/%s.json' % (build_backup_path(backup_id, namespace, external_backup_storage, blob_path), tracking_id)
+def build_restore_status_file_path(
+    backup_id,
+    tracking_id,
+    namespace=configs.default_namespace(),
+    external_backup_storage=None,
+    blob_path=None,
+):
+    return "%s/%s.json" % (
+        build_backup_path(backup_id, namespace, external_backup_storage, blob_path),
+        tracking_id,
+    )
 
 
 def get_key_name_by_backup_id(backup_id, namespace, external_backup_storage=None, blob_path=None):
@@ -142,35 +196,40 @@ def get_key_name_by_backup_id(backup_id, namespace, external_backup_storage=None
         data = json.load(f)
         return data.get("key_name")
 
+
 def generate_short_id():
     return datetime.datetime.now().strftime("%Y%m%dT%H%M")
+
 
 def generate_id():
     return datetime.datetime.now().strftime("%Y%m%dT%H%M%S%f")
 
 
 def generate_backup_id():
-    return 'backup-%s' % generate_id()
+    return "backup-%s" % generate_id()
 
 
 def generate_restore_id(backup_id, namespace=configs.default_namespace()):
     m = re.match("^backup-(?P<backupId>[a-zA-Z0-9]+)$", backup_id)
-    backup_id = m.group('backupId')
-    return 'restore-%s-%s-%s' % (namespace, backup_id, generate_id())
+    backup_id = m.group("backupId")
+    return "restore-%s-%s-%s" % (namespace, backup_id, generate_id())
 
 
 def extract_backup_id_from_tracking_id(tracking_id):
-    m = re.match("^restore-(?P<namespace>[a-zA-Z0-9_]+)-(?P<backupId>[a-zA-Z0-9]+)-[a-zA-Z0-9]+$", tracking_id)
-    return 'backup-%s' % m.group('backupId'), m.group('namespace')
+    m = re.match(
+        "^restore-(?P<namespace>[a-zA-Z0-9_]+)-(?P<backupId>[a-zA-Z0-9]+)-[a-zA-Z0-9]+$",
+        tracking_id,
+    )
+    return "backup-%s" % m.group("backupId"), m.group("namespace")
 
 
 # Kindly offered by https://stackoverflow.com/a/1094933/6519476
-def sizeof_fmt(num, suffix='B'):
-    for unit in ['', 'Ki', 'Mi', 'Gi', 'Ti', 'Pi', 'Ei', 'Zi']:
+def sizeof_fmt(num, suffix="B"):
+    for unit in ["", "Ki", "Mi", "Gi", "Ti", "Pi", "Ei", "Zi"]:
         if abs(num) < 1024.0:
             return "%3.1f%s%s" % (num, unit, suffix)
         num /= 1024.0
-    return "%.1f%s%s" % (num, 'Yi', suffix)
+    return "%.1f%s%s" % (num, "Yi", suffix)
 
 
 def calculate_expiration_timestamp(start_timestamp, period):
@@ -190,15 +249,15 @@ def get_seconds(delta):
     value = int(time_unit[0])
     unit = time_unit[1].lower()
 
-    if unit == 'week' or unit == 'weeks':
+    if unit == "week" or unit == "weeks":
         td = datetime.timedelta(weeks=value)
-    elif unit == 'day' or unit == 'days':
+    elif unit == "day" or unit == "days":
         td = datetime.timedelta(days=value)
-    elif unit == 'hour' or unit == 'hours':
+    elif unit == "hour" or unit == "hours":
         td = datetime.timedelta(hours=value)
-    elif unit == 'minute' or unit == 'minutes':
+    elif unit == "minute" or unit == "minutes":
         td = datetime.timedelta(minutes=value)
-    elif unit == 'second' or unit == 'seconds':
+    elif unit == "second" or unit == "seconds":
         td = datetime.timedelta(seconds=value)
     else:
         raise Exception("Time unit '%s' is not supported" % unit)
@@ -211,7 +270,7 @@ def is_database_protected(database):
 
 
 def get_backup_create_date(backup_id):
-    return int(datetime.datetime.strptime(backup_id, "backup-%Y%m%dT%H%M%S%f").strftime('%s'))
+    return int(datetime.datetime.strptime(backup_id, "backup-%Y%m%dT%H%M%S%f").strftime("%s"))
 
 
 def backup_expired(backup, expire_date):
@@ -223,8 +282,8 @@ def get_s3_client():
 
 
 def sweep_manager():
-    """ Sweep procedure manager """
-    if os.getenv("USE_EVICTION_POLICY_FIRST") is None or os.getenv("USE_EVICTION_POLICY_FIRST").lower() == 'false':
+    """Sweep procedure manager"""
+    if os.getenv("USE_EVICTION_POLICY_FIRST") is None or os.getenv("USE_EVICTION_POLICY_FIRST").lower() == "false":
         sweep_by_keep()
     else:
         sweep_by_policy()
@@ -236,7 +295,7 @@ def sweep_by_keep():
     current_time = time.time()
     storage = configs.backups_storage()
     s3 = None
-    if os.environ['STORAGE_TYPE'] == "s3":
+    if os.environ["STORAGE_TYPE"] == "s3":
         s3 = get_s3_client()
         namespaces = s3.get_granular_namespaces(storage)
 
@@ -249,7 +308,7 @@ def sweep_by_keep():
         if s3:
             backup_ids = s3.get_backup_ids(storage, namespace)
 
-        for backup_id in os.listdir(build_namespace_path(namespace)) if not s3 else backup_ids:
+        for backup_id in (os.listdir(build_namespace_path(namespace)) if not s3 else backup_ids):
             status_file = build_backup_status_file_path(backup_id, namespace)
             if s3:
                 try:
@@ -269,13 +328,13 @@ def sweep_by_keep():
             else:
                 backup_details = utils.get_json_by_path(status_file)
 
-            expires = backup_details.get('expires')
-            backup_status = backup_details.get('status')
-            timestamp = backup_details.get('timestamp')
+            expires = backup_details.get("expires")
+            backup_status = backup_details.get("status")
+            timestamp = backup_details.get("timestamp")
 
             if backup_status == BackupStatus.SUCCESSFUL:
                 # We may get unicode string here so check `basestring`, but not `str`
-                if isinstance(expires, str) and expires.lower() == 'never':
+                if isinstance(expires, str) and expires.lower() == "never":
                     continue
                 else:
                     healthy_backups += 1
@@ -293,30 +352,37 @@ def sweep_by_keep():
             # Sort by timestamp and take ID of the latest.
             expired_backups.sort(key=lambda backup: backup[1])
             saved_backup = expired_backups.pop()[0]
-            log.info("All successful backups are expired. Keep backup '%s/%s' as last healthy."
-                     % (saved_backup, namespace))
+            log.info(
+                "All successful backups are expired. Keep backup '%s/%s' as last healthy." % (saved_backup, namespace)
+            )
 
         for i in failed_expired_backups:
             log.info("Sweep out failed expired backup status of '%s/%s'." % (namespace, i))
-            shutil.rmtree(build_backup_path(i, namespace)) if not s3 else s3.delete_objects(build_backup_path(i, namespace))
+            (
+                shutil.rmtree(build_backup_path(i, namespace))
+                if not s3
+                else s3.delete_objects(build_backup_path(i, namespace))
+            )
 
         for i in expired_backups:
             log.info("Sweep out expired backup '%s/%s'." % (namespace, i[0]))
-            shutil.rmtree(build_backup_path(i[0], namespace)) if not s3 else s3.delete_objects(
-                build_backup_path(i[0], namespace))
+            (
+                shutil.rmtree(build_backup_path(i[0], namespace))
+                if not s3
+                else s3.delete_objects(build_backup_path(i[0], namespace))
+            )
 
     log.info("Backups sweeping finished.")
 
 
 def sweep_by_policy():
-    """ remove expired backups according EVICTION_POLICY """
+    """remove expired backups according EVICTION_POLICY"""
 
     log = logging.getLogger("Sweeper (policy)")
     log.info("Start backups sweeping according eviction policy")
-    current_time = time.time()
     storage = configs.backups_storage()
     s3 = None
-    if os.environ['STORAGE_TYPE'] == "s3":
+    if os.environ["STORAGE_TYPE"] == "s3":
         s3 = get_s3_client()
         namespaces = s3.get_granular_namespaces(storage)
 
@@ -332,12 +398,12 @@ def sweep_by_policy():
         log.debug("policy for current namespace")
 
         for i in utils.parse(current_policy):
-            log.debug('{}/{}'.format(i.start, i.interval))
+            log.debug("{}/{}".format(i.start, i.interval))
 
         if s3:
             backup_ids = s3.get_backup_ids(storage, namespace)
 
-        for backup_id in os.listdir(build_namespace_path(namespace)) if not s3 else backup_ids:
+        for backup_id in (os.listdir(build_namespace_path(namespace)) if not s3 else backup_ids):
             status_file = build_backup_status_file_path(backup_id, namespace)
             if s3:
                 try:
@@ -356,11 +422,11 @@ def sweep_by_policy():
             else:
                 backup_details = utils.get_json_by_path(status_file)
 
-            expires = backup_details.get('expires')
-            backup_status = backup_details.get('status')
+            expires = backup_details.get("expires")
+            backup_status = backup_details.get("status")
 
             if backup_status == BackupStatus.SUCCESSFUL or backup_status == BackupStatus.IN_PROGRESS:
-                if isinstance(expires, str) and expires.lower() == 'never':
+                if isinstance(expires, str) and expires.lower() == "never":
                     log.debug("Skip backup {} as marked Never delete".format(backup_id))
                     continue
                 success_backups.append(os.path.join(build_backup_path(backup_id, namespace)))
@@ -386,9 +452,14 @@ def sweep_by_policy():
             else:
                 # group by interval and leave only first on each
                 thursday = 3 * 24 * 60 * 60
-                for _, versionsIt in groupby(operateVersions, lambda t: int(
-                        (get_backup_create_date(os.path.basename(t)) - thursday) / rule.interval)):
-                    grouped = sorted(list(versionsIt), key=lambda t: get_backup_create_date(os.path.basename(t)))
+                for _, versionsIt in groupby(
+                    operateVersions,
+                    lambda t: int((get_backup_create_date(os.path.basename(t)) - thursday) / rule.interval),
+                ):
+                    grouped = sorted(
+                        list(versionsIt),
+                        key=lambda t: get_backup_create_date(os.path.basename(t)),
+                    )
                     expired_backups.extend(grouped[:-1])
             log.debug("stage2 expired:")
             log.debug("\n".join(expired_backups))
@@ -414,28 +485,29 @@ def _as_iso8601(v):
     if v is None or v == "":
         return ""
     if isinstance(v, (int, float)):
-        if v > 1e12:  
+        if v > 1e12:
             v = v / 1000.0
-        return datetime.datetime.fromtimestamp(v, tz=timezone.utc).isoformat(timespec='seconds').replace('+00:00', 'Z')
-    
+        return datetime.datetime.fromtimestamp(v, tz=timezone.utc).isoformat(timespec="seconds").replace("+00:00", "Z")
+
     # Handle string timestamps that are already in ISO format but missing timezone
     if isinstance(v, str):
-        iso_pattern = r'^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(\.\d+)?$'
+        iso_pattern = r"^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(\.\d+)?$"
         if re.match(iso_pattern, v):
             try:
                 dt = datetime.datetime.fromisoformat(v)
-                return dt.replace(tzinfo=timezone.utc).isoformat(timespec='seconds').replace('+00:00', 'Z')
+                return dt.replace(tzinfo=timezone.utc).isoformat(timespec="seconds").replace("+00:00", "Z")
             except ValueError:
                 pass
-    
+
     return str(v)
+
 
 def _parse_bytes(v):
     if v is None:
         return None
     if isinstance(v, (int, float)):
         return int(v)
-    s = str(v).strip().replace(',', '').lower()
+    s = str(v).strip().replace(",", "").lower()
 
     # plain number
     try:
@@ -443,22 +515,23 @@ def _parse_bytes(v):
     except ValueError:
         pass
 
-    if s.endswith('bytes'):
+    if s.endswith("bytes"):
         s = s[:-5].strip()
 
     import re
-    m = re.match(r'^([0-9]+(?:\.[0-9]+)?)\s*([a-z]+)$', s)
+
+    m = re.match(r"^([0-9]+(?:\.[0-9]+)?)\s*([a-z]+)$", s)
     if not m:
         return None
     num, unit = m.groups()
     num = float(num)
 
-    dec = {
-        'kb': 1000, 'mb': 1000**2, 'gb': 1000**3, 'tb': 1000**4,
-        'b': 1
-    }
+    dec = {"kb": 1000, "mb": 1000**2, "gb": 1000**3, "tb": 1000**4, "b": 1}
     bin_ = {
-        'kib': 1024, 'mib': 1024**2, 'gib': 1024**3, 'tib': 1024**4,
+        "kib": 1024,
+        "mib": 1024**2,
+        "gib": 1024**3,
+        "tib": 1024**4,
     }
 
     if unit in bin_:
@@ -466,73 +539,94 @@ def _parse_bytes(v):
     if unit in dec:
         return int(num * dec[unit])
 
-    short = {'k': 1000, 'm': 1000**2, 'g': 1000**3, 't': 1000**4}
+    short = {"k": 1000, "m": 1000**2, "g": 1000**3, "t": 1000**4}
     if unit in short:
         return int(num * short[unit])
 
     return None
+
 
 def transform_backup_status_v1(raw: dict) -> dict:
     raw = raw or {}
     dbs = raw.get("databases") or {}
 
     storage_name = raw.get("storageName") or raw.get("storage") or raw.get("storage_name") or ""
-    blob_path    = raw.get("blobPath") or raw.get("externalBackupPath") or raw.get("blob_path") or ""
+    blob_path = raw.get("blobPath") or raw.get("externalBackupPath") or raw.get("blob_path") or ""
 
-    creation  = _as_iso8601(raw.get("created") or raw.get("creationTime") or raw.get("creation") or raw.get("timestamp") or raw.get("startTime"))
-    completion= _as_iso8601(raw.get("completed") or raw.get("completionTime") or raw.get("completedTime"))
+    creation = _as_iso8601(
+        raw.get("created")
+        or raw.get("creationTime")
+        or raw.get("creation")
+        or raw.get("timestamp")
+        or raw.get("startTime")
+    )
+    completion = _as_iso8601(raw.get("completed") or raw.get("completionTime") or raw.get("completedTime"))
 
     return {
-        "status":       raw.get("status"),
+        "status": raw.get("status"),
         "errorMessage": raw.get("errorMessage") or raw.get("error"),
-        "backupId":     raw.get("backupId"),
-        "storageName":  storage_name,
-        "blobPath":     blob_path,
+        "backupId": raw.get("backupId"),
+        "storageName": storage_name,
+        "blobPath": blob_path,
         "creationTime": creation,
         "completionTime": completion,
         "databases": [
             {
                 "databaseName": name,
-                "status":       (info or {}).get("status"),
-                "size":         _parse_bytes((info or {}).get("size") or (info or {}).get("sizeBytes")),
-                "duration":     (info or {}).get("duration"),
-                "path":         (info or {}).get("path"),
+                "status": (info or {}).get("status"),
+                "size": _parse_bytes((info or {}).get("size") or (info or {}).get("sizeBytes")),
+                "duration": (info or {}).get("duration"),
+                "path": (info or {}).get("path"),
                 "errorMessage": (info or {}).get("errorMessage") or (info or {}).get("error"),
-                "creationTime": _as_iso8601((info or {}).get("created") or (info or {}).get("creationTime") or creation),
+                "creationTime": _as_iso8601(
+                    (info or {}).get("created") or (info or {}).get("creationTime") or creation
+                ),
             }
             for name, info in dbs.items()
         ],
     }
+
 
 def transform_restore_status_v1(raw: dict) -> dict:
     raw = raw or {}
     dbs = raw.get("databases") or {}
 
     storage_name = raw.get("storageName") or raw.get("storage") or raw.get("storage_name") or ""
-    blob_path    = raw.get("blobPath") or raw.get("externalBackupPath") or raw.get("blob_path") or ""
+    blob_path = raw.get("blobPath") or raw.get("externalBackupPath") or raw.get("blob_path") or ""
 
-    creation  = _as_iso8601(raw.get("created") or raw.get("creationTime") or raw.get("creation") or raw.get("timestamp") or raw.get("startTime"))
-    completion= _as_iso8601(raw.get("completed") or raw.get("completionTime") or raw.get("completedTime"))
+    creation = _as_iso8601(
+        raw.get("created")
+        or raw.get("creationTime")
+        or raw.get("creation")
+        or raw.get("timestamp")
+        or raw.get("startTime")
+    )
+    completion = _as_iso8601(raw.get("completed") or raw.get("completionTime") or raw.get("completedTime"))
 
     out = {
-        "status":         raw.get("status"),
-        "errorMessage":   raw.get("errorMessage") or raw.get("error"),
-        "restoreId":      raw.get("trackingId") or raw.get("restoreId"),
-        "storageName":    storage_name,
-        "blobPath":       blob_path,
-        "creationTime":   creation,
+        "status": raw.get("status"),
+        "errorMessage": raw.get("errorMessage") or raw.get("error"),
+        "restoreId": raw.get("trackingId") or raw.get("restoreId"),
+        "storageName": storage_name,
+        "blobPath": blob_path,
+        "creationTime": creation,
         "completionTime": completion,
         "databases": [],
     }
     for prev_name, info in dbs.items():
         info = info or {}
-        out["databases"].append({
-            "previousDatabaseName": prev_name,
-            "databaseName":   info.get("newDatabaseName") or info.get("databaseName") or info.get("restoredAs") or prev_name,
-            "status":         info.get("status"),
-            "duration":       info.get("duration"),
-            "path":           info.get("path"),
-            "errorMessage":   info.get("errorMessage") or info.get("error"),
-            "creationTime":   _as_iso8601(info.get("created") or info.get("creationTime") or creation),
-        })
+        out["databases"].append(
+            {
+                "previousDatabaseName": prev_name,
+                "databaseName": info.get("newDatabaseName")
+                or info.get("databaseName")
+                or info.get("restoredAs")
+                or prev_name,
+                "status": info.get("status"),
+                "duration": info.get("duration"),
+                "path": info.get("path"),
+                "errorMessage": info.get("errorMessage") or info.get("error"),
+                "creationTime": _as_iso8601(info.get("created") or info.get("creationTime") or creation),
+            }
+        )
     return out

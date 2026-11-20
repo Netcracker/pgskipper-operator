@@ -84,7 +84,8 @@ func UpdateExternalCM(dbName, newDBName string) error {
 func getExternalService() (*corev1.Service, error) {
 	extService := &corev1.Service{}
 	var k8sErr error
-	wait.PollImmediate(3*time.Second, 5*time.Minute, func() (done bool, err error) {
+	//nolint:staticcheck
+	_ = wait.PollImmediate(3*time.Second, 5*time.Minute, func() (done bool, err error) {
 		k8sErr = k8sClient.Get(context.TODO(), types.NamespacedName{
 			Name: serviceName, Namespace: namespace,
 		}, extService)
@@ -113,7 +114,8 @@ func GetServerName() (string, error) {
 func GetCM(cmName string) (*corev1.ConfigMap, error) {
 	cm := &corev1.ConfigMap{}
 	var k8sErr error
-	wait.PollImmediate(3*time.Second, 5*time.Minute, func() (done bool, err error) {
+	//nolint:staticcheck
+	_ = wait.PollImmediate(3*time.Second, 5*time.Minute, func() (done bool, err error) {
 		k8sErr = k8sClient.Get(context.TODO(), types.NamespacedName{
 			Name: cmName, Namespace: namespace,
 		}, cm)
@@ -131,6 +133,7 @@ func GetCM(cmName string) (*corev1.ConfigMap, error) {
 
 // This CM must be created by Velero in case environment has specific type
 func IsEnvTypeCmExist(cmName string) (bool, error) {
+	//nolint:staticcheck
 	err := wait.PollImmediate(3*time.Second, 5*time.Minute, func() (done bool, err error) {
 		cm := &corev1.ConfigMap{}
 		k8sErr := k8sClient.Get(context.TODO(), types.NamespacedName{

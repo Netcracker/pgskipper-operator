@@ -12,8 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import re
-import subprocess
 import time
 import logging
 import psycopg2
@@ -23,8 +21,8 @@ from utils import get_log_level, get_host_ip, execute_shell_command
 
 logging.basicConfig(
     level=get_log_level(),
-    format='[%(asctime)s][%(levelname)-5s][category=%(name)s] %(message)s',
-    datefmt='%Y-%m-%dT%H:%M:%S'
+    format="[%(asctime)s][%(levelname)-5s][category=%(name)s] %(message)s",
+    datefmt="%Y-%m-%dT%H:%M:%S",
 )
 logger = logging.getLogger(__name__)
 
@@ -32,13 +30,16 @@ logger = logging.getLogger(__name__)
 def get_context_data(setting_name):
     conn = None
     cursor = None
-    conn_string = "host='localhost' dbname='postgres' user='postgres' " \
-                  "connect_timeout=3 options='-c statement_timeout=3000'"
+    conn_string = (
+        "host='localhost' dbname='postgres' user='postgres' " "connect_timeout=3 options='-c statement_timeout=3000'"
+    )
     try:
         conn = psycopg2.connect(conn_string)
         cursor = conn.cursor()
-        cursor.execute("select context from pg_settings where name=%(sname)s",
-                       {"sname": setting_name})
+        cursor.execute(
+            "select context from pg_settings where name=%(sname)s",
+            {"sname": setting_name},
+        )
         row = cursor.fetchone()
         if row:
             return row[0]
@@ -48,21 +49,19 @@ def get_context_data(setting_name):
         return None
     finally:
         close_connection(cursor, conn)
-    # return map(lambda x: x.strip(), subprocess.check_output(
-    #     "psql -U postgres -t -c \"select setting, unit, category, vartype from pg_settings where name='{}'\"".format(setting_name), shell=True).split("|"))
 
 
 def get_settings_data(setting_name):
     conn = None
     cursor = None
-    conn_string = "host='localhost' dbname='postgres' user='postgres' " \
-                  "connect_timeout=3 options='-c statement_timeout=3000'"
+    conn_string = (
+        "host='localhost' dbname='postgres' user='postgres' " "connect_timeout=3 options='-c statement_timeout=3000'"
+    )
     try:
         conn = psycopg2.connect(conn_string)
         cursor = conn.cursor()
         logger.info(setting_name)
-        cursor.execute("select current_setting (%(sname)s, 't')",
-                       {"sname": setting_name})
+        cursor.execute("select current_setting (%(sname)s, 't')", {"sname": setting_name})
         row = cursor.fetchone()
         if row:
             return row[0]
@@ -77,8 +76,9 @@ def get_settings_data(setting_name):
 def is_restart_pending():
     conn = None
     cursor = None
-    conn_string = "host='localhost' dbname='postgres' user='postgres' " \
-                  "connect_timeout=3 options='-c statement_timeout=3000'"
+    conn_string = (
+        "host='localhost' dbname='postgres' user='postgres' " "connect_timeout=3 options='-c statement_timeout=3000'"
+    )
     try:
         conn = psycopg2.connect(conn_string)
         cursor = conn.cursor()
@@ -95,8 +95,8 @@ def is_restart_pending():
 def schedule_restart():
     logger.debug("Schedule restart")
     restart_command = "patronictl -c /patroni/pg_node.yml restart $PG_CLUST_NAME $(hostname) --force"
-#    res = execute_shell_command(restart_command)
-#    logger.debug(res)
+    #    res = execute_shell_command(restart_command)
+    #    logger.debug(res)
     return execute_shell_command(restart_command)
 
 
@@ -110,8 +110,7 @@ def close_connection(cursor, conn):
 
 
 def is_values_diff(value, db_value):
-    logger.debug("Start comparison for value: {}, db_value: {}"
-                 .format(value, db_value))
+    logger.debug("Start comparison for value: {}, db_value: {}".format(value, db_value))
     return value != db_value
 
 
@@ -119,8 +118,8 @@ def patroni_restart_state(iterations=5, sleep=3):
     for i in range(iterations):
         time.sleep(sleep)
         r = requests.get("http://{}:8008".format(get_host_ip()))
-        logger.info("Checking restart state... It is {}".format(r.json().get('pending_restart', False)))
-        restart_required = r.json().get('pending_restart', False)
+        logger.info("Checking restart state... It is {}".format(r.json().get("pending_restart", False)))
+        restart_required = r.json().get("pending_restart", False)
         if restart_required:
             break
     return restart_required
