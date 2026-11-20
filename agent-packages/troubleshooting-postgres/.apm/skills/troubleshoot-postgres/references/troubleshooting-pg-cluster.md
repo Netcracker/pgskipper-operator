@@ -72,20 +72,22 @@ kubectl scale deployment <deployment-name> -n <namespace> --replicas=<count>
    kubectl get pod <first-pod> -n <namespace> -o jsonpath='{.status.podIP}'
    ```
 
-2. From the second pod, ping the first one if the image contains `ping`:
+The Patroni images have no `ping` command. Do not use it in Patroni pods; test TCP ports from a Patroni pod instead.
 
-   ```bash
-   kubectl exec -n <namespace> <second-pod> -- ping -c 10 <first-pod-ip>
-   ```
-
-   Any packet loss above `0%` means the network between the pods is unstable. `100%` loss means there is no
-   connectivity.
-
-3. To test the PostgreSQL port itself, run `pg_isready` from a Patroni pod:
+2. Test the PostgreSQL port. `accepting connections` means it is reachable, `no response` means it is not.
 
    ```bash
    kubectl exec -n <namespace> <patroni-pod> -- pg_isready -h <first-pod-ip> -p 5432
    ```
+
+3. Test any other TCP port, such as a client application port, with the `/dev/tcp` feature of `bash`:
+
+   ```bash
+   kubectl exec -n <namespace> <patroni-pod> -- bash -c 'timeout 5 bash -c "</dev/tcp/<first-pod-ip>/<port>" && echo reachable || echo unreachable'
+   ```
+
+Repeat the check a few times. Intermittent failures mean the network between the pods is unstable; constant failures
+mean there is no connectivity.
 
 ## Checking connectivity between nodes
 
@@ -96,7 +98,7 @@ ping the other:
 ping -c 10 <other-node-ip>
 ```
 
-Read the packet loss the same way as for pods.
+Any packet loss above `0%` means the network between the nodes is unstable. `100%` loss means there is no connectivity.
 
 ## Finding the node a pod runs on
 
@@ -273,8 +275,8 @@ kubectl exec -n <namespace> <patroni-pod> -- patronictl resume
 
 ### Through the REST API
 
-The Patroni container has the REST API credentials in the env vars `PATRONI_REST_API_USER` and
-`PATRONI_REST_API_PASSWORD`. Use `-u` only if REST API authentication is on.
+REST API authentication is always on and cannot be disabled, so always pass `-u`. The Patroni container has the
+credentials in the env vars `PATRONI_REST_API_USER` and `PATRONI_REST_API_PASSWORD`.
 
 ```bash
 curl -i -X PATCH -u "${PATRONI_REST_API_USER}:${PATRONI_REST_API_PASSWORD}" \
@@ -300,14 +302,15 @@ on the leader.
    kubectl exec -n <namespace> <patroni-pod> -- patronictl reinit patroni <member-name> --force
    ```
 
-   The REST API alternative runs in the replica pod itself:
+   The REST API alternative runs in the replica pod itself. `-u` is required:
 
    ```bash
    curl -i -X POST -u "${PATRONI_REST_API_USER}:${PATRONI_REST_API_PASSWORD}" \
      "http://$(hostname -i):8008/reinitialize"
    ```
 
-3. Watch the replica until its state is `streaming` or `running` again:
+3. Watch the replica until its state is `streaming`. Any other state, including `running`, means the replica does not
+   replicate yet:
 
    ```bash
    kubectl exec -n <namespace> <patroni-pod> -- patronictl list

@@ -1,6 +1,6 @@
 ---
 name: troubleshoot-postgres
-description: Diagnose and resolve failures in pgskipper-operator PostgreSQL clusters on Kubernetes and OpenShift. Covers Patroni high availability and leader election, PatroniCore and PatroniServices custom resources, Helm install and upgrade errors, major upgrades and collation fixes, pgBackRest and backup daemon backups, the PgBouncer connection pooler, Site Manager active-standby DR, DBaaS adapter and Vault integration, frozen prepared transactions, application-side PostgreSQL errors, and the Prometheus alerts shipped with the patroni-services chart. Use for pgskipper-operator, Patroni, or PostgreSQL-as-a-Service incidents.
+description: Diagnose and resolve failures in pgskipper-operator PostgreSQL clusters on Kubernetes and OpenShift. Covers Patroni high availability and leader election, PatroniCore and PatroniServices custom resources, Helm install and upgrade errors, major upgrades and collation fixes, pgBackRest and backup daemon backups, the PgBouncer connection pooler, Site Manager active-standby DR, DBaaS adapter, frozen prepared transactions, application-side PostgreSQL errors, and the Prometheus alerts shipped with the patroni-services chart. Use for pgskipper-operator, Patroni, or PostgreSQL-as-a-Service incidents.
 ---
 
 # PostgreSQL operator troubleshooting
@@ -10,8 +10,8 @@ and a symptom index. Detailed procedures live in three reference files. Read onl
 
 | File | Contents |
 |------|----------|
-| [references/alarm-troubleshooting.md](references/alarm-troubleshooting.md) | Prometheus alerts: meaning, causes, investigation, and actions |
-| [references/troubleshooting.md](references/troubleshooting.md) | Error messages: Helm, operators, Site Manager, Vault, Patroni, upgrades, backups, PgBouncer, DBaaS, applications |
+| [references/alarm-troubleshooting.md](references/alarm-troubleshooting.md) | Prometheus alerts: meaning, causes, investigation, actions, and thresholds |
+| [references/troubleshooting.md](references/troubleshooting.md) | Error messages: Helm, operators, Site Manager, Patroni, scheduling, replication, monitoring, DR scenarios, upgrades, backups, PgBouncer, DBaaS, applications |
 | [references/troubleshooting-pg-cluster.md](references/troubleshooting-pg-cluster.md) | Generic operations: logs, leader detection, pause mode, replica reinitialization, volumes, heavy queries, backup daemon storage, diagnostic SQL |
 
 ## Cluster layout
@@ -45,10 +45,16 @@ disconnects clients. This includes:
 - `kubectl delete` on PVCs, StatefulSets, Services, `PatroniCore`, or `PatroniServices` resources.
 - Deleting or editing the `patroni-leader` and `patroni-config` ConfigMaps, or the keys of an etcd DCS.
 - Removing files from volumes (`rm -rf` on a node or in a pod), including old backups in the backup daemon storage.
-- Editing pod labels such as `pgtype` by hand.
 - `ROLLBACK PREPARED`, `pg_cancel_backend`, and `pg_terminate_backend`.
 - `ALTER SYSTEM`. The operator and Patroni manage PostgreSQL parameters, so set them through `patroni.postgreSQLParams`.
 - `helm upgrade`, `helm rollback`, and scaling StatefulSets or Deployments.
+
+Never do or propose the following. If the user asks, explain why and offer the documented alternative:
+
+- Editing the `pgtype` pod labels by hand. Patroni manages them and overwrites manual changes, and wrong labels route
+  writes to a replica.
+- Setting `patroni.dockerImage` back to an older image, for example to recover from a failed upgrade. Some pod
+  environment variables work only with a specific Patroni version.
 
 Read-only commands, such as `kubectl get`, `kubectl describe`, `kubectl logs`, `patronictl list`, and `SELECT` queries,
 need no confirmation.
@@ -95,9 +101,21 @@ need no confirmation.
 | `spec.externalDataBase.project in body must be of type string` (older operator versions) | [External database project is not a string](references/troubleshooting.md#external-database-project-is-not-a-string) |
 | `Session token expired, re-authentication.` repeats, Site Manager shows no active status | [Site Manager cannot authorize](references/troubleshooting.md#site-manager-cannot-authorize) |
 | `tokenreviews.authentication.k8s.io is forbidden` in `postgres-operator` logs | [Site Manager API calls fail: TokenReview is forbidden](references/troubleshooting.md#site-manager-api-calls-fail-tokenreview-is-forbidden) |
-| `Code 403. Errors: * permission denied` on Vault login | [Vault login fails with 403](references/troubleshooting.md#vault-login-fails-with-403) |
 | No member has the `Leader` role in `patronictl list` | [Cluster has no leader](references/troubleshooting.md#cluster-has-no-leader) |
 | Patroni pod in `CrashLoopBackOff`, `Error`, or `Pending` | [Patroni pods do not start](references/troubleshooting.md#patroni-pods-do-not-start) |
+| `Insufficient cpu` or `Insufficient memory` in pod events | [Pod is Pending: insufficient CPU or memory](references/troubleshooting.md#pod-is-pending-insufficient-cpu-or-memory) |
+| `didn't match Pod's node affinity/selector` or `MatchNodeSelector` in pod events | [Pod is Pending: node selector or affinity does not match](references/troubleshooting.md#pod-is-pending-node-selector-or-affinity-does-not-match) |
+| `pg_basebackup: could not create directory ... Permission denied` | [Replica bootstrap fails: permission denied](references/troubleshooting.md#replica-bootstrap-fails-permission-denied) |
+| `PANIC: could not read from control file` | [Replica fails to start: could not read from control file](references/troubleshooting.md#replica-fails-to-start-could-not-read-from-control-file) |
+| `record with incorrect prev-link` or `invalid resource manager ID` | [Replica fails to start: malformed WAL records](references/troubleshooting.md#replica-fails-to-start-malformed-wal-records) |
+| `invalid segment number 0 in file "pg_internal.init...` on the leader | [Replica bootstrap fails: malformed pg_internal.init](references/troubleshooting.md#replica-bootstrap-fails-malformed-pg_internalinit) |
+| Every member logs `waiting for leader to bootstrap` | [All members wait for the leader to bootstrap](references/troubleshooting.md#all-members-wait-for-the-leader-to-bootstrap) |
+| `Error communicating with DCS`, `DCS is not accessible`, or `K8sConnectionFailed` | [Patroni cannot reach the Kubernetes API](references/troubleshooting.md#patroni-cannot-reach-the-kubernetes-api) |
+| `requested timeline ... is not a child of this server's history` or `requested WAL segment ... has already been removed` | [Replication is broken](references/troubleshooting.md#replication-is-broken) |
+| `number of requested standby connections exceeds max_wal_senders` | [Replica cannot connect: max_wal_senders exceeded](references/troubleshooting.md#replica-cannot-connect-max_wal_senders-exceeded) |
+| Disk usage of a Patroni node missing on the dashboard | [Disk metrics are missing](references/troubleshooting.md#disk-metrics-are-missing) |
+| DR scenario: `exit_code: 12 not equals zero and failed pods exists` | [DR scenario fails: failed pods exist](references/troubleshooting.md#dr-scenario-fails-failed-pods-exist) |
+| DR scenario: `Patroni cluster is not ready!` and `/archive/get` returns `404` | [DR scenario fails: replica gets 404 from the WAL archive](references/troubleshooting.md#dr-scenario-fails-replica-gets-404-from-the-wal-archive) |
 | `pg-upgrade` container fails: `Check cluster before upgrade - Failed.`, `shared_preload_libraries is not found in PostgreSQL config`, `Upgrade failed with exit code`, or a log that ends with `making chmod 750 to datadir` | [Major upgrade fails](references/troubleshooting.md#major-upgrade-fails) |
 | `The database was created using collation version ...` or `Cannot alter locale version` | [Collation fix fails for some databases](references/troubleshooting.md#collation-fix-fails-for-some-databases) |
 | pgBackRest backup or restore fails | [pgBackRest backups fail](references/troubleshooting.md#pgbackrest-backups-fail) |

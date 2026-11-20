@@ -116,7 +116,8 @@ Check how much WAL each replication slot retains and the size of each database w
 
 - Count active connections: `SELECT count(*) FROM pg_stat_activity WHERE state = 'active';`
 - Find heavy queries. See [Heavy queries detection](troubleshooting-pg-cluster.md#heavy-queries-detection).
-- Compare the CPU limit in `patroni.resources` with the real load.
+- Compare the CPU limit in `patroni.resources` with the real load and with the sizing formula in the
+  [installation guide](https://github.com/Netcracker/pgskipper-operator/blob/main/docs/public/installation.md#best-practices-and-recommendations).
 
 **Actions:** Optimize the heavy queries, or raise the CPU limit in `patroni.resources`.
 
@@ -136,7 +137,9 @@ Check how much WAL each replication slot retains and the size of each database w
 **Investigation**
 
 - Count connections: `SELECT count(*) FROM pg_stat_activity;`
-- Compare the memory limit in `patroni.resources` with `shared_buffers`, `work_mem`, and `max_connections`.
+- Compare the memory limit in `patroni.resources` with `shared_buffers`, `work_mem`, and `max_connections`, and with
+  the sizing formula in the
+  [installation guide](https://github.com/Netcracker/pgskipper-operator/blob/main/docs/public/installation.md#best-practices-and-recommendations).
 
 **Actions:** Raise the memory limit in `patroni.resources`, or lower the memory settings and the number of connections.
 
@@ -257,7 +260,8 @@ a replica.
 kubectl exec -n <namespace> <patroni-pod> -- patronictl list
 ```
 
-Read the logs of every member whose state is not `running` or `streaming`.
+A healthy leader is `running`, and a healthy replica is `streaming`. Read the logs of every member in any other state,
+including a replica that shows `running`.
 
 **Actions**
 
@@ -265,23 +269,239 @@ Read the logs of every member whose state is not `running` or `streaming`.
   [Patroni pods do not start](troubleshooting.md#patroni-pods-do-not-start).
 - With the user's confirmation, restart Patroni pods that stay in a failed state.
 
+## PostgreSQL backup agent has problem
+
+**Condition:** `ma_status` of `postgres-backup-daemon` is `6`. Severity: `average`.
+
+**Meaning:** The backup daemon scheduler does not work because of internal errors. Usually the latest backups failed.
+
+**Impact:** You cannot restore to the latest backup.
+
+**Investigation**
+
+```bash
+kubectl logs -n <namespace> deployment/postgres-backup-daemon
+```
+
+Run a manual backup and check whether it completes. See [Running a manual backup](#running-a-manual-backup).
+
+**Actions:** Fix the error from the backup daemon log. With the user's confirmation, restart the backup daemon pod if
+the problem persists.
+
+## Space for Postgres backup is less than acceptable threshold
+
+**Variants:** two rules share this name. One fires when free space on the backup storage is below
+`backupAlertThreshold` (default 5%, severity `average`), the other below `backupWarningThreshold` (default 20%,
+severity `warning`).
+
+**Possible causes**
+
+- Backups run too often for the storage size (`backupDaemon.backupSchedule`).
+- Old backups are not evicted, or the eviction policy keeps too many (`backupDaemon.evictionPolicy`, env var
+  `EVICTION_POLICY` of the backup daemon).
+
+**Impact:** When the storage fills up, new backups fail.
+
+**Investigation**
+
+```bash
+kubectl exec -n <namespace> deployment/postgres-backup-daemon -- df -h /backup-storage
+kubectl get patroniservices -n <namespace> -o yaml | grep -iE 'schedule|eviction'
+```
+
+**Actions**
+
+- Reduce the backup frequency with `backupDaemon.backupSchedule`, or keep fewer backups with
+  `backupDaemon.evictionPolicy`, then upgrade the patroni-services release with the user's confirmation.
+- Increase `backupDaemon.storage.size`.
+- If the storage is already full, see
+  [Backup daemon storage cleanup](troubleshooting-pg-cluster.md#backup-daemon-storage-cleanup).
+
+## Last Postgres backup is failed
+
+**Condition:** `ma_storage_last_failed` of `postgres-backup-daemon` is above `0`. Severity: `average`.
+
+**Possible causes**
+
+- The database was unavailable for the backup daemon.
+- The backup storage has no space for the backup archive.
+
+**Impact:** You cannot restore to the latest backup.
+
+**Investigation:** Read the backup daemon log around the time of the backup, and run a manual backup. See
+[Running a manual backup](#running-a-manual-backup).
+
+**Actions:** Fix the error from the backup daemon log.
+
+## Last Successful Postgres backup is too old
+
+**Condition:** The last successful backup is older than `maxLastBackupAge` (default `86400` seconds). Severity:
+`average`.
+
+**Possible causes**
+
+- The backup schedule or the alert threshold is wrong.
+- The backup daemon is down, or its backups fail.
+
+**Impact:** You can restore only to an old backup.
+
+**Investigation**
+
+```bash
+kubectl get pods -n <namespace> | grep postgres-backup-daemon
+kubectl logs -n <namespace> deployment/postgres-backup-daemon
+kubectl get patroniservices -n <namespace> -o yaml | grep -i schedule
+```
+
+**Actions**
+
+- With the user's confirmation, restart the backup daemon pod if it stays failed.
+- Run a manual backup and check that it completes. See [Running a manual backup](#running-a-manual-backup).
+- Fix `backupDaemon.backupSchedule` or `maxLastBackupAge` if they do not match.
+
+### Running a manual backup
+
+A manual backup adds load to the leader, so ask the user first. Add `-u <user>:<password>` if authentication is on.
+
+```bash
+kubectl port-forward -n <namespace> deployment/postgres-backup-daemon 8080:8080
+curl -X POST http://localhost:8080/backup
+curl http://localhost:8080/backup/status/<backup-id>
+```
+
+The `POST` response contains the backup ID.
+
+## Locks on First Node more then acceptable threshold
+
+**Variants:** one alert per node, `First` to `Fourth`.
+
+**Condition:** `ma_pg_metrics_locks` for the node is above `locksThreshold` (default `500`). Severity: `average`.
+
+**Possible causes**
+
+- The application holds or waits for too many locks.
+- The threshold is too low for the workload.
+
+**Impact:** Queries run slower, and new connections take longer.
+
+**Investigation**
+
+```sql
+SELECT relation::regclass, * FROM pg_locks WHERE NOT granted;
+```
+
+Find which sessions hold or wait for the locks with `pg_stat_activity`. See
+[Blocking queries](troubleshooting-pg-cluster.md#blocking-queries). To log lock waits, add `"log_lock_waits: on"` to
+`patroni.postgreSQLParams`.
+
+**Actions:** Hand the blocking sessions and queries to the application team. Adjust `locksThreshold` if the workload
+needs more locks by design. Terminate sessions only with the user's confirmation.
+
+## Patroni Standby Leader Is Not Connected
+
+**Condition:** `ma_pg_patroni_replication_state_sm_replication_state` is `0`. Severity: `high`.
+
+**Meaning:** In an active-standby setup, the standby leader is not connected to the primary cluster. Investigate on the
+standby side.
+
+**Possible causes**
+
+- The standby leader is down.
+- Cross-site connectivity is broken.
+
+**Impact:** Disaster recovery operations, such as a switchover, are not possible.
+
+**Investigation**
+
+```bash
+kubectl get pods -n <namespace> -L pgtype -o wide
+kubectl exec -n <namespace> <patroni-pod> -- patronictl list
+kubectl logs -n <namespace> <standby-leader-pod> -c pg-patroni-node<N>
+```
+
+Check that the standby cluster can reach the primary cluster's PostgreSQL service across sites.
+
+**Actions**
+
+- If no standby leader exists, see [Cluster has no leader](troubleshooting.md#cluster-has-no-leader) and
+  [All members wait for the leader to bootstrap](troubleshooting.md#all-members-wait-for-the-leader-to-bootstrap).
+- Restore cross-site connectivity. Network changes belong to the infrastructure owner.
+- If the cause is unclear, escalate.
+
+## Current connections exceed max_connection
+
+**Condition:** `ma_pg_metrics_current_connections` is greater than or equal to `ma_pg_metrics_postgres_max_connections`.
+Severity: `high`.
+
+**Impact:** New connections fail with `remaining connection slots are reserved`.
+
+**Investigation and actions:** The same as for
+[Current overall connections exceed max_connection percentage](#current-overall-connections-exceed-max_connection-percentage).
+Terminate unused connections only with the user's confirmation.
+
+## PostgreSQL replication slot wal size is too high
+
+**Condition:** `pg_replicaiton_slots_monitoring_retained_wal` (the metric name is misspelled in the rule) is above
+`postgresExporter.prometheusRules.maxReplicationSlotWalSizeThreshold` (default `1024` MB). Severity: `high`.
+
+**Related alert:** `PostgreSQL replication slot is not active for a long time` fires for inactive slots; investigate it
+the same way.
+
+**Possible causes**
+
+- The client of the slot, such as a logical replication subscriber or a CDC tool, stopped consuming changes.
+- `wal_keep_size` is too high.
+- An old slot is no longer used.
+
+**Impact:** Retained WAL can fill the data volume and stop PostgreSQL.
+
+**Investigation:** On the leader:
+
+```sql
+SELECT slot_name,
+       pg_wal_lsn_diff(pg_current_wal_lsn(), restart_lsn) AS bytes_behind,
+       active,
+       wal_status
+FROM pg_replication_slots
+WHERE wal_status <> 'lost'
+ORDER BY restart_lsn;
+SHOW wal_keep_size;
+```
+
+**Actions**
+
+- Ask the owner of the slot's client to fix it.
+- Lower `wal_keep_size` through `patroni.postgreSQLParams`.
+- With the owner's confirmation, drop a slot that is no longer needed: `SELECT pg_drop_replication_slot('<slot-name>');`
+
+## Thresholds
+
+The thresholds are Helm values of the patroni-services chart under `metricCollector.prometheusRules`. Changing one needs
+a `helm upgrade` of the patroni-services release, so ask the user first.
+
+| Value | Default | Alerts |
+|-------|---------|--------|
+| `alertDelay` | `3m` | All |
+| `backupAlertThreshold` | `5` (% free) | `Space for Postgres backup is less than acceptable threshold` |
+| `backupWarningThreshold` | `20` (% free) | `Space for Postgres backup is less than acceptable threshold` |
+| `maxLastBackupAge` | `86400` (s) | `Last Successful Postgres backup is too old` |
+| `queryMaxTimeThreshold` | `3600` (s) | `There are long running queries on <N> Node` |
+| `locksThreshold` | `500` | `Locks on <N> Node more then acceptable threshold` |
+| `replicationLagValue` | `33554432` (bytes) | `Patroni Replica Is Lagging`, `PostgreSQL Replica Is Lagging` |
+| `maxConnectionExceedPercentageThreshold` | `90` (%) | `Current overall connections exceed max_connection percentage` |
+| `maxConnectionReachedPercentageThreshold` | `80` (%) | `Current overall connections reached average max_connection percentage` |
+
+`maxReplicationSlotWalSizeThreshold` (default `1024` MB) is under `postgresExporter.prometheusRules` instead.
+
 ## Alerts without a procedure
 
 This file does not cover the alerts below yet. Read the alert expression in `prometheus-rule.yml` and investigate the
 component it names.
 
 - `PostgreSQL metrics are absent`
-- `Space for Postgres backup is less than acceptable threshold`
-- `Last Postgres backup is failed`
-- `Last Successful Postgres backup is too old`
-- `PostgreSQL backup agent has problem`
-- `Locks on <N> Node more then acceptable threshold`
 - `PostgreSql Large Object Size High`
-- `Patroni Standby Leader Is Not Connected`
 - `DB Connection exceeding more than specified limit`
 - `PostgreSQL the percentage of transaction ID space used out`
-- `PostgreSQL replication slot wal size is too high`
-- `PostgreSQL replication slot is not active for a long time`
 - `Wait event warning threshold for SubtransBuffer or SubtransSLRU`
 - `Wait event critical threshold for SubtransBuffer or SubtransSLRU`
 - `Pct used warning threshold`

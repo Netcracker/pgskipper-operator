@@ -1,348 +1,24 @@
 # PostgreSQL Operator Troubleshooting Guide
 
-This guide provides detailed troubleshooting procedures for pgskipper-operator (PostgreSQL as a Service operator managing Patroni-based PostgreSQL clusters on Kubernetes and OpenShift).
+This chapter describes the troubleshooting scenarios and recommendations for deployment, upgrade, and operator issues of pgskipper-operator (PostgreSQL as a Service operator managing Patroni-based PostgreSQL clusters on Kubernetes and OpenShift).
 
-## Table of Contents
+Other troubleshooting guides:
 
-### Prometheus Alerts
-* [PostgreSQL is Down](#postgresql-is-down-on-hostname)
-* [PostgreSQL is Degraded](#postgresql-is-degraded-on-hostname)
-* [Disk space almost full](#disk-space-on-hostname-postgre-node-disk-is-almost-full)
-* [High CPU usage](#cpu-on-hostname-postgresql-node-is-more-than-95-busy)
-* [High Memory usage](#memory-on-hostname-postgre-node-is-more-than-95-busy)
-* [Long-running queries](#there-are-long-running-queries-on-hostname-node)
-* [Backup agent issues](#unable-to-collect-metrics-from-postgresql-backup-agent-hostname)
-* [Patroni status not running](#patroni-status-on-hostname-node-is-not-running)
-* [Replication lag](#postgresqlpatroni-replica-is-lagging)
-* [Connection limit reached](#current-overall-connections-exceed-max_connection-percentage)
+* [Prometheus Alerts Troubleshooting](alarm-troubleshooting.md) - descriptions and resolution steps for the monitoring alerts.
+* [PostgreSQL Cluster Troubleshooting](troubleshooting-pg-cluster.md) - troubleshooting overview, application-side errors, infrastructure, HA, replication, backup, connection pooler, and DR issues, and generic operations.
 
-### Deployment and Operator Issues
+The following topics are covered in this section:
+
 * [Deployment fails with rendered manifests contain a resource that already exists error](#deployment-fails-with-rendered-manifests-contain-a-resource-that-already-exists-error)
-* [Postgres Operator failing during registration in Vault](#postgres-operator-failing-during-registration-in-vault)
 * [Not possible to call PostgreSQL SiteManager endpoints](#not-possible-to-call-postgresql-sitemanager-endpoints)
 * [Postgres-Service upgrade failed](#postgres-service-upgrade-failed)
-* [Deployment fails with spec.externalDataBase.project Invalid value](#deployment-fails-with-the-postgresservice-is-invalid-specexternaldatabaseproject-invalid-value-integer)
-* [Postgres site manager authorization issues](#postgres-site-manager-can-not-authorize-so-there-is-no-active-status-in-site-manager)
-
-### Upgrade and Migration Issues
-* [Postgres collation fix failed](#postgres-collation-fix-failed-for-several-databases)
-* [Postgres major upgrade failed](#postgres-major-upgrade-failed)
-
-### Application-Side Errors
-* [Prepared Transactions are Disabled](#prepared-transactions-are-disabled)
-* [Unexpectedly Closed Connection](#unexpectedly-closed-connection)
-* [Read-only Transaction Error](#accessing-pg-results-in-read-only-transaction-error)
-* [Not Enough Connections](#not-enough-connections-for-clients)
-
-### Disaster Recovery Issues
-* [Frozen Prepared Transactions](#deployment-fails-due-to-frozen-prepared-transactions-in-postgresql)
-
-### Additional Common Issues
-* [Patroni cluster has no leader](#patroni-cluster-has-no-leader)
-* [pgBackRest backup failures](#pgbackrest-backup-failures)
-* [Connection pooler (PgBouncer) issues](#connection-pooler-pgbouncer-issues)
-
----
-
-## Introduction
-
-This section provides detailed troubleshooting procedures for HA PostgreSQL cluster installations managed by pgskipper-operator. Ensure you have administrator privileges in the Kubernetes/OpenShift cluster and access to pod logs and diagnostics.
-
-## Troubleshooting Overview
-
-To resolve a database-related issue, determine whether the issue is caused by a database fault or failure of any other system. There are two main ways:
-
-1. **Monitoring system reports** - Prometheus alerts like `PostgreSQL is DOWN`
-2. **Application errors** - Application logs contain database-related errors
-
-If monitoring reports issues but applications work properly, this may be a false positive. However, investigate the database to confirm health.
-
-If applications report database failure, check the monitoring dashboard first. If dashboard shows healthy status but applications fail, troubleshoot applications (see [Typical Application-Side Error Messages](#typical-application-side-error-messages)).
-
----
-
-## Prometheus Alerts
-
-### PostgreSQL is Down on {HOST.NAME}
-
-**Description:** Alarm raised due to database or monitoring agent failure. The database cluster is designed to survive failures and recover automatically.
-
-**Possible Causes:**
-- Out of Memory for PostgreSQL
-- Disk issue (no space left on device)
-- Monitoring agent down or unable to collect metrics
-
-**Impact:** All applications using PostgreSQL are down.
-
-**Actions for Investigation:**
-- Check status of Patroni pods
-- Review logs for Patroni pods for errors
-- Verify resource utilization (CPU, memory)
-
-**Recommended Actions:**
-- Analyze errors in Patroni pods
-- Restart or redeploy Patroni pods if in failed state
-- Address resource constraints
-
-### PostgreSQL is Degraded on {HOST.NAME}
-
-**Description:** Replica database pod(s) down. Database processes requests but some replicas unavailable.
-
-**Possible Causes:**
-- Long outage of Patroni Replica Pod
-- PostgreSQL replication issues
-
-**Impact:**
-- No impact on applications currently
-- Data-loss possible during failover if replica out of sync
-
-**Actions for Investigation:**
-- Analyze errors in Patroni replica Pod
-- Restart or redeploy Patroni pods if failed
-
-**Recommended Actions:**
-- Reinitialize the replica: run `patronictl reinit <cluster-name> <member-name>` in a Patroni pod
-
-### Disk space on {HOST.NAME} Postgre {Node} Disk is almost full
-
-**Description:** Available disk space on database data volume too low.
-
-**Possible Causes:**
-- Logical PostgreSQL databases consuming more space
-- WAL files rotation issue due to stale replication connections
-
-**Impact:** Possible outage due to no space left on device.
-
-**Actions for Investigation:**
-- Check size of `pg_wal` folder on PostgreSQL Leader disk
-- Check size of logical databases in PostgreSQL
-
-**Recommended Actions:**
-- Clean up space by dropping unneeded logical databases
-- Increase size of PVCs used by Patroni pods
-
-### CPU on {HOST.NAME} PostgreSQL Node is more than 95% busy
-
-**Description:** PostgreSQL Database under high load.
-
-**Possible Causes:**
-- Incorrect CPU configuration
-- Database under high load
-
-**Impact:**
-- Slowness of query execution
-- New connections established over longer time
-
-**Actions for Investigation:**
-- Check number of active PostgreSQL connections
-- Verify CPU limits calculated correctly
-
-**Recommended Actions:**
-- Increase CPU limits for Patroni pods
-
-### Memory on {HOST.NAME} Postgre Node is more than 95% busy
-
-**Description:** Database under high load.
-
-**Possible Causes:**
-- Incorrect Memory configuration
-- Database under high load
-
-**Impact:**
-- Slowness of query execution
-- New connections established over longer time
-- Possible Out of Memory
-
-**Actions for Investigation:**
-- Check number of active PostgreSQL connections
-- Verify Memory limits calculated correctly
-
-**Recommended Actions:**
-- Increase Memory Limits for Patroni pods
-
-### There are long-running queries on {HOST.NAME} {NODE}
-
-**Description:** Non-optimized long-running queries detected.
-
-**Possible Causes:**
-- Non-optimized queries
-- Misconfiguration of Memory and CPU limits
-
-**Actions for Investigation:**
-- Verify heavy (non-optimal) queries performed on database
-- Verify threshold configuration
-
-**Recommended Actions:**
-- Find problematic query
-- Check execution plan
-- Optimize if possible
-
-### Unable to collect metrics from PostgreSQL backup agent {HOST.NAME}
-
-**Description:** PostgreSQL Backup Daemon not working.
-
-**Possible Causes:**
-- Backup Daemon down
-- Monitoring Agent down
-- Database unavailable for Backup Daemon
-
-**Impact:**
-- Scheduled backups not working
-- Cannot request new logical backups
-
-**Actions for Investigation:**
-- Check status of Backup Daemon pod
-- Review logs for errors
-- Verify resource utilization
-
-**Recommended Actions:**
-- Restart or redeploy Backup Daemon pod
-- Check monitoring agent working
-- Verify enough space on Backup Daemon PVC
-
-### PostgreSQL/Patroni Replica Is Lagging
-
-**Description:** Replication lag for one of the Patroni/PostgreSQL replicas.
-
-**Actions for Investigation:**
-- Check state of Patroni members: `patronictl list`
-- Review logs of lagging members
-
-**Recommended Actions:**
-- Reinitialize the lagging replica: run `patronictl reinit <cluster-name> <member-name>` in a Patroni pod
-
-### Current overall connections exceed max_connection percentage
-
-**Description:** Open connections to `max_connections` ratio exceeds 90%.
-
-**Possible Causes:** Too many open connections to PostgreSQL.
-
-**Impact:** Not possible to establish new connections in future.
-
-**Actions for Investigation:**
-```sql
-SELECT count(*) FROM pg_stat_activity;
-```
-- Verify `max_connections` configuration parameter
-
-**Recommended Actions:**
-- Increase `max_connections` parameter
-- Reduce number of open connections
-
-### Patroni status on {HOST.NAME} {NODE} is not running
-
-**Description:** Patroni cannot start PostgreSQL on node.
-
-**Possible Causes:**
-- Invalid permissions for PVC
-- Not enough space on Patroni PVC
-
-**Impact:** PostgreSQL not accessible by applications.
-
-**Actions for Investigation:**
-```bash
-patronictl list
-```
-- Check logs of members with State not equal to `running`
-
-**Recommended Actions:**
-- Analyze errors in Patroni pods
-- Restart or redeploy Patroni pods if in failed state
-
----
-
-## Typical Application-Side Error Messages
-
-### Prepared Transactions are Disabled
-
-**Symptom:** Application log contains error:
-```
-org.postgresql.util.PSQLException: ERROR: prepared transactions are disabled
-```
-
-**Interpretation:** Using prepared transactions, but PostgreSQL has this feature disabled.
-
-**Possible Reason:** Value of `max_prepared_transactions` in `postgresql.conf` is zero or absent.
-
-**Proposed Fix:** Add `"max_prepared_transactions: <value>"` to `patroni.postgreSQLParams` in the patroni-core values and upgrade the release. The operator derives the `PG_CONF_MAX_PREPARED_TRANSACTIONS` env var from this list, so editing the env var in the StatefulSet does not last. PostgreSQL applies the parameter after a restart.
-
-### Unexpectedly Closed Connection
-
-**Symptom:** Application log contains recurring error:
-```
-org.postgresql.util.PSQLException: This connection has been closed
-```
-
-**Interpretation:** TCP connection between client and PG server closed unexpectedly.
-
-**Possible Reason:** Permanent connectivity issues between client application pod and leader PG pod.
-
-**Proposed Fix:** Check connectivity between client application and PG leader pods. If issues exist, check connectivity between nodes where pods run. If nodes OK, restart client application pod.
-
-**Alternative Reason:** Connection pooling enabled, connections in pool became invalid after connectivity issues.
-
-**Proposed Fix:** Ask application developers if application can withstand DB outage. If not, report bug. Actual fix depends on technologies used (e.g., WildFly AS: add `<validate-on-match>true</validate-on-match>` in datasource configuration).
-
-**Workaround:** If connectivity issues temporary, restart client application to clear connection pool.
-
-### Accessing PG Results in Read-only Transaction Error
-
-**Symptom:** Application log contains error:
-```
-org.postgresql.util.PSQLException: ERROR: cannot execute UPDATE in a read-only transaction
-```
-
-**Possible Reason:** Accessing read-only PostgreSQL instance (replica pod).
-
-**Proposed Fix:** Report bug to Netcracker PG support team.
-
-**Workaround:** Fix the pod labels manually. Compare `patronictl list` with `kubectl get pods -L pgtype`, then relabel the pods:
-
-```bash
-kubectl label pod <former-leader-pod> -n <namespace> pgtype=replica --overwrite
-kubectl label pod <actual-leader-pod> -n <namespace> pgtype=primary --overwrite
-```
-
-**Alternative Reason:** Application bug - data modification attempt in read-only transaction.
-
-### Not Enough Connections for Clients
-
-**Symptom:** Application log contains error:
-```
-FATAL: remaining connection slots are reserved for non-replication superuser connections
-```
-
-**Possible Reason:** Value of `max_connections` in `postgresql.conf` too low, or too many clients.
-
-**Proposed Fix:**
-
-1. Determine current `max_connections` value:
-```bash
-psql -c 'show max_connections'
-```
-
-2. Check connections per database:
-```bash
-psql -c 'select datname, count(*) from pg_stat_activity group by datname'
-```
-
-3. Estimate if sufficient, then either:
-   - Reduce client connections
-   - Increase `max_connections` setting
-
-**Note:** Changing `max_connections` affects other users. Service calculates `work_mem` to fit every possible connection in memory. Increasing `max_connections` means less memory per operation, so sorts and hashes spill to temporary files on disk more often and the IO rate grows. Each connection is a new process with overhead.
-
-To increase `max_connections`: add `"max_connections: <value>"` to `patroni.postgreSQLParams` in the patroni-core values and upgrade the release. The operator derives the `PG_MAX_CONNECTIONS` env var from this list. PostgreSQL applies the parameter after a restart.
-
-Verify change:
-```bash
-psql -c 'show max_connections'
-```
-
-If value unchanged after few minutes, try:
-```bash
-/propagate_settings.sh
-```
+* [Deployment fails with The PostgresService is invalid: spec.externalDataBase.project Invalid value integer](#deployment-fails-with-the-postgresservice-is-invalid-specexternaldatabaseproject-invalid-value-integer)
+* [Postgres site manager can not authorize, so there is no active status in site-manager](#postgres-site-manager-can-not-authorize-so-there-is-no-active-status-in-site-manager)
+* [Postgres collation fix failed for several databases](#postgres-collation-fix-failed-for-several-databases)
+* [Postgres major upgrade failed](#postgres-major-upgrade-failed) (including [Postgres upgrade failed without an error in logs](#postgres-upgrade-failed-without-an-error-in-logs))
+* [Deployment fails due to frozen prepared transactions in PostgreSQL](#deployment-fails-due-to-frozen-prepared-transactions-in-postgresql)
+
+For the application-side errors, Patroni cluster, pgBackRest, and PgBouncer issues that were previously described in this guide, see [PostgreSQL Cluster Troubleshooting](troubleshooting-pg-cluster.md).
 
 ---
 
@@ -365,31 +41,6 @@ kubectl delete role postgres-operator -n <namespace>
 kubectl delete sa postgres-sa -n <namespace>
 kubectl delete rolebinding postgres-operator -n <namespace>
 ```
-
----
-
-### Postgres Operator failing during registration in Vault
-
-**Symptom:** When you use Vault as secret storage (`VAULT_ENABLED=true` in the DBaaS adapter), you may face some of these errors:
-
-```
-URL: PUT http://<vault-url>/v1/auth/<auth_method>/login 
-Code 403. Errors:
-* permission denied
-```
-
-One of the reasons may be incorrect Vault deployment to the cluster.
-Check vault logs and if you find an error like this:
-
-```json
-{"kind":"Status","apiVersion":"v1","metadata":{},"status":"Failure","message":"tokenreviews.authentication.k8s.io is forbidden: User \"system:serviceaccount:vault-operator:vault-service\" cannot create resource \"tokenreviews\" in API group \"authentication.k8s.io\" at the cluster scope","reason":"Forbidden","details":{"group":"authentication.k8s.io","kind":"tokenreviews"},"code":403}
-```
-
-**Interpretation:** Vault is unable to authorize Postgres Operator Service Account JWT token.
-
-**Possible Reason:** Vault is misconfigured.
-
-**Proposed Fix:** Bind the `system:auth-delegator` ClusterRole to the Vault service account. For more information, see the [Vault Kubernetes auth documentation](https://developer.hashicorp.com/vault/docs/auth/kubernetes).
 
 ---
 
@@ -533,29 +184,51 @@ kubectl get pod <upgrade-pod> -n <namespace> -o jsonpath='{.status.containerStat
 
 **Pre-upgrade check failed (exit code 13):** Fix the incompatibility that `pg_upgrade --check` reports (the output is also saved to `/var/lib/pgsql/data/check_result` on the leader volume), then run the upgrade again.
 
-**`shared_preload_libraries` is missing (exit code 1):** `patroni.postgreSQLParams` has no `shared_preload_libraries` entry. The script stops before `pg_upgrade` starts, so the data of the old cluster is intact. Upgrade images built before this check existed print no message, and their log ends with `making chmod 750 to datadir`.
+<a id="postgres-upgrade-failed-without-an-error-in-logs"></a>**`shared_preload_libraries` is missing (exit code 1), or the upgrade failed without an error in logs:** `patroni.postgreSQLParams` has no `shared_preload_libraries` entry, so the `postgresql.conf` that Patroni writes for the old cluster has none either. The current operator checks this on the leader before it stops the cluster: the `patroni-core-operator` log contains `shared_preload_libraries is not found in PostgreSQL config, please check PostgreSQL params, failing major upgrade`, and the cluster keeps running on the old version. Older operator versions stop the cluster first, and the `pg-upgrade` container fails with exit code 1. In both cases the script stops before `pg_upgrade` starts, so the data of the old cluster is intact. Upgrade images built before this check existed print no message, and their log ends with `making chmod 750 to datadir`.
 
-The script reads the parameter from the `postgresql.conf` that Patroni writes, so the old cluster must run once with the parameter:
+Do not set `patroni.dockerImage` back to the old image: some pod environment variables work only with a specific Patroni version. The operator keeps the old image in the Patroni StatefulSets until the upgrade succeeds, so the old cluster starts without changing the image. Add the parameter to the running cluster, then repeat the upgrade:
 
-1. Set `patroni.dockerImage` back to the image of the old PostgreSQL version and add `shared_preload_libraries` to `patroni.postgreSQLParams`. The parameter list is replaced as a whole, so keep its other entries.
+1. Scale the `patroni-core-operator` Deployment to zero, so that it does not start the upgrade again before the parameter is in place:
+
+   ```bash
+   kubectl scale deployment patroni-core-operator -n <namespace> --replicas=0
+   ```
+
+2. If the Patroni StatefulSets are at zero replicas, check that they still use the old image, scale each of them back to one replica, and wait until `patronictl list` shows a leader:
+
+   ```bash
+   kubectl get statefulsets -n <namespace> -o custom-columns='NAME:.metadata.name,REPLICAS:.spec.replicas,IMAGE:.spec.template.spec.containers[0].image'
+   kubectl scale statefulset pg-<cluster-name>-node<N> -n <namespace> --replicas=1
+   ```
+
+3. Set the parameter in the Patroni configuration of the running cluster, and restart PostgreSQL so that it takes effect. Use the libraries that the cluster needs; the chart default is shown below.
+
+   ```bash
+   kubectl exec -n <namespace> <leader-pod> -- patronictl edit-config -s 'postgresql.parameters.shared_preload_libraries=pg_stat_statements, pg_hint_plan, pg_cron' -q --force
+   kubectl exec -n <namespace> <leader-pod> -- patronictl restart <cluster-name> --force
+   ```
+
+4. Check the parameter on the leader the same way as the operator does, and with `SHOW`:
+
+   ```bash
+   kubectl exec -n <namespace> <leader-pod> -- sh -c 'grep shared_preload_libraries /var/lib/pgsql/data/postgresql_${POD_IDENTITY}/postgresql.conf'
+   kubectl exec -n <namespace> <leader-pod> -- psql -c 'SHOW shared_preload_libraries;'
+   ```
+
+5. Add the same value to `patroni.postgreSQLParams` in the patroni-core values, keeping the new `patroni.dockerImage` and `patroni.majorUpgrade.enabled: true`. The parameter list is replaced as a whole, so keep its other entries. Upgrade the patroni-core release. The release upgrade restores the `patroni-core-operator` Deployment, and the operator repeats the major upgrade.
 
    ```yaml
    patroni:
-     dockerImage: <old-patroni-image>
      postgreSQLParams:
        - "shared_preload_libraries: pg_stat_statements, pg_hint_plan, pg_cron"
        # ...the other entries of the list
    ```
 
-2. Upgrade the patroni-core release. If the Patroni pods do not start, scale the `pg-<cluster-name>-node<N>` StatefulSets back to one replica.
-3. Check the parameter with `SHOW shared_preload_libraries;` on the leader.
-4. Set the new image again to repeat the upgrade.
-
 **`pg_upgrade` failed (exit code 1):** The operator runs `pg_upgrade` with `--link`, so the old data directory may already be changed and unsafe to start, and the operator does not roll back. Do not start the old version on this data. Follow the manual steps in [Major Upgrade troubleshooting](features/major-upgrade.md#troubleshooting); recovery can require restoring the data from a backup.
 
 ---
 
-## Disaster Recovery Issues
+## DBaaS Issues
 
 ### Deployment fails due to frozen prepared transactions in PostgreSQL
 
@@ -592,74 +265,3 @@ SELECT gid FROM pg_prepared_xacts;
 ```
 
 4. Drop the database via the DBaaS API and ensure the issue no longer occurs.
-
----
-
-## Additional Common Issues
-
-### Patroni cluster has no leader
-
-**Symptom:** `patronictl list` shows no member with the `Leader` role, and no pod has the `pgtype=primary` label.
-
-**Diagnostic Steps:**
-
-1. Check the member states and whether maintenance mode is on:
-```bash
-kubectl exec -n <namespace> <patroni-pod> -- patronictl list
-```
-
-2. Check the Patroni logs for DCS errors. By default, Patroni uses Kubernetes as the DCS (`patroni.dcs.type: kubernetes`) and keeps its state in the `<cluster-name>-leader` and `<cluster-name>-config` ConfigMaps. The Patroni container has the same name as its StatefulSet:
-```bash
-kubectl logs -n <namespace> <patroni-pod> -c pg-<cluster-name>-node<N> | grep -iE "dcs|configmap|leader|lock|forbidden|timeout"
-```
-
-**Proposed Fix:**
-
-- Ensure Patroni pods can reach the Kubernetes API, or the etcd hosts from `patroni.dcs.hosts` when `patroni.dcs.type` is `etcd`, and that RBAC allows them to update their ConfigMaps
-- Check that network policies allow communication between Patroni pods and between Patroni and the DCS
-- Fix the errors that keep members from starting, such as a full disk
-- Check whether Patroni is in maintenance mode; `patronictl resume` turns it off
-
-### pgBackRest backup failures
-
-**Symptom:** Backups fail with errors in pgBackRest logs.
-
-**Diagnostic Steps:**
-
-1. Check pgBackRest logs:
-```bash
-kubectl logs -n <namespace> <patroni-pod> -c pgbackrest-sidecar
-```
-
-2. Check the stanzas, backups, and WAL archive:
-```bash
-kubectl exec -n <namespace> <patroni-pod> -c pgbackrest-sidecar -- pgbackrest info
-```
-
-**Proposed Fix:**
-
-- Verify the S3 credentials (`pgBackRest.s3.key`, `pgBackRest.s3.secret`) or the RWX volume settings (`pgBackRest.rwx`)
-- Check `pgBackRest.repoType`, `pgBackRest.repoPath`, and `pgBackRest.s3.endpoint`
-- Ensure the retention values (`pgBackRest.fullRetention`, `pgBackRest.diffRetention`) match the backup schedule
-
-### Connection pooler (PgBouncer) issues
-
-**Symptom:** Applications cannot connect through PgBouncer.
-
-**Diagnostic Steps:**
-
-1. Check PgBouncer logs:
-```bash
-kubectl logs -n <namespace> deployment/connection-puller
-```
-
-2. Verify the PgBouncer configuration:
-```bash
-kubectl get configmap pooler-config -n <namespace> -o yaml
-```
-
-**Proposed Fix:**
-
-- Verify `connectionPooler.install: true` in the patroni-services values
-- Check `connectionPooler.config.databases` and the PgBouncer settings in `connectionPooler.config.pgbouncer`, such as `pool_mode`, `max_client_conn`, `default_pool_size`, and `auth_type`
-- Ensure the database user exists and has proper privileges
