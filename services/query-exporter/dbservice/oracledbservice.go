@@ -89,10 +89,10 @@ func (odbs *OracleDBService) executeSelect(ctx context.Context, qName string, qR
 
 	if err != nil {
 		odbs.printDBStatAndUpdatePrometheusSelfMetric(qRand)
-		return nil, nil, fmt.Errorf("Error executing query %v : %+v", qName, err)
+		return nil, nil, fmt.Errorf("error executing query %v : %+v", qName, err)
 	}
 
-	defer rows.Close()
+	defer func() { _ = rows.Close() }()
 	odbs.printDBStatAndUpdatePrometheusSelfMetric(qRand)
 
 	columnNames, err := getOracleColumnNames(rows)
@@ -122,7 +122,7 @@ func (odbs *OracleDBService) getRows(ctx context.Context, qName string, qCfg *co
 	query := qCfg.Sql
 
 	if query == "" {
-		return nil, fmt.Errorf("Can not find a query")
+		return nil, fmt.Errorf("cannot find a query")
 	}
 
 	var parameters = make([]interface{}, 0)
@@ -141,7 +141,7 @@ func (odbs *OracleDBService) getRows(ctx context.Context, qName string, qCfg *co
 func processOracleRowToMap(rows *sql.Rows, qRand string) (map[string]string, error) {
 	columns, err := rows.ColumnTypes()
 	if err != nil {
-		return nil, fmt.Errorf("Error reading ColumnTypes: %+v", err)
+		return nil, fmt.Errorf("error reading ColumnTypes: %+v", err)
 	}
 
 	values := make([]interface{}, len(columns))
@@ -153,7 +153,7 @@ func processOracleRowToMap(rows *sql.Rows, qRand string) (map[string]string, err
 
 	err = rows.Scan(values...)
 	if err != nil {
-		return nil, fmt.Errorf("Error reading rows %+v", err)
+		return nil, fmt.Errorf("error reading rows %+v", err)
 	}
 
 	result := make(map[string]string)
@@ -192,7 +192,7 @@ func (odbs *OracleDBService) PrintSimpleQuery(query string) {
 func getOracleColumnNames(rows *sql.Rows) ([]string, error) {
 	columns, err := rows.ColumnTypes()
 	if err != nil {
-		return nil, fmt.Errorf("Error reading ColumnTypes: %+v", err)
+		return nil, fmt.Errorf("error reading ColumnTypes: %+v", err)
 	}
 	columnNames := make([]string, len(columns))
 	for i, column := range columns {

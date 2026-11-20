@@ -23,10 +23,7 @@ import (
 	qubershipv1 "github.com/Netcracker/pgskipper-operator/api/apps/v1"
 	patroniv1 "github.com/Netcracker/pgskipper-operator/api/patroni/v1"
 	"github.com/Netcracker/pgskipper-operator/pkg/helper"
-	"github.com/Netcracker/pgskipper-operator/pkg/upgrade"
-	opUtil "github.com/Netcracker/pgskipper-operator/pkg/util"
 	"go.uber.org/zap"
-	appsv1 "k8s.io/api/apps/v1"
 	"k8s.io/apimachinery/pkg/util/wait"
 )
 
@@ -224,49 +221,6 @@ func (m *PatroniDRManager) changeMode(request qubershipv1.SiteManagerStatus) err
 			log.Info(fmt.Sprintf("Successfully changed on %s mode", mode))
 		} else {
 			log.Error("Can not update Site Manager Status", zap.Error(err))
-			return err
-		}
-	}
-	return nil
-}
-
-func (m *PatroniDRManager) reinitStandbyPods() error {
-	patroniPods, err := m.helper.GetNamespacePodListBySelectors(m.cluster.PatroniCommonLabels)
-	if err != nil {
-		return err
-	}
-	if err = m.setDisablePatroniCluster(m.cluster.ClusterName); err != nil {
-		return err
-	}
-	for _, patroniPod := range patroniPods.Items {
-		if err = opUtil.WaitDeletePod(&patroniPod); err != nil {
-			log.Error("waiting for Patroni deployment delete failed", zap.Error(err))
-			return err
-		}
-	}
-	u := upgrade.Init(m.helper.GetClient())
-	if err := u.CleanInitializeKey(m.cluster.ClusterName); err != nil {
-		return err
-	}
-
-	var statefulsetList []*appsv1.StatefulSet
-	patroniStatefulSetName := fmt.Sprintf("pg-%s-node", m.cluster.ClusterName)
-	if statefulsetList, err = m.helper.GetStatefulsetByNameRegExp(patroniStatefulSetName); err != nil {
-		log.Error("Can't get Patroni Deployments", zap.Error(err))
-		return err
-	}
-
-	for _, dep := range statefulsetList {
-		cleanerInitContainer := u.GetCleanerInitContainer(dep.Spec.Template.Spec.Containers[0].Image)
-		replicas := int32(1)
-		if len(dep.Spec.Template.Spec.InitContainers) == 0 {
-			dep.Spec.Template.Spec.InitContainers = append(cleanerInitContainer, dep.Spec.Template.Spec.InitContainers...)
-		}
-		//dep.Spec.Template.Spec.Containers[0].Image = patroniSpec.DockerImage
-		dep.Spec.Replicas = &replicas
-
-		if err := m.helper.CreateOrUpdateStatefulset(dep, true); err != nil {
-			log.Error("Can't update Patroni deployment", zap.Error(err))
 			return err
 		}
 	}

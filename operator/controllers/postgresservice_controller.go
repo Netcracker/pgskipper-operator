@@ -689,5 +689,5 @@ func (r *PostgresServiceReconciler) failReconcile(reason string, err error, requ
 		requireAfter = time.Minute
 	}
 
-	return reconcile.Result{RequeueAfter: requireAfter, Requeue: requeue}, err
+	return reconcile.Result{RequeueAfter: requireAfter}, err
 }

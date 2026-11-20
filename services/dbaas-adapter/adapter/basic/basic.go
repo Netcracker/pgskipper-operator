@@ -434,6 +434,7 @@ func (sa ServiceAdapter) CreateUser(ctx context.Context, username string, postgr
 	}
 
 	version := sa.GetVersion()
+	//nolint:staticcheck
 	if version == "v2" && !(util.Contains(sa.GetSupportedRoles(), postgresUserRequest.Role) || postgresUserRequest.Role == "none") {
 		return nil, fmt.Errorf("unsupported role. Role should be one of the list %s", sa.GetSupportedRoles())
 	}
@@ -997,6 +998,7 @@ func (sa ServiceAdapter) dropResource(ctx context.Context, resource dao.DbResour
 	sa.Mutex.Lock()
 	defer sa.Mutex.Unlock()
 
+	//nolint:staticcheck
 	if resource.Kind == DbKind {
 		rows, err := conn.Query(ctx, getDatabase, resource.Name)
 		if err != nil {
@@ -1379,6 +1381,7 @@ func (sa ServiceAdapter) updateSettings(dbName string, request PostgresUpdateSet
 }
 
 func (sa ServiceAdapter) getUserNameWithHostName(userName string) string {
+	//nolint:staticcheck
 	values := strings.Split(sa.ClusterAdapter.GetUser(), "@")
 	if len(values) > 1 {
 		return fmt.Sprintf("%s@%s", userName, values[1])

@@ -75,7 +75,7 @@ func (pc *PublicationController) getPublicationInternal(ctx context.Context, pub
 		}
 		panic(err)
 	}
-	defer conn.Close(ctx)
+	defer func() { _ = conn.Close(ctx) }()
 
 	pubInfo := PublicationInfo{}
 	rows, err := conn.Query(ctx, getPubGetQuery(), publication)
@@ -137,7 +137,7 @@ func (pc *PublicationController) createPublication(ctx context.Context, request 
 	if err != nil {
 		panic(err)
 	}
-	defer conn.Close(ctx)
+	defer func() { _ = conn.Close(ctx) }()
 
 	tables := request.Tables
 	schemas := request.Schemas
@@ -189,7 +189,7 @@ func (pc *PublicationController) alterAddPublication(ctx context.Context, reques
 	if err != nil {
 		panic(err)
 	}
-	defer conn.Close(ctx)
+	defer func() { _ = conn.Close(ctx) }()
 
 	log.Debug(getPubAlterAddQuery(publication, tables, schemas))
 	_, err = conn.Exec(ctx, getPubAlterAddQuery(publication, tables, schemas))
@@ -233,7 +233,7 @@ func (pc *PublicationController) alterSetPublication(ctx context.Context, reques
 	if err != nil {
 		panic(err)
 	}
-	defer conn.Close(ctx)
+	defer func() { _ = conn.Close(ctx) }()
 
 	log.Debug(getPubAlterSetQuery(publication, tables, schemas))
 	_, err = conn.Exec(ctx, getPubAlterSetQuery(publication, tables, schemas))
@@ -270,7 +270,7 @@ func (pc *PublicationController) dropPublication(ctx context.Context, request Co
 	if err != nil {
 		panic(err)
 	}
-	defer conn.Close(ctx)
+	defer func() { _ = conn.Close(ctx) }()
 
 	log.Debug(getPubDropQuery(publication))
 	_, err = conn.Exec(ctx, getPubDropQuery(publication))

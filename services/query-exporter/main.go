@@ -320,7 +320,7 @@ func health(w http.ResponseWriter, r *http.Request) {
 	dbService := dbServices[0]
 	if dbService != nil {
 		if dbService.Ping() {
-			w.Write([]byte("OK"))
+			_, _ = w.Write([]byte("OK"))
 		}
 	} else {
 		w.WriteHeader(503)
@@ -630,7 +630,7 @@ func registerNewDynamicMetricInRepository(qName string, qRand string, metric str
 		dynamicMetricsRepository.Set(qName, &metricSet)
 	}
 	metricSet := dynamicMetricsRepository.Get(qName)
-	if metricSet.Get(metric) == false {
+	if !metricSet.Get(metric) {
 		metricSet.Add(metric)
 		log.Infof("[%v] New metric %v registered in DynamicMetricRepository for query %v", qRand, metric, qName)
 	}

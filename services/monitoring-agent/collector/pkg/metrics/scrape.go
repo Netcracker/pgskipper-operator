@@ -211,6 +211,7 @@ func (s *Scraper) gatherClasterInfo(podItems []v1.Pod) (masters []v1.Pod, replic
 			workingNodes++
 		}
 		role := util.SafeGet(pod.Annotations["status"], append(make([]interface{}, 0), "role"), "")
+		//nolint:staticcheck
 		if role == "primary" {
 			masters = append(masters, pod)
 			masterName = pod.Name
@@ -476,7 +477,7 @@ func (s *Scraper) collectReplicationData(replicaNames []string) {
 			replicasMatch := len(replicaNames) == len(rows)
 			replicationStates := make([]string, 0)
 			for _, row := range rows {
-
+				//nolint:staticcheck
 				appName := strings.Replace(postgres.GetStringValue(row, "application_name", "empty"), " ", "_", -1)
 				sentReplayLag, _ := util.GetFloatValue(row["sent_replay_lag"], float64(0))
 				sentLag, _ := util.GetFloatValue(row["sent_lag"], float64(0))
@@ -494,6 +495,7 @@ func (s *Scraper) collectReplicationData(replicaNames []string) {
 			}
 			if util.GetEnv("SITE_MANAGER", "") == "on" {
 				for _, name := range replicaNames {
+					//nolint:staticcheck
 					if slices.Contains(replicationStates, name) && replicasMatch {
 						smReplicationState := 0
 						metricName := fmt.Sprintf("ma_pg_%s_replication_state_sm_replication_state", clusterName)
@@ -641,6 +643,7 @@ func (s *Scraper) collectReplicationSlotsData(podIdentity string, pgConnector *p
 		labels["pg_node"] = podIdentity
 		_, rows := pgConnector.GetData(ctx, GetMetricsTypeByVersion("replication_slots", s.pgMajorVersion))
 		for _, row := range rows {
+			//nolint:staticcheck
 			serviceName := strings.Replace(row["slot_name"].(string), " ", "_", -1)
 			if val, ok := row["restart_lsn_lag"]; ok {
 				if restartLsnLagValue, err := util.GetFloatValue(val, float64(0)); err != nil {

@@ -26,7 +26,7 @@ import (
 
 func main() {
 
-	go stanza.CreateStanza()
+	go func() { _ = stanza.CreateStanza() }()
 	app := fiber.New()
 
 	app.Post("/backup", func(c *fiber.Ctx) error {
@@ -70,14 +70,14 @@ func main() {
 		return c.Status(200).JSON("Delta backup has been started successfully")
 	})
 	app.Get("/status", func(c *fiber.Ctx) error {
-		err, status := backup.GetBackupStatus(c.Query("timestamp"))
+		status, err := backup.GetBackupStatus(c.Query("timestamp"))
 		if err != nil {
 			return c.Status(500).SendString(err.Error())
 		}
 		return c.Status(200).JSON(status)
 	})
 	app.Get("/list", func(c *fiber.Ctx) error {
-		err, status := backup.GetBackupList()
+		status, err := backup.GetBackupList()
 		if err != nil {
 			return c.Status(500).SendString(err.Error())
 		}

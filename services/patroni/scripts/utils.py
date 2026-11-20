@@ -13,7 +13,8 @@
 # limitations under the License.
 
 import os
-import socket, struct
+import socket
+import struct
 import re
 import subprocess
 
@@ -21,7 +22,7 @@ import logging
 
 import time
 
-comment_pattern = re.compile("\s*#.*")
+comment_pattern = re.compile(r"\s*#.*")
 
 
 def read_property_file(filename):
@@ -36,28 +37,31 @@ def read_property_file(filename):
         for line in f:
             if "=" in line and not comment_pattern.match(line):
                 param_name = (line[0:line.find("=")]).strip()
-                param_value = (line[line.find("=")+1:])
-                if param_name != 'log_line_prefix':
+                param_value = line[line.find("=") + 1:]
+                if param_name != "log_line_prefix":
                     param_value = param_value.strip()
                 else:
-                    if param_value[:1] == '%':
-                        param_value = "\{}".format(param_value)
+                    if param_value[:1] == "%":
+                        param_value = "\\{}".format(param_value)
                     param_value = param_value.lstrip()
-                    param_value = param_value.rstrip('\n')
+                    param_value = param_value.rstrip("\n")
                 result[param_name] = param_value
 
     return result
 
+
 def is_ipv4(host):
-    p = re.compile("^(?:[0-9]{1,3}\.){3}[0-9]{1,3}$")
+    p = re.compile(r"^(?:[0-9]{1,3}\.){3}[0-9]{1,3}$")
     return p.match(host)
+
 
 def get_host_ip():
     IP = os.getenv("POD_IP")
     if not IP:
         import fcntl
+
         s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-        return socket.inet_ntoa(fcntl.ioctl(s.fileno(), 0x8915, struct.pack('256s', b"eth0"[:15]))[20:24])
+        return socket.inet_ntoa(fcntl.ioctl(s.fileno(), 0x8915, struct.pack("256s", b"eth0"[:15]))[20:24])
     else:
         if is_ipv4(IP):
             return IP
@@ -65,17 +69,19 @@ def get_host_ip():
             if IP:
                 return "[{}]".format(IP)
 
+
 def get_log_level():
     # todo[anin] change default
     # loglevel = os.getenv('LOG_LEVEL', 'info')
-    loglevel = os.getenv('LOG_LEVEL', 'debug')
+    loglevel = os.getenv("LOG_LEVEL", "debug")
     return logging.DEBUG if loglevel == "debug" else logging.INFO
+
 
 def execute_shell_command(cmd):
     p = subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE, shell=True)
-    (output, error) = p.communicate()
+    output, error = p.communicate()
     exit_code = p.wait()
-    return {'output': output.decode("utf-8"), 'exit_code': exit_code, 'error': error}
+    return {"output": output.decode("utf-8"), "exit_code": exit_code, "error": error}
 
 
 def retry(exceptions=None, tries=5, delay=1, backoff=1, logger=None):
@@ -89,6 +95,7 @@ def retry(exceptions=None, tries=5, delay=1, backoff=1, logger=None):
     :type logger: logging.Logger
     :return:
     """
+
     def deco_retry(f):
 
         def handle_error(e, mtries, mdelay):
@@ -118,5 +125,5 @@ def retry(exceptions=None, tries=5, delay=1, backoff=1, logger=None):
             return f(*args, **kwargs)
 
         return f_retry
-    return deco_retry
 
+    return deco_retry
