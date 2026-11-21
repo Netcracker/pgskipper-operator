@@ -1,49 +1,59 @@
-# Documentation Index
+# Documentation
 
-## Navigation
+Documentation for [PGSkipper Operator](../README.md), a PostgreSQL operator for Kubernetes and OpenShift.
 
-### `docs/public/`
+## Getting Started
 
-- [Quickstart](public/quickstart.md) — Get a PostgreSQL cluster running with Helm in minutes.
-- [Installation guide](public/installation.md) — Prerequisites, all Helm chart parameters, platform-specific configurations, and upgrade procedures.
-- [Troubleshooting](public/troubleshooting.md) — Procedures for alerts, deployment failures, upgrades, replication, and disaster recovery.
+- [Quickstart](public/quickstart.md) — Deploy a PostgreSQL cluster with Helm.
+- [Installation and Configuration](public/installation.md) — Requirements, Helm values, deployment options, and platform-specific setup.
 
-### `docs/public/features/`
+## Operations and Troubleshooting
 
-- [Active-standby cluster](public/features/active-standby-cluster.md) — Deploy two PostgreSQL clusters in an active-standby configuration across two Kubernetes clusters.
-- [CIS hardening](public/features/cis-hardening.md) — Apply CIS benchmark recommendations to a PostgreSQL deployment on Kubernetes or OpenShift.
-- [Connection pooler](public/features/connection-pooler.md) — PGBouncer integration: limitations and streaming-replication notes.
-- [Disaster recovery](public/features/disaster-recovery.md) — DR scheme overview, Site Manager REST API, and switchover procedures.
-- [LDAP integration](public/features/ldap_integration.md) — Configure PostgreSQL LDAP authentication with Active Directory.
-- [Logical replication controller](public/features/logical-replication-controller.md) — REST API for managing PostgreSQL publications and granting replication users.
-- [Major upgrade](public/features/major-upgrade.md) — Upgrade PostgreSQL major versions using `pg_upgrade` via the operator.
-- [pgBackRest](public/features/pgBackRest.md) — pgBackRest sidecar: deployment, backup types, restore, PITR, and retention.
-- [Query exporter](public/features/query-exporter.md) — Custom Prometheus metrics, exporter user, circuit-breaker, and parallel connections.
-- [TLS configuration](public/features/tls-configuration.md) — Enable TLS for PostgreSQL connections with cert-manager or manual certificates.
-- [Toleration policies](public/features/toleration-policies.md) — Apply Kubernetes taints and tolerations to all Postgres Service deployments.
+- [Troubleshooting](public/troubleshooting.md) — Resolve deployment, Helm, operator, upgrade, Site Manager, and DBaaS failures.
+- [PostgreSQL Cluster Troubleshooting](public/troubleshooting-pg-cluster.md) — Diagnose application-side errors, Patroni HA, replication, backup, pooler, and DR issues; generic operations.
+- [Prometheus Alerts Troubleshooting](public/alarm-troubleshooting.md) — Investigate PostgreSQL monitoring alerts and tune their thresholds.
 
-## Project layout
+## Features
 
-```
+### High Availability and Data Protection
+
+- [Active-Standby Cluster](public/features/active-standby-cluster.md) — Configure active and standby PostgreSQL clusters.
+- [Disaster Recovery](public/features/disaster-recovery.md) — Disaster recovery architecture and switchover procedures.
+- [pgBackRest](public/features/pgBackRest.md) — Backup, restore, point-in-time recovery, and retention.
+- [Major Version Upgrade](public/features/major-upgrade.md) — Upgrade PostgreSQL using `pg_upgrade`.
+
+### Database Connectivity and Integration
+
+- [Connection Pooler](public/features/connection-pooler.md) — PgBouncer integration and limitations.
+- [Logical Replication Controller](public/features/logical-replication-controller.md) — Manage PostgreSQL publications and replication access.
+- [Query Exporter](public/features/query-exporter.md) — Export SQL-based metrics to Prometheus.
+
+### Security
+
+- [TLS Configuration](public/features/tls-configuration.md) — Configure PostgreSQL TLS certificates.
+- [LDAP Integration](public/features/ldap_integration.md) — Configure authentication with LDAP or Active Directory.
+- [CIS Hardening](public/features/cis-hardening.md) — PostgreSQL security hardening guidance.
+
+### Kubernetes Configuration
+
+- [Toleration Policies](public/features/toleration-policies.md) — Configure Pod tolerations and scheduling.
+
+## Contributing
+
+- [Contribution Guide](../CONTRIBUTING.md) — How to contribute code and documentation.
+- [Agent Instructions](../AGENTS.md) — Repository guidance for AI coding agents.
+
+## Documentation Structure
+
+```text
 docs/
-├── README.md                             # This index
+├── README.md                          # Documentation index
 └── public/
-    ├── quickstart.md                     # Fast-path installation guide
-    ├── installation.md                   # Full Helm parameter reference and platform setup
-    ├── troubleshooting.md                # Alert, deployment, and recovery procedures
-    ├── features/
-    │   ├── active-standby-cluster.md     # Active-standby deployment scheme
-    │   ├── cis-hardening.md              # CIS benchmark compliance guidance
-    │   ├── connection-pooler.md          # PGBouncer limitations and notes
-    │   ├── disaster-recovery.md          # DR scheme and Site Manager API
-    │   ├── ldap_integration.md           # LDAP / Active Directory authentication
-    │   ├── logical-replication-controller.md  # Publications REST API
-    │   ├── major-upgrade.md              # pg_upgrade-based major version upgrade
-    │   ├── pgBackRest.md                 # pgBackRest backup and restore
-    │   ├── query-exporter.md             # Prometheus query exporter
-    │   ├── tls-configuration.md          # TLS / SSL setup
-    │   └── toleration-policies.md        # Kubernetes toleration configuration
-    └── images/
-        ├── arch/                         # Architecture diagrams
-        └── features/                     # Feature-specific diagrams
+    ├── quickstart.md                  # First deployment
+    ├── installation.md                # Installation and configuration
+    ├── troubleshooting.md             # Deployment and operator issues
+    ├── troubleshooting-pg-cluster.md  # PostgreSQL cluster issues and operations
+    ├── alarm-troubleshooting.md       # Prometheus alerts
+    ├── features/                      # Feature-specific guides
+    └── images/                        # Diagrams and screenshots
 ```
