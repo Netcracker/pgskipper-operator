@@ -10,12 +10,12 @@ on:
 
 jobs:
   Nightly-Pgskipper-Pipeline:
-    uses: Netcracker/qubership-test-pipelines/.github/workflows/pgskipper.yaml@96118c398ac5bb4f8e8dff69b05a71789e873684 # v1.17.2
+    uses: Netcracker/qubership-test-pipelines/.github/workflows/pgskipper.yaml@747df4a75b81fd05ed818a8cde6fc8198b2989c0 # v1.19.0
 
     with:
       repository_name: ${{ github.repository }}
       service_branch: '${{ github.head_ref || github.ref_name }}'
-      pipeline_branch: '96118c398ac5bb4f8e8dff69b05a71789e873684' # v1.17.2 renovate: depName=Netcracker/qubership-test-pipelines
+      pipeline_branch: '747df4a75b81fd05ed818a8cde6fc8198b2989c0' # v1.19.0 renovate: depName=Netcracker/qubership-test-pipelines
       runner_type: 'ubuntu-latest'
       scope: 'nightly'
     secrets:
