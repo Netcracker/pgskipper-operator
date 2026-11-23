@@ -146,10 +146,11 @@ RUN set -eux; \
         git checkout 0218c2147daab0d2dbbf08433cb480163d321839 && \
         cd src && make install && \
         cd ../.. && \
-        git clone --depth 1 --branch REL14_0 https://github.com/ossc-db/pg_dbms_stats.git && \
-        cd pg_dbms_stats && sed -i 's/$(MAJORVERSION)/14/g' Makefile && \
-        if python3 -c "import sys; sys.exit(0 if float('${PG_VERSION}') >= 18 else 1)"; then \
-            sed -i 's/get_attrs(tupdesc->attrs\[i\])->attnum/TupleDescAttr(tupdesc, i)->attnum/g' pg_dbms_stats.c; \
+        if python3 -c "import sys; sys.exit(0 if float('${PG_VERSION}') == 18 else 1)"; then \
+            git clone --depth 1 --branch pg18_support https://github.com/Tvion/pg_dbms_stats.git ; \
+        else \
+            git clone --depth 1 --branch REL14_0 https://github.com/ossc-db/pg_dbms_stats.git ; \
+            cd pg_dbms_stats && sed -i 's/$(MAJORVERSION)/14/g' Makefile ; \
         fi && \
         make install && \
         cd .. && \
