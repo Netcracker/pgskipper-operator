@@ -145,14 +145,10 @@ RUN set -eux; \
         git checkout 0218c2147daab0d2dbbf08433cb480163d321839 && \
         cd src && make install && \
         cd ../.. && \
-        if python3 -c "import sys; sys.exit(0 if float('${PG_VERSION}') < 18 else 1)"; then \
-            git clone --depth 1 --branch REL14_0 https://github.com/ossc-db/pg_dbms_stats.git && \
-            cd pg_dbms_stats && sed -i 's/$(MAJORVERSION)/14/g' Makefile && \
-            make install && \
-            cd .. ; \
-        else \
-            echo "Skipping pg_dbms_stats: not supported on PostgreSQL ${PG_VERSION}"; \
-        fi && \
+        git clone --depth 1 --branch REL14_0 https://github.com/ossc-db/pg_dbms_stats.git && \
+        cd pg_dbms_stats && sed -i 's/$(MAJORVERSION)/14/g' Makefile && \
+        make install && \
+        cd .. && \
         apt-get purge -y --auto-remove git make gcc && \
         rm -rf pgsentinel pg_dbms_stats; \
     fi
