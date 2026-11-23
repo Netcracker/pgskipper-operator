@@ -147,8 +147,11 @@ RUN set -eux; \
         cd ../.. && \
         git clone --depth 1 --branch REL14_0 https://github.com/ossc-db/pg_dbms_stats.git && \
         cd pg_dbms_stats && sed -i 's/$(MAJORVERSION)/14/g' Makefile && \
+        if python3 -c "import sys; sys.exit(0 if float('${PG_VERSION}') >= 18 else 1)"; then \
+            sed -i 's/get_attrs(tupdesc->attrs\[i\])->attnum/TupleDescAttr(tupdesc, i)->attnum/g' pg_dbms_stats.c ; && \
+        fi && \
         make install && \
-        cd .. && \
+        cd .. ; \
         apt-get purge -y --auto-remove git make gcc && \
         rm -rf pgsentinel pg_dbms_stats; \
     fi
