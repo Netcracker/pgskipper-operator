@@ -1,196 +1,213 @@
 # Quickstart
 
-This guide will help you get postgres up and running as quickly as possible.
+Get PostgreSQL up and running on Kubernetes or OpenShift using Helm.
 
 - [Prerequisites](#prerequisites)
 - [Installation](#installation)
-  * [Storage configuration](#storage-configuration)
-  * [Installation patroni-core via Helm](#installation-patroni-core-via-helm)
-  * [Installation patroni-services via Helm](#installation-patroni-services-via-helm)
+  - [Storage Configuration](#storage-configuration)
+  - [Installation via Helm](#installation-via-helm)
+    - [CRD Installation](#crd-installation)
+    - [Restricted Environments](#restricted-environments)
+    - [Install Patroni-Core Operator](#install-patroni-core-operator)
+    - [Install Patroni-Services Operator](#install-patroni-services-operator)
 - [Validation of Installation](#validation-of-installation)
-- [Connect to the Postgres](#connect-to-the-postgres)
-- [Delete a Postgres cluster](#delete-a-postgres-cluster)
+- [Connect to PostgreSQL](#connect-to-postgresql)
+- [Delete a PostgreSQL Cluster](#delete-a-postgresql-cluster)
 
-# Prerequisites
-In order to continue, please, make sure the following utilities are installed on your local machine
-* [git](https://git-scm.com/downloads)
-* [kubectl](https://kubernetes.io/docs/tasks/tools/)
-* [helm](https://helm.sh/docs/intro/install/)
+## Prerequisites
 
-# Installation
+Make sure the following tools are installed on your local machine:
 
-Clone the repository and change to the directory
-```
+- [git](https://git-scm.com/downloads/)
+- [kubectl](https://kubernetes.io/docs/tasks/tools/)
+- [helm](https://helm.sh/docs/intro/install/)
+
+## Installation
+
+Clone the repository and change to its directory:
+
+```bash
 git clone git@github.com:Netcracker/pgskipper-operator.git
-cd postgres-operator
+cd pgskipper-operator
 ```
-Note that in `operator/charts` folder you can fide two separate `Helm Charts` named `patroni-core` and `patroni-services`  
 
-## Storage configuration
-Before install, configure `patroni.storage` in ./operator/charts/patroni-core/patroni-core-quickstart-sample.yaml and `backupDaemon.storage` properties in ./operator/charts/patroni-services/patroni-services-quickstart-sample.yaml
-according to your PV configuration.
+The `operator/charts` directory contains two Helm charts: `patroni-core` and `patroni-services`.
 
-1. If you have a PV provisioner, set up your storage sections as follows:
-```
-storage:
-  type: provisioned
-  size: 2Gi
-  storageClass: <storage-class>
-```
-Where `<storage-class>` is the name of your storageClass.
+### Storage Configuration
 
-2. If you have no PV provisioner, point your PVs, and their nodes in `patroni.storage` sections:
-```
-storage:
-    type: pv
-    size: 2Gi
-    volumes:
-      - <first-pv>
-      - <second-pv>
-    nodes:
-      - <first-pv-node>
-      - <second-pv-node>
-```
-Where `<first-pv>` and `<second-pv>` are the names of your PVs, and `<first-pv-node>`,`<second-pv-node>` are the names of nodes where is located.
+Before installation, configure `patroni.storage` in `./operator/charts/patroni-core/patroni-core-quickstart-sample.yaml` and `backupDaemon.storage` in `./operator/charts/patroni-services/patroni-services-quickstart-sample.yaml` to match your persistent volume (PV) setup.
 
-For `backupDaemon.storage` section point your PV the same way, but in a single copy. 
+1. **With a PV provisioner**, use the following storage configuration:
 
-## Installation via Helm
+   ```yaml
+   storage:
+     type: provisioned
+     size: 2Gi
+     storageClass: <storage-class>
+   ```
 
-When setup is complete, we can proceed to install the postgres operator.
+   Replace `<storage-class>` with your StorageClass name.
 
-### CRD Installation
+2. **Without a PV provisioner**, specify the PVs and their nodes in `patroni.storage`:
 
-CRDs are cluster-scoped resources managed as a **dedicated application** that must be installed and synced before the main operator charts. The main microservice deployments rely on pre-installed CRDs and must not attempt to install them independently.
+   ```yaml
+   storage:
+       type: pv
+       size: 2Gi
+       volumes:
+         - <first-pv>
+         - <second-pv>
+       nodes:
+         - <first-pv-node>
+         - <second-pv-node>
+   ```
 
-Install the CRD application first:
+   Replace `<first-pv>` and `<second-pv>` with your PV names, and `<first-pv-node>` and `<second-pv-node>` with their node names.
 
-```
+Configure `backupDaemon.storage` similarly, but with a single PV.
+
+### Installation via Helm
+
+After configuring storage, install the PostgreSQL operators.
+
+#### CRD Installation
+
+Custom Resource Definitions (CRDs) are cluster-scoped resources managed as a **dedicated application**. They must be installed and synced before the main operator charts. The main microservice deployments rely on pre-installed CRDs and must not install them independently.
+
+Install the CRDs first:
+
+```bash
 kubectl create -f ./operator/charts/patroni-core/crds/netcracker.com_patronicores.yaml
 kubectl create -f ./operator/charts/patroni-services/crds/netcracker.com_patroniservices.yaml
 ```
 
 Wait for the CRDs to be registered before proceeding:
 
+```bash
+kubectl get crd patronicores.netcracker.com patroniservices.netcracker.com
 ```
-kubectl get crd netcracker.com_patronicores.yaml patroniservices.netcracker.com
-```
 
-#### Restricted Environments
+##### Restricted Environments
 
-In environments where the deployment user lacks cluster-wide permissions, the dedicated CRDs application must **not** be installed. Instead, a cluster administrator must pre-install the CRDs out-of-band, and the `DISABLE_CRD=true` flag must be set on the main microservice application.
+If the deployment user lacks cluster-wide permissions, the dedicated CRDs application must **not** be installed by that user. Instead, a cluster administrator must pre-install the CRDs out-of-band, and the `DISABLE_CRD=true` flag must be set on the main microservice application.
 
-> **Note:** `DISABLE_CRD=true` is deprecated for environments with cluster-wide permissions. Use the dedicated CRDs application approach in all other cases.
+> **Note:** `DISABLE_CRD=true` is deprecated for environments with cluster-wide permissions. Use the dedicated CRDs application approach in other environments.
 
-### Install Patroni-Core Operator
+#### Install Patroni-Core Operator
 
-Install Patroni-Core Operator via Helm by following command:
-```
+Install the Patroni-Core Operator:
+
+```bash
 helm install --namespace=postgres --create-namespace -f ./operator/charts/patroni-core/patroni-core-quickstart-sample.yaml patroni-core ./operator/charts/patroni-core
 ```
-This will create all necessary resources and run the Patroni-Core Operator Pod.
 
-To check the patroni-core installation status use the next command:
-```
+This creates the necessary resources and starts the Patroni-Core Operator Pod.
+
+Check the Patroni pods:
+
+```bash
 kubectl -n postgres get pods \
   --selector=app=patroni \
   --field-selector=status.phase=Running
 ```
 
-It should return two patroni pods w/o any restarts
-After that wait for the leader promotion, you may determine the leader pod by following command:
-```
+The command should return two Patroni pods without restarts. Wait for leader election, then identify the leader pod:
+
+```bash
 kubectl -n postgres get pods \
   --selector=pgtype=primary \
   --field-selector=status.phase=Running
 ```
 
-If the Postgres Operator Pod is not in the output of the previous command, check the operator logs:
-```
+If the operator pod is not running, check its logs:
+
+```bash
 kubectl logs -n postgres "$(kubectl get pod -n postgres -l name=patroni-core-operator --output='name')"
 ```
 
-After leader has been promoted, you may install Patroni-Services Operator via Helm by following command:
-```
+#### Install Patroni-Services Operator
+
+Once a leader has been elected, install the Patroni-Services Operator:
+
+```bash
 helm install --namespace=postgres -f ./operator/charts/patroni-services/patroni-services-quickstart-sample.yaml patroni-services ./operator/charts/patroni-services
 ```
-This will create all necessary resources and run the Postgres-Operator Pod.
 
-To check the postgres-services installation status use the next command:
-```
+This creates the necessary resources and starts the Postgres-Operator Pod.
+
+Check the Patroni-Services Operator pod:
+
+```bash
 kubectl -n postgres get pods \
   --selector=name=postgres-operator \
   --field-selector=status.phase=Running
 ```
 
-If the Postgres Operator Pod is not in the output of the previous command, check the operator logs:
-```
+If the operator pod is not running, check its logs:
+
+```bash
 kubectl logs -n postgres "$(kubectl get pod -n postgres -l name=postgres-operator --output='name')"
 ```
 
+## Validation of Installation
 
-# Validation of Installation
+After installation or upgrade, verify the PostgreSQL cluster:
 
-After successful installation or upgrade, it is necessary to check the state of the PostgreSQL Service Cluster.
+- All requested components are deployed, such as Patroni, PostgreSQL Backup Daemon, and PostgreSQL Monitoring Collector, if enabled.
+- A pod with the `pgtype=primary` label exists.
+- Pods with the `pgtype=replica` label exist.
+- All pods have `Ready 1/1` status.
 
-Navigate to the target PostgreSQL namespace and check the following:
+You can also check `status.conditions` in the `PatroniCore` and `PatroniServices` custom resources.
 
-* All the requested deployments exist. For example, components such as Patroni, PostgreSQL Backup Daemon, PostgreSQL Monitoring Collector, and so on should exist if they are marked for installation.
-* Pods with the `pgtype=primary` label exist.
-* Pods with the `pgtype=replica` label exist.
-* All the pods have Ready `1/1` status.
+The following commands show the transition time to the `Successful` state:
 
-It's also possible to check status of installation via **status.conditions** of Patroni Core and Patroni Services Custom Resources.
-
-Next command will show transition to `Successful` state and time when this transition happened.
-
-```
+```bash
 kubectl -n postgres get patronicore patroni-core -o jsonpath='{.metadata.name}{"\t"}{.status.conditions[?(@.type=="Successful")].lastTransitionTime}'
 ```
 
-```
+```bash
 kubectl -n postgres get patroniservices patroni-services -o jsonpath='{.metadata.name}{"\t"}{.status.conditions[?(@.type=="Successful")].lastTransitionTime}'
 ```
 
-Also, it's possible to check all of the conditions and transition times by next command:
+To view all conditions and their transition times:
 
-```
+```bash
 kubectl -n postgres get patronicore patroni-core -o=jsonpath='{range .status.conditions[*]}{.type }{"\t"}{.lastTransitionTime}{"\t"}{.message}{"\n"}{end}'
 ```
 
-
-```
+```bash
 kubectl -n postgres get patroniservices patroni-services -o=jsonpath='{range .status.conditions[*]}{.type }{"\t"}{.lastTransitionTime}{"\t"}{.message}{"\n"}{end}'
 ```
 
-The following lines describe the operator installation status:
+The condition fields are:
 
+- `lastTransitionTime` — Status transition timestamp.
+- `type` — Possible status values: In progress, Failed, Success.
+- `message` — Error description.
 
-* `lastTransitionTime` - status update timestamp.
+## Connect to PostgreSQL
 
-* `type` - possible values are: In progress, Failed, Success.
+Open a new terminal and port-forward the PostgreSQL leader pod:
 
-* `message` - error description.
-
-## Connect to the Postgres
-
-Open new terminal and run the following commands for create port forward to the database Pod:
-```
+```bash
 PG_MASTER_POD=$(kubectl get pod -n postgres -o name -l app=patroni,pgtype=primary)
 kubectl -n postgres port-forward "${PG_MASTER_POD}" 5432:5432
 ```
 
-Now, you can establish connection with Postgres via psql:
-```
+Connect to PostgreSQL using `psql`:
+
+```bash
 PGUSER=$(kubectl get secrets -n postgres "postgres-credentials" -o go-template='{{.data.username | base64decode}}') \
 PGPASSWORD=$(kubectl get secrets -n postgres "postgres-credentials" -o go-template='{{.data.password | base64decode}}') \
 psql -h localhost
 ```
 
+## Delete a PostgreSQL Cluster
 
-## Delete a Postgres cluster
-To delete the postgres cluster, you need to delete the releases by release name:
-```
+To remove the PostgreSQL cluster, uninstall the Helm releases by name:
+
+```bash
 helm uninstall patroni-services
 helm uninstall patroni-core
 ```
