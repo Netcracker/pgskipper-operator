@@ -151,7 +151,7 @@ RUN set -eux; \
             sed -i 's/get_attrs(tupdesc->attrs\[i\])->attnum/TupleDescAttr(tupdesc, i)->attnum/g' pg_dbms_stats.c ; && \
         fi && \
         make install && \
-        cd .. ; \
+        cd .. ; && \
         apt-get purge -y --auto-remove git make gcc && \
         rm -rf pgsentinel pg_dbms_stats; \
     fi
