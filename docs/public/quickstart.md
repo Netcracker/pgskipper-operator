@@ -28,7 +28,7 @@ Clone the repository and change to its directory:
 
 ```bash
 git clone git@github.com:Netcracker/pgskipper-operator.git
-cd postgres-operator
+cd pgskipper-operator
 ```
 
 The `operator/charts` directory contains two Helm charts: `patroni-core` and `patroni-services`.
@@ -84,7 +84,7 @@ kubectl create -f ./operator/charts/patroni-services/crds/netcracker.com_patroni
 Wait for the CRDs to be registered before proceeding:
 
 ```bash
-kubectl get crd netcracker.com_patronicores.yaml patroniservices.netcracker.com
+kubectl get crd patronicores.netcracker.com patroniservices.netcracker.com
 ```
 
 ##### Restricted Environments
