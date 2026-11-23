@@ -29,6 +29,7 @@ def touch(filepath):
 # 				total_size += os.path.getsize(fp)
 # 	return total_size
 
+
 def get_folder_size(dirpath):
     p1 = subprocess.Popen(["du", "-sb", dirpath], stdout=subprocess.PIPE)
     size = p1.communicate()[0].split(b"\t")[0]
@@ -42,7 +43,8 @@ def get_mount_point(pathname):
     while parent_device == path_device:
         mount_point = pathname
         pathname = os.path.dirname(pathname)
-        if pathname == mount_point: break
+        if pathname == mount_point:
+            break
         parent_device = os.stat(pathname).st_dev
     return mount_point
 
@@ -54,7 +56,7 @@ def get_mounted_device(pathname):
     try:
         with open("/proc/mounts", "r") as ifp:
             for line in ifp:
-                fields = line.rstrip('\n').split()
+                fields = line.rstrip("\n").split()
                 # note that line above assumes that
                 # no mount points contain whitespace
                 if fields[1] == pathname:

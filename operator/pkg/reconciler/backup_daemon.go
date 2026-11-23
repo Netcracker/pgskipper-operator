@@ -29,8 +29,7 @@ import (
 	"github.com/Netcracker/pgskipper-operator/pkg/helper"
 	"github.com/Netcracker/pgskipper-operator/pkg/patroni"
 	"github.com/Netcracker/pgskipper-operator/pkg/storage"
-	"github.com/Netcracker/pgskipper-operator/pkg/util"
-	opUtil "github.com/Netcracker/pgskipper-operator/pkg/util"
+	util "github.com/Netcracker/pgskipper-operator/pkg/util"
 	"github.com/Netcracker/pgskipper-operator/pkg/util/constants"
 	"github.com/Netcracker/qubership-credential-manager/pkg/manager"
 	"go.uber.org/zap"
@@ -305,7 +304,7 @@ func (r *BackupDaemonReconciler) Reconcile() error {
 			}
 
 			for _, pod := range backupPods.Items {
-				if err := opUtil.WaitDeletePod(&pod); err != nil {
+				if err := util.WaitDeletePod(&pod); err != nil {
 					return err
 				}
 			}

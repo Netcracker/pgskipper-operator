@@ -19,8 +19,9 @@ import logging
 log = logging.getLogger("utils")
 
 _SECRET_BASE_PATH = "/var/run/secrets/postgresql/"
-POSTGRES_CREDS_PATH = '/var/run/secrets/postgresql/postgres-credentials'
+POSTGRES_CREDS_PATH = "/var/run/secrets/postgresql/postgres-credentials"
 AWS_CREDS_PATH = _SECRET_BASE_PATH + "s3-storage-credentials"
+
 
 def execute_query(conn_properties, query):
     conn = None
@@ -33,22 +34,23 @@ def execute_query(conn_properties, query):
         if conn:
             conn.close()
 
+
 def get_version_of_pgsql_server():
     # this is very bad, need to reuse code from granular backups
     conn_properties = {
-        'host': os.getenv('POSTGRES_HOST'),
-        'port': os.getenv('POSTGRES_PORT'),
-        'user': read_secret_file(f'{POSTGRES_CREDS_PATH}/username', 'postgres'),
-        'password': read_secret_file(f'{POSTGRES_CREDS_PATH}/password', ''),
-        'database': 'postgres',
-        'connect_timeout': int(os.getenv("CONNECT_TIMEOUT", "5")),
+        "host": os.getenv("POSTGRES_HOST"),
+        "port": os.getenv("POSTGRES_PORT"),
+        "user": read_secret_file(f"{POSTGRES_CREDS_PATH}/username", "postgres"),
+        "password": read_secret_file(f"{POSTGRES_CREDS_PATH}/password", ""),
+        "database": "postgres",
+        "connect_timeout": int(os.getenv("CONNECT_TIMEOUT", "5")),
     }
     try:
-        server_version = execute_query(conn_properties, 'SHOW SERVER_VERSION;')
+        server_version = execute_query(conn_properties, "SHOW SERVER_VERSION;")
     except psycopg2.OperationalError as e:
         log.exception(e)
         return None
-    version_as_list = list(map(int, server_version.split(' ')[0].split('.')))
+    version_as_list = list(map(int, server_version.split(" ")[0].split(".")))
     if [10, 0] <= version_as_list < [11, 0]:
         return "pg10"
     elif [11, 0] <= version_as_list < [12, 0]:
@@ -77,31 +79,34 @@ def retry_if_storage_error(exception):
     """
     log.info("During initialization of storage next error occurred: %s", exception)
     import storage
+
     return isinstance(exception, storage.StorageException)
 
 
 def get_encryption():
-    encrypt_backups = os.getenv("KEY_SOURCE", 'false').lower()
-    return encrypt_backups != 'false'
+    encrypt_backups = os.getenv("KEY_SOURCE", "false").lower()
+    return encrypt_backups != "false"
+
 
 def read_secret_file(path: str, default_val: str) -> str:
-      try:
-          with open(path, 'r') as f:
-              value = f.read().strip()
-      except OSError as e:
-          logging.error(f"Failed to read secret file {path}: {e}")
-          return default_val
+    try:
+        with open(path, "r") as f:
+            value = f.read().strip()
+    except OSError as e:
+        logging.error(f"Failed to read secret file {path}: {e}")
+        return default_val
 
-      if not value:
-          logging.info(f"Secret file {path} is empty, using default value")
-          return default_val
+    if not value:
+        logging.info(f"Secret file {path} is empty, using default value")
+        return default_val
 
-      return value
+    return value
+
 
 def validate_user(username: str, password: str) -> bool:
     if not os.getenv("AUTH", "false").lower() == "false":
-        return username == read_secret_file(f'{POSTGRES_CREDS_PATH}/username', "postgres") and \
-               password == read_secret_file(f'{POSTGRES_CREDS_PATH}/password', "")
+        return username == read_secret_file(
+            f"{POSTGRES_CREDS_PATH}/username", "postgres"
+        ) and password == read_secret_file(f"{POSTGRES_CREDS_PATH}/password", "")
     else:
         return True
-

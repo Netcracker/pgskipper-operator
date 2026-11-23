@@ -22,23 +22,23 @@ import endpoints.status
 import storage
 from flask import Flask
 from flask_restful import Api
-from opentelemetry.exporter.otlp.proto.grpc.trace_exporter import OTLPSpanExporter
-from opentelemetry.instrumentation.flask import FlaskInstrumentor
-from opentelemetry.sdk.resources import SERVICE_NAME, Resource
-from opentelemetry.sdk.trace import TracerProvider
-from opentelemetry.sdk.trace.export import BatchSpanProcessor
 
 app = Flask("PublicEndpoints")
 collector_endpoint = os.getenv("OTEL_EXPORTER_OTLP_TRACES_ENDPOINT", "")
 if collector_endpoint != "":
+    # Imported here: without a collector they would only cost memory.
+    from opentelemetry.exporter.otlp.proto.grpc.trace_exporter import OTLPSpanExporter
+    from opentelemetry.instrumentation.flask import FlaskInstrumentor
+    from opentelemetry.sdk.resources import SERVICE_NAME, Resource
+    from opentelemetry.sdk.trace import TracerProvider
+    from opentelemetry.sdk.trace.export import BatchSpanProcessor
+
     collector_endpoint = "http://" + collector_endpoint
     NAMESPACE_PATH = "/var/run/secrets/kubernetes.io/serviceaccount/namespace"
     ns = open(NAMESPACE_PATH).read()
     resource = Resource(attributes={SERVICE_NAME: "postgresql-backup-daemon-" + ns})
     provider = TracerProvider(resource=resource)
-    processor = BatchSpanProcessor(
-        OTLPSpanExporter(endpoint=collector_endpoint, insecure=True)
-    )
+    processor = BatchSpanProcessor(OTLPSpanExporter(endpoint=collector_endpoint, insecure=True))
     provider.add_span_processor(processor)
     FlaskInstrumentor().instrument_app(
         app=app,
@@ -57,9 +57,7 @@ api.add_resource(
     *endpoints.status.Status.get_endpoints(),
     resource_class_args=(storage_instance,),
 )
-api.add_resource(
-    endpoints.backup.BackupRequest, *endpoints.backup.BackupRequest.get_endpoints()
-)
+api.add_resource(endpoints.backup.BackupRequest, *endpoints.backup.BackupRequest.get_endpoints())
 api.add_resource(
     endpoints.status.Health,
     *endpoints.status.Health.get_endpoints(),
