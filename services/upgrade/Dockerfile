@@ -56,6 +56,15 @@ RUN apt-get --no-install-recommends install -y \
      postgresql-18-pg-track-settings postgresql-18-pg-wait-sampling postgresql-18-cron postgresql-18-set-user postgresql-18-postgis postgresql-18-pg-stat-kcache postgresql-18-pgaudit postgresql-18-pg-qualstats postgresql-18-hypopg postgresql-18-powa postgresql-18-pg-hint-plan postgresql-18-pgnodemx postgresql-18-decoderbufs postgresql-18-pgsentinel postgresql-18-pglogical postgresql-18-pgvector postgresql-18-pg-failover-slots
 RUN apt-get --no-install-recommends install -y libproj-dev libgdal30 libgeos3.10.2 libgeotiff5 libsfcgal1
 
+RUN set -eux; \
+        apt-get update && apt-get install -y git make gcc && \
+        git clone --depth 1 --branch pg18_support https://github.com/Tvion/pg_dbms_stats.git &&  \
+        cd pg_dbms_stats && \
+        make install && \
+        cd .. && \
+        apt-get purge -y --auto-remove git make gcc && \
+        rm -rf pg_dbms_stats;
+
 RUN localedef -i en_US -f UTF-8 en_US.UTF-8 && \
     localedef -i es_PE -f UTF-8 es_PE.UTF-8 && \
     localedef -i es_ES -f UTF-8 es_ES.UTF-8
