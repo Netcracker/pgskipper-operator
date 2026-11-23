@@ -28,7 +28,7 @@ The operators are packaged in separate Helm charts:
 
 ### Patroni
 
-[Patroni](https://patroni.readthedocs.io/) provides PostgreSQL high availability. Each Patroni instance supervises a PostgreSQL instance and participates in leader election, failover, and replication management. In the Kubernetes deployment, Patroni uses Kubernetes resources for distributed coordination.
+[Patroni](https://patroni.readthedocs.io/en/latest/) provides PostgreSQL high availability. Each Patroni instance supervises a PostgreSQL instance and participates in leader election, failover, and replication management. In the Kubernetes deployment, Patroni uses Kubernetes resources for distributed coordination.
 
 A typical highly available cluster has a primary PostgreSQL instance and one or more replicas. PostgreSQL data is kept on persistent volumes so that recreating a pod does not, by itself, discard the database files.
 

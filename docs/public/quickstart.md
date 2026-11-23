@@ -18,7 +18,7 @@ Get PostgreSQL up and running on Kubernetes or OpenShift using Helm.
 
 Make sure the following tools are installed on your local machine:
 
-- [git](https://git-scm.com/downloads)
+- [git](https://git-scm.com/downloads/)
 - [kubectl](https://kubernetes.io/docs/tasks/tools/)
 - [helm](https://helm.sh/docs/intro/install/)
 

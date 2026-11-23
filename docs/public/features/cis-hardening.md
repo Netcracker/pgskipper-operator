@@ -2,7 +2,7 @@ CIS is a forward-thinking, non-profit entity that harnesses the power of a globa
 
 CIS benchmarks are best practices for the secure configuration of a target system.
 
-For more information about PostgreSQL CIS benchmarks and other benchmarks, refer to [https://www.cisecurity.org/cis-benchmarks/](https://www.cisecurity.org/cis-benchmarks/). 
+For more information about PostgreSQL CIS benchmarks and other benchmarks, refer to [https://www.cisecurity.org/cis-benchmarks](https://www.cisecurity.org/cis-benchmarks). 
 
 # Overview
 

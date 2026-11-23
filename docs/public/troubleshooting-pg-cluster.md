@@ -435,7 +435,6 @@ Another symptom is a short outage of PostgreSQL.
 
 2. Make sure `failsafe_mode` is enabled. The patroni-core chart enables it by default (`"failsafe_mode: true"` in `patroni.patroniParams`). With failsafe mode, the leader keeps running while it can reach all members, even if the DCS is unavailable. For more information, see [https://patroni.readthedocs.io/en/master/dcs_failsafe_mode.html](https://patroni.readthedocs.io/en/master/dcs_failsafe_mode.html).
 
-For more information about Patroni configuration, see the _Patroni Documentation_ at [https://patroni.readthedocs.io/en/latest/SETTINGS.html](https://patroni.readthedocs.io/en/latest/SETTINGS.html).
 
 ## Replication Issues
 
