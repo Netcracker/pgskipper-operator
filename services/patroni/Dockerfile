@@ -147,7 +147,7 @@ RUN set -eux; \
         cd src && make install && \
         cd ../.. && \
         if python3 -c "import sys; sys.exit(0 if float('${PG_VERSION}') == 18 else 1)"; then \
-            git clone --depth 1 --branch pg18_support https://github.com/Tvion/pg_dbms_stats.git ; \
+            git clone --depth 1 --branch pg18_support https://github.com/Tvion/pg_dbms_stats.git && cd pg_dbms_stats; \
         else \
             git clone --depth 1 --branch REL14_0 https://github.com/ossc-db/pg_dbms_stats.git ; \
             cd pg_dbms_stats && sed -i 's/$(MAJORVERSION)/14/g' Makefile ; \
