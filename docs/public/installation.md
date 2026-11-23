@@ -170,6 +170,31 @@ Large means PostgreSQL `max_connections` equals to 2000.
 | Postgres Exporter | 0.5      | 0.250     | 0           |
 | **Total**         | **12.3** | **19.9**  | **450**     |
 
+### Resource Profiles
+
+Each chart ships `small`, `medium`, and `large` resource profiles that follow the HWE tables above:
+
+* `operator/charts/patroni-core/resource-profiles/<profile>.yaml`: Postgres Operator, Patroni, and tests.
+* `operator/charts/patroni-services/resource-profiles/<profile>.yaml`: Backup Daemon, DBaaS Adapter,
+  Monitoring Agent, Query Exporter, and tests.
+
+Pass the profile as an additional values file after your own values:
+
+```bash
+helm install patroni-core ./operator/charts/patroni-core \
+  -f <your-values>.yaml \
+  -f ./operator/charts/patroni-core/resource-profiles/small.yaml
+```
+
+Values that a profile does not set keep the chart defaults.
+
+Use the profiles for development and test environments only. For production, size resources from SVT results for
+the expected workload.
+
+In every profile, the Patroni memory request equals the memory limit. Patroni derives `shared_buffers`,
+`effective_cache_size`, and `work_mem` from the memory limit, so a lower request lets the scheduler place the pod on a
+node that cannot hold the configured PostgreSQL memory.
+
 ### Storage Recommendations
 
 In general, it's not recommended to run PostgreSQL on any type of NFS.
