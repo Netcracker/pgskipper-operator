@@ -44,7 +44,7 @@ RUN apt-get --no-install-recommends install -y \
      postgresql-16 postgresql-server-dev-16 \
      postgresql-17 postgresql-server-dev-17 \
      postgresql-18 postgresql-server-dev-18 \
-     postgresql-18 postgresql-server-dev-19 \
+     postgresql-19 postgresql-server-dev-19 \
      postgresql-12-pg-track-settings postgresql-12-pg-wait-sampling postgresql-12-cron postgresql-12-set-user postgresql-12-pg-stat-kcache postgresql-12-pgaudit postgresql-12-pg-qualstats postgresql-12-hypopg postgresql-12-powa \
      postgresql-13-pg-track-settings postgresql-13-pg-wait-sampling postgresql-13-cron postgresql-13-set-user postgresql-13-pg-stat-kcache postgresql-13-pgaudit postgresql-13-pg-qualstats postgresql-13-hypopg postgresql-13-powa \
      postgresql-14-pg-track-settings postgresql-14-pg-wait-sampling postgresql-14-cron postgresql-14-set-user postgresql-14-postgis postgresql-14-pg-stat-kcache postgresql-14-pgaudit postgresql-14-pg-qualstats postgresql-14-hypopg postgresql-14-powa postgresql-14-pg-hint-plan postgresql-14-pgnodemx postgresql-14-decoderbufs \
