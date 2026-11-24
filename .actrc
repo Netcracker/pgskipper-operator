@@ -1,0 +1,6 @@
+-W .github/workflows/build.yaml
+-j build
+--action-offline-mode
+--container-architecture linux/amd64
+-P ubuntu-latest=ghcr.io/catthehacker/ubuntu:act-latest
+-P ubuntu-22.04=ghcr.io/catthehacker/ubuntu:act-22.04

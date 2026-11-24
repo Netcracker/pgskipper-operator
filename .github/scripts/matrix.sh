@@ -27,7 +27,8 @@ jq -c --argjson files "$(cat "$files_file")" '
   .components |
   [ .[] | select(
       . as $component |
-      any($files[];
+      # Git can wrap paths that contain special characters in double quotes.
+      any($files[] | ltrimstr("\"");
         [ $component.changeset[] as $ch | startswith($ch) ] | any
       )
     )

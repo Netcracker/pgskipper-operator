@@ -49,52 +49,80 @@ jobs:
     outputs:
       components: ${{ steps.load.outputs.components }}
       platforms: ${{ steps.load.outputs.platforms }}
-      tags: "${{ steps.meta.outputs.result }}"
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: true
           fetch-depth: 0
 
+      - name: Snapshot the local working tree
+        if: env.ACT
+        id: snapshot
+        shell: bash
+        run: |
+          base=$(git merge-base "${ACT_BASE_REF:-origin/main}" HEAD)
+          head=$(git rev-parse HEAD)
+          objects=$(git rev-parse --path-format=absolute --git-path objects)
+          snapshot_dir=$(mktemp -d "$RUNNER_TEMP/changed-files.XXXXXX")
+
+          # The action needs a commit SHA. Keep the stash object and index in runner storage.
+          export GIT_INDEX_FILE="$snapshot_dir/index"
+          export GIT_OBJECT_DIRECTORY="$snapshot_dir/objects"
+          mkdir -p "$GIT_OBJECT_DIRECTORY/info"
+          printf '%s\n' "$objects" > "$GIT_OBJECT_DIRECTORY/info/alternates"
+          git read-tree "$head"
+          git add --all
+          sha=$(git -c user.name=act -c user.email=act@localhost stash create)
+
+          printf 'base_sha=%s\nsha=%s\n' "$base" "${sha:-$head}" >> "$GITHUB_OUTPUT"
+          printf 'GIT_OBJECT_DIRECTORY=%s\nGIT_CONFIG_GLOBAL=%s\n' \
+            "$GIT_OBJECT_DIRECTORY" "$snapshot_dir/gitconfig" >> "$GITHUB_ENV"
+
       - name: Changed Files
-        if: github.event_name != 'release' && github.event_name != 'workflow_dispatch'
+        if: >-
+          (env.ACT && steps.snapshot.outputs.base_sha != steps.snapshot.outputs.sha) ||
+          (!env.ACT && github.event_name != 'release' && github.event_name != 'workflow_dispatch')
         id: changed-files
         uses: tj-actions/changed-files@24d32ffd492484c1d75e0c0b894501ddb9d30d62 # v47
         with:
+          base_sha: ${{ steps.snapshot.outputs.base_sha }}
+          sha: ${{ steps.snapshot.outputs.sha }}
+          skip_initial_fetch: ${{ env.ACT == 'true' }}
+          fail_on_initial_diff_error: ${{ env.ACT == 'true' }}
+          output_renamed_files_as_deleted_and_added: ${{ env.ACT == 'true' }}
+          quotepath: ${{ !env.ACT }}
+          safe_output: ${{ !env.ACT }}
           json: true
-          write_output_files: true # .github/outputs/all_changed_files.json
+          write_output_files: true
 
       - id: load
         name: Load Components and Platforms
         run: |
-          if [[ "$GITHUB_EVENT_NAME" == "release" || "$GITHUB_EVENT_NAME" == "workflow_dispatch" ]]; then
+          components='[]'
+          if [[ "$ACT" != "true" &&
+                ( "$GITHUB_EVENT_NAME" == "release" || "$GITHUB_EVENT_NAME" == "workflow_dispatch" ) ]]; then
             components=$(jq -c '.components' .github/build-config.cfg)
-          fi
-          if [[ "$GITHUB_EVENT_NAME" == "pull_request" || "$GITHUB_EVENT_NAME" == "push" ]]; then
-            all_changed_files=$(jq -c '.' .github/outputs/all_changed_files.json)
+          elif [[ "${{ steps.changed-files.outcome }}" == "success" ]]; then
+            changes=.github/outputs/all_changed_files.json
+            if [[ "$ACT" == "true" ]]; then
+              changes=.github/outputs/all_changed_and_modified_files.json
+            fi
+            all_changed_files=$(jq -c '.' "$changes")
             if [ "$all_changed_files" != "null" ]; then
                 echo "all_changed_files=${all_changed_files}"
                 chmod +x .github/scripts/matrix.sh
-                components=$(./.github/scripts/matrix.sh ".github/build-config.cfg" ".github/outputs/all_changed_files.json")
+                components=$(./.github/scripts/matrix.sh ".github/build-config.cfg" "$changes")
             fi
           fi
           echo "components=${components}"
           echo "components=${components}" >> "$GITHUB_OUTPUT"
           echo "platforms=$(jq -c '.platforms' .github/build-config.cfg)" >> "$GITHUB_OUTPUT"
 
-      - name: Create tags for images
-        uses: netcracker/qubership-workflow-hub/actions/metadata-action@cf536587a99a23b3614aa4db4bdbf13cf36059b6 # v2.8.3
-        id: meta
-        with:
-          default-template: "{{ref-name}}"
-          extra-tags: ${{ github.event.inputs.tags || '' }}
-          replace-symbol: ${{ github.event.inputs.replace-symbol || '_'}}
-
   build:
-    name: ${{ matrix.component.name }} Image Build
-    needs: [prepare]
     # An empty matrix fails the whole run, so skip the job when no component changed.
+    name: ${{ matrix.component.name }} Image Build
     if: needs.prepare.outputs.components != '[]' && needs.prepare.outputs.components != ''
+    needs: [prepare]
     runs-on: ubuntu-22.04
     permissions:
       contents: read
@@ -113,39 +141,47 @@ jobs:
       - name: Checkout
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
       - name: Set up QEMU
+        if: ${{ !env.ACT }}
         uses: docker/setup-qemu-action@99012661954931238ded8c8b007157a8430204e1 # v4
       - name: Set up Docker Buildx
+        if: ${{ !env.ACT }}
         uses: docker/setup-buildx-action@f87e5991a6d7451dcb8d9637bfbc97413f497069 # v4
       - name: Login to Docker Hub
+        if: ${{ !env.ACT }}
         uses: docker/login-action@8aa5831fb8d48d8f76594c7ddde61ae58019f550 # v4
         with:
           registry: ghcr.io
           username: ${GITHUB_ACTOR}
           password: ${{secrets.GITHUB_TOKEN}}
       - name: Prepare Tag
+        if: ${{ !env.ACT }}
         run: echo "TAG_NAME=$(echo ${TAG_NAME} | sed 's@refs/tags/@@;s@refs/heads/@@;s@/@_@g')" >> $GITHUB_ENV
       - name: Get package IDs for delete
+        if: ${{ !env.ACT && env.PUSH }}
         id: get-ids-for-delete
         uses: Netcracker/get-package-ids@84bc8eb8bed50218be76e671b3a24c35a1300979
         with:
           component-name: ${{ matrix.component.name }}
           component-tag: ${{ env.TAG_NAME }}
           access-token: ${{secrets.GITHUB_TOKEN}}
-        if: ${{ env.PUSH }}
       - name: Build and push
         uses: docker/build-push-action@c3c9e263c25d99ce0380d002d59b67737d91b0dc # v7.4.0
+        env:
+          DOCKER_BUILD_SUMMARY: ${{ env.ACT && 'false' || 'true' }}
         with:
           no-cache: true
           context: ${{ matrix.component.context }}
           file: ${{ matrix.component.file }}
           platforms: ${{ needs.prepare.outputs.platforms }}
-          push: ${{ env.PUSH }}
+          push: ${{ !env.ACT && env.PUSH }}
+          load: ${{ env.ACT == 'true' }}
           build-args: PG_VERSION=${{ matrix.component.pg_version }}
-          tags: ghcr.io/netcracker/${{ matrix.component.name }}:${{ env.TAG_NAME }}
+          tags: ghcr.io/netcracker/${{ matrix.component.name }}:${{ env.ACT && 'local' || env.TAG_NAME }}
           provenance: false
-      - uses: actions/delete-package-versions@e5bc658cc4c965c472efe991f8beea3981499c55 # v5.0.0
+      - name: Delete superseded package versions
+        if: ${{ !env.ACT && steps.get-ids-for-delete.outputs.ids-for-delete != '' }}
+        uses: actions/delete-package-versions@e5bc658cc4c965c472efe991f8beea3981499c55 # v5.0.0
         with:
           package-name: ${{ matrix.component.name }}
           package-type: 'container'
           package-version-ids: ${{ steps.get-ids-for-delete.outputs.ids-for-delete }}
-        if: ${{ steps.get-ids-for-delete.outputs.ids-for-delete != '' }}
