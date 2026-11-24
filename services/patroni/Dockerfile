@@ -147,7 +147,7 @@ RUN wget https://github.com/zubkov-andrei/pg_profile/releases/download/4.8/pg_pr
 RUN apt-get update && apt-get install -y git make gcc && \
     git clone https://github.com/pgsentinel/pgsentinel.git && \
     cd pgsentinel && \
-    git checkout 0218c2147daab0d2dbbf08433cb480163d321839 && \
+    git checkout v1.5.2 && \
     cd src && make install && \
     cd ../.. && \
     if [ "$PG_VERSION" -lt 18 ]; then \
