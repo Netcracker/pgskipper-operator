@@ -1,0 +1,31 @@
+# Resource profile for development and test environments.
+# Production sizing must come from SVT results; see docs/public/installation.md#resource-profiles.
+
+operator:
+  resources:
+    requests:
+      cpu: 50m
+      memory: 128Mi
+    limits:
+      cpu: 50m
+      memory: 128Mi
+
+patroni:
+  # Memory request equals the limit: Patroni derives shared_buffers and
+  # effective_cache_size from the memory limit.
+  resources:
+    requests:
+      cpu: 250m
+      memory: 1Gi
+    limits:
+      cpu: 500m
+      memory: 1Gi
+
+tests:
+  resources:
+    requests:
+      cpu: 50m
+      memory: 128Mi
+    limits:
+      cpu: 300m
+      memory: 512Mi
