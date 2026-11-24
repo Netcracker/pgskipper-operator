@@ -698,7 +698,10 @@ class pgsLibrary(object):
 
     def detect_pg_version_and_storage_path(self):
         pg_ver = self.get_pg_version()
-        if pg_ver >= 18:
+        if pg_ver >= 19:
+            logging.info("Using pgsql 19 storage")
+            backup_dir = '/backup-storage/pg19'
+        elif pg_ver >= 18:
             logging.info("Using pgsql 18 storage")
             backup_dir = "/backup-storage/pg18"
         elif pg_ver >= 17:
