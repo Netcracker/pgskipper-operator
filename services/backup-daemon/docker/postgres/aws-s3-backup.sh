@@ -215,7 +215,11 @@ function main() {
     if [ "${PG_CLUSTER_NAME}" != "gpdb" ]
     then
         log_info "Using pgsql 9.6 bins for  pg_basebackup"
-        PG_BASEBACKUP="/usr/pgsql-9.6/bin/pg_basebackup"
+        if [ -x /usr/lib/postgresql/9.6/bin/pg_basebackup ]; then
+            PG_BASEBACKUP="/usr/lib/postgresql/9.6/bin/pg_basebackup"
+        else
+            PG_BASEBACKUP="/usr/pgsql-9.6/bin/pg_basebackup"
+        fi
     else
         log_info "Using gpdb bins for greenplum pg_basebackup"
         TARGET_DB_ID="$(psql -h "${POSTGRES_HOST}" -p "${POSTGRES_PORT}" -U "${POSTGRES_USER}" -d postgres -c "select dbid from gp_segment_configuration where content = -1 and status = 'up' and role = 'p';" -tA )"

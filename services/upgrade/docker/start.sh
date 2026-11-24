@@ -85,9 +85,17 @@ function handle_master_upgrade() {
     echo "[$(date +%Y-%m-%dT%H:%M:%S)] Content of /tmp/configs/postgresql.conf file:"
     cat /tmp/configs/postgresql.conf
 
-    echo "[$(date +%Y-%m-%dT%H:%M:%S)] making chmod 750 to datadir"
-
-    chmod 750 "${MIGRATION_PATH}/${DATA_DIR}"
+    OLD_DATADIR="/var/lib/pgsql/data/${DATA_DIR}"
+    if python -c "import sys; sys.exit(0 if float('${PG_VERSION}') < 11 else 1)"; then
+        DATADIR_MODE="700"
+    else
+        DATADIR_MODE="750"
+    fi
+    echo "[$(date +%Y-%m-%dT%H:%M:%S)] making chmod ${DATADIR_MODE} to datadir ${OLD_DATADIR}"
+    chmod "${DATADIR_MODE}" "${OLD_DATADIR}"
+    if [[ "${MIGRATION_PATH}/${DATA_DIR}" != "${OLD_DATADIR}" && -d "${MIGRATION_PATH}/${DATA_DIR}" ]]; then
+        chmod "${DATADIR_MODE}" "${MIGRATION_PATH}/${DATA_DIR}"
+    fi
 
     SHARED_PRELOAD_LIBRARIES=$(grep "shared_preload_libraries" "/var/lib/pgsql/data/${DATA_DIR}/postgresql.conf")
 
@@ -242,7 +250,9 @@ function check_pgsql_version(){
     # get version of data files
     PG_VERSION=$(head -n 1 "/var/lib/pgsql/data/${DATA_DIR}/PG_VERSION")
 
-    if python -c "import sys; sys.exit(0 if 11.0 <= float("${PG_VERSION}") < 12.0 else 1)"; then
+    if python -c "import sys; sys.exit(0 if 9.0 <= float("${PG_VERSION}") < 10.0 else 1)"; then
+        PG_VERSION_TARGET="18"
+    elif python -c "import sys; sys.exit(0 if 11.0 <= float("${PG_VERSION}") < 12.0 else 1)"; then
         PG_VERSION_TARGET="12"
     elif python -c "import sys; sys.exit(0 if 10.0 <= float("${PG_VERSION}") < 11.0 else 1)"; then
         PG_VERSION_TARGET="11"

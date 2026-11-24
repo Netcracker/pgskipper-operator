@@ -36,7 +36,10 @@ RUN apt-get --no-install-recommends install -y libaom3=3.3.0-1ubuntu0.1 || apt-g
 
 RUN apt-get -y update
 RUN apt-get -o DPkg::Options::="--force-confnew" -y dist-upgrade
+# PostgreSQL 9.6: jammy-pgdg core packages only (pgaudit). Skipped for 9.6 on this
+# source: pgvector, pg-failover-slots, credcheck, pgnodemx, and other modern-only extensions.
 RUN apt-get --no-install-recommends install -y \
+     postgresql-9.6 postgresql-contrib-9.6 postgresql-server-dev-9.6 postgresql-plpython3-9.6 postgresql-9.6-pgaudit \
      postgresql-12 postgresql-server-dev-12 \
      postgresql-13 postgresql-server-dev-13 \
      postgresql-14 postgresql-server-dev-14 \
@@ -52,6 +55,15 @@ RUN apt-get --no-install-recommends install -y \
      postgresql-17-pg-track-settings postgresql-17-pg-wait-sampling postgresql-17-cron postgresql-17-set-user postgresql-17-postgis postgresql-17-pg-stat-kcache postgresql-17-pgaudit postgresql-17-pg-qualstats postgresql-17-hypopg postgresql-17-powa postgresql-17-pg-hint-plan postgresql-17-pgnodemx postgresql-17-decoderbufs postgresql-17-pgsentinel postgresql-17-pglogical postgresql-17-pgvector postgresql-17-pg-failover-slots \
      postgresql-18-pg-track-settings postgresql-18-pg-wait-sampling postgresql-18-cron postgresql-18-set-user postgresql-18-postgis postgresql-18-pg-stat-kcache postgresql-18-pgaudit postgresql-18-pg-qualstats postgresql-18-hypopg postgresql-18-powa postgresql-18-pg-hint-plan postgresql-18-pgnodemx postgresql-18-decoderbufs postgresql-18-pgsentinel postgresql-18-pglogical postgresql-18-pgvector postgresql-18-pg-failover-slots
 RUN apt-get --no-install-recommends install -y libproj-dev libgdal30 libgeos3.10.2 libgeotiff5 libsfcgal1
+
+RUN set -eux; \
+        apt-get update && apt-get install -y git make gcc && \
+        git clone --depth 1 --branch pg18_support https://github.com/Tvion/pg_dbms_stats.git &&  \
+        cd pg_dbms_stats && \
+        make install && \
+        cd .. && \
+        apt-get purge -y --auto-remove git make gcc && \
+        rm -rf pg_dbms_stats;
 
 RUN localedef -i en_US -f UTF-8 en_US.UTF-8 && \
     localedef -i es_PE -f UTF-8 es_PE.UTF-8 && \

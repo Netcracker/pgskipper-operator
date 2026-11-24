@@ -34,6 +34,8 @@ jobs:
             context: ""
           - name: pgskipper-docker-patroni-15
             context: ""
+          - name: pgskipper-docker-patroni-9.6
+            context: ""
           - name: pgskipper-docker-pgbackrest-sidecar
             context: ""
           - name: qubership-docker-query-exporter

@@ -379,8 +379,16 @@ func (u *Upgrade) ProceedUpgrade(cr *v1.PatroniCore, cluster *v1.PatroniClusterS
 		return err
 	}
 
-	if err := u.HandleReplicationSlotsBeforeUpgrade(cluster.PgHost, cluster.ClusterName); err != nil {
-		return err
+	pgVer, err := strconv.ParseInt(u.helper.GetPGVersion(masterPodName), 10, 64)
+	if err != nil {
+		return fmt.Errorf("cannot parse PostgreSQL version: %w", err)
+	}
+	if pgVer >= 10 {
+		if err := u.HandleReplicationSlotsBeforeUpgrade(cluster.PgHost, cluster.ClusterName); err != nil {
+			return err
+		}
+	} else {
+		logger.Info(fmt.Sprintf("Skipping replication slots precheck for PostgreSQL %d (requires version 10 or later)", pgVer))
 	}
 
 	config, _ := u.helper.GetPatroniClusterConfig(cluster.PatroniUrl)

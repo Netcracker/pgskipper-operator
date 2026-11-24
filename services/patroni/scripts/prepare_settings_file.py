@@ -28,7 +28,7 @@ logging.basicConfig(
 logger = logging.getLogger(__name__)
 
 PG_USER_CONF = "/properties/postgresql.user.conf"
-POSTGRESQL_VERSION = int(os.getenv("POSTGRESQL_VERSION", "96"))
+POSTGRESQL_VERSION = os.getenv("POSTGRESQL_VERSION", "9.6")
 RUN_PROPAGATE_SCRIPT = os.getenv("RUN_PROPAGATE_SCRIPT", "True").lower()
 
 

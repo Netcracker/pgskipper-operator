@@ -13,6 +13,7 @@ charts:
       - ghcr.io/netcracker/pgskipper-operator:${release}
       - ghcr.io/netcracker/pgskipper-operator-transfer:${release}
       - ghcr.io/netcracker/pgskipper-docker-upgrade:${release}
+      - ghcr.io/netcracker/pgskipper-docker-patroni-9.6:${release}
       - ghcr.io/netcracker/pgskipper-docker-patroni-16:${release}
       - ghcr.io/netcracker/pgskipper-docker-patroni-17:${release}
       - ghcr.io/netcracker/pgskipper-docker-patroni-18:${release}

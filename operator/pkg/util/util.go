@@ -504,3 +504,39 @@ func ReadSecretFile(path string, defaultVal string) string {
 	}
 	return value
 }
+
+// ShouldLoadPgFailoverSlots reports whether pg_failover_slots should be added for useSlots.
+// PostgreSQL 9.x (major 9) does not ship that extension; majors 17+ use native sync slots.
+func ShouldLoadPgFailoverSlots(pgVersion int64) bool {
+	return pgVersion >= 10 && pgVersion < 17
+}
+
+// pg96PreloadAllowlist is the only set of shared_preload_libraries names allowed on PostgreSQL 9.6.
+var pg96PreloadAllowlist = map[string]struct{}{
+	"pg_stat_statements": {},
+	"pg_dbms_stats":      {},
+	"pgaudit":            {},
+	"pg_cron":            {},
+	"pg_hint_plan":       {},
+	"pg_profile":         {},
+	"decoderbufs":        {},
+}
+
+// FilterSharedPreloadCSV keeps only the PostgreSQL 9.6 preload allowlist when pgVersion is below 10.
+// Newer majors are returned unchanged.
+func FilterSharedPreloadCSV(pgVersion int64, csv string) string {
+	if pgVersion >= 10 {
+		return csv
+	}
+	var kept []string
+	for _, part := range strings.Split(csv, ",") {
+		name := strings.TrimSpace(part)
+		if name == "" {
+			continue
+		}
+		if _, ok := pg96PreloadAllowlist[name]; ok {
+			kept = append(kept, name)
+		}
+	}
+	return strings.Join(kept, ", ")
+}
