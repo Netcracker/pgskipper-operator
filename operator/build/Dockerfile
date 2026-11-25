@@ -1,5 +1,8 @@
 FROM --platform=$BUILDPLATFORM golang:1.27-alpine3.24@sha256:70bd7ddea8b6cbe5d6943cde279d6b67feb10cc924fb9100d1d8757c1575b280 AS builder
 
+ARG GOPROXY
+ARG GOSUMDB
+
 WORKDIR /workspace
 
 COPY go.mod go.sum ./
@@ -9,6 +12,10 @@ RUN --mount=type=cache,id=gomodcache,target=/go/pkg/mod \
     go mod download
 
 COPY . .
+
+RUN --mount=type=cache,id=gomodcache,target=/go/pkg/mod \
+    --mount=type=cache,id=gobuildcache,target=/root/.cache/go-build \
+    CGO_ENABLED=0 go test ./pkg/deployment ./pkg/helper
 
 # Build
 ARG TARGETOS
@@ -26,7 +33,9 @@ ENV OPERATOR=/usr/local/bin/postgres-operator \
 
 # Upgrade zlib to fix CVE-2026-22184 (CRITICAL) and CVE-2026-27171 (MEDIUM)
 # Temporal fix, will be removed when alpine will be fixed
-RUN apk upgrade --no-cache zlib
+ARG TARGETARCH
+RUN --mount=type=cache,id=postgres-apk-alpine-3.24-${TARGETARCH},target=/var/cache/apk,sharing=locked \
+    apk --cache-dir /var/cache/apk --cache-packages --cache-max-age 0 upgrade zlib
 
 # install operator binary
 COPY --from=builder /workspace/build/_output/bin/postgres-operator ${OPERATOR}
