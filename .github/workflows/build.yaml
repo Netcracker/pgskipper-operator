@@ -123,7 +123,7 @@ jobs:
     name: ${{ matrix.component.name }} Image Build
     if: needs.prepare.outputs.components != '[]' && needs.prepare.outputs.components != ''
     needs: [prepare]
-    runs-on: ubuntu-22.04
+    runs-on: ubuntu-latest
     permissions:
       contents: read
       packages: write
@@ -169,7 +169,7 @@ jobs:
         env:
           DOCKER_BUILD_SUMMARY: ${{ env.ACT && 'false' || 'true' }}
         with:
-          no-cache: true
+          no-cache: ${{ !env.ACT }}
           context: ${{ matrix.component.context }}
           file: ${{ matrix.component.file }}
           platforms: ${{ needs.prepare.outputs.platforms }}

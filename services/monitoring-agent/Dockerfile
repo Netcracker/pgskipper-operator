@@ -15,7 +15,9 @@ RUN CGO_ENABLED=0 GOOS=$TARGETOS GOARCH=$TARGETARCH go build -o ./_output/bin/me
 FROM alpine:3.24@sha256:f59abe656b692d901e184be3445e084786602108599d2a51d229c0f5a48c71bf AS base
 COPY --from=builder /workspace/_output/bin/metrics /monitor/
 
-RUN apk add --upgrade --no-cache curl
+ARG TARGETARCH
+RUN --mount=type=cache,id=postgres-apk-alpine-3.24-${TARGETARCH},target=/var/cache/apk,sharing=locked \
+    apk --cache-dir /var/cache/apk --cache-packages --cache-max-age 0 add --upgrade curl
 
 RUN chmod +x -R /monitor/ && ln -s /lib /lib64
 

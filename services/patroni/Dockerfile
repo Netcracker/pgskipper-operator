@@ -34,19 +34,26 @@ RUN echo "deb [trusted=yes] http://apt.postgresql.org/pub/repos/apt jammy-pgdg m
 
 RUN ls -la /etc/apt/
 
-RUN apt-get -y update && \
+ARG TARGETARCH
+# Keep downloads in the builder cache. Ubuntu's docker-clean hook normally removes them.
+RUN rm -f /etc/apt/apt.conf.d/docker-clean
+RUN --mount=type=cache,id=postgres-apt-jammy-${TARGETARCH},target=/var/cache/apt/archives,sharing=locked \
+    apt-get -y update && \
     apt-get -o DPkg::Options::="--force-confnew" -y upgrade && \
     rm -rf /var/lib/apt/lists/*
-RUN apt-get update && \
+RUN --mount=type=cache,id=postgres-apt-jammy-${TARGETARCH},target=/var/cache/apt/archives,sharing=locked \
+    apt-get update && \
     apt-get install -y --allow-downgrades gcc-12 cpp-12 gcc-12-base libgcc-12-dev libstdc++6 libgcc-s1 libnsl2
-RUN apt-get --no-install-recommends install -y python3.11 python3-pip python3-dev libpq-dev cython3 wget curl
+RUN --mount=type=cache,id=postgres-apt-jammy-${TARGETARCH},target=/var/cache/apt/archives,sharing=locked \
+    apt-get --no-install-recommends install -y python3.11 python3-pip python3-dev libpq-dev cython3 wget curl
 
 # rename 'tape' group to 'postgres' and creating postgres user - hask for ubuntu
 RUN groupmod -n postgres tape
 RUN adduser -uid 26 -gid 26 postgres
 
 # Install pgbackrest 2.55.1 from source
-RUN apt-get --no-install-recommends install -y \
+RUN --mount=type=cache,id=postgres-apt-jammy-${TARGETARCH},target=/var/cache/apt/archives,sharing=locked \
+    apt-get --no-install-recommends install -y \
     build-essential \
     libssl-dev \
     libxml2-dev \
@@ -79,13 +86,13 @@ RUN apt-get --no-install-recommends install -y \
     meson \
     ninja-build \
     pkg-config && \
-    apt-get clean && \
     mkdir -p /var/lib/pgbackrest && \
     mkdir -p /var/log/pgbackrest && \
     mkdir -p /var/spool/pgbackrest
 
 ARG DEBIAN_FRONTEND=noninteractive
-RUN apt-get --no-install-recommends install -y postgresql-$PG_VERSION postgresql-contrib-$PG_VERSION postgresql-server-dev-$PG_VERSION postgresql-plpython3-$PG_VERSION postgresql-$PG_VERSION-hypopg postgresql-$PG_VERSION-powa postgresql-$PG_VERSION-orafce\
+RUN --mount=type=cache,id=postgres-apt-jammy-${TARGETARCH},target=/var/cache/apt/archives,sharing=locked \
+    apt-get --no-install-recommends install -y postgresql-$PG_VERSION postgresql-contrib-$PG_VERSION postgresql-server-dev-$PG_VERSION postgresql-plpython3-$PG_VERSION postgresql-$PG_VERSION-hypopg postgresql-$PG_VERSION-powa postgresql-$PG_VERSION-orafce\
     hostname gettext jq vim \
     postgresql-$PG_VERSION-cron postgresql-$PG_VERSION-repack postgresql-$PG_VERSION-pgaudit postgresql-$PG_VERSION-pg-stat-kcache postgresql-$PG_VERSION-pg-qualstats postgresql-$PG_VERSION-set-user postgresql-$PG_VERSION-postgis \
     postgresql-$PG_VERSION-pg-wait-sampling postgresql-$PG_VERSION-pg-track-settings postgresql-$PG_VERSION-pg-hint-plan postgresql-$PG_VERSION-pgnodemx postgresql-$PG_VERSION-decoderbufs postgresql-$PG_VERSION-pglogical postgresql-$PG_VERSION-pgvector \
@@ -93,7 +100,8 @@ RUN apt-get --no-install-recommends install -y postgresql-$PG_VERSION postgresql
 
 
 # Install LDAP utilities including openldap-clients and necessary libraries
-RUN apt-get update && apt-get install -y \
+RUN --mount=type=cache,id=postgres-apt-jammy-${TARGETARCH},target=/var/cache/apt/archives,sharing=locked \
+    apt-get update && apt-get install -y \
     ldap-utils \
     libldap-2.5-0 \
     libsasl2-modules-gssapi-mit \
@@ -110,7 +118,8 @@ RUN wget https://github.com/zubkov-andrei/pg_profile/releases/download/4.8/pg_pr
     rm -rf pg_profile--4.8.tar.gz
 
 # Install pgsentinel and pg_dbms_stats
-RUN apt-get update && apt-get install -y git make gcc && \
+RUN --mount=type=cache,id=postgres-apt-jammy-${TARGETARCH},target=/var/cache/apt/archives,sharing=locked \
+    apt-get update && apt-get install -y git make gcc && \
     git clone https://github.com/pgsentinel/pgsentinel.git && \
     cd pgsentinel && \
     git checkout 0218c2147daab0d2dbbf08433cb480163d321839 && \
@@ -128,9 +137,11 @@ RUN apt-get update && apt-get install -y git make gcc && \
     rm -rf pgsentinel
 
 # Install credcheck extension
-RUN apt-get update && apt-get install -y postgresql-$PG_VERSION-credcheck
+RUN --mount=type=cache,id=postgres-apt-jammy-${TARGETARCH},target=/var/cache/apt/archives,sharing=locked \
+    apt-get update && apt-get install -y postgresql-$PG_VERSION-credcheck
 
-RUN apt-get install -y alien vmtouch openssh-server
+RUN --mount=type=cache,id=postgres-apt-jammy-${TARGETARCH},target=/var/cache/apt/archives,sharing=locked \
+    apt-get install -y alien vmtouch openssh-server
 
 RUN cat /root/.pip/pip.conf
 # 1. Install pip dependencies
@@ -146,7 +157,8 @@ RUN python3 -m pip install -U setuptools==82.0.1 wheel==0.47.0 && \
            /usr/lib/python3/dist-packages/wheel*
 
 # Explicitly install patched libaom3 version
-RUN apt-get --no-install-recommends install -y libaom3=3.3.0-1ubuntu0.1 || apt-get --no-install-recommends install -y libaom3
+RUN --mount=type=cache,id=postgres-apt-jammy-${TARGETARCH},target=/var/cache/apt/archives,sharing=locked \
+    apt-get --no-install-recommends install -y libaom3=3.3.0-1ubuntu0.1 || apt-get --no-install-recommends install -y libaom3
 RUN mv /var/lib/postgresql /var/lib/pgsql
 
 RUN sed -i "s/postgres:!/postgres:*/" /etc/shadow && \

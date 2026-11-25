@@ -24,16 +24,23 @@ COPY docker/pip.conf /root/.pip/pip.conf
 RUN echo "deb [trusted=yes] http://apt.postgresql.org/pub/repos/apt jammy-pgdg main" >> /etc/apt/sources.list.d/pgdg.list
 RUN cat /etc/apt/sources.list
 RUN ls -la /etc/apt/
+ARG TARGETARCH
+# Keep downloaded packages in the BuildKit cache.
+RUN rm -f /etc/apt/apt.conf.d/docker-clean
 RUN apt-get -y update
-RUN apt-get -o DPkg::Options::="--force-confnew" -y dist-upgrade
-RUN apt-get update && \
+RUN --mount=type=cache,id=postgres-apt-jammy-${TARGETARCH},target=/var/cache/apt/archives,sharing=locked \
+    apt-get -o DPkg::Options::="--force-confnew" -y dist-upgrade
+RUN --mount=type=cache,id=postgres-apt-jammy-${TARGETARCH},target=/var/cache/apt/archives,sharing=locked \
+    apt-get update && \
     apt-get install -y --allow-downgrades gcc-12 cpp-12 gcc-12-base libgcc-12-dev libstdc++6 libgcc-s1 libnsl2
-RUN apt-get --no-install-recommends install -y python3.11 python3.11-dev python3-pip libpq-dev cython3 \
+RUN --mount=type=cache,id=postgres-apt-jammy-${TARGETARCH},target=/var/cache/apt/archives,sharing=locked \
+    apt-get --no-install-recommends install -y python3.11 python3.11-dev python3-pip libpq-dev cython3 \
     && update-alternatives --install /usr/bin/python3 python3 /usr/bin/python3.11 1
 
 RUN ls -ls /usr/bin/
 ARG DEBIAN_FRONTEND=noninteractive
-RUN apt-get --no-install-recommends install -y comerr-dev \
+RUN --mount=type=cache,id=postgres-apt-jammy-${TARGETARCH},target=/var/cache/apt/archives,sharing=locked \
+    apt-get --no-install-recommends install -y comerr-dev \
                        unzip \
                        build-essential \
                        manpages-dev \

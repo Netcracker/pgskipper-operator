@@ -26,7 +26,9 @@ ENV OPERATOR=/usr/local/bin/postgres-operator \
 
 # Upgrade zlib to fix CVE-2026-22184 (CRITICAL) and CVE-2026-27171 (MEDIUM)
 # Temporal fix, will be removed when alpine will be fixed
-RUN apk upgrade --no-cache zlib
+ARG TARGETARCH
+RUN --mount=type=cache,id=postgres-apk-alpine-3.24-${TARGETARCH},target=/var/cache/apk,sharing=locked \
+    apk --cache-dir /var/cache/apk --cache-packages --cache-max-age 0 upgrade zlib
 
 # install operator binary
 COPY --from=builder /workspace/build/_output/bin/postgres-operator ${OPERATOR}
