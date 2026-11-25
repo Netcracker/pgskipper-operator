@@ -67,8 +67,10 @@ def get_version_of_pgsql_server():
         return "pg16"
     elif [17, 0] <= version_as_list < [18, 0]:
         return "pg17"
-    elif version_as_list >= [18, 0]:
+    elif [18, 0] <= version_as_list < [19, 0]:
         return "pg18"
+    elif version_as_list >= [19, 0]:
+        return "pg19"
     return ""
 
 

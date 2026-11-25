@@ -85,11 +85,45 @@ RUN apt-get --no-install-recommends install -y \
     mkdir -p /var/spool/pgbackrest
 
 ARG DEBIAN_FRONTEND=noninteractive
-RUN apt-get --no-install-recommends install -y postgresql-$PG_VERSION postgresql-contrib-$PG_VERSION postgresql-server-dev-$PG_VERSION postgresql-plpython3-$PG_VERSION postgresql-$PG_VERSION-hypopg postgresql-$PG_VERSION-powa postgresql-$PG_VERSION-orafce\
-    hostname gettext jq vim \
-    postgresql-$PG_VERSION-cron postgresql-$PG_VERSION-repack postgresql-$PG_VERSION-pgaudit postgresql-$PG_VERSION-pg-stat-kcache postgresql-$PG_VERSION-pg-qualstats postgresql-$PG_VERSION-set-user postgresql-$PG_VERSION-postgis \
-    postgresql-$PG_VERSION-pg-wait-sampling postgresql-$PG_VERSION-pg-track-settings postgresql-$PG_VERSION-pg-hint-plan postgresql-$PG_VERSION-pgnodemx postgresql-$PG_VERSION-decoderbufs postgresql-$PG_VERSION-pglogical postgresql-$PG_VERSION-pgvector \
-    postgresql-$PG_VERSION-pg-failover-slots
+
+RUN set -eux; \
+    common_packages=" \
+        postgresql-${PG_VERSION} \
+        postgresql-contrib-${PG_VERSION} \
+        postgresql-server-dev-${PG_VERSION} \
+        postgresql-plpython3-${PG_VERSION} \
+        postgresql-${PG_VERSION}-hypopg \
+        postgresql-${PG_VERSION}-powa \
+        postgresql-${PG_VERSION}-orafce \
+        postgresql-${PG_VERSION}-cron \
+        postgresql-${PG_VERSION}-repack \
+        postgresql-${PG_VERSION}-pgaudit \
+        postgresql-${PG_VERSION}-pg-stat-kcache \
+        postgresql-${PG_VERSION}-pg-qualstats \
+        postgresql-${PG_VERSION}-set-user \
+        postgresql-${PG_VERSION}-pg-wait-sampling \
+        postgresql-${PG_VERSION}-pg-track-settings \
+        postgresql-${PG_VERSION}-pg-hint-plan \
+        postgresql-${PG_VERSION}-pglogical \
+        postgresql-${PG_VERSION}-pgvector \
+        hostname gettext jq vim \
+    "; \
+    if [ "$PG_VERSION" -eq 19 ]; then \
+        version_specific_packages=" \
+            postgresql-19-postgis-3 \
+        "; \
+    else \
+        version_specific_packages=" \
+            postgresql-${PG_VERSION}-postgis \
+            postgresql-${PG_VERSION}-pgnodemx \
+            postgresql-${PG_VERSION}-decoderbufs \
+            postgresql-${PG_VERSION}-pg-failover-slots \
+        "; \
+    fi; \
+    apt-get update; \
+    apt-get --no-install-recommends install -y \
+        $common_packages $version_specific_packages; \
+    rm -rf /var/lib/apt/lists/*
 
 
 # Install LDAP utilities including openldap-clients and necessary libraries
@@ -113,7 +147,7 @@ RUN wget https://github.com/zubkov-andrei/pg_profile/releases/download/4.8/pg_pr
 RUN apt-get update && apt-get install -y git make gcc && \
     git clone https://github.com/pgsentinel/pgsentinel.git && \
     cd pgsentinel && \
-    git checkout 0218c2147daab0d2dbbf08433cb480163d321839 && \
+    git checkout v1.5.2 && \
     cd src && make install && \
     cd ../.. && \
     if [ "$PG_VERSION" -lt 18 ]; then \

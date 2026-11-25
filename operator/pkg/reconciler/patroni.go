@@ -335,17 +335,29 @@ func (r *PatroniReconciler) Reconcile() error {
 		powa.UpdatePgSettings(cr)
 		powa.UpdatePreloadLibraries(cr)
 	}
+	masterPods, err := r.helper.GetPodsByLabel(r.cluster.PatroniMasterSelectors)
+	if err != nil || len(masterPods.Items) == 0 {
+		logger.Warn("Cannot determine PostgreSQL version for useSlots companion settings; skipping")
+
+	}
+	var pgVersion string
+	if err != nil || len(masterPods.Items) == 0 {
+		logger.Warn("Cannot determine PostgreSQL version for useSlots companion settings; using default output plugins")
+	} else {
+		pgVersion = r.helper.GetPGVersion(masterPods.Items[0].Name)
+	}
+
 	// We decide to update preload libraries for exporter by default. In case of supplementary service separation
-	queryexporter.UpdatePreloadLibraries(cr)
+	queryexporter.UpdatePreloadLibraries(cr, pgVersion)
 
 	// Validate and apply additional settings for use slots
-	r.applyUseSlotsAdditionalSettings(cr)
+	r.applyUseSlotsAdditionalSettings(cr, pgVersion)
 
 	if err := patroni.UpdatePatroniParams(patroniSpec, r.cluster.PatroniUrl); err != nil {
 		logger.Error("Failed to update Patroni Params, exiting", zap.Error(err))
 		return err
 	}
-	if err := patroni.UpdatePostgreSQLParams(patroniSpec, r.cluster.PatroniUrl); err != nil {
+	if err := patroni.UpdatePostgreSQLParams(patroniSpec, r.cluster.PatroniUrl, pgVersion); err != nil {
 		logger.Error("Failed to update PostgreSQL Params, exiting", zap.Error(err))
 		return err
 	}
@@ -1119,20 +1131,13 @@ func (r *PatroniReconciler) performLocaleUpgrade(cr *v1.PatroniCore, localeVersi
 	return nil
 }
 
-func (r *PatroniReconciler) applyUseSlotsAdditionalSettings(cr *v1.PatroniCore) {
+func (r *PatroniReconciler) applyUseSlotsAdditionalSettings(cr *v1.PatroniCore, versionStr string) {
 	if cr.Spec == nil || cr.Spec.Patroni == nil || !cr.Spec.Patroni.UseSlots {
 		return
 	}
 
 	ensureMaxSlotWalKeepSize(cr)
 
-	masterPods, err := r.helper.GetPodsByLabel(r.cluster.PatroniMasterSelectors)
-	if err != nil || len(masterPods.Items) == 0 {
-		logger.Warn("Cannot determine PostgreSQL version for useSlots companion settings; skipping")
-		return
-	}
-
-	versionStr := r.helper.GetPGVersion(masterPods.Items[0].Name)
 	if versionStr == "" {
 		logger.Warn("PostgreSQL version is empty; skipping useSlots companion settings")
 		return

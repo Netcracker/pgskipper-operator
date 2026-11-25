@@ -22,6 +22,7 @@ import (
 	"io"
 	"net/http"
 	"slices"
+	"strconv"
 	"strings"
 	"time"
 
@@ -39,9 +40,10 @@ import (
 )
 
 var (
-	logger               = util.GetLogger()
-	outputPluginsDefault = []string{"pgoutput", "test_decoding", "decoderbufs"}
-	outputPluginMap      = map[string]string{
+	logger                   = util.GetLogger()
+	outputPluginsDefault     = []string{"pgoutput", "test_decoding", "decoderbufs"}
+	outputPluginsDefaultPG19 = []string{"pgoutput", "test_decoding"}
+	outputPluginMap          = map[string]string{
 		"pglogical": "pglogical_output",
 	}
 )
@@ -396,7 +398,7 @@ func updateStandbyClusterSettings(configMap *corev1.ConfigMap, settings interfac
 	return configMap, nil
 }
 
-func UpdatePostgreSQLParams(patroni *patroniv1.Patroni, patroniUrl string) error {
+func UpdatePostgreSQLParams(patroni *patroniv1.Patroni, patroniUrl string, pgVersion string) error {
 	postgreSQLParams := map[string]interface{}{}
 	for _, param := range patroni.PostgreSQLParams {
 		param = strings.Replace(param, "=", ":", 1)
@@ -415,7 +417,7 @@ func UpdatePostgreSQLParams(patroni *patroniv1.Patroni, patroniUrl string) error
 
 	postgreSQL := map[string]interface{}{}
 
-	if err := updateOutputPluginLibraries(postgreSQLParams); err != nil {
+	if err := updateOutputPluginLibraries(postgreSQLParams, pgVersion); err != nil {
 		logger.Error("Failed to update output plugin libraries", zap.Error(err))
 	}
 
@@ -434,8 +436,18 @@ func UpdatePostgreSQLParams(patroni *patroniv1.Patroni, patroniUrl string) error
 	return nil
 }
 
-func updateOutputPluginLibraries(postgreSQLParams map[string]interface{}) error {
+func updateOutputPluginLibraries(postgreSQLParams map[string]interface{}, pgVersion string) error {
 	outputPlugins := slices.Clone(outputPluginsDefault)
+
+	if pgVersion != "" {
+		majorVersion, err := strconv.ParseInt(pgVersion, 10, 64)
+		if err != nil {
+			logger.Warn("Cannot parse PostgreSQL version; using default output plugins",
+				zap.String("version", pgVersion), zap.Error(err))
+		} else if majorVersion >= 19 {
+			outputPlugins = slices.Clone(outputPluginsDefaultPG19)
+		}
+	}
 	for key, value := range postgreSQLParams {
 		if key == "shared_preload_libraries" {
 			sharedPreloadLibraries := strings.Split(value.(string), ",")

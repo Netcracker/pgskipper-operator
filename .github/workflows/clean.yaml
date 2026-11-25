@@ -26,6 +26,8 @@ jobs:
             context: ""
           - name: pgskipper-docker-monitoring-agent
             context: ""
+          - name: pgskipper-docker-patroni-19
+            context: ""
           - name: pgskipper-docker-patroni-18
             context: ""
           - name: pgskipper-docker-patroni-17

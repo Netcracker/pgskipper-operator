@@ -38,10 +38,11 @@ const (
 )
 
 var (
-	logger              = util.GetLogger()
-	queryExporterLabels = map[string]string{"name": "query-exporter", "app": "query-exporter"}
-	preloadLibraries    = []string{"pg_stat_statements", "pgsentinel", "pg_stat_kcache", "pg_wait_sampling", "pgnodemx"}
-	exporterExtensions  = []string{"pg_stat_statements", "pgsentinel", "pg_wait_sampling", "pg_buffercache", "pg_stat_kcache"}
+	logger               = util.GetLogger()
+	queryExporterLabels  = map[string]string{"name": "query-exporter", "app": "query-exporter"}
+	preloadLibraries     = []string{"pg_stat_statements", "pgsentinel", "pg_stat_kcache", "pg_wait_sampling", "pgnodemx"}
+	preloadLibrariesPG19 = []string{"pg_stat_statements", "pgsentinel", "pg_stat_kcache", "pg_wait_sampling"}
+	exporterExtensions   = []string{"pg_stat_statements", "pgsentinel", "pg_wait_sampling", "pg_buffercache", "pg_stat_kcache"}
 
 	expSec = "query-exporter-user-credentials"
 )
@@ -183,8 +184,14 @@ func getEnvVariables(spec v1.QueryExporter) []corev1.EnvVar {
 	}
 }
 
-func UpdatePreloadLibraries(cr *patroniv1.PatroniCore) {
-	helper.UpdatePreloadLibraries(cr, preloadLibraries)
+func UpdatePreloadLibraries(cr *patroniv1.PatroniCore, pgVersion string) {
+
+	libraries := preloadLibraries
+	majorVersion, err := strconv.ParseInt(pgVersion, 10, 64)
+	if err == nil && majorVersion >= 19 {
+		libraries = preloadLibrariesPG19
+	}
+	helper.UpdatePreloadLibraries(cr, libraries)
 }
 
 func GetService() *corev1.Service {
