@@ -1,5 +1,7 @@
 FROM --platform=$BUILDPLATFORM golang:1.27-alpine3.24@sha256:70bd7ddea8b6cbe5d6943cde279d6b67feb10cc924fb9100d1d8757c1575b280 AS builder
 
+ARG GOPROXY
+
 WORKDIR /workspace
 
 COPY go.mod go.sum ./
@@ -27,6 +29,11 @@ ENV OPERATOR=/usr/local/bin/postgres-operator \
 # Upgrade zlib to fix CVE-2026-22184 (CRITICAL) and CVE-2026-27171 (MEDIUM)
 # Temporal fix, will be removed when alpine will be fixed
 ARG TARGETARCH
+ARG ALPINE_APK_MIRROR
+RUN if [ -n "$ALPINE_APK_MIRROR" ]; then \
+        sed -Ei "s#^https?://[^/]+/alpine/#${ALPINE_APK_MIRROR}/#" /etc/apk/repositories && \
+        grep -F "$ALPINE_APK_MIRROR/" /etc/apk/repositories; \
+    fi
 RUN --mount=type=cache,id=postgres-apk-alpine-3.24-${TARGETARCH},target=/var/cache/apk,sharing=locked \
     apk --cache-dir /var/cache/apk --cache-packages --cache-max-age 0 upgrade zlib
 

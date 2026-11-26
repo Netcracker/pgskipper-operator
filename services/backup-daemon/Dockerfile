@@ -1,6 +1,8 @@
 # checkov:skip=CKV_DOCKER_3: Backward compatibility
 FROM --platform=$BUILDPLATFORM golang:1.27-alpine3.24@sha256:70bd7ddea8b6cbe5d6943cde279d6b67feb10cc924fb9100d1d8757c1575b280 AS builder
 
+ARG GOPROXY
+
 ENV GO111MODULE=on
 
 # Copy the go source
@@ -21,7 +23,22 @@ ENV PG_CLUSTER_NAME=common STORAGE_ROOT=/backup-storage EXTERNAL_STORAGE_ROOT=/e
 
 COPY docker/pip.conf /root/.pip/pip.conf
 
-RUN echo "deb [trusted=yes] http://apt.postgresql.org/pub/repos/apt jammy-pgdg main" >> /etc/apt/sources.list.d/pgdg.list
+ARG UBUNTU_APT_MIRROR
+ARG PGDG_APT_MIRROR
+RUN --mount=type=secret,id=act_apt_ca_bundle \
+    --mount=type=secret,id=act_pgdg_key \
+    if [ -n "$UBUNTU_APT_MIRROR" ]; then \
+        if [ ! -s /etc/ssl/certs/ca-certificates.crt ]; then \
+            install -D -m 644 /run/secrets/act_apt_ca_bundle /etc/ssl/certs/ca-certificates.crt || exit 1; \
+        fi; \
+        sed -Ei "s#https?://(archive|security)\.ubuntu\.com/ubuntu/?#$UBUNTU_APT_MIRROR#g" /etc/apt/sources.list; \
+    fi && \
+    if [ -n "$PGDG_APT_MIRROR" ]; then \
+        install -D -m 644 /run/secrets/act_pgdg_key /usr/share/keyrings/pgdg.asc && \
+        printf 'deb [signed-by=/usr/share/keyrings/pgdg.asc] %s jammy-pgdg main\n' "$PGDG_APT_MIRROR"; \
+    else \
+        printf 'deb [trusted=yes] http://apt.postgresql.org/pub/repos/apt jammy-pgdg main\n'; \
+    fi >> /etc/apt/sources.list.d/pgdg.list
 RUN cat /etc/apt/sources.list
 RUN ls -la /etc/apt/
 ARG TARGETARCH

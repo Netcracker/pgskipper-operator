@@ -1,0 +1,5 @@
+[registry."docker.io"]
+  mirrors = ["artifactory.netcracker.com:17114"]
+
+[registry."ghcr.io"]
+  mirrors = ["artifactory.netcracker.com:17114"]

@@ -49,6 +49,9 @@ jobs:
     outputs:
       components: ${{ steps.load.outputs.components }}
       platforms: ${{ steps.load.outputs.platforms }}
+      artifactory-builder: ${{ steps.artifactory.outputs.builder }}
+      artifactory-build-args: ${{ steps.artifactory.outputs.build-args }}
+      artifactory-secret-files: ${{ steps.artifactory.outputs.secret-files }}
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
@@ -118,6 +121,56 @@ jobs:
           echo "components=${components}" >> "$GITHUB_OUTPUT"
           echo "platforms=$(jq -c '.platforms' .github/build-config.cfg)" >> "$GITHUB_OUTPUT"
 
+      - name: Set up the act Artifactory builder
+        if: env.ACT == 'true' && env.ACT_ARTIFACTORY_BUILDER != '' && steps.load.outputs.components != '[]'
+        id: artifactory
+        shell: bash
+        run: |
+          state=/var/lib/act-artifactory
+          if ! mountpoint -q "$state" || [[ "${BUILDX_CONFIG:-}" != "$state/buildx" ]]; then
+            echo "::error::Start act with bash .github/scripts/act-artifactory.sh to mount the shared builder state."
+            exit 1
+          fi
+          mkdir -p "$BUILDX_CONFIG"
+          exec 9>"$state/setup.lock"
+          flock 9
+
+          builder=$ACT_ARTIFACTORY_BUILDER
+          proxy_options=()
+          for name in HTTP_PROXY HTTPS_PROXY NO_PROXY; do
+            if [[ -n "${!name:-}" ]]; then
+              proxy_options+=(--driver-opt "\"env.$name=${!name}\"")
+            fi
+          done
+          if ! docker buildx inspect "$builder" >/dev/null 2>&1; then
+            docker buildx create --name "$builder" --driver docker-container \
+              --buildkitd-config .github/act/artifactory.toml \
+              --driver-opt image=artifactory.netcracker.com:17114/moby/buildkit:v0.25.1 \
+              "${proxy_options[@]}"
+          fi
+          docker buildx inspect --bootstrap "$builder" >/dev/null
+
+          debian_mirror=https://artifactory.netcracker.com/yumsrv03cn_deb.deb.proxy
+          key=$(mktemp "$state/postgresql.XXXXXX")
+          trap 'rm -f "$key"' EXIT
+          curl -fsS --retry 3 "$debian_mirror/gpgkeys/postgresql.asc" -o "$key"
+          printf '%s  %s\n' 0144068502a1eddd2a0280ede10ef607d1ec592ce819940991203941564e8e76 "$key" | sha256sum --check
+          mv "$key" "$state/postgresql.asc"
+
+          {
+            printf 'builder=%s\n' "$builder"
+            printf 'build-args<<EOF\nUBUNTU_APT_MIRROR=%s/ubuntu\nPGDG_APT_MIRROR=%s/misc/postgresql\n' "$debian_mirror" "$debian_mirror"
+            printf 'ALPINE_APK_MIRROR=%s\n' https://artifactory.netcracker.com/artifactory/dl_cdn_alpinelinux_org_alpine.apk.proxy
+            printf 'GOPROXY=%s\n' https://artifactory.netcracker.com/artifactory/api/go/nc.remote-thirdparty.go.group
+            for name in HTTP_PROXY HTTPS_PROXY NO_PROXY http_proxy https_proxy no_proxy; do
+              if [[ -n "${!name:-}" ]]; then
+                printf '%s\n' "$name"
+              fi
+            done
+            printf 'EOF\n'
+            printf 'secret-files<<EOF\nact_apt_ca_bundle=/etc/ssl/certs/ca-certificates.crt\nact_pgdg_key=%s/postgresql.asc\nEOF\n' "$state"
+          } >> "$GITHUB_OUTPUT"
+
   build:
     # An empty matrix fails the whole run, so skip the job when no component changed.
     name: ${{ matrix.component.name }} Image Build
@@ -169,13 +222,17 @@ jobs:
         env:
           DOCKER_BUILD_SUMMARY: ${{ env.ACT && 'false' || 'true' }}
         with:
+          builder: ${{ needs.prepare.outputs.artifactory-builder }}
           no-cache: ${{ !env.ACT }}
           context: ${{ matrix.component.context }}
           file: ${{ matrix.component.file }}
           platforms: ${{ needs.prepare.outputs.platforms }}
           push: ${{ !env.ACT && env.PUSH }}
           load: ${{ env.ACT == 'true' }}
-          build-args: PG_VERSION=${{ matrix.component.pg_version }}
+          build-args: |
+            PG_VERSION=${{ matrix.component.pg_version }}
+            ${{ needs.prepare.outputs.artifactory-build-args }}
+          secret-files: ${{ needs.prepare.outputs.artifactory-secret-files }}
           tags: ghcr.io/netcracker/${{ matrix.component.name }}:${{ env.ACT && 'local' || env.TAG_NAME }}
           provenance: false
       - name: Delete superseded package versions

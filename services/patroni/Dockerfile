@@ -30,7 +30,22 @@ COPY ./scripts/postgresql.conf /tmp/postgresql.conf
 COPY ./scripts/fix_permission.sh /usr/libexec/fix-permissions
 COPY ./scripts/* /
 
-RUN echo "deb [trusted=yes] http://apt.postgresql.org/pub/repos/apt jammy-pgdg main" >> /etc/apt/sources.list.d/pgdg.list
+ARG UBUNTU_APT_MIRROR
+ARG PGDG_APT_MIRROR
+RUN --mount=type=secret,id=act_apt_ca_bundle \
+    --mount=type=secret,id=act_pgdg_key \
+    if [ -n "$UBUNTU_APT_MIRROR" ]; then \
+        if [ ! -s /etc/ssl/certs/ca-certificates.crt ]; then \
+            install -D -m 644 /run/secrets/act_apt_ca_bundle /etc/ssl/certs/ca-certificates.crt || exit 1; \
+        fi; \
+        sed -Ei "s#https?://(archive|security)\.ubuntu\.com/ubuntu/?#$UBUNTU_APT_MIRROR#g" /etc/apt/sources.list; \
+    fi && \
+    if [ -n "$PGDG_APT_MIRROR" ]; then \
+        install -D -m 644 /run/secrets/act_pgdg_key /usr/share/keyrings/pgdg.asc && \
+        printf 'deb [signed-by=/usr/share/keyrings/pgdg.asc] %s jammy-pgdg main\n' "$PGDG_APT_MIRROR"; \
+    else \
+        printf 'deb [trusted=yes] http://apt.postgresql.org/pub/repos/apt jammy-pgdg main\n'; \
+    fi >> /etc/apt/sources.list.d/pgdg.list
 
 RUN ls -la /etc/apt/
 

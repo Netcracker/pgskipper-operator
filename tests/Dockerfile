@@ -9,6 +9,11 @@ COPY docker/pip.conf /root/.pip/pip.conf
 COPY docker/requirements.txt /root/requirements.txt
 
 ARG TARGETARCH
+ARG ALPINE_APK_MIRROR
+RUN if [ -n "$ALPINE_APK_MIRROR" ]; then \
+        sed -Ei "s#^https?://[^/]+/alpine/#${ALPINE_APK_MIRROR}/#" /etc/apk/repositories && \
+        grep -F "$ALPINE_APK_MIRROR/" /etc/apk/repositories; \
+    fi
 RUN --mount=type=cache,id=postgres-apk-integration-tests-${TARGETARCH},target=/var/cache/apk,sharing=locked \
     set -x \
     && apk --cache-dir /var/cache/apk --cache-packages --cache-max-age 0 add build-base postgresql-dev \
